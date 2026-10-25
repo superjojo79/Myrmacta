@@ -1,3 +1,7 @@
+> **Myrmacta.** Nom commercial, logo et périmètre du renommage : [RENAMING.md](../RENAMING.md).
+> Les documents archivés, retirés de `main`, restent au commit `e91aa7b`.
+> L'état d'avant ce renommage est le tag `pre-myrmacta`.
+
 # Architecture technique — Moteur de flux métier & génération de documents
 
 > Projet : activité indépendante complémentaire  
@@ -67,7 +71,7 @@
 | 46 | Exposition MCP de la couche low-code — cadrage transverse (TODO §71) | [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md) |
 | 47 | PostgreSQL embarqué (zonky) — tests sans H2/Docker, base persistante démo/QA — **livré** (TODO §91) | [47-postgresql-embarque-tests-demo.md](47-postgresql-embarque-tests-demo.md) |
 
-> Pour concevoir concrètement un diagramme BPMN pour FlowForge (conventions, référence des
+> Pour concevoir concrètement un diagramme BPMN pour Myrmacta (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de
 > documents), voir le guide pratique [docs/guides/GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md) à la
 > racine du dépôt — ce n'est pas un document d'analyse d'architecture, il n'a donc pas de numéro

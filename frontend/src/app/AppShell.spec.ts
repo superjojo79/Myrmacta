@@ -24,7 +24,7 @@ describe('AppShell', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders FlowForge brand and pilotage nav without Rapports', async () => {
+  it('renders the Myrmacta brand and pilotage nav without Rapports', async () => {
     const router = createRouter({ history: createMemoryHistory(), routes })
     router.push('/supervision')
     await router.isReady()
@@ -33,7 +33,9 @@ describe('AppShell', () => {
       global: { plugins: [router] },
     })
 
-    expect(wrapper.text()).toContain('FlowForge')
+    expect(wrapper.get('img').attributes('alt')).toBe('Myrmacta')
+    expect(wrapper.get('img').attributes('src')).toContain('myrmacta-logo-dark')
+    expect(wrapper.text()).toContain("L'intelligence collective")
     expect(wrapper.text()).toContain('Supervision')
     expect(wrapper.text()).toContain('Tâches')
     expect(wrapper.text()).not.toContain('Rapports')

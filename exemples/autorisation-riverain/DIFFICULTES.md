@@ -1,10 +1,10 @@
 # Difficultés rencontrées — flux « autorisation riverain »
 
-Contrainte de départ : tout faire **par configuration**, sans développement dans FlowForge. Chaque point
+Contrainte de départ : tout faire **par configuration**, sans développement dans Myrmacta. Chaque point
 ci-dessous décrit l'obstacle, la façon dont il a été contourné et ce qui reste imparfait. Les points
 sont classés par impact sur le besoin exprimé.
 
-Configuration produite le 2026-10-13 sur le tenant `tenant_dev`, via le serveur MCP FlowForge.
+Configuration produite le 2026-10-13 sur le tenant `tenant_dev`, via le serveur MCP Myrmacta.
 
 ---
 
@@ -144,7 +144,7 @@ l'un sur l'instruction (autorisation tacite), l'autre sur l'attente des complém
 réponse). Le diagramme (BPMNDI) est produit par `generer-bpmn.py` pour rester lisible dans l'éditeur.
 
 **Choix et limites.**
-- 30 jours **calendaires** : FlowForge n'a pas de calendrier de jours ouvrables.
+- 30 jours **calendaires** : Myrmacta n'a pas de calendrier de jours ouvrables.
 - Le délai d'instruction **repart pour 30 jours complets** à chaque retour du demandeur. Une suspension
   avec reprise du temps restant demanderait un calcul de date et un minuteur en `timeDate`, alors que
   les minuteurs n'acceptent que des littéraux (aucune expression `${…}` autorisée).
@@ -155,7 +155,7 @@ réponse). Le diagramme (BPMNDI) est produit par `generer-bpmn.py` pour rester l
 **Constat.**
 - `APP_PORTAL_ENABLED=false` dans `.env` : tout déploiement contenant une tâche externe est refusé
   (« BPMN external portal task requires the portal to be enabled »).
-- Le portail FlowForge ne sert qu'à **répondre à une tâche** via un lien personnel : il n'offre pas de
+- Le portail Myrmacta ne sert qu'à **répondre à une tâche** via un lien personnel : il n'offre pas de
   formulaire public de dépôt de demande.
 
 **Contournement.**
@@ -164,7 +164,7 @@ réponse). Le diagramme (BPMNDI) est produit par `generer-bpmn.py` pour rester l
   - `autorisation-riverain-sans-portail.bpmn20.xml` (déployable aujourd'hui) : un e-mail prévient le
     demandeur et l'agent encode les compléments reçus (questionnaire
     `complement-recu-autorisation-riverain`).
-- Le « portail » de dépôt est un **site externe** qui appelle FlowForge par le connecteur `http-rest`
+- Le « portail » de dépôt est un **site externe** qui appelle Myrmacta par le connecteur `http-rest`
   (déclencheur webhook signé HMAC). La configuration est fournie dans
   `config/connecteur-portail.exemple.json` mais **n'a pas été créée** : son secret doit être choisi et
   partagé avec l'équipe du portail.
@@ -187,7 +187,7 @@ variante sans portail a été validée par le serveur. L'ordre des étapes est d
 
 ## 9. Pas d'assignation des tâches par groupe
 
-**Constat.** FlowForge refuse volontairement `assignee` et `candidateGroups` dans le BPMN
+**Constat.** Myrmacta refuse volontairement `assignee` et `candidateGroups` dans le BPMN
 (décision D-EDIT-SCOPE). Les tâches « Instruire la demande », « Encoder les compléments reçus » et
 « Transmettre le document de décision » apparaissent **non assignées**.
 

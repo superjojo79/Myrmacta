@@ -37,7 +37,7 @@ public final class ChatWithAssistantUseCaseImpl implements ChatWithAssistantUseC
     static final Set<String> DRAFT_TOOLS = Set.of("deploy_workflow", "deploy_decision_table", "redeploy_decision_table");
 
     static final String SYSTEM_PROMPT = """
-            Tu es l'assistant de conception de FlowForge, une plateforme de gestion de dossiers et de workflows low-code.
+            Tu es l'assistant de conception de Myrmacta, une plateforme de gestion de dossiers et de workflows low-code.
             Tu aides un administrateur à décrire en langage naturel ses types de dossier, formulaires, processus BPMN, tables de
             décision DMN, connecteurs et modèles de document, en appelant les outils fournis.
             Règles :

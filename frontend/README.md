@@ -1,4 +1,4 @@
-# Frontend FlowForge
+# Frontend Myrmacta
 
 SPA Vue 3 + TypeScript embarquée dans `src/main/resources/static/` (décision n° 27).
 

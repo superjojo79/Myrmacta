@@ -1,5 +1,6 @@
 export default {
-  brand: 'FlowForge',
+  brand: 'Myrmacta',
+  tagline: "L'intelligence collective au service de vos dossiers et décisions",
   navLabel: 'Pilotage',
   sessionError: 'Impossible de charger la session',
   session: 'Session',

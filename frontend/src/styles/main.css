@@ -1,8 +1,12 @@
 :root {
   color-scheme: light;
   --color-surface: #e9e9ea;
-  --color-accent: #5980a6;
-  --color-text: #1d2d3d;
+  --color-ink: #1e2a3a;
+  --color-coral: #e4572e;
+  --color-ink-on-dark: #f3f4f6;
+  --color-coral-on-dark: #ff7a52;
+  --color-accent: var(--color-coral);
+  --color-text: var(--color-ink);
   --font-body: 'Barlow', system-ui, sans-serif;
 }
 
@@ -24,8 +28,8 @@ body {
 }
 
 .app-shell__nav {
-  background: #1d2d3d;
-  color: #eef6ff;
+  background: var(--color-ink);
+  color: var(--color-ink-on-dark);
   padding: 1rem 0.75rem;
   display: flex;
   flex-direction: column;
@@ -33,9 +37,21 @@ body {
 }
 
 .app-shell__brand {
-  font-weight: 600;
-  font-size: 1.15rem;
-  padding: 0.35rem 0.5rem 1rem;
+  padding: 0.35rem 0.5rem 0.85rem;
+}
+
+.app-shell__logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.app-shell__tagline {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  font-weight: 400;
+  color: var(--color-ink-on-dark);
 }
 
 .app-shell__section {
@@ -54,7 +70,8 @@ body {
 }
 
 .app-shell__link.router-link-active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 122, 82, 0.18);
+  color: var(--color-coral-on-dark);
 }
 
 .app-shell__link--muted {

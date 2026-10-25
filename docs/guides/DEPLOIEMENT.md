@@ -232,7 +232,7 @@ production — créer un realm dédié avec :
   client suffit pour **tous** les tenants : son `redirectUris` / `post.logout.redirect.uris` en
   caractère joker (`https://votre-domaine.example/*`) couvre chaque préfixe `/tenant_x` sans
   provisioning Keycloak par tenant, le routage par chemin (§3) faisant déjà varier l'URL de callback.
-- **Les 4 rôles réalm** consommés par l'UI/API FlowForge : `TENANT_ADMIN`, `WORKFLOW_ADMIN`,
+- **Les 4 rôles réalm** consommés par l'UI/API Myrmacta : `TENANT_ADMIN`, `WORKFLOW_ADMIN`,
   `DOSSIER_MANAGER`, `DOSSIER_VIEWER` (voir le tableau de rôles de [docs/guides/GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md#0-rôles-et-navigation)
   pour ce que chacun débloque). Le rôle `API_SERVICE` est traité séparément — ce n'est pas un rôle
   attribué à un utilisateur humain, voir §7.
@@ -252,15 +252,15 @@ production — créer un realm dédié avec :
 
 ## 6. Gérer les utilisateurs et leurs rôles
 
-FlowForge ne fournit **aucun écran de gestion des comptes** — toute création d'utilisateur ou
+Myrmacta ne fournit **aucun écran de gestion des comptes** — toute création d'utilisateur ou
 attribution de rôle se fait côté Keycloak (console admin ou API Admin Keycloak), jamais dans l'UI
-FlowForge elle-même. Mécanisme : l'ID token transmis au BFF porte les rôles dans la structure
+Myrmacta elle-même. Mécanisme : l'ID token transmis au BFF porte les rôles dans la structure
 **standard** Keycloak `realm_access.roles` ; `RealmAccessAuthoritiesMapper` les convertit en
 autorités `ROLE_<nom>`, ce que l'API vérifie ensuite (`hasRole('TENANT_ADMIN')`, etc.). Keycloak
 n'émet pas cette structure dans l'ID token par défaut : les mappers du client BFF (§5) sont requis.
 
 **Comptes créés par FAS ou itsme (TODO §104).** Une première connexion par un fournisseur d'identité crée un compte
-**sans `tenant_id` ni rôle** : FlowForge le refuse (403) et ne l'inscrit pas dans l'annuaire des assignés. Pour le
+**sans `tenant_id` ni rôle** : Myrmacta le refuse (403) et ne l'inscrit pas dans l'annuaire des assignés. Pour le
 valider, ouvrir ce compte dans la console (il porte le prénom et le nom transmis par le fournisseur, jamais le NRN),
 poser l'attribut `tenant_id` (étape 4 ci-dessous) et ses rôles (étape 3). Un agent qui avait déjà un compte avec la même
 adresse e-mail le relie lui-même à sa première connexion, en confirmant son mot de passe ; sans e-mail transmis par le
@@ -268,7 +268,7 @@ fournisseur, il relie FAS depuis sa console de compte (*Comptes liés*).
 
 Procédure pour un nouvel utilisateur :
 
-1. Console admin Keycloak → realm FlowForge → **Users** → **Add user** (username, email).
+1. Console admin Keycloak → realm Myrmacta → **Users** → **Add user** (username, email).
 2. Onglet **Credentials** → définir un mot de passe (décocher *Temporary* pour éviter un changement
    forcé, ou le laisser coché selon la politique du client).
 3. Onglet **Role mapping** → **Assign role** → cocher un ou plusieurs des 4 rôles réalm (§5). Un
@@ -277,9 +277,9 @@ Procédure pour un nouvel utilisateur :
 4. Onglet **Details** → attribut **`tenant_id`** = l'`app.tenant.id` de l'instance qu'il utilise
    (ex. `tenant_a`) — sans lui, la connexion aboutit à un 403 (§5).
 5. L'utilisateur peut se connecter dès son prochain login — pas de propagation différée côté
-   FlowForge, aucun cache de session à invalider.
+   Myrmacta, aucun cache de session à invalider.
 
-**Droits fins par type de dossier (ACL `VIEW`/`EDIT`)** restent, eux, gérés **dans** FlowForge
+**Droits fins par type de dossier (ACL `VIEW`/`EDIT`)** restent, eux, gérés **dans** Myrmacta
 (`/admin/dossier-types`, voir §1 de [docs/guides/GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)) — par `userId`, qui
 est le `sub` Keycloak de l'utilisateur (visible dans la console admin Keycloak sur la fiche
 utilisateur, ou via `GET /api/auth/me` une fois connecté).
@@ -607,14 +607,14 @@ Deux usages, deux enregistrements chez chaque fournisseur, par tenant :
 
 | Usage | Client | URI de retour à enregistrer chez le fournisseur |
 |---|---|---|
-| Agents (connexion à FlowForge) | Keycloak, realm `flowforge-<tenant>` | `https://<keycloak>/realms/flowforge-<tenant>/broker/<fas\|itsme>/endpoint` |
-| Tiers du portail (tâche à authentification forte) | l'instance FlowForge elle-même, sans Keycloak | `<APP_PORTAL_PUBLIC_BASE_URL>/api/portal/identity/callback` |
+| Agents (connexion à Myrmacta) | Keycloak, realm `flowforge-<tenant>` | `https://<keycloak>/realms/flowforge-<tenant>/broker/<fas\|itsme>/endpoint` |
+| Tiers du portail (tâche à authentification forte) | l'instance Myrmacta elle-même, sans Keycloak | `<APP_PORTAL_PUBLIC_BASE_URL>/api/portal/identity/callback` |
 
 **Conditions d'accès.** FAS (BOSA) couvre eID, itsme, eIDAS et le code à usage unique par une seule connexion OIDC ; il
 est réservé aux administrations (communes, CPAS), qui signent la convention d'utilisation : c'est la commune, ou
 l'intégrateur pour son compte, qui l'active. itsme en direct demande un contrat avec Belgian Mobile ID ou un courtier, et
 impose `private_key_jwt`. L'usage du numéro de registre national suppose une **autorisation du Registre national**,
-propre à la commune : FlowForge ne l'écrit que dans un champ sensible désigné par le workflow.
+propre à la commune : Myrmacta ne l'écrit que dans un champ sensible désigné par le workflow.
 
 ### Realm par tenant (agents)
 
@@ -627,8 +627,8 @@ TENANT_DB_PASSWORD='…' KEYCLOAK_URL=https://auth.example.be PUBLIC_BASE_URL=ht
 - `--realm-per-tenant` écrit `tenant_b.realm.json` (realm `flowforge-tenant_b` : client BFF, rôles, profil, fournisseurs,
   flux) et prépare `tenant_b.keycloak.sh` ; `tenant_b.env` pointe `OIDC_ISSUER_URI` vers ce realm. Requiert `jq`. Sans
   l'option, rien ne change (realm partagé).
-- `--password-login idp-only` : seuls FAS et itsme donnent accès à FlowForge ; les comptes de rôle `secours` (créés par le
-  script, avec `TENANT_ADMIN`, mot de passe temporaire et OTP) gardent le mot de passe pour administrer FlowForge si FAS
+- `--password-login idp-only` : seuls FAS et itsme donnent accès à Myrmacta ; les comptes de rôle `secours` (créés par le
+  script, avec `TENANT_ADMIN`, mot de passe temporaire et OTP) gardent le mot de passe pour administrer Myrmacta si FAS
   est indisponible. En `both` (défaut), le mot de passe Keycloak reste proposé à tous.
 - `tenant_b.keycloak.sh`, idempotent, après `kcadm.sh config credentials …` :
 

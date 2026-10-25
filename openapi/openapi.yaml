@@ -1,6 +1,7 @@
 openapi: 3.1.0
 info:
-  title: OpenAPI definition
+  title: Myrmacta
+  description: L'intelligence collective au service de vos dossiers et décisions.
   version: v0
 servers:
 - url: http://localhost

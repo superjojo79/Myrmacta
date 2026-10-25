@@ -37,7 +37,7 @@ Thymeleaf  →  HTML  →  jsoup (XHTML)  →  Flying Saucer  →  OpenPDF
 
 ### Alternatives écartées
 
-- **iText 7 / pdfhtml** — copyleft fort (AGPL) : FlowForge ne peut pas le relicencier sous sa licence commerciale, et il est absent du livrable (décision n° 103, [audit](../analyses/audit-licences-2026-10-24.md)). La pile retenue reste Flying Saucer + OpenPDF.
+- **iText 7 / pdfhtml** — copyleft fort (AGPL) : Myrmacta ne peut pas le relicencier sous sa licence commerciale, et il est absent du livrable (décision n° 103, [audit](../analyses/audit-licences-2026-10-24.md)). La pile retenue reste Flying Saucer + OpenPDF.
 - **Playwright headless** — écart si CSS3 devient bloquant (Flexbox, Grid) ; gardé en option de repli
 
 ### Playwright — option de repli

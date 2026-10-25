@@ -1,4 +1,4 @@
-# Infrastructure locale minimale pour FlowForge : PostgreSQL + Keycloak (toujours démarrés)
+# Infrastructure locale minimale pour Myrmacta : PostgreSQL + Keycloak (toujours démarrés)
 # et un backend de stockage objet compatible S3, au choix via profil Compose.
 #
 # Compatible `docker compose` et `podman compose` (ou `podman-compose`) sans modification —

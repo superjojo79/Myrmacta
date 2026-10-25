@@ -14,16 +14,21 @@ describe('configuration api (TODO §83, D4)', () => {
     const created = vi.fn(() => 'blob:x')
     const revoked = vi.fn()
     Object.assign(URL, { createObjectURL: created, revokeObjectURL: revoked })
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const names: string[] = []
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download)
+    })
     await downloadExport(' rec & co ')
     expect(axios.get).toHaveBeenCalledWith('/api/admin/configuration/export', {
       params: { sourceLabel: 'rec & co' },
       responseType: 'blob',
     })
+    expect(names).toEqual(['myrmacta-config-rec-co.zip'])
     expect(click).toHaveBeenCalled()
     expect(created).toHaveBeenCalled()
     expect(revoked).toHaveBeenCalledWith('blob:x')
     await downloadExport('')
+    expect(names).toEqual(['myrmacta-config-rec-co.zip', 'myrmacta-config.zip'])
     expect(vi.mocked(axios.get).mock.calls[1]![1]).toEqual({ params: undefined, responseType: 'blob' })
     click.mockRestore()
   })

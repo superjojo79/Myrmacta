@@ -4,7 +4,7 @@ Ce guide décrit, écran par écran, comment créer un dossier, démarrer/suivre
 configurer un connecteur et configurer un template de document **depuis l'interface web**.
 Pour installer et lancer l'environnement, voir [docs/guides/GETTING-STARTED.md](GETTING-STARTED.md).
 
-> Un diagramme BPMN peut être construit ou modifié directement dans FlowForge (éditeur intégré,
+> Un diagramme BPMN peut être construit ou modifié directement dans Myrmacta (éditeur intégré,
 > §3) — sans dépendre d'un outil externe ni d'une application Flowable UI tierce (Modeler,
 > Cockpit restent hors scope produit).
 
@@ -36,7 +36,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 Sans le rôle requis, l'entrée de menu correspondante n'apparaît simplement pas — pas besoin de la
 chercher.
 
-Ces rôles sont attribués côté Keycloak, pas dans FlowForge — voir
+Ces rôles sont attribués côté Keycloak, pas dans Myrmacta — voir
 [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles) pour créer un utilisateur
 et lui attribuer un rôle.
 
@@ -218,7 +218,7 @@ importé/déployé via cet écran ou via l'upload ci-dessous.
 
 ### Déployer un diagramme BPMN (upload direct)
 
-Une fois un fichier `.bpmn20.xml` obtenu (édité dans FlowForge ou avec un outil externe), deux
+Une fois un fichier `.bpmn20.xml` obtenu (édité dans Myrmacta ou avec un outil externe), deux
 mécanismes de dépôt côté moteur Flowable coexistent :
 
 **Au build/démarrage (référence CI/exploitation)** — le fichier est déposé dans le dépôt backend
@@ -318,7 +318,7 @@ principe que l'éditeur BPMN, avec l'éditeur `dmn-js` :
    de la barre d'outils (clé de décision saisie à la main, puis bouton **Charger**) est le point
    d'entrée pour ce 3ᵉ cas.
 2. L'éditeur `dmn-js` gère la table (colonnes d'entrée/sortie, règles, hit policy) — pas de
-   panel de propriétés custom FlowForge ici, le `.dmn` est du DMN 1.3 standard.
+   panel de propriétés custom Myrmacta ici, le `.dmn` est du DMN 1.3 standard.
 3. Bouton **Enregistrer le brouillon** — même mécanique qu'en BPMN (un brouillon par clé de
    décision, pas d'historique, pas d'autosave).
 4. Bouton **Déployer** — revalidation côté serveur (schéma DMN + allowlist JUEL sur chaque
@@ -407,7 +407,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
 
 **Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir
-`authMode = OAUTH2_CLIENT_CREDENTIALS` : FlowForge obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
+`authMode = OAUTH2_CLIENT_CREDENTIALS` : Myrmacta obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
 échéance ; vous n'avez plus de jeton à recopier. Renseigner :
 
 - `oauthTokenUrl` — `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token` (https obligatoire, adresses internes refusées) ;
@@ -473,12 +473,12 @@ jointes contrôlées, réponses automatiques refusées, expéditeur attesté, ri
 - **Pièces jointes** : seules les pièces *fichier* sont prises ; les images incrustées (logos de signature) sont ignorées, les messages joints et liens sont comptés dans `inboundAttachmentsSkipped`.
   Le total des pièces d'un message est borné (25 Mo par défaut), quelle que soit la taille annoncée.
 - **`Authentication-Results`** : Graph expose les en-têtes du message ; `trustedAuthservId` est l'identifiant que **votre** serveur de réception écrit en premier (Exchange Online : celui qui figure
-  dans les en-têtes d'un message reçu, souvent `spf.protection.outlook.com`). FlowForge retient le **premier** en-tête `Authentication-Results` tel que Graph le restitue (ordre du message) :
+  dans les en-têtes d'un message reçu, souvent `spf.protection.outlook.com`). Myrmacta retient le **premier** en-tête `Authentication-Results` tel que Graph le restitue (ordre du message) :
   vérifiez-le avec un message de test dont l'expéditeur ajoute un faux en-tête, avant de compter sur le rattachement par référence.
 
 ### Recevoir des e-mails : le connecteur `imap-inbound` (TODO §87)
 
-Un message reçu dans une boîte crée un **dossier** (ou alimente un dossier existant) et démarre le processus choisi. FlowForge interroge la boîte
+Un message reçu dans une boîte crée un **dossier** (ou alimente un dossier existant) et démarre le processus choisi. Myrmacta interroge la boîte
 toutes les `pollSeconds` secondes (30 au minimum).
 
 - **Connexion** : `host`, `port` (993), `security` — `SSL` (IMAPS) ou `STARTTLS` (jamais facultatif) ; le certificat du serveur est toujours vérifié.
@@ -505,7 +505,7 @@ toutes les `pollSeconds` secondes (30 au minimum).
 - **Fiabilité.** Le message n'est rangé dans « traités » qu'**après** l'enregistrement du dossier. S'il ne peut pas être pris en charge (type de dossier inconnu, champ invalide, base
   indisponible), il est rangé dans **`FlowForge-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
   (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
-  `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par FlowForge portent `Auto-Submitted: auto-generated` : ils ne
+  `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par Myrmacta portent `Auto-Submitted: auto-generated` : ils ne
   rebouclent pas.
 
 ### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
@@ -518,7 +518,7 @@ Service Bus uniquement), la file ou l'abonnement (`file` ou `rubrique/subscripti
 
 Le `mapping` est celui de Kafka : chemins JSON sur le corps du message (`fields`, `variables`, `processKeyPath`, `dossierTypeCodePath`,
 `existingDossierReferencePath`). Un message est **retiré de la file après l'enregistrement du dossier** ; un message illisible, incomplet, ou que le runtime ne peut pas prendre
-en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Un incident passager de FlowForge (base indisponible quelques minutes) consomme des livraisons : prévoyez un
+en charge est **rendu au courtier**, qui le place en file de lettres mortes après son `MaxDeliveryCount` : à surveiller côté Azure. Un incident passager de Myrmacta (base indisponible quelques minutes) consomme des livraisons : prévoyez un
 `MaxDeliveryCount` confortable (10 ou plus). Aucun jeton ni clé n'est jamais affiché ni journalisé.
 
 ### Appeler un connecteur `http-rest` (webhook entrant)
@@ -760,7 +760,7 @@ au porteur de tâche avant complétion, **indépendamment des données du dossie
 ## 11. Tiers externes — portail (TODO §68)
 
 Quand un workflow contient une **tâche externe** (voir §3ter du
-[docs/guides/GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md)), FlowForge envoie automatiquement au tiers
+[docs/guides/GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md)), Myrmacta envoie automatiquement au tiers
 concerné (citoyen, fournisseur, partenaire… **sans compte**) un e-mail contenant un **lien
 personnel**. En l'ouvrant, le tiers voit la référence du dossier, l'intitulé et les consignes de la
 tâche, remplit le formulaire, dépose des pièces et envoie sa réponse — la tâche se termine et le
@@ -811,7 +811,7 @@ portail.
 
 ## 12. Signatures électroniques (TODO §72)
 
-Quand un workflow contient un **bloc de signature** (GUIDE-CONCEPTION-BPMN §3quater), FlowForge invite
+Quand un workflow contient un **bloc de signature** (GUIDE-CONCEPTION-BPMN §3quater), Myrmacta invite
 les signataires à signer un document du dossier, suit leurs décisions et fait reprendre le workflow.
 La fonctionnalité est **désactivée par défaut** (voir [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#10-signature-électronique)).
 Tant qu'aucun fournisseur réel n'est branché, les signatures sont une **simulation sans valeur

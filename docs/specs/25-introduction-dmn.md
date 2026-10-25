@@ -96,9 +96,9 @@ H1/H1-bis avaient fermée.
 DMN de Flowable.** Investigation du code source Flowable 8 et de sa documentation officielle,
 faite en Phase 3 plutôt que supposée : l'élément BPMN `<businessRuleTask>` est câblé par Flowable
 sur **Drools** (`BusinessRuleTaskActivityBehavior`, moteur de règles indépendant, absent du
-classpath FlowForge — seul `flowable-spring-boot-starter` est déclaré, `pom.xml` L62-64). Son
+classpath Myrmacta — seul `flowable-spring-boot-starter` est déclaré, `pom.xml` L62-64). Son
 rejet actuel (H1-bis) reste donc justifié tel quel — Drools n'a jamais eu de garde-fou côté
-FlowForge et n'a aucun rapport avec DMN. **Le vrai mécanisme d'invocation DMN de Flowable est un
+Myrmacta et n'a aucun rapport avec DMN. **Le vrai mécanisme d'invocation DMN de Flowable est un
 `<serviceTask flowable:type="dmn">`** portant un champ `decisionTableReferenceKey` (exemple
 officiel, `flowable-examples/flowable-intro/.../dmn.bpmn20.xml`) :
 
@@ -127,7 +127,7 @@ BPMN** avec `conditionExpression` — restreint par le même fichier (L144-195) 
 (identifiants, littéraux, opérateurs de comparaison/logique, ni point ni parenthèse ni crochet ni
 `@`/`#`, au moins un opérateur). Le commentaire de code confirme que c'est bien l'usage réel du
 dépôt : *« `${decision == 'approve'}`, seul usage réel du dépôt, grep vérifié »*. Toute règle de
-décision aujourd'hui modélisée dans FlowForge l'est donc comme une cascade de gateways dans le
+décision aujourd'hui modélisée dans Myrmacta l'est donc comme une cascade de gateways dans le
 diagramme BPMN lui-même — pas dans un artefact séparé, éditable indépendamment du process.
 
 ---
@@ -185,7 +185,7 @@ Bénéfices attendus, confirmés pertinents pour ce besoin :
 citait uniquement `deploiement-bpmn` (TODO §35, upload minimal) comme précédent, en présentant
 l'absence d'éditeur intégré comme la doctrine du dépôt. C'est incomplet — `deploiement-bpmn` a
 depuis été **remplacé en pratique** par un mécanisme plus riche, `edition-bpmn` (PR #71, TODO §39,
-[14-edition-bpmn.md](14-edition-bpmn.md)) : FlowForge embarque aujourd'hui un **véritable éditeur
+[14-edition-bpmn.md](14-edition-bpmn.md)) : Myrmacta embarque aujourd'hui un **véritable éditeur
 graphique** à `/admin/bpmn-editor` (`bpmn-js` Modeler + `bpmn-js-properties-panel` avec un provider
 custom pour les attributs `flowable:*`), pas seulement un upload de fichier modélisé ailleurs. Les
 trois mécanismes coexistent et sont tous les trois réutilisables par analogie pour DMN :
@@ -246,14 +246,14 @@ avant de lever le blocage `businessRuleTask` :
 
 ### 4.2 Éditeur DMN intégré — possible par le même mécanisme que l'éditeur BPMN, à confirmer
 
-**Correction :** l'affirmation « FlowForge ne fait que déployer du BPMN modélisé ailleurs » n'est
+**Correction :** l'affirmation « Myrmacta ne fait que déployer du BPMN modélisé ailleurs » n'est
 plus exacte depuis `edition-bpmn` (PR #71, 2026-08-24, TODO §39) — un éditeur graphique est
 **intégré** à `/admin/bpmn-editor` (`bpmn-js` Modeler + `bpmn-js-properties-panel`), en plus de
 l'upload d'un fichier modélisé en externe. Ce que la décision [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5 /
 TODO §35 exclut réellement, c'est de déployer les **applications web propriétaires** de Flowable
 (Modeler, Cockpit — option (d) écartée dans [14-edition-bpmn.md](14-edition-bpmn.md) §Options :
 « app tierce à opérer/sécuriser par tenant ») — pas d'embarquer une **librairie JS** d'édition dans
-le SPA FlowForge, ce qui est exactement le choix retenu pour BPMN (option (b) du même document).
+le SPA Myrmacta, ce qui est exactement le choix retenu pour BPMN (option (b) du même document).
 
 **L'équivalent DMN existe et vient du même éditeur.** `dmn-js` ([bpmn.io/toolkit/dmn-js](https://bpmn.io/toolkit/dmn-js/),
 [github.com/bpmn-io/dmn-js](https://github.com/bpmn-io/dmn-js)) est le toolkit sœur de `bpmn-js`

@@ -235,7 +235,7 @@ function signalGroup() {
 }
 
 // TODO §52 (formulaires-dynamiques-taches) : flowable:formKey déclare qu'un userTask attend un
-// formulaire de tâche avant complétion. Convention FlowForge interprétée uniquement côté frontend
+// formulaire de tâche avant complétion. Convention Myrmacta interprétée uniquement côté frontend
 // (taskFormRegistry.ts) — le moteur ne fait que stocker/restituer cette chaîne opaque.
 function userTaskGroup(shouldOpen: boolean) {
   return {

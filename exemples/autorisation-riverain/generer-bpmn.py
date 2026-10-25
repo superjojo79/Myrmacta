@@ -1,9 +1,9 @@
 """Génère le BPMN du flux « autorisation riverain » (sémantique + diagramme BPMNDI).
 
-Le BPMN est écrit à la main plutôt qu'avec un « parcours » FlowForge : le parcours ne sait pas
+Le BPMN est écrit à la main plutôt qu'avec un « parcours » Myrmacta : le parcours ne sait pas
 poser un minuteur en bordure d'une tâche (délai de 30 jours qui court pendant que l'agent instruit).
 Le script calcule aussi la mise en page, pour que le diagramme s'affiche lisiblement dans
-l'éditeur BPMN de FlowForge.
+l'éditeur BPMN de Myrmacta.
 
 Deux variantes sont produites :
 - autorisation-riverain.bpmn20.xml : conception cible, le demandeur complète sa demande sur le

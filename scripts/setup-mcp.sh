@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap local/Cloud Agent dependencies for FlowForge MCP servers (memory + Serena).
+# Bootstrap local/Cloud Agent dependencies for Myrmacta MCP servers (memory + Serena).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

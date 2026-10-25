@@ -230,6 +230,7 @@ class ConfigurationPromotionApiTest {
             assertThat(e.text()).as(e.toString()).doesNotContain(SECRET);
         }
         assertThat(export.getResponse().getHeader("X-Bundle-Sha256")).isEqualTo(bundle.sha256());
+        assertThat(export.getResponse().getHeader("Content-Disposition")).contains("myrmacta-config-");
 
         // relu tel quel : le connecteur exporté est « inchangé »
         String plan = planJson(bundle, null);

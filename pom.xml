@@ -14,8 +14,8 @@
     <groupId>com.flowforge</groupId>
     <artifactId>flowforge</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>FlowForge</name>
-    <description>Plateforme de gestion de flux métier, de dossiers et de génération de documents</description>
+    <name>Myrmacta</name>
+    <description>Myrmacta — L'intelligence collective au service de vos dossiers et décisions</description>
 
     <!-- Décision n° 103. Identifiant SPDX : PolyForm-Noncommercial-1.0.0. La licence commerciale est un contrat séparé. -->
     <licenses>

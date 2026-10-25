@@ -1,6 +1,6 @@
 :root {
-  --portal-accent: #5980a6;
-  --portal-text: #1d2d3d;
+  --portal-accent: #e4572e;
+  --portal-text: #1e2a3a;
   --portal-surface: #eef1f4;
   --portal-error: #b3261e;
 }
@@ -30,9 +30,10 @@ body {
   padding: 0.5rem 0 1rem;
 }
 
-.portal__brand {
-  font-weight: 700;
-  color: var(--portal-accent);
+.portal__logo {
+  display: block;
+  width: 11rem;
+  height: auto;
 }
 
 .portal__card {

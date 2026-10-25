@@ -137,7 +137,7 @@ for tenant in recette_idp recette_both; do
   check "$tenant : compte créé sans tenant_id (A2)" jq -e '.claims and (.claims | has("tenant_id") | not)' <<<"$out"
   check "$tenant : aucun NRN dans l'ID token (A5)" \
     jq -e '.claims and ([.claims | .. | strings | select(test("^[0-9]{11}$"))] | length == 0)' <<<"$out"
-  check "$tenant : aucun rôle FlowForge par défaut (A2)" \
+  check "$tenant : aucun rôle Myrmacta par défaut (A2)" \
     jq -e '.claims and ((.claims.realm_access.roles // []) - ["default-roles-'"$realm"'", "offline_access", "uma_authorization"] == [])' \
     <<<"$out"
 done

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.flowforge.support.OidcClientTestConfiguration;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -40,7 +41,7 @@ class OpenApiContractIT {
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
-                .getContentAsString()
+                .getContentAsString(StandardCharsets.UTF_8)
                 .replace("\r\n", "\n");
         if (Boolean.getBoolean("openapi.update")) {
             Files.createDirectories(GOLDEN.getParent());

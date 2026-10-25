@@ -5,11 +5,11 @@ import { rawTexts } from './rawText'
 
 /**
  * TODO §90 (D7) — garde-fou de couverture : aucun template Vue n'écrit de texte visible en dur. Les exceptions sont des jetons
- * techniques (codes, exemples de syntaxe, noms de variables d'environnement, marque) : elles se déclarent ici, une par une.
+ * techniques (codes, exemples de syntaxe, noms de variables d'environnement) : elles se déclarent ici, une par une.
  */
 const TECHNICAL = new Set([
   'PENDING :', 'PROCESSING :', 'FAILED :', 'COMPLETED :', // codes d'état du serveur
-  'EUR', 'https://…', 'POST', 'VIEW', 'EDIT', 'FlowForge', // code ISO, exemple d'URL, verbe HTTP, rôles d'ACL, marque
+  'EUR', 'https://…', 'POST', 'VIEW', 'EDIT', // code ISO, exemple d'URL, verbe HTTP, rôles d'ACL
   'APP_ASSISTANT_ENABLED', 'APP_ASSISTANT_API_KEY', 'userTask', 'formKey = "user-question: schemaKey "', // vocabulaire technique cité
   'dossier.fields.nom_du_champ', 'dossier.fields.ht * (1 + dossier.fields.taux)', "dossier.fields.pays = 'FR'", 'dossier.fields.montant > 1000',
   'client.nom', 'client.pro', 'PRO', 'lignes', 'ligne', 'nom', // exemples de saisie

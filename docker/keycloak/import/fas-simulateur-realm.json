@@ -8,7 +8,7 @@
   "clients": [
     {
       "clientId": "keycloak-flowforge",
-      "name": "Realm flowforge (agents, dev)",
+      "name": "Realm Myrmacta (agents, dev)",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -99,7 +99,7 @@
     },
     {
       "clientId": "portail-dev",
-      "name": "Portail FlowForge (tiers, dev)",
+      "name": "Portail Myrmacta (tiers, dev)",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,

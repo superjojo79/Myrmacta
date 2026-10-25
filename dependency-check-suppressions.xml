@@ -2,7 +2,7 @@
 <!--
   Suppressions OWASP Dependency-Check (profil Maven security-scan, seuil d'échec CVSS >= 7).
 
-  Règle : on ne supprime qu'une alerte NON APPLICABLE à FlowForge, jamais une alerte gênante.
+  Règle : on ne supprime qu'une alerte NON APPLICABLE à Myrmacta, jamais une alerte gênante.
   Chaque entrée cible un couple (package, vulnérabilité) précis et porte sa justification
   vérifiée. Une entrée liée à une version figée en amont porte un "until" : passé cette date,
   l'alerte réapparaît et doit être réévaluée (montée de version ou prolongation argumentée).

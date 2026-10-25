@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitcher from '@/i18n/LocaleSwitcher.vue'
+import logoLight from '@/assets/brand/myrmacta-logo-light.svg'
 import { formatDate } from '@/i18n/format'
 import PortalQuestionForm from './PortalQuestionForm.vue'
 import PortalSignature from './PortalSignature.vue'
@@ -141,7 +142,7 @@ async function onSubmit() {
 <template>
   <main class="portal">
     <header class="portal__header">
-      <span class="portal__brand">FlowForge</span>
+      <img class="portal__logo" :src="logoLight" :alt="t('portal.brand')" />
       <span v-if="task" class="portal__reference">{{ t('portal.dossier', { reference: task.dossierReference }) }}</span>
       <LocaleSwitcher class="portal__locale" />
     </header>

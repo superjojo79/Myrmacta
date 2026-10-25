@@ -265,7 +265,7 @@ Le moteur Flowable (`flowable-spring-boot-starter`,
 propre jeu de tables (`ACT_RE_*`, `ACT_RU_*`, `ACT_HI_*`, `ACT_GE_*`…)
 dans le même schéma physique que le tenant, via son propre mécanisme
 de migration interne (`flowable.database-type: postgres`) — **ces
-tables ne sont pas créées par les changelogs FlowForge** et ne sont
+tables ne sont pas créées par les changelogs Myrmacta** et ne sont
 pas énumérées ici : ce sont des dizaines de tables internes propres à
 la librairie, dont le détail est déjà documenté par Flowable
 lui-même. Voir [05-workflow-engine.md](05-workflow-engine.md) pour le

@@ -1,4 +1,4 @@
-# Image de déploiement FlowForge — voir docs/guides/DEPLOIEMENT.md §1 et
+# Image de déploiement Myrmacta — voir docs/guides/DEPLOIEMENT.md §1 et
 # https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-08-feature-provisioning-tenant.md pour le contexte des choix
 # (image de base, utilisateur non-root, heap JVM).
 
@@ -32,6 +32,10 @@ RUN ./mvnw -B clean package -DskipTests ${MAVEN_PROFILES:+-P${MAVEN_PROFILES}}
 # Image minimale : JRE seule (pas de JDK, pas de sources, pas de Maven), utilisateur
 # applicatif non-root dédié (UID/GID fixes).
 FROM eclipse-temurin:25-jre AS runtime
+
+LABEL org.opencontainers.image.title="Myrmacta" \
+      org.opencontainers.image.description="L'intelligence collective au service de vos dossiers et décisions" \
+      org.opencontainers.image.licenses="PolyForm-Noncommercial-1.0.0"
 
 RUN groupadd --system --gid 10001 flowforge \
     && useradd --system --uid 10001 --gid flowforge --no-create-home --shell /usr/sbin/nologin flowforge

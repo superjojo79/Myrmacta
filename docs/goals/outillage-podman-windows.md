@@ -1,6 +1,6 @@
-# Goal — outillage local FlowForge sous Windows + Podman
+# Goal — outillage local Myrmacta sous Windows + Podman
 
-Mettre en place et valider l'outillage local de FlowForge sous Windows avec **Podman** (pas
+Mettre en place et valider l'outillage local de Myrmacta sous Windows avec **Podman** (pas
 Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-compose.yml` et la skill
 `flowforge-conventions`.
 
@@ -68,7 +68,7 @@ Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-
 - (c) postgres + keycloak démarrés sous Podman, config de base vérifiée (schéma `tenant_dev`,
   rôle applicatif, realm `flowforge`, client `mon-app`, utilisateur `demo` avec ses rôles)
 - (d) backend démarré, health `UP`
-- (e) connexion à FlowForge réussie avec `demo` / `demo`, `/api/auth/me` → 200
+- (e) connexion à Myrmacta réussie avec `demo` / `demo`, `/api/auth/me` → 200
 
 ## Rapport final
 

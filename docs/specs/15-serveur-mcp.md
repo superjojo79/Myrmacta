@@ -47,11 +47,11 @@
 
 ## Contexte et motivation
 
-FlowForge expose aujourd'hui ses fonctionnalités via une UI Vue (BFF/session)
+Myrmacta expose aujourd'hui ses fonctionnalités via une UI Vue (BFF/session)
 et une API REST consommée par ce même SPA (voir
 [11-frontend.md](11-frontend.md), [03-authentification.md](03-authentification.md)).
 Il n'existe pas de canal pensé pour un **agent IA** (Claude Code ou autre
-outillage MCP) qui aurait besoin d'opérer sur FlowForge de façon
+outillage MCP) qui aurait besoin d'opérer sur Myrmacta de façon
 programmatique : configurer des types de dossier, déployer un processus
 BPMN, consulter l'état d'un dossier.
 
@@ -78,7 +78,7 @@ comme hors périmètre V1 ailleurs dans le produit — voir
 
 | Question | Décision |
 |---|---|
-| **Consommateur** | Outillage **interne** (agents IA type Claude Code utilisés par l'équipe FlowForge pour l'administration/l'automatisation). **Pas** d'exposition aux tenants ou à des systèmes tiers en V1. |
+| **Consommateur** | Outillage **interne** (agents IA type Claude Code utilisés par l'équipe Myrmacta pour l'administration/l'automatisation). **Pas** d'exposition aux tenants ou à des systèmes tiers en V1. |
 | **Consommateur — amendement 2026-09-28** (TODO §71, D-MCP-LC-IDENTITY = A) | Le canal `/api/m2m/mcp` reste réservé à l'outillage interne M2M. L'assistant de conception embarqué (LC3) **n'utilise pas ce canal** : il invoque le **même catalogue de tools dans le processus**, avec l'`AccessContext` de l'utilisateur de la session BFF. Voir [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md). |
 | **Portée d'écriture V1** | Lecture **et** écriture pour les capacités 1 (définition de dossier) et 2 (insertion BPMN). Le point 4 (stats) est retiré du périmètre V1 — voir dépendance ci-dessous. |
 | **Sens de « dossier »** | Le point 1 porte sur le **type de dossier** (`DossierType` + `FieldDefinition`, schéma/configuration) — **pas** sur la création d'instances `Dossier`. Équivalent MCP de l'écran admin des types de dossier. |
@@ -312,7 +312,7 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 
 ### Exclusions explicites (risque jugé trop élevé pour un MCP interne)
 
-Ces capacités existent dans FlowForge mais ne sont **pas** candidates à un
+Ces capacités existent dans Myrmacta mais ne sont **pas** candidates à un
 tool MCP, même en backlog, au vu de leur impact :
 
 - **Gestion des ACL** (`grant/revoke_dossier_type_access`,

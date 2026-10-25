@@ -64,7 +64,7 @@ produit attend d'une signature :
   preuve fournie ou non. Le domaine s'adapte aux capacités au lieu de supposer un fournisseur.
 
 Le contrat est volontairement **plus étroit que la somme des fournisseurs** : il porte ce que
-FlowForge sait exprimer, et laisse au provider la charge de mapper le reste.
+Myrmacta sait exprimer, et laisse au provider la charge de mapper le reste.
 
 ### 2.2 L'adaptateur stub générique
 
@@ -130,7 +130,7 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 ## 3. Ce que le lot ne fait pas
 
 - Aucun fournisseur réel, aucune valeur juridique, aucun choix de niveau eIDAS **implémenté**.
-- Pas de signature manuscrite, de certificat ni d'horodatage qualifié gérés par FlowForge.
+- Pas de signature manuscrite, de certificat ni d'horodatage qualifié gérés par Myrmacta.
 - Pas d'aller-retour complexe multi-fournisseurs ni de bascule à chaud d'un provider vers un autre
   pour des demandes en cours.
 

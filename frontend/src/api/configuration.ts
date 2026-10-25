@@ -70,7 +70,7 @@ export async function downloadExport(sourceLabel: string): Promise<void> {
   const url = URL.createObjectURL(data)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `flowforge-config${label ? `-${label.replace(/[^A-Za-z0-9_.-]+/g, '-')}` : ''}.zip`
+  anchor.download = `myrmacta-config${label ? `-${label.replace(/[^A-Za-z0-9_.-]+/g, '-')}` : ''}.zip`
   anchor.click()
   URL.revokeObjectURL(url)
 }

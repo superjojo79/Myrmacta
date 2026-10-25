@@ -1,4 +1,4 @@
-# Construction/édition de diagrammes BPMN dans FlowForge
+# Construction/édition de diagrammes BPMN dans Myrmacta
 
 > **Statut : implémenté (2026-08-24), TODO §39 clos.** Ce document
 > capture l'orientation technique retenue et l'implémentation livrée pour
@@ -20,10 +20,10 @@ viewer BPMN lecture seule (`BpmnViewer.vue` / `BpmnCanvas.vue`, `bpmn-js`
 `NavigatedViewer`). La feature `deploiement-bpmn` (TODO §35, PR #67) a
 ajouté l'upload + prévisualisation d'un `.bpmn20.xml` **déjà modélisé en
 externe**, avec pour non-goal explicite « pas d'édition/design de
-diagramme dans FlowForge ».
+diagramme dans Myrmacta ».
 
 Le besoin de **construire ou modifier** un diagramme BPMN depuis
-FlowForge reste donc un écart non couvert — distinct du volet Cockpit
+Myrmacta reste donc un écart non couvert — distinct du volet Cockpit
 ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5, hors scope produit, non remis en cause ici)
 et distinct du mécanisme de déploiement (§35, réutilisable tel quel : ce
 qui manque est la *saisie* du diagramme, pas sa validation/déploiement).

@@ -1,7 +1,7 @@
-# Guide de conception d'un diagramme BPMN pour FlowForge
+# Guide de conception d'un diagramme BPMN pour Myrmacta
 
 > Public : quiconque modélise ou modifie un processus `.bpmn20.xml` destiné à tourner sur le
-> moteur FlowForge (dans l'éditeur intégré `/admin/bpmn-editor` ou avec un outil externe type
+> moteur Myrmacta (dans l'éditeur intégré `/admin/bpmn-editor` ou avec un outil externe type
 > Camunda Modeler). Ce document répond aux questions pratiques que l'existant
 > ([05-workflow-engine.md](../specs/05-workflow-engine.md), [06-connecteurs.md](../specs/06-connecteurs.md),
 > [07-generation-documents.md](../specs/07-generation-documents.md),
@@ -100,8 +100,8 @@ restreint** (`flowablePropertiesProvider.ts`) — décision **D-EDIT-SCOPE**. Se
 humaine (`userTask`) n'est **pas déclarée dans le BPMN** — voir §6. Un diagramme importé depuis un
 outil externe qui porte d'autres attributs `flowable:*` (ex. `assignee` posé dans Camunda Modeler)
 les conserve tels quels au ré-export (`bpmn-moddle` préserve les attributs d'espace de noms
-inconnus), mais l'éditeur FlowForge ne permet ni de les visualiser ni de les modifier — à
-écrire/modifier hors FlowForge si besoin, en connaissance de cause.
+inconnus), mais l'éditeur Myrmacta ne permet ni de les visualiser ni de les modifier — à
+écrire/modifier hors Myrmacta si besoin, en connaissance de cause.
 
 > **D-FLOWABLE-NS** — aucune extension moddle n'est enregistrée pour l'espace de noms `flowable`
 > dans cet éditeur (attributs traités génériquement par `bpmn-moddle`). Un diagramme qui ne
@@ -245,7 +245,7 @@ ou l'outil MCP `preview_document`), y compris un jeu où les champs facultatifs 
 
 Un `userTask` peut déclarer qu'il attend une saisie utilisateur avant complétion, via l'attribut
 BPMN standard `flowable:formKey` (éditable dans le panel de propriétés, groupe « Flowable »). Le
-moteur ne fait que stocker/restituer cette chaîne — c'est une **convention FlowForge**
+moteur ne fait que stocker/restituer cette chaîne — c'est une **convention Myrmacta**
 (`taskFormRegistry.ts` côté frontend), pas un mécanisme Flowable prêt à l'emploi (le module
 `flowable-form` n'est pas sur le classpath).
 
@@ -283,7 +283,7 @@ cours le référence encore dégrade comme un `formKey` inconnu (bouton « Compl
 ## 3ter. Tâche externe — réponse d'un tiers sans compte (portail, TODO §68)
 
 Un `userTask` devient une **tâche externe** quand il porte `flowable:portalRecipient` : à sa
-création, FlowForge envoie au tiers un lien personnel vers une page publique où il remplit un
+création, Myrmacta envoie au tiers un lien personnel vers une page publique où il remplit un
 formulaire `user-question` (§3bis) et dépose des pièces. Sa réponse complète la tâche et produit
 les mêmes variables de process qu'une complétion interne.
 
@@ -758,7 +758,7 @@ tâche précédente) — échoue si le document référencé n'existe plus dans 
 
 ## 6. Référencer les intervenants sur un dossier
 
-FlowForge ne déclare **aucun intervenant dans le BPMN lui-même** — ni `assignee`, ni
+Myrmacta ne déclare **aucun intervenant dans le BPMN lui-même** — ni `assignee`, ni
 `candidateGroups` (retiré explicitement du scope de l'éditeur, décision **D-EDIT-SCOPE**, voir
 §1). Trois mécanismes distincts couvrent le besoin :
 

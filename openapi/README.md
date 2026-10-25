@@ -1,6 +1,6 @@
 # OpenAPI contract
 
-Golden file for the FlowForge HTTP surface (except SSE, multipart attachment upload, and inbound
+Golden file for the Myrmacta HTTP surface (except SSE, multipart attachment upload, and inbound
 `POST /api/webhooks/**`).
 
 ## Flag

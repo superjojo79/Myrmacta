@@ -1,9 +1,11 @@
 ---
 name: flowforge-conventions
-description: FlowForge · Conventions projet (architecture hexagonale, multi-tenant, stack, commandes). À utiliser pour toute implémentation, revue ou planification dans ce dépôt.
+description: Myrmacta · Conventions projet (architecture hexagonale, multi-tenant, stack, commandes). À utiliser pour toute implémentation, revue ou planification dans ce dépôt. Le nom de code des paquets reste com.flowforge.
 ---
 
-# FlowForge — conventions projet
+# Myrmacta — conventions projet
+
+Nom commercial : Myrmacta. Racine de paquet et `groupId` : encore `com.flowforge` (`docs/RENAMING.md`).
 
 Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et le registre des décisions `docs/decisions/` priment.
 

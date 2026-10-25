@@ -1,7 +1,8 @@
 import type fr from '../fr/shell'
 
 const shell: typeof fr = {
-  brand: 'FlowForge',
+  brand: 'Myrmacta',
+  tagline: 'Collective intelligence for your cases and decisions',
   navLabel: 'Operations',
   sessionError: 'Unable to load the session',
   session: 'Session',

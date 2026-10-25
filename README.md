@@ -1,4 +1,9 @@
-# FlowForge
+# Myrmacta
+
+![Myrmacta](docs/brand/myrmacta-logo-light.svg)
+
+> L'intelligence collective au service de vos dossiers et décisions.
+>
 > Plateforme de gestion de flux métier, de dossiers et de génération de documents.
 >  Solution SaaS multi-tenant, extensible par design.
 
@@ -15,7 +20,7 @@
 
 ## Vision produit
 
-FlowForge est une plateforme permettant à des organisations de **modéliser, exécuter et superviser leurs processus métier** sans développement sur mesure pour chaque cas d'usage.
+Myrmacta est une plateforme permettant à des organisations de **modéliser, exécuter et superviser leurs processus métier** sans développement sur mesure pour chaque cas d'usage.
 
 **Positionnement (décision du 2026-09-28, [TODO §70](docs/decisions/070-positionnement-produit-d0-integrateurs-couche-low-code.md)) :** produit pour **intégrateurs**,
 avec hébergement dédié par client. L'intégrateur conçoit les processus (BPMN/DMN) ; une couche
@@ -38,9 +43,9 @@ L'idée centrale : un dossier métier suit un workflow adapté à son type, déc
 
 ## Proposition de valeur
 
-| Besoin                                 | Réponse FlowForge                                            |
+| Besoin                                 | Réponse Myrmacta                                            |
 | -------------------------------------- | ------------------------------------------------------------ |
-| Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin FlowForge) |
+| Modéliser un processus sans coder      | Éditeur BPMN 2.0 visuel intégré (`bpmn-js`, écran admin Myrmacta) |
 | Exprimer des règles/critères métier sans cascade de gateways | Éditeur de tables de décision DMN intégré (`dmn-js`, `/admin/dmn-editor`), invocable depuis un process via `serviceTask` |
 | Gérer des dossiers structurés          | Entité dossier avec signalétique et champs dynamiques par type |
 | Produire des documents automatiquement | Génération PDF à partir de templates Thymeleaf versionnés    |
@@ -59,7 +64,7 @@ Entité métier centrale de la plateforme. Chaque dossier est constitué d'un **
 
 ### Moteur de workflow BPMN 2.0
 
-Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à FlowForge, hors V1). Les processus se modélisent directement dans FlowForge (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
+Orchestration des flux métier via **Flowable** — standard industriel ouvert (pas de cockpit Flowable intégré à Myrmacta, hors V1). Les processus se modélisent directement dans Myrmacta (éditeur `bpmn-js` intégré à `/admin/bpmn-editor` — création, import, édition d'un diagramme déjà déployé, brouillon persisté) ou avec un outil externe, puis se déploient soit au build/démarrage (scan classpath), soit à chaud depuis l'écran d'administration `/admin/workflow-types` (upload avec prévisualisation) ou directement depuis l'éditeur. Support des gateways, tâches humaines et événements de signal. Le moteur DMN Flowable est activé et un `serviceTask flowable:type="dmn"` peut invoquer une table de décision éditée dans son propre éditeur intégré (`dmn-js`, `/admin/dmn-editor`) — mêmes principes que l'éditeur BPMN (brouillon persisté, déploiement à chaud), grammaire d'expression JUEL restreinte à une allowlist sûre (littéraux/comparaisons, pas d'EL brut) côté serveur.
 
 ### Système de connecteurs
 

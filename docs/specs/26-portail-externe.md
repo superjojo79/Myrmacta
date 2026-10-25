@@ -43,7 +43,7 @@
   OIDC ; la traçabilité (`TaskQuestionAnswer`, notifications `TASK_COMPLETED_BY_OTHER`, audit) doit
   pouvoir nommer un tiers externe sans lui donner de rôle V1.
 - **Émission du lien** : depuis le process BPMN (cohérent avec le moteur), à la main par un
-  instructeur, ou les deux ; destinataire identifié par e-mail ou lien remis hors FlowForge.
+  instructeur, ou les deux ; destinataire identifié par e-mail ou lien remis hors Myrmacta.
 - **Authn/Authz** : nouvelle chaîne `@Order` Spring Security hors OIDC, sur le modèle de
   `/api/callbacks/**` — mais orientée navigateur (CSRF, cookies, `Referer`, service des fichiers
   statiques hors authentification).

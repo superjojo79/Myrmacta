@@ -24,7 +24,7 @@ Vérifié contre le code réel (pas supposé) :
 
 Le module `flowable-form` (formulaires natifs Flowable, JSON de définition + rendu par l'UI
 Flowable) n'est **pas** sur le classpath (`pom.xml` vérifié) — moteur headless, `flowable-spring-boot-starter`
-seul. Toute solution doit être une convention FlowForge, pas un mécanisme Flowable prêt à l'emploi.
+seul. Toute solution doit être une convention Myrmacta, pas un mécanisme Flowable prêt à l'emploi.
 
 ---
 
@@ -34,7 +34,7 @@ seul. Toute solution doit être une convention FlowForge, pas un mécanisme Flow
 
 `flowable:formKey` est un attribut BPMN standard, lu via `Task.getFormKey()` sur le `TaskService`
 du moteur **cœur** (`flowable-engine`) — **pas** dépendant du module optionnel `flowable-form`
-absent du classpath. Le moteur ne fait que stocker/restituer cette chaîne opaque ; FlowForge lui
+absent du classpath. Le moteur ne fait que stocker/restituer cette chaîne opaque ; Myrmacta lui
 donne son sens. Zéro nouveau couplage au moteur, aucune nouvelle dépendance Maven.
 
 ### Deux briques de rendu déjà réutilisables

@@ -26,7 +26,7 @@ Use for Phase 8.
 5. Add integration tests for critical cross-component flows, setup/teardown, and boundary/failure cases.
 6. Run coverage tooling, identify gaps, and suggest additional tests if below the target.
 7. **Frontend E2E (mandatory when FE or shared API contracts used by FE change):**
-   - Do **not** mark Playwright as out of scope for FlowForge FE features.
+   - Do **not** mark Playwright as out of scope for Myrmacta FE features.
    - Update `frontend/e2e/**` mocks/assertions when API shapes or routes change
      (Vitest mocks alone are not sufficient).
    - Run fresh evidence with `cd frontend && npm run test:e2e` (or

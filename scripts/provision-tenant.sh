@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # scripts/provision-tenant.sh — génère (et applique en option) le schéma PostgreSQL et le
-# rôle LOGIN dédié d'un nouveau tenant FlowForge (isolation par schéma, D-41 —
+# rôle LOGIN dédié d'un nouveau tenant Myrmacta (isolation par schéma, D-41 —
 # option A déjà tranchée ; gabarit : docker/postgres/init/01-init-tenant-schema.sql).
 #
 # Voir docs/guides/DEPLOIEMENT.md §4 pour le runbook de provisioning complet. Avec --instance-dir, le
@@ -53,7 +53,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
                      eIDAS) ou itsme en direct. Requiert --realm-per-tenant.
   --password-login both|idp-only
                     both (défaut) : mot de passe Keycloak et fournisseurs côte à côte. idp-only :
-                     fournisseurs seuls pour FlowForge ; seuls les comptes de rôle « secours » gardent
+                     fournisseurs seuls pour Myrmacta ; seuls les comptes de rôle « secours » gardent
                      le mot de passe et l'OTP. Requiert --realm-per-tenant et au moins un --idp.
 
 Variables d'environnement :
@@ -356,7 +356,7 @@ generate_instance_files() {
   local m2m_client="flowforge-m2m-${tenant_id}"
 
   (umask 077 && cat > "$env_file" <<ENV
-# Instance FlowForge du tenant '${tenant_id}' — généré par scripts/provision-tenant.sh (TODO §95).
+# Instance Myrmacta du tenant '${tenant_id}' — généré par scripts/provision-tenant.sh (TODO §95).
 # Gabarit commenté : .env.example ; détail : docs/guides/DEPLOIEMENT.md §2. Les variables laissées vides
 # sont des secrets à renseigner : l'instance refuse de démarrer tant qu'ils manquent (fail-fast).
 APP_ENVIRONMENT=production

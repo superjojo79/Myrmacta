@@ -1,6 +1,6 @@
 # Exemple — demande d'autorisation riverain pour un véhicule
 
-Flux FlowForge entièrement **configuré, sans développement** :
+Flux Myrmacta entièrement **configuré, sans développement** :
 1. une demande est introduite (portail externe ou agent) ;
 2. un gestionnaire l'instruit sous 30 jours ;
 3. il autorise, refuse ou demande des informations complémentaires (le dossier passe alors en attente) ;

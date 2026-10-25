@@ -9,7 +9,7 @@ const emit = defineEmits<{ dirty: [] }>()
 
 // D2 (https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-11-feature-introduction-dmn.md) : dmn-js Modeler seul, sans
 // provider de propriétés custom -- le .dmn est du DMN 1.3 standard, contrairement au BPMN
-// FlowForge qui porte des extensions flowable:* (voir BpmnEditorCanvas.vue).
+// Myrmacta qui porte des extensions flowable:* (voir BpmnEditorCanvas.vue).
 const EMPTY_DMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="Definitions_1" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
   <decision id="Decision_1" name="Decision 1">

@@ -1,4 +1,4 @@
-# Une instance FlowForge = un tenant (décision n° 13) — TODO §95, D-REMED-TENANT-DEPLOY.
+# Une instance Myrmacta = un tenant (décision n° 13) — TODO §95, D-REMED-TENANT-DEPLOY.
 #
 # Les deux fichiers d'environnement sont générés par :
 #   TENANT_DB_PASSWORD='…' scripts/provision-tenant.sh <tenant_id> --instance-dir <dossier> --port <port>

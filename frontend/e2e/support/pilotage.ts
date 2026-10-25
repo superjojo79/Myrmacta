@@ -980,7 +980,7 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
 
 export async function openApp(page: Page) {
   await page.goto('./')
-  await expect(page.getByText('FlowForge')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Myrmacta' })).toBeVisible()
   await expect(page.getByText('Ada')).toBeVisible()
 }
 

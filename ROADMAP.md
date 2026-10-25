@@ -1,4 +1,4 @@
-# FlowForge — Roadmap
+# Myrmacta — Roadmap
 
 > Vision produit en une page. Le **suivi de ce qui reste à faire** est dans les
 > [issues GitHub](https://github.com/superjojo79/FlowForge/issues) (libellés `priorite-*`, `type-*`,

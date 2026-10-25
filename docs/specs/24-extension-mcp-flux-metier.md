@@ -3,7 +3,7 @@
 > **Statut : première analyse fonctionnelle, aucune décision technique tranchée.** À affiner en
 > phase `dev-lifecycle` (requirements → design) avant tout code — voir « Questions ouvertes » en
 > fin de document. Origine : demande utilisateur (2026-09-06) — inspecter les fonctionnalités
-> ajoutées à FlowForge depuis la création du serveur MCP ([15-serveur-mcp.md](15-serveur-mcp.md),
+> ajoutées à Myrmacta depuis la création du serveur MCP ([15-serveur-mcp.md](15-serveur-mcp.md),
 > PR #82, 2026-08-27) et déterminer ce qu'il manque pour qu'un agent puisse définir un **flux
 > métier complet** (type de dossier + workflow + BPMN + tout ce qui l'entoure) sans sortir du canal
 > MCP. Constat vérifié contre le code réel, pas seulement contre la documentation.

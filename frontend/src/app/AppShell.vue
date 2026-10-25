@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import NotificationDrawer from '@/components/notifications/NotificationDrawer.vue'
 import LocaleSwitcher from '@/i18n/LocaleSwitcher.vue'
 import { useI18n } from 'vue-i18n'
+import logoDark from '@/assets/brand/myrmacta-logo-dark.svg'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -14,7 +15,10 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
 <template>
   <div class="app-shell">
     <aside class="app-shell__nav" :aria-label="t('shell.navLabel')">
-      <div class="app-shell__brand">{{ t('shell.brand') }}</div>
+      <div class="app-shell__brand">
+        <img class="app-shell__logo" :src="logoDark" :alt="t('shell.brand')" />
+        <p class="app-shell__tagline">{{ t('shell.tagline') }}</p>
+      </div>
       <p class="app-shell__section">{{ t('shell.sections.pilotage') }}</p>
       <RouterLink class="app-shell__link" to="/supervision">{{ t('shell.nav.supervision') }}</RouterLink>
       <RouterLink class="app-shell__link" to="/tasks">{{ t('shell.nav.tasks') }}</RouterLink>

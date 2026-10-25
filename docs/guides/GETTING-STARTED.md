@@ -1,6 +1,6 @@
 # Getting started — environnement de développement local
 
-Ce guide construit un environnement FlowForge minimal en local : backend Spring Boot lancé sur
+Ce guide construit un environnement Myrmacta minimal en local : backend Spring Boot lancé sur
 l'hôte (`./mvnw spring-boot:run`) connecté à une infrastructure de support (PostgreSQL, Keycloak,
 et en option un stockage objet compatible S3) fournie par des conteneurs. Il ne couvre pas un
 déploiement de production — voir [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md) pour la suite (artefact,
@@ -343,7 +343,7 @@ docker compose down -v         # + supprime les volumes (base, realm Keycloak, b
 
 ## 12. Serveur MCP (outillage agent IA)
 
-FlowForge expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
+Myrmacta expose un serveur [MCP](https://modelcontextprotocol.io) pour un agent IA interne
 (Claude Code ou tout autre client MCP compatible Streamable HTTP) — une quarantaine de tools
 couvrant :
 

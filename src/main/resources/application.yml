@@ -7,7 +7,8 @@
 # moteur que les gateways BPMN) avant d'être autorisé au parsing BPMN.
 spring:
   application:
-    name: flowforge
+    # D-BRAND-NAME : libellé cosmétique (bannière, journaux). Schéma, identifiants et artefact restent flowforge.
+    name: myrmacta
   thymeleaf:
     check-template-location: false
   autoconfigure:
@@ -95,6 +96,7 @@ spring:
       server:
         enabled: true
         protocol: STREAMABLE
+        # Identifiant annoncé au client MCP. Ce n'est pas le nom commercial (D-BRAND-NAME).
         name: flowforge
         version: 0.1.0
         type: SYNC

@@ -41,7 +41,7 @@ description: Define testing approach, test cases, and quality assurance
 ## End-to-End Tests
 **What user flows need validation?**
 
-FlowForge CI runs Playwright on every PR (`frontend` job). Phase 8 must produce
+Myrmacta CI runs Playwright on every PR (`frontend` job). Phase 8 must produce
 fresh `npm run test:e2e` evidence for FE-impacting features and keep
 `frontend/e2e/**` mocks in sync with API shapes (Vitest mocks alone are not enough).
 

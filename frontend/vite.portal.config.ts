@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 // seul /portal/** devient public. À lancer APRÈS le build principal (qui vide dist/).
 export default defineConfig({
   root: fileURLToPath(new URL('./portal', import.meta.url)),
+  publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   base: './',
   plugins: [vue()],
   resolve: {

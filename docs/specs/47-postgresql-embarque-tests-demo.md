@@ -20,7 +20,7 @@
 ## Pourquoi pas Supabase / un PostgreSQL managé
 
 Supabase est PostgreSQL + services (Auth, PostgREST, Realtime, Storage) ; seule la base serait utile et
-FlowForge garde Keycloak (BFF), un domaine Java hexagonal et un stockage S3 abstrait. Pour la CI, une base
+Myrmacta garde Keycloak (BFF), un domaine Java hexagonal et un stockage S3 abstrait. Pour la CI, une base
 distante partagée n'est ni hermétique ni parallélisable, et l'absence de superuser / le pooler
 (`SET search_path` par connexion) s'écartent du modèle réel de production (rôle et schéma par tenant).
 

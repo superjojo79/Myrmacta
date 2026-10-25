@@ -48,5 +48,6 @@ export default {
     confirmDecline: 'Confirmer le refus',
     cancel: 'Annuler',
   },
-  pageTitle: 'Réponse à une demande — FlowForge',
+  brand: 'Myrmacta',
+  pageTitle: 'Réponse à une demande — Myrmacta',
 }

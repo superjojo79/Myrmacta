@@ -26,7 +26,7 @@
 | **Historique utilisateur consultable** (UNREAD/READ, après coup) | **Absent** | Aucune entité `user_notification`/équivalent — grep confirmé, seules les tables `notification_outbox` (file d'émission sortante, pas un historique de lecture) et `NotificationWebhookJpaEntity` (config admin des webhooks) existent |
 | Inbox déjà existante dans le produit | **Oui, mais c'est une inbox de tâches, pas de notifications** | `/rapports` + inbox tâches avec `slaRemainingHours` (reporting-sla, PR #80) — liste les tâches BPMN assignées, pas des événements de notification |
 
-**Point clé à ne pas confondre** : FlowForge a déjà deux notions voisines mais distinctes —
+**Point clé à ne pas confondre** : Myrmacta a déjà deux notions voisines mais distinctes —
 1. la **file d'émission sortante** (`notification_outbox`) : mécanisme technique de livraison
    fiable (retry, DLQ) vers email/webhook, transparente pour l'utilisateur ;
 2. l'**inbox de tâches** (`/rapports`, `ListMyTasksUseCaseImpl`) : ce qu'un utilisateur a **à faire**

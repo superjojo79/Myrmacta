@@ -5,13 +5,22 @@
 > Packaging : build Vite embarqué dans `src/main/resources/static/` de chaque instance
 > (décision n° 27) — confirme `SameSite=Lax` sans CORS.
 
+## Marque affichée
+
+Le nom commercial est **Myrmacta** (décision n° 105). La barre latérale, sur fond encre `#1E2A3A`,
+affiche le logo sombre (`myrmacta-logo-dark.svg`, encre `#F3F4F6`, corail `#FF7A52`). Le portail,
+sur fond clair, affiche le logo clair (encre `#1E2A3A`, corail `#E4572E`). Fichiers :
+`frontend/src/assets/brand/`, favicon dans `frontend/public/`, copies documentaires dans
+`docs/brand/`. Le favicon est la tête corail à deux antennes ; la fourmi entière reste le logo.
+Signature : « L'intelligence collective au service de vos dossiers et décisions ».
+
 ---
 
 ## Maquette UI de référence
 
 La construction de l'interface doit se baser sur le mock HTML présent dans ce dossier :
 
-- **[FlowForge - Maquettes UI.html](FlowForge%20-%20Maquettes%20UI.html)** — maquettes UI de référence (écrans, navigation, composition visuelle).
+- **[FlowForge - Maquettes UI.html](FlowForge%20-%20Maquettes%20UI.html)** — maquettes UI de référence (écrans, navigation, composition visuelle). Le fichier garde son nom : les liens existants ne bougent pas. Le nom affiché dans la maquette est Myrmacta.
 
 Toute implémentation Vue / OpenVue (layouts, pages, composants métier, hiérarchie visuelle) doit s'aligner sur ce mock. En cas d'écart entre la maquette et les choix techniques de cette analyse (OpenVue, BFF, etc.), la maquette prime pour le rendu et l'UX ; la stack technique documentée ici reste celle à utiliser pour l'implémenter. PrimeVue (devenu propriétaire) a été remplacé par **OpenVue**, fork communautaire MIT (PR #165) : mêmes composants et thème Aura, seuls les imports changent.
 

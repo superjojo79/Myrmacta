@@ -13,10 +13,10 @@
 | Standard | BPMN 2.0 + DMN |
 | Licence | Apache 2.0 |
 | Intégration Spring Boot | `flowable-spring-boot-starter` |
-| Designer visuel | Éditeur intégré FlowForge (`bpmn-js` Modeler + panel de propriétés Flowable custom, `/admin/bpmn-editor`, feature `edition-bpmn`) **+** éditeur DMN (`dmn-js` Modeler, `/admin/dmn-editor`, feature `introduction-dmn`) — pas Flowable UI/Modeler/Cockpit, explicitement hors scope produit ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5) |
+| Designer visuel | Éditeur intégré Myrmacta (`bpmn-js` Modeler + panel de propriétés Flowable custom, `/admin/bpmn-editor`, feature `edition-bpmn`) **+** éditeur DMN (`dmn-js` Modeler, `/admin/dmn-editor`, feature `introduction-dmn`) — pas Flowable UI/Modeler/Cockpit, explicitement hors scope produit ([`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) §1.5) |
 | Déploiement des processus | Scan classpath au build/démarrage (`TenantProcessDeployment`) **+** upload admin à chaud avec prévisualisation (`/admin/workflow-types`, feature `deploiement-bpmn`) **+** déploiement direct depuis l'éditeur (`/admin/bpmn-editor`, feature `edition-bpmn`) |
 | Déploiement des tables de décision | Scan classpath au build/démarrage (`TenantDmnDeployment`, miroir de `TenantProcessDeployment`) **+** déploiement direct depuis l'éditeur DMN (`/admin/dmn-editor`) **+** MCP (`deploy_decision_table`) — feature `introduction-dmn` |
-| Monitoring instances | Viewer intégré FlowForge (`bpmn-js`, `GET …/diagram`) — pas de cockpit Flowable |
+| Monitoring instances | Viewer intégré Myrmacta (`bpmn-js`, `GET …/diagram`) — pas de cockpit Flowable |
 
 ### Dépendance Maven
 

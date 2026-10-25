@@ -65,7 +65,7 @@ class ConfigurationPromotionController {
     ResponseEntity<byte[]> export(@RequestParam(required = false) String sourceLabel, Authentication authentication) {
         ConfigurationBundle bundle = exportUseCase.export(accessContextFactory.user(authentication), sourceLabel);
         byte[] archive = bundleCodec.write(bundle);
-        String filename = "flowforge-config-" + tenantProperties.id() + "-" + LocalDate.now(ZoneOffset.UTC) + ".zip";
+        String filename = "myrmacta-config-" + tenantProperties.id() + "-" + LocalDate.now(ZoneOffset.UTC) + ".zip";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())

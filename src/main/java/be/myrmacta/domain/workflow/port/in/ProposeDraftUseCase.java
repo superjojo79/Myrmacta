@@ -1,0 +1,70 @@
+package be.myrmacta.domain.workflow.port.in;
+
+import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.workflow.model.DraftArtifactType;
+import be.myrmacta.domain.workflow.model.Provenance;
+import be.myrmacta.domain.workflow.model.ProposedWorkflowConfig;
+import be.myrmacta.domain.workflow.palette.InactiveBlockReference;
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * TODO §82 (D6) — écriture d'un brouillon par un canal automatisé (MCP, assistant) : mêmes contrôles qu'un déploiement
+ * (parseur, liste blanche, références), mais rien n'est déployé ni appliqué avant la publication.
+ */
+public interface ProposeDraftUseCase {
+
+    /**
+     * @param config configuration de workflow à créer ou mettre à jour à la publication
+     * @param replaceExisting autorise l'écrasement d'un brouillon d'un autre auteur ou d'une autre provenance
+     * @throws be.myrmacta.domain.workflow.model.DraftConflictException sinon
+     */
+    Proposal proposeBpmn(
+            AccessContext.User actor,
+            Provenance provenance,
+            String processDefinitionKey,
+            String xml,
+            ProposedWorkflowConfig config,
+            boolean replaceExisting);
+
+    Proposal proposeDmn(
+            AccessContext.User actor,
+            Provenance provenance,
+            String decisionKey,
+            String xml,
+            String note,
+            boolean replaceExisting);
+
+    /** Charge une version déjà publiée d'une table de décision dans un brouillon (remise en ligne à relire). */
+    Proposal proposeDmnFromVersion(
+            AccessContext.User actor, Provenance provenance, String decisionKey, int version, boolean replaceExisting);
+
+    /**
+     * Validation seule (aucune écriture) : mêmes contrôles que {@code proposeBpmn}.
+     *
+     * @return les références inactives acceptées (TODO §93 D-DRAFT-REF-STATUS)
+     */
+    List<InactiveBlockReference> validateBpmn(AccessContext.User actor, String processDefinitionKey, String xml, ProposedWorkflowConfig config);
+
+    void validateDmn(AccessContext.User actor, String decisionKey, String xml);
+
+    /**
+     * @param inactiveReferences ressources référencées qui existent mais ne sont pas encore actives : la publication les
+     *     refusera tant qu'elles ne le sont pas (TODO §93 D-DRAFT-REF-STATUS ; toujours vide pour un DMN)
+     */
+    record Proposal(
+            DraftArtifactType type,
+            String key,
+            Instant updatedAt,
+            boolean replacedExistingDraft,
+            List<InactiveBlockReference> inactiveReferences) {
+
+        public Proposal {
+            inactiveReferences = inactiveReferences == null ? List.of() : List.copyOf(inactiveReferences);
+        }
+
+        public Proposal(DraftArtifactType type, String key, Instant updatedAt, boolean replacedExistingDraft) {
+            this(type, key, updatedAt, replacedExistingDraft, List.of());
+        }
+    }
+}

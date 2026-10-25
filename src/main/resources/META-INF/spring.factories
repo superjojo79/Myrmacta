@@ -1,7 +1,7 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-com.flowforge.infrastructure.tenant.TenantIdEnvironmentValidator,\
-com.flowforge.infrastructure.config.OpenApiEnvironmentPostProcessor,\
-com.flowforge.infrastructure.embeddeddb.EmbeddedDbEnvironmentPostProcessor,\
-com.flowforge.infrastructure.security.SecretsEnvironmentPostProcessor,\
-com.flowforge.infrastructure.security.SecurityHeadersEnvironmentPostProcessor,\
-com.flowforge.infrastructure.security.DevModeEnvironmentPostProcessor
+be.myrmacta.infrastructure.tenant.TenantIdEnvironmentValidator,\
+be.myrmacta.infrastructure.config.OpenApiEnvironmentPostProcessor,\
+be.myrmacta.infrastructure.embeddeddb.EmbeddedDbEnvironmentPostProcessor,\
+be.myrmacta.infrastructure.security.SecretsEnvironmentPostProcessor,\
+be.myrmacta.infrastructure.security.SecurityHeadersEnvironmentPostProcessor,\
+be.myrmacta.infrastructure.security.DevModeEnvironmentPostProcessor

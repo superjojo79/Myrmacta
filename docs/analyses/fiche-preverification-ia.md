@@ -22,7 +22,7 @@ Les administrations reçoivent des demandes incomplètes ou incohérentes, et l'
 | Validation des champs (champs obligatoires, types, dont `FILE`) | `domain/dossier/model/DossierFieldValidator.java` |
 | Tables de décision DMN : brique « Décision DMN », outils `evaluate_decision` et `test_decision` | `domain/workflow/palette/BuildingBlockCatalog.java`, `infrastructure/mcp/tool/EvaluateDecisionTool.java`, `TestDecisionTool.java` |
 | Palette métier BPMN (11 briques) et liste blanche des délégués côté serveur | `domain/workflow/palette/BuildingBlockCatalog.java`, `domain/workflow/AllowedBpmnDelegates.java` |
-| Masquage des champs sensibles et lecture des champs bruts limitée à une liste de classes vérifiée par ArchUnit | `domain/dossier/DossierFieldRedactor.java`, `src/test/java/com/flowforge/ArchitectureRulesTest.java` |
+| Masquage des champs sensibles et lecture des champs bruts limitée à une liste de classes vérifiée par ArchUnit | `domain/dossier/DossierFieldRedactor.java`, `src/test/java/be/myrmacta/ArchitectureRulesTest.java` |
 | Pièces jointes : contrôle des magic bytes et antivirus ClamAV à activer explicitement | `infrastructure/dossier/ClamAvAttachmentScanAdapter.java` |
 | Incidents visibles et rejouables sur la fiche dossier | TODO §94, `infrastructure/mcp/tool/GetDossierTool.java` |
 

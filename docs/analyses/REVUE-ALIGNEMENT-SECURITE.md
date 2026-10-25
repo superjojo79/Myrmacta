@@ -120,7 +120,7 @@ JVM**. L'iframe SPA `sandbox=""` ne protège que le navigateur. Le testing
 
 **Preuves :**
 
-- `src/main/java/com/flowforge/infrastructure/document/ThymeleafHtmlTemplateProcessor.java` (engine SpringEL, `TemplateMode.HTML`)
+- `src/main/java/be/myrmacta/infrastructure/document/ThymeleafHtmlTemplateProcessor.java` (engine SpringEL, `TemplateMode.HTML`)
 - `DocumentTemplateController` — `@PreAuthorize("hasRole('TENANT_ADMIN')")`
 - `DocumentGenerationController.denyLiveUnlessTenantAdmin` — live preview = admin tenant
 - [`docs/ai/testing/2026-07-31-feature-templates-documents.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/testing/2026-07-31-feature-templates-documents.md) — sandboxing Thymeleaf avancé hors scope

@@ -24,7 +24,7 @@ Exemples entrants :            Exemples sortants :
 ### Structure de packages
 
 ```
-com.flowforge
+be.myrmacta
 │
 ├── domain                          ← zéro dépendance framework
 │   │
@@ -132,7 +132,7 @@ com.flowforge
 
 ### Règles d'implémentation
 
-**Le domaine est pur Java.** Aucune annotation Spring (`@Component`, `@Service`, `@Repository`), aucune annotation JPA (`@Entity`, `@Column`), aucune dépendance Flowable dans `com.flowforge.domain`.
+**Le domaine est pur Java.** Aucune annotation Spring (`@Component`, `@Service`, `@Repository`), aucune annotation JPA (`@Entity`, `@Column`), aucune dépendance Flowable dans `be.myrmacta.domain`.
 
 **Les entités JPA sont distinctes des entités domaine.** Une entité domaine `WorkflowInstance` a son équivalent `WorkflowJpaEntity` dans `infrastructure.persistence`. L'adaptateur JPA assure la conversion.
 
@@ -273,7 +273,7 @@ redondant à ce stade.
 ```
 
 ```java
-@AnalyzeClasses(packages = "com.flowforge")
+@AnalyzeClasses(packages = "be.myrmacta")
 class ArchitectureRulesTest {
 
     @ArchTest

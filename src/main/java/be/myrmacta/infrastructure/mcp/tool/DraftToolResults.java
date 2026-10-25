@@ -1,0 +1,72 @@
+package be.myrmacta.infrastructure.mcp.tool;
+
+import be.myrmacta.domain.workflow.model.ConfigPublication;
+import be.myrmacta.domain.workflow.palette.InactiveBlockReference;
+import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/** TODO §82 (D6) — forme commune des réponses des outils de configuration (brouillon en attente, ou publié). */
+final class DraftToolResults {
+
+    static final String DRAFT_PENDING = "DRAFT_PENDING_PUBLICATION";
+    static final String PUBLISHED = "PUBLISHED";
+    static final String VALID = "VALID";
+
+    private DraftToolResults() {}
+
+    static Map<String, Object> of(
+            String keyName,
+            String key,
+            boolean dryRun,
+            String status,
+            ProposeDraftUseCase.Proposal proposal,
+            ConfigPublication publication) {
+        return of(keyName, key, dryRun, status, proposal, publication,
+                proposal == null ? List.of() : proposal.inactiveReferences());
+    }
+
+    /**
+     * @param inactiveReferences TODO §93 D-DRAFT-REF-STATUS — ressources référencées qui existent mais ne sont pas actives :
+     *     signalées à l'agent, car la publication les refusera tant qu'un humain ne les a pas activées
+     */
+    static Map<String, Object> of(
+            String keyName,
+            String key,
+            boolean dryRun,
+            String status,
+            ProposeDraftUseCase.Proposal proposal,
+            ConfigPublication publication,
+            List<InactiveBlockReference> inactiveReferences) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(keyName, key);
+        map.put("dryRun", dryRun);
+        map.put("status", status);
+        if (proposal != null) {
+            // Revue TODO §93 (I4) : forme d'avant (sans inactiveReferences, déjà au premier niveau) — contrat des outils DMN inchangé.
+            Map<String, Object> draft = new LinkedHashMap<>();
+            draft.put("type", proposal.type());
+            draft.put("key", proposal.key());
+            draft.put("updatedAt", proposal.updatedAt());
+            draft.put("replacedExistingDraft", proposal.replacedExistingDraft());
+            map.put("draft", draft);
+        }
+        if (publication != null) {
+            map.put("publication", publication);
+        }
+        if (!inactiveReferences.isEmpty()) {
+            map.put("inactiveReferences", inactiveReferences.stream()
+                    .map(r -> Map.of("activityId", r.activityId(), "parameter", r.parameter(),
+                            "source", r.source(), "value", r.value()))
+                    .toList());
+            map.put("inactiveReferencesMessage", "These referenced resources exist but are not active: publishing the "
+                    + "workflow will be refused until a human activates them (e.g. activate the document template).");
+        }
+        if (DRAFT_PENDING.equals(status)) {
+            map.put("message", "Saved as a draft: a human must publish it from the 'Brouillons à publier' screen. "
+                    + "Nothing is deployed until then.");
+        }
+        return map;
+    }
+}

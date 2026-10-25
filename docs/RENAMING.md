@@ -41,16 +41,47 @@ Les permaliens déjà figés sur `e91aa7b`, `555a692` et `dcb7e49`, ainsi que le
   (le realm et les `clientId` ne bougent pas), invite système de l'assistant de conception.
 - Nom du ZIP de promotion téléchargé : `myrmacta-config….zip`. L'import lit le contenu, pas le nom.
 
-## Ce que la PR technique changera
+## Ce que cette PR (paquets) a changé
 
-- Paquet Java `com.flowforge` → `be.myrmacta` (proposition).
-- `groupId` Maven → `be.myrmacta` (proposition). L'`artifactId` `flowforge` n'est pas tranché ici.
-- `META-INF/spring.factories`, `META-INF/services`, et les citations de chemins
-  `src/main/java/com/flowforge/...` encore présentes dans la documentation.
+- Paquet Java `com.flowforge` → `be.myrmacta`, récursif, sur les quatre racines de sources
+  (`src/main/java`, `src/test/java`, `src/embedded/java`, `src/embedded-test/java`). Déplacement
+  par `git mv`, réécriture par OpenRewrite `org.openrewrite.java.ChangePackage`.
+- `groupId` Maven : `be.myrmacta`. L'`artifactId` reste `flowforge` : le jar s'appelle toujours
+  `flowforge-*.jar` (Dockerfile, `scripts/check-*-in-jar.sh`, guides). Les coordonnées sont
+  donc `be.myrmacta:flowforge`.
+- `META-INF/spring.factories` (main et test), `META-INF/services/org.hibernate.boot.model.FunctionContributor`,
+  et le fichier SPI renommé
+  `META-INF/services/be.myrmacta.infrastructure.embeddeddb.EmbeddedDbLauncher`.
+- Citations de chemins `src/{main,test}/java/com/flowforge/...` devenues fausses dans la
+  documentation vivante (spec 45 lien relatif, specs 18 et 24, guide BPMN, spec 01, spec 12,
+  décisions 032 et 048, revue d'alignement, deux fiches d'analyse). Les énoncés historiques
+  qui décrivent l'ancien paquet (décision 046, décision 105, lignes de revue qui racontent
+  le passage `com.monapp` → `com.flowforge`) ne sont pas réécrits.
+- Classe d'entrée inchangée : `be.myrmacta.FlowForgeApplication`. Noms de beans Flowable
+  `@Component` inchangés.
 
-| Ancien paquet | Nouveau paquet |
+| Ancien | Nouveau |
 |---|---|
-| _à remplir par la PR 2_ | _à remplir par la PR 2_ |
+| `com.flowforge` (paquet, récursif) | `be.myrmacta` |
+| `src/main/java/com/flowforge` | `src/main/java/be/myrmacta` |
+| `src/test/java/com/flowforge` | `src/test/java/be/myrmacta` |
+| `src/embedded/java/com/flowforge` | `src/embedded/java/be/myrmacta` |
+| `src/embedded-test/java/com/flowforge` | `src/embedded-test/java/be/myrmacta` |
+| `groupId` `com.flowforge` | `groupId` `be.myrmacta` |
+| `artifactId` `flowforge` | `flowforge` (inchangé) |
+| `META-INF/services/com.flowforge.infrastructure.embeddeddb.EmbeddedDbLauncher` | `META-INF/services/be.myrmacta.infrastructure.embeddeddb.EmbeddedDbLauncher` |
+
+### Clés `flowforge.*`
+
+Aucune propriété Spring `flowforge.*` : les `@ConfigurationProperties` sont sous `app.*`
+(`app.tenant`, `app.workflow`, `app.connector`, etc.). Rien à migrer dans `application*.yml`.
+
+Candidates laissées pour une PR ultérieure (identifiants opérationnels, pas des clés
+`flowforge.*`, et hors périmètre de cette PR) : `artifactId` et nom de jar, nom MCP
+`spring.ai.mcp.server.name`, clé navigateur `flowforge.locale`, `job_name` Prometheus,
+utilisateur et tag d'image, noms de base et d'identifiants par défaut, `targetNamespace`
+BPMN `http://flowforge/...`, auteur Liquibase `flowforge`. La liste tenue de ce qui reste
+exprès est la section suivante.
 
 ## Laissé exprès
 

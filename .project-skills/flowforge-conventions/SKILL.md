@@ -1,11 +1,11 @@
 ---
 name: flowforge-conventions
-description: Myrmacta · Conventions projet (architecture hexagonale, multi-tenant, stack, commandes). À utiliser pour toute implémentation, revue ou planification dans ce dépôt. Le nom de code des paquets reste com.flowforge.
+description: Myrmacta · Conventions projet (architecture hexagonale, multi-tenant, stack, commandes). À utiliser pour toute implémentation, revue ou planification dans ce dépôt. Racine de paquet be.myrmacta.
 ---
 
 # Myrmacta — conventions projet
 
-Nom commercial : Myrmacta. Racine de paquet et `groupId` : encore `com.flowforge` (`docs/RENAMING.md`).
+Nom commercial : Myrmacta. Racine de paquet et `groupId` : `be.myrmacta`. L'`artifactId` Maven reste `flowforge` (`docs/RENAMING.md`).
 
 Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et le registre des décisions `docs/decisions/` priment.
 
@@ -21,14 +21,14 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 | Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |
 | Tests FE | Vitest + Playwright · ESLint/Prettier |
 | Stockage fichiers | Port abstrait S3 / filesystem (pas MinIO couplé en dur) |
-| Package root | `com.flowforge` |
+| Package root | `be.myrmacta` |
 
 ## Architecture (non négociable)
 
 Packages :
 
 ```
-com.flowforge
+be.myrmacta
 ├── domain          # pur Java — zéro Spring/JPA/Flowable
 ├── application     # orchestration transversale légère (hors ports)
 └── infrastructure  # adaptateurs (web, persistence, flowable, pdf, …)
@@ -37,7 +37,7 @@ com.flowforge
 Règles :
 
 1. **Dépendance unidirectionnelle** : infrastructure → domain. Jamais l’inverse.
-2. **Domaine pur** : pas d’annotation Spring/JPA/Flowable dans `com.flowforge.domain`.
+2. **Domaine pur** : pas d’annotation Spring/JPA/Flowable dans `be.myrmacta.domain`.
 3. **Entités JPA ≠ modèles domaine** : `*JpaEntity` + adaptateur (`*JpaAdapter`) qui mappe (décision n° 17). Les modèles domaine sont des `record` / types immuables.
 4. **Ports** : `domain.<bc>.port.in` (use cases) et `port.out` (repos, gateways). Implémentations dans `infrastructure`.
 5. **ArchUnit en CI** : toute violation de frontière fait échouer `./mvnw verify`.

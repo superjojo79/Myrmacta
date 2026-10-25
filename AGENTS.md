@@ -2,7 +2,7 @@
 
 Moteur de dossiers métier piloté par des workflows BPMN/DMN : Java 25, Spring Boot 4, Flowable 8, PostgreSQL
 (un schéma par tenant), Vue 3 embarqué. Nom commercial : **Myrmacta**. Le nom de code
-(`com.flowforge`, dépôt, artefact) reste jusqu'à la PR technique : [docs/RENAMING.md](docs/RENAMING.md).
+(dépôt, `artifactId` `flowforge`) : [docs/RENAMING.md](docs/RENAMING.md). Paquet Java et `groupId` : `be.myrmacta`.
 Règles détaillées : skill `flowforge-conventions` (`.project-skills/`).
 
 ## Où lire

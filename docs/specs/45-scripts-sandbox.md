@@ -77,7 +77,7 @@ l'[analyse 31](31-positionnement-produit.md) §3.
 **Question (charte §2, lot 14) :** le lot n'est lancé que si LC2 s'avère insuffisant, preuve à l'appui.
 
 **Méthode.** Les cas que §2 range sous « algorithme de calcul, transformation complexe » ont été écrits en JSONata (LC2, moteur borné réel,
-sans mock) dans [`ScriptQualificationSpikeTest`](../../src/test/java/com/flowforge/infrastructure/expression/ScriptQualificationSpikeTest.java) :
+sans mock) dans [`ScriptQualificationSpikeTest`](../../src/test/java/be/myrmacta/infrastructure/expression/ScriptQualificationSpikeTest.java) :
 
 | Famille de cas | Résultat avec LC2 |
 |---|---|

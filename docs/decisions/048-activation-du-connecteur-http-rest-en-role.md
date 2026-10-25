@@ -5,7 +5,7 @@
 **Constat :** [README.md](../../README.md) et [06-connecteurs.md](../specs/06-connecteurs.md)
 documentent déjà la limite : le catalogue V1 livré pour `http-rest` est **TRIGGER seulement** ; un
 skeleton `HttpRestServiceConnector`
-(`src/main/java/com/flowforge/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
+(`src/main/java/be/myrmacta/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
 existe depuis `durcissement-donnees-sensibles` (PR #62, réutilise `OutboundUrlGuard`, anti-fuite de
 secrets prouvée, 7 tests) mais n'implémente pas `ConnectorDefinition` et n'est enregistré nulle
 part — `ExecuteConnectorUseCaseImpl` rejette toute demande SERVICE sur ce type

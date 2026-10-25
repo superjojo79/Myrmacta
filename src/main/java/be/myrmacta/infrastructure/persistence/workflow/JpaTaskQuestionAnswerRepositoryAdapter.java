@@ -1,0 +1,28 @@
+package be.myrmacta.infrastructure.persistence.workflow;
+
+import be.myrmacta.domain.workflow.model.TaskQuestionAnswer;
+import be.myrmacta.domain.workflow.port.out.TaskQuestionAnswerRepository;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+@Component
+class JpaTaskQuestionAnswerRepositoryAdapter implements TaskQuestionAnswerRepository {
+
+    private final SpringDataTaskQuestionAnswerRepository repository;
+
+    JpaTaskQuestionAnswerRepositoryAdapter(SpringDataTaskQuestionAnswerRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    @Transactional
+    public void save(TaskQuestionAnswer answer) {
+        repository.save(TaskQuestionAnswerJpaEntity.fromDomain(answer));
+    }
+
+    @Override
+    @Transactional
+    public int deleteAllByDossierId(java.util.UUID dossierId) {
+        return repository.deleteAllByDossierId(java.util.Objects.requireNonNull(dossierId, "dossierId"));
+    }
+}

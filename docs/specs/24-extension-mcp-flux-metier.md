@@ -12,7 +12,7 @@
 
 ## 1. Rappel du périmètre livré (PR #82, 2026-08-27)
 
-9 tools, inchangés depuis leur livraison (`src/main/java/com/flowforge/infrastructure/mcp/tool/`) :
+9 tools, inchangés depuis leur livraison (`src/main/java/be/myrmacta/infrastructure/mcp/tool/`) :
 
 | Tool | Use case domaine | Portée |
 |---|---|---|

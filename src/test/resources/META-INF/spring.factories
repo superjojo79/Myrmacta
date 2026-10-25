@@ -1,2 +1,2 @@
 org.springframework.boot.env.EnvironmentPostProcessor=\
-com.flowforge.support.EmbeddedPostgresEnvironmentPostProcessor
+be.myrmacta.support.EmbeddedPostgresEnvironmentPostProcessor

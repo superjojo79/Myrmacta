@@ -18,4 +18,4 @@ serait immédiatement détecté par la suite de tests existante. Pas de garde d�
 jugée nécessaire au-delà de cette couverture.
 
 **Documenté dans :** [docs/ai/requirements/2026-07-31-feature-authentification.md](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-07-31-feature-authentification.md),
-`src/main/java/com/flowforge/infrastructure/security/SecurityConfig.java`.
+`src/main/java/be/myrmacta/infrastructure/security/SecurityConfig.java`.

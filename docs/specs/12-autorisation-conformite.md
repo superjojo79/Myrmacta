@@ -184,7 +184,7 @@ panneau dossier tant qu'il n'a pas d'entrée ACL explicite.
 `FieldDefinition.sensitive` (décision n° 20, ci-dessus) n'était vérifié que côté frontend
 (`SensitiveValue.vue`) — la valeur en clair était systématiquement présente dans la réponse JSON,
 y compris pour un simple détenteur d'ACL `EDIT`. `DossierFieldRedactor` (domaine pur,
-`com.flowforge.domain.dossier`) retire désormais du `Dossier.fields()` renvoyé toute clé marquée
+`be.myrmacta.domain.dossier`) retire désormais du `Dossier.fields()` renvoyé toute clé marquée
 `sensitive`, sauf pour `TENANT_ADMIN` — appliqué sur `GetDossierUseCaseImpl` et
 `WorkflowLinkVisualizationUseCaseImpl.getDossier`. Les contextes `System` (génération de documents,
 triggers connecteurs) ne sont pas concernés : ils ne rendent jamais la donnée à un navigateur.

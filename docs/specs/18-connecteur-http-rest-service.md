@@ -18,7 +18,7 @@ un « skeleton non enregistré ».
 Constat confirmé côté code :
 
 - `HttpRestServiceConnector`
-  (`src/main/java/com/flowforge/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
+  (`src/main/java/be/myrmacta/infrastructure/connector/builtin/HttpRestServiceConnector.java`)
   existe et fonctionne déjà en isolation : il réutilise `OutboundUrlGuard` (hardening SSRF — pin IP,
   blocage réseaux privés/loopback/link-local, déjà livré pour les webhooks sortants de notification)
   pour un appel HTTP GET, et ne renvoie jamais `instance.config()` dans son résultat (contrat
@@ -33,7 +33,7 @@ Constat confirmé côté code :
 - **Tout le reste de la chaîne de consommation SERVICE est déjà en production**, générique, et ne
   nécessite aucune évolution : `ConnectorServiceTask` (JavaDelegate Flowable,
   `@Component("connectorServiceTask")`,
-  `src/main/java/com/flowforge/infrastructure/flowable/ConnectorServiceTask.java`), le contrôleur
+  `src/main/java/be/myrmacta/infrastructure/flowable/ConnectorServiceTask.java`), le contrôleur
   BFF `ConnectorExecuteController` et le contrôleur M2M `M2mConnectorExecuteController`
   (`infrastructure/web/connector`) appellent tous le même port `ExecuteConnectorUseCase`, déjà
   exercé aujourd'hui par le connecteur `flowable-signal` (seul type actuellement `BOTH`). Le
@@ -89,7 +89,7 @@ C'est la découverte la plus significative de cette analyse, et elle **condition
 dans une `Map<String, ConnectorDefinition>` — **un seul bean peut revendiquer le type `"http-rest"`.**
 
 Aujourd'hui ce bean est `HttpRestTriggerConnector`
-(`src/main/java/com/flowforge/infrastructure/connector/builtin/HttpRestTriggerConnector.java`,
+(`src/main/java/be/myrmacta/infrastructure/connector/builtin/HttpRestTriggerConnector.java`,
 `@Component`), qui implémente `ConnectorDefinition` + `TriggerConnector` et déclare
 `getCapability() = ConnectorCapability.TRIGGER`. `ExecuteConnectorUseCaseImpl` vérifie à la fois
 `definition.getCapability().includesService()` **et** `definition instanceof ServiceConnector` avant

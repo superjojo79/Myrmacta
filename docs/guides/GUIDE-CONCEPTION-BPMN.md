@@ -8,7 +8,7 @@
 > [08-templates-documents.md](../specs/08-templates-documents.md), [04-dossiers.md](../specs/04-dossiers.md))
 > documente chacun sous son propre angle, sans jamais les rassembler du point de vue de
 > l'auteur d'un diagramme. Tous les noms de variables, de beans et d'attributs cités ci-dessous
-> sont vérifiés contre le code réel du dépôt (`src/main/java/com/flowforge/infrastructure/flowable/`),
+> sont vérifiés contre le code réel du dépôt (`src/main/java/be/myrmacta/infrastructure/flowable/`),
 > pas seulement contre le pseudo-code des autres documents d'analyse.
 >
 > **Mise à jour — écart `DossierAwareTask` comblé (§3).** Une première version de ce guide
@@ -881,7 +881,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
-Toutes ces classes vivent dans `src/main/java/com/flowforge/infrastructure/flowable/` — en cas
+Toutes ces classes vivent dans `src/main/java/be/myrmacta/infrastructure/flowable/` — en cas
 de doute sur une variable, elles font foi avant ce document ou avant les `docs/specs/*`
 pseudo-code.
 

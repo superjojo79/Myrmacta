@@ -17,7 +17,7 @@ import java.util.Set;
  * à la première montée de version. Ici, l'accès est vérifié à la compilation : si la bibliothèque renomme un champ, le
  * build échoue au lieu de laisser passer une expression non inspectée. Les tests du moteur figent le comportement
  * attendu (regex, fonctions interdites, bornes). Elle ne doit être appelée que par
- * {@code com.flowforge.infrastructure.expression}.
+ * {@code be.myrmacta.infrastructure.expression}.
  */
 public final class AstInspector {
 

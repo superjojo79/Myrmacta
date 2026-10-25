@@ -109,7 +109,7 @@ class OidcPortalIdentityProviderAdapterTest {
         }
         Provider fas = new Provider(null, issuer, CLIENT_ID, "openid profile", "eidas-substantial",
                 new Claims("egovNRN", "givenName", "surname", "loa"),
-                Map.of(IdentityAssuranceLevel.HIGH, List.of("high"), IdentityAssuranceLevel.SUBSTANTIAL, List.of("substantial")));
+                Map.of(IdentityAssuranceLevel.HIGH, List.of("high"), IdentityAssuranceLevel.SUBSTANTIAL, List.of("substantial")), null);
         var properties = new PortalStrongAuthProperties(true, null,
                 new Keys(signing.toString(), "portal-1", null, null, encryption, encryption == null ? null : "portal-enc-1"),
                 null, Map.of("fas", fas));

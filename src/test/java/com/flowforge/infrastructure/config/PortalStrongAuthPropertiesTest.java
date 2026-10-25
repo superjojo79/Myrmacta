@@ -20,7 +20,7 @@ class PortalStrongAuthPropertiesTest {
     private static Provider provider() {
         return new Provider(null, "https://idp.example/realms/fas", "client", null, null,
                 new Claims("egovNRN", "givenName", "surname", "loa"),
-                Map.of(IdentityAssuranceLevel.HIGH, List.of("high"), IdentityAssuranceLevel.SUBSTANTIAL, List.of("substantial")));
+                Map.of(IdentityAssuranceLevel.HIGH, List.of("high"), IdentityAssuranceLevel.SUBSTANTIAL, List.of("substantial")), null);
     }
 
     @Test
@@ -48,11 +48,11 @@ class PortalStrongAuthPropertiesTest {
                 .hasMessageContaining("unknown provider");
         assertThatThrownBy(() -> new PortalStrongAuthProperties(true, null, null, null, Map.of("fas", provider())))
                 .hasMessageContaining("signing-key-file");
-        Provider withoutLevels = new Provider(null, "https://idp", "c", null, null, new Claims("n", null, null, "l"), Map.of());
+        Provider withoutLevels = new Provider(null, "https://idp", "c", null, null, new Claims("n", null, null, "l"), Map.of(), null);
         assertThatThrownBy(() -> new PortalStrongAuthProperties(true, null, KEYS, null, Map.of("fas", withoutLevels)))
                 .hasMessageContaining("levels.HIGH");
         Provider withoutClaims = new Provider(null, "https://idp", "c", null, null, null,
-                Map.of(IdentityAssuranceLevel.HIGH, List.of("h")));
+                Map.of(IdentityAssuranceLevel.HIGH, List.of("h")), null);
         assertThatThrownBy(() -> new PortalStrongAuthProperties(true, null, KEYS, null, Map.of("fas", withoutClaims)))
                 .hasMessageContaining("claims.nrn");
 

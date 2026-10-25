@@ -86,14 +86,9 @@ public record PortalStrongAuthProperties(
             String label, String issuerUri, String clientId, String scopes, String acrValues, Claims claims,
             Map<IdentityAssuranceLevel, List<String>> levels, String clientSecret) {
 
+        // Un seul constructeur : un second rendrait la liaison Spring du record ambiguë (fournisseurs ignorés).
         public Provider {
             levels = levels == null || levels.isEmpty() ? Map.of() : new EnumMap<>(levels);
-        }
-
-        public Provider(
-                String label, String issuerUri, String clientId, String scopes, String acrValues, Claims claims,
-                Map<IdentityAssuranceLevel, List<String>> levels) {
-            this(label, issuerUri, clientId, scopes, acrValues, claims, levels, null);
         }
 
         public boolean usesClientSecret() {

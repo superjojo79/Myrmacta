@@ -289,7 +289,7 @@ class DeployBpmnProcessUseCaseImplTest {
         verify(deploymentPort, never()).deploy(any(), any(), any());
     }
 
-    /** TODO §103 (E2, D-BEAUTH-ACTIVATION) — une tâche à authentification forte exige le réglage d'instance. */
+    /** TODO §104 (E2, D-BEAUTH-ACTIVATION) — une tâche à authentification forte exige le réglage d'instance. */
     @Test
     void deploy_strongAuthenticationTaskWhileStrongAuthDisabled_isRejected() {
         when(bpmnParserPort.extractProcessDefinitionKey(BPMN_BYTES)).thenReturn("testProcess");

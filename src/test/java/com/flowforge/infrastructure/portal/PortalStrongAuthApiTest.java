@@ -47,7 +47,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * TODO §103 (issue #210, lot B) — authentification forte d'un tiers de bout en bout : vrai moteur, vraie base, vraie
+ * TODO §104 (issue #210, lot B) — authentification forte d'un tiers de bout en bout : vrai moteur, vraie base, vraie
  * chaîne portail, client OIDC direct contre un fournisseur en mémoire ({@code private_key_jwt}, PKCE, ID token signé).
  * Vue réduite (T3b), preuve d'identité (D-BEAUTH-PROOF), premier enregistrement du NRN (T6), refus d'une autre personne
  * (T5), trace pour l'instructeur (T8), et le NRN absent des journaux, des variables de process et de l'outbox (N2).

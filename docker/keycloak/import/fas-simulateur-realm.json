@@ -1,6 +1,6 @@
 {
   "realm": "fas-simulateur",
-  "displayName": "Simulateur FAS / itsme (dev et recette, TODO §103)",
+  "displayName": "Simulateur FAS / itsme (dev et recette, TODO §104)",
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": false,

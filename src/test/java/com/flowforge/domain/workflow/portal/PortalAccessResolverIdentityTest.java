@@ -33,7 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * TODO §103 (T3b, T9, D-BEAUTH-PROOF) — accès au portail par le jeton du lien ou par la preuve d'identité. Une tâche à
+ * TODO §104 (T3b, T9, D-BEAUTH-PROOF) — accès au portail par le jeton du lien ou par la preuve d'identité. Une tâche à
  * authentification forte n'est accessible en action (dépôt, soumission) qu'avec une preuve valable pour ce lien ; le
  * jeton seul ne donne que la vue réduite.
  */

@@ -11,8 +11,8 @@ import {
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
 import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
 import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notificationWebhooks'
-import type { DossierPermission, DossierType, FieldDefinition } from '@/api/types'
-import { toProblemDetail } from '@/api/http'
+import type { DossierPermission, DossierType, FieldDefinition, SchemaDuplicate } from '@/api/types'
+import { schemaDuplicatesOf, toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import FormDesigner from '@/components/dossier/FormDesigner.vue'
 import DocumentTemplateKeysEditor from '@/components/dossier/DocumentTemplateKeysEditor.vue'
@@ -61,6 +61,28 @@ const editDraft = ref<{
   documentTemplateKeys: [],
 })
 const editFieldErrors = ref<string[]>([])
+/** Refus 409 : détail et doublons affichés tels quels, sans redécouper la valeur. */
+const schemaNotice = ref<SchemaNotice | null>(null)
+const editSchemaNotice = ref<SchemaNotice | null>(null)
+
+interface SchemaNotice {
+  detail: string
+  duplicates: SchemaDuplicate[]
+}
+
+const SCHEMA_REFERENCE_LIMIT = 20
+
+function schemaNoticeOf(err: unknown, fallback: string): SchemaNotice {
+  const problem = toProblemDetail(err)
+  return { detail: problem.detail ?? fallback, duplicates: schemaDuplicatesOf(problem) }
+}
+
+function duplicateReferences(duplicate: SchemaDuplicate): string {
+  const total = duplicate.referenceCount ?? duplicate.references.length
+  const shown = duplicate.references.slice(0, SCHEMA_REFERENCE_LIMIT)
+  const list = shown.join(', ')
+  return total > shown.length ? t('admin.types.duplicateReferences', { references: list, total }) : list
+}
 
 function retentionLabel(type: DossierType): string {
   if (type.retentionNever) return t('admin.types.retentionLabel.never')
@@ -169,6 +191,7 @@ function retentionPayload() {
 
 async function create() {
   error.value = null
+  schemaNotice.value = null
   const fieldErrors = validateFieldDefinitions(form.value.fieldDefinitions)
   if (fieldErrors.length > 0) {
     error.value = fieldErrors.join(' ')
@@ -200,7 +223,7 @@ async function create() {
     }
     await refresh()
   } catch (err) {
-    error.value = toProblemDetail(err).detail ?? t('admin.types.errors.create')
+    schemaNotice.value = schemaNoticeOf(err, t('admin.types.errors.create'))
   }
 }
 
@@ -212,17 +235,20 @@ function startEditFields(type: DossierType) {
     documentTemplateKeys: [...(type.documentTemplateKeys ?? [])],
   }
   editFieldErrors.value = []
+  editSchemaNotice.value = null
 }
 
 function cancelEditFields() {
   editingCode.value = null
   editFieldErrors.value = []
+  editSchemaNotice.value = null
 }
 
 async function saveEditFields() {
   const fieldErrors = validateFieldDefinitions(editDraft.value.fieldDefinitions)
   if (fieldErrors.length > 0) {
     editFieldErrors.value = fieldErrors
+    editSchemaNotice.value = null
     return
   }
   try {
@@ -233,9 +259,11 @@ async function saveEditFields() {
     })
     editingCode.value = null
     editFieldErrors.value = []
+    editSchemaNotice.value = null
     await refresh()
   } catch (err) {
-    editFieldErrors.value = [toProblemDetail(err).detail ?? t('admin.types.errors.schema')]
+    editFieldErrors.value = []
+    editSchemaNotice.value = schemaNoticeOf(err, t('admin.types.errors.schema'))
   }
 }
 
@@ -281,6 +309,14 @@ const { t } = useI18n()
   <section>
     <h1>{{ t('admin.types.title') }}</h1>
     <p v-if="error" class="error">{{ error }}</p>
+    <div v-if="schemaNotice" class="error schema-notice" role="alert">
+      <p data-testid="schema-detail">{{ schemaNotice.detail }}</p>
+      <ul v-if="schemaNotice.duplicates.length">
+        <li v-for="(duplicate, index) in schemaNotice.duplicates" :key="index" data-testid="schema-duplicate">
+          {{ t('admin.types.duplicate', { field: duplicate.field, value: duplicate.value, references: duplicateReferences(duplicate) }) }}
+        </li>
+      </ul>
+    </div>
 
     <section class="retention-block" aria-labelledby="retention-heading">
       <h2 id="retention-heading">{{ t('admin.types.retention') }}</h2>
@@ -457,6 +493,14 @@ const { t } = useI18n()
     <section v-if="editingCode" class="edit-fields-panel" data-testid="type-edit-fields-panel">
       <h2>{{ t('admin.types.editFieldsTitle', { code: editingCode }) }}</h2>
       <p v-if="editFieldErrors.length" class="error">{{ editFieldErrors.join(' ') }}</p>
+      <div v-if="editSchemaNotice" class="error schema-notice" role="alert">
+        <p data-testid="schema-detail">{{ editSchemaNotice.detail }}</p>
+        <ul v-if="editSchemaNotice.duplicates.length">
+          <li v-for="(duplicate, index) in editSchemaNotice.duplicates" :key="index" data-testid="schema-duplicate">
+            {{ t('admin.types.duplicate', { field: duplicate.field, value: duplicate.value, references: duplicateReferences(duplicate) }) }}
+          </li>
+        </ul>
+      </div>
       <label class="allow-unknown-fields">
         <input v-model="editDraft.allowUnknownFields" type="checkbox" data-testid="type-allow-unknown-fields" />
         {{ t('admin.types.allowUnknown') }}
@@ -530,6 +574,9 @@ td {
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid #ddd;
+}
+.schema-notice li {
+  white-space: pre-wrap;
 }
 .edit-fields-panel__actions {
   display: flex;

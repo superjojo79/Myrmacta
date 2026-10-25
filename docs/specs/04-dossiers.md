@@ -964,7 +964,7 @@ infrastructure
   (`SecurityAuditLog.sensitiveFieldChanged`, niveau INFO), jamais bloqué.
 - **Tests :** `UpdateDossierFieldsUseCaseImplTest`, tests du contrôleur, Playwright `E2E-22`.
 
-## Implémentation — unicité d'un champ et recherche depuis un workflow (TODO §102, issue #184, lots A et B)
+## Implémentation — unicité d'un champ et recherche depuis un workflow (TODO §102, issue #184)
 
 - **Déclaration :** `FieldDefinition.unique` sur un champ `STRING`, `NUMBER` ou `DATE`, non sensible, hors groupe, nom ≤ 100
   caractères ; permis sur un champ calculé (clé normalisée par une formule).
@@ -975,8 +975,20 @@ infrastructure
   dossier recalculé par les règles (`DossierUniqueKeys`).
 - **Erreurs :** doublon → 400, `errors[]` `code: "UNIQUE"` + `reference` du détenteur (pré-contrôle de la création, de la
   correction et de l'essai à blanc MCP ; la base tranche les courses). Activer `unique` sur des doublons ouverts → 409 avec
-  `duplicates`. Webhook entrant : 400 avec champs et codes seulement.
-- **Tests :** `DossierUniqueValueIT`, `DossierUniqueTypeIT`, `UniqueFieldApiTest`, `UniqueFieldWorkflowIT`.
+  `duplicates` (au plus 20 valeurs ; `duplicateCount` est le total, et le `detail` le nomme quand la liste est tronquée).
+  Chaque valeur cite au plus 20 références et garde le total dans `referenceCount`. Webhook entrant : 400 avec champs et
+  codes seulement.
+- **Saisie :** case « Valeur unique » dans l'éditeur de schéma, inactive hors `STRING`, `NUMBER` et `DATE` ou sur un champ sensible
+  (raison visible, hors du libellé, reliée par `aria-describedby`). Sous le champ, `UNIQUE` s'affiche
+  « Déjà utilisé par le dossier {reference} » ; le message serveur anglais n'est pas recopié. Un champ masqué ou inconnu
+  reste dans la bannière du formulaire qui a produit l'erreur. Guide :
+  [GUIDE-UTILISATEUR.md](../guides/GUIDE-UTILISATEUR.md) §1.
+- **Tests :** `DossierUniqueValueIT`, `DossierUniqueTypeIT`, `UniqueFieldApiTest`, `UniqueFieldWorkflowIT`,
+  `RiverainUniquenessExampleTest`.
+- **Exemple riverain :** `plaqueNormalisee` est déclarée `unique`. La case « J'ai vérifié qu'aucune autre demande n'existe
+  pour ce véhicule » est retirée du questionnaire d'instruction, et la tâche ne demande plus de rechercher le doublon à la
+  main. Une seconde demande ouverte dont la plaque se normalise vers la même clé est refusée à la création.
+  `exemples/autorisation-riverain/DIFFICULTES.md` §1 est levée.
 - **Recherche depuis un workflow (lot B) :** brique `${dossierSearchTask}` — dossiers en cours du même type, dossier courant
   exclu, 1 à 3 égalités sur des champs cherchables ; nombre et référence du plus ancien
   ([GUIDE-CONCEPTION-BPMN.md](../guides/GUIDE-CONCEPTION-BPMN.md) §3octies). Port `DossierSearchPort.findOpenMatches`,

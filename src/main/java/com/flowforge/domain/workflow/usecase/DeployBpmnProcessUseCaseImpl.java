@@ -147,7 +147,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
                 throw new InvalidBpmnException("BPMN portalLinkTtlDays exceeds the tenant ceiling of " + ceiling
                         + " days: " + task.taskDefinitionKey());
             }
-            // TODO §103 (E2) — même règle que le portail éteint : pas de tâche qu'aucun tiers ne pourrait ouvrir.
+            // TODO §104 (E2) — même règle que le portail éteint : pas de tâche qu'aucun tiers ne pourrait ouvrir.
             if (task.requiresStrongAuthentication() && !portalAvailability.isStrongAuthenticationEnabled()) {
                 throw new InvalidBpmnException("BPMN portalIdentityField requires strong authentication of third "
                         + "parties to be enabled (APP_PORTAL_STRONG_AUTH_ENABLED=true): " + task.taskDefinitionKey());

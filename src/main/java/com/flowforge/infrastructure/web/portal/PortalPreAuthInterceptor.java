@@ -58,7 +58,7 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * Contrôleurs publics du portail : tâche externe, signature (TODO §72) et authentification forte (TODO §103)
+     * Contrôleurs publics du portail : tâche externe, signature (TODO §72) et authentification forte (TODO §104)
      * partagent la limite par IP.
      */
     private static boolean isPortalPublicController(Class<?> beanType) {

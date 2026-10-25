@@ -39,7 +39,7 @@ import java.util.Objects;
  *   <li>notification des participants internes (US-6).</li>
  * </ol>
  *
- * <p>TODO §103 — tâche à authentification forte : l'accès exige la preuve d'identité ; la correspondance avec le champ
+ * <p>TODO §104 — tâche à authentification forte : l'accès exige la preuve d'identité ; la correspondance avec le champ
  * d'identité est recalculée sur le dossier relu dans cette transaction (le champ a pu changer depuis l'authentification,
  * T6). Premier enregistrement : le NRN vérifié est écrit par le use case de correction des champs, en contexte système
  * et à version attendue, après le passage du lien en {@code COMPLETED} ; la preuve et le NRN chiffré sont effacés, la

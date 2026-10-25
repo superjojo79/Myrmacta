@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Identité vérifiée rattachée à un lien portail (TODO §103, T9, D-BEAUTH-PROOF), une au plus par lien. Tant qu'elle
+ * Identité vérifiée rattachée à un lien portail (TODO §104, T9, D-BEAUTH-PROOF), une au plus par lien. Tant qu'elle
  * n'est pas soumise, {@code proofHash} (SHA-256 de la preuve remise au navigateur) en fait un justificatif valable
  * jusqu'à {@code expiresAt}, et {@code nrnEnc} garde le NRN chiffré pour la soumission. À la soumission, preuve et NRN
  * sont effacés : il ne reste que la trace ({@link #trace()}).

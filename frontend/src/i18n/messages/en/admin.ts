@@ -236,6 +236,8 @@ const admin: typeof fr = {
       schema: 'Unable to save the schema',
       clearSla: 'Unable to remove the SLA',
     },
+    duplicate: '{field} = {value}: {references}',
+    duplicateReferences: '{references} ({total} in total)',
   },
   promotion: {
     title: 'Configuration promotion',

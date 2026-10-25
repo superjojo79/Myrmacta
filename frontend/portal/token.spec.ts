@@ -47,7 +47,7 @@ describe('takeLinkFromLocation (S-VT-1)', () => {
   })
 })
 
-/** TODO §103 (D-BEAUTH-PROOF) — retour du fournisseur d'identité : preuve dans le fragment, ou refus neutre. */
+/** TODO §104 (D-BEAUTH-PROOF) — retour du fournisseur d'identité : preuve dans le fragment, ou refus neutre. */
 describe('takeLinkFromLocation — strong authentication return', () => {
   it('reads the identity proof, clears it from the address bar and never stores it', () => {
     const replaceState = vi.fn()

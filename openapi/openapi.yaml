@@ -2010,12 +2010,12 @@ paths:
               $ref: "#/components/schemas/UpdateDossierTypeRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "409":
+          description: Schema incompatible with existing dossiers
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/DossierTypeResponse"
+                $ref: "#/components/schemas/SchemaIncompatibleProblem"
   /api/document-templates/{id}:
     get:
       tags:
@@ -4727,6 +4727,45 @@ components:
           type: array
           items:
             type: string
+    SchemaIncompatibleProblem:
+      type: object
+      description: "409: the new schema is incompatible with existing dossiers"
+      properties:
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        incompatibleCount:
+          type: integer
+          format: int32
+        sampleReferences:
+          type: array
+          items:
+            type: string
+        duplicates:
+          type: array
+          items:
+            $ref: "#/components/schemas/UniqueDuplicate"
+        duplicateCount:
+          type: integer
+          format: int32
+    UniqueDuplicate:
+      type: object
+      properties:
+        field:
+          type: string
+        value:
+          type: string
+        references:
+          type: array
+          items:
+            type: string
+        referenceCount:
+          type: integer
+          format: int32
     UpdateRequest:
       type: object
       properties:

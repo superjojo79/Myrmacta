@@ -84,9 +84,9 @@ Les questions `D-SIGNATURE-*` ont été déplacées dans
 [30-signature-electronique.md](30-signature-electronique.md). `D-SIGNATURE-SCOPE` est **tranchée**
 par la scission : lot séparé, après le portail.
 
-## 5. Authentification forte du tiers (TODO §103)
+## 5. Authentification forte du tiers (TODO §104)
 
-Livrée par l'issue #210 ([§103](../decisions/103-authentification-belge-fas-et-itsme.md)). Une tâche externe qui porte
+Livrée par l'issue #210 ([§104](../decisions/104-authentification-belge-fas-et-itsme.md)). Une tâche externe qui porte
 `flowable:portalIdentityField="dossierField:<champ>"` exige que le tiers s'identifie par FAS ou par itsme.
 
 - **Client OIDC direct** (D-BEAUTH-PORTAL-CLIENT) : l'instance parle au fournisseur sans Keycloak ni compte pour le tiers ;

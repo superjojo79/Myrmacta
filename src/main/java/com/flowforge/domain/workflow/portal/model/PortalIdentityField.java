@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Champ d'identité d'une tâche externe à authentification forte (TODO §103, T2), déclaré par
+ * Champ d'identité d'une tâche externe à authentification forte (TODO §104, T2), déclaré par
  * {@code flowable:portalIdentityField="dossierField:<champ>"}. Même grammaire que {@link PortalRecipientSource},
  * réduite à {@code dossierField:} : le NRN vit dans le dossier, jamais dans une variable de process (N2). Lu par nom
  * littéral, jamais évalué (§69).

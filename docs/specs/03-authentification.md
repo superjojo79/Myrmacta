@@ -363,7 +363,7 @@ travail ([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1
 - **Tests :** `SecurityHeadersCustomizerTest`, `SecurityHeadersApiTest`, `SecurityHeadersHstsApiTest`,
   `FrontendCspLiteralConsistencyTest` ; Playwright `E2E-HDR-1/2`.
 
-## Implémentation — fournisseurs d'identité belges (TODO §103, issue #210)
+## Implémentation — fournisseurs d'identité belges (TODO §104, issue #210)
 
 - **Agents.** FAS (BOSA : eID, itsme, eIDAS) et itsme en direct sont des fournisseurs d'identité OIDC du realm Keycloak du
   tenant (identity brokering) : le BFF voit toujours un ID token du realm, avec `tenant_id` et `realm_access.roles`.

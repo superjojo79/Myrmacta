@@ -158,7 +158,7 @@ describe('PortalApp', () => {
     expect(wrapper.find('[data-testid="portal-denied"]').exists()).toBe(true)
   })
 
-  /** TODO §103 (T3b, D-BEAUTH-PROOF, T10) — authentification forte d'un tiers. */
+  /** TODO §104 (T3b, D-BEAUTH-PROOF, T10) — authentification forte d'un tiers. */
   describe('strong authentication', () => {
     const reduced: api.PortalTask = {
       dossierReference: 'DOS-2026-0042',

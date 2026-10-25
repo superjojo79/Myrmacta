@@ -51,7 +51,7 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
     public PortalTaskView get(PortalCredential credential) {
         PortalAccessResolver.ResolvedAccess access = accessResolver.resolveAllowingPendingIdentity(credential);
         if (access.identityRequired() && access.identity() == null) {
-            // TODO §103 (T3b) — avant l'authentification : référence et nom de la tâche, rien d'autre.
+            // TODO §104 (T3b) — avant l'authentification : référence et nom de la tâche, rien d'autre.
             return new PortalTaskView(access.dossier().reference(), access.task().name(), null, null, List.of(),
                     access.link().expiresAt(), List.of(), true, identityProviders.providers(), null);
         }

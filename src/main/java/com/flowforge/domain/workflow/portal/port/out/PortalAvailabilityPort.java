@@ -9,7 +9,7 @@ public interface PortalAvailabilityPort {
     int maxLinkTtlDays();
 
     /**
-     * TODO §103 (E1, D-BEAUTH-ACTIVATION) — authentification forte des tiers activée, avec au moins un fournisseur
+     * TODO §104 (E1, D-BEAUTH-ACTIVATION) — authentification forte des tiers activée, avec au moins un fournisseur
      * configuré (vérifié au démarrage). Désactivée par défaut.
      */
     default boolean isStrongAuthenticationEnabled() {

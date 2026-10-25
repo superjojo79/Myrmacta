@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * TODO §103 (issue #210, D-BEAUTH-PORTAL-CLIENT) — l'instance, cliente OIDC directe de FAS et d'itsme pour le portail :
+ * TODO §104 (issue #210, D-BEAUTH-PORTAL-CLIENT) — l'instance, cliente OIDC directe de FAS et d'itsme pour le portail :
  * code d'autorisation avec PKCE (S256), authentification du client par {@code private_key_jwt} (clé de l'instance,
  * T11) ou, si le fournisseur a émis un secret, par {@code client_secret_post}, ID token éventuellement chiffré (itsme) puis vérifié sur la JWKS du fournisseur : signature, émetteur de la
  * découverte, audience, expiration, {@code nonce}. Sans session ni {@code oauth2Login} : le portail reste sans état

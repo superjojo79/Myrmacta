@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * TODO §103 — fournisseur OIDC en mémoire (FAS ou itsme simulé) pour les tests d'intégration du portail : découverte,
+ * TODO §104 — fournisseur OIDC en mémoire (FAS ou itsme simulé) pour les tests d'intégration du portail : découverte,
  * JWKS, endpoint de jeton qui exige l'assertion {@code private_key_jwt} signée par la clé de l'instance et le
  * vérificateur PKCE, puis émet un ID token signé portant les claims enregistrés pour le code.
  */

@@ -22,7 +22,6 @@ const emit = defineEmits<{
   complete: [taskId: string, variables?: Record<string, unknown>]
   reassign: [taskId: string]
   claim: [taskId: string]
-  'form-error': [message: string]
 }>()
 
 const { t } = useI18n()
@@ -52,7 +51,6 @@ function assigneeLabel(assignee: string | null): string {
             :task-id="task.taskId"
             :form-key="task.formKey"
             @ready="emit('complete', task.taskId, $event)"
-            @error="emit('form-error', $event)"
           />
           <button
             v-else

@@ -1088,3 +1088,50 @@ test('E2E-PARCOURS-2 parcours designer: dossier type, field mapping rows, live f
   await expect(page.getByTestId('parcours-diagram').locator('[data-element-id="maj"]')).toBeVisible()
   await expect(page.getByTestId('parcours-xml')).toBeHidden()
 })
+
+test('E2E-UNIQUE-5 the dossier search block is in the palette and a bad criterion is flagged', async ({ page }) => {
+  await mockBlockApis(page)
+  let putBody = ''
+  await page.route('**/api/workflow-bpmn-drafts/Process_1', async (route) => {
+    putBody = route.request().postData() ?? ''
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ processDefinitionKey: 'Process_1', xml: '<definitions/>', updatedAt: '2026-09-29T00:00:00Z', updatedBy: 'u' }),
+    })
+  })
+  await openApp(page)
+  await openBpmnEditor(page)
+  const entry = page.locator('[data-action="create-block-search-dossiers"]')
+  await expect(entry).toBeVisible()
+  await expect(entry).toHaveAttribute('title', /Rechercher des dossiers/)
+  await entry.click()
+  await page.mouse.move(500, 300)
+  await page.mouse.click(500, 300)
+  await page.keyboard.press('Escape')
+  const task = page.locator('.djs-element.djs-shape[data-element-id^="Activity_"], .djs-element.djs-shape[data-element-id^="ServiceTask_"]').first()
+  await expect(task).toBeVisible()
+  await task.click()
+  await page.getByLabel('Critères').fill('email = dossierField:email')
+  // Le panneau se redessine à chaque valeur enregistrée : attendre le modèle avant le champ suivant.
+  await expect(page.getByText('« Critères » est obligatoire.')).toHaveCount(0)
+  await page.getByLabel('Variable du nombre trouvé').fill('nbDemandes')
+  await expect(page.getByText('« Variable du nombre trouvé » est obligatoire.')).toHaveCount(0)
+  await page.getByLabel('Variable de la référence').fill('premiereDemande')
+  await expect(page.getByText('« Variable de la référence » est obligatoire.')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
+  await expect.poll(() => putBody.length > 0).toBe(true)
+  expect(putBody).toContain('dossierSearchTask')
+  expect(putBody).toContain('searchCriteria')
+  expect(putBody).toContain('email = dossierField:email')
+  expect(putBody).toContain('searchCountResult')
+  expect(putBody).toContain('nbDemandes')
+
+  const invalid = editableBpmn(
+    'otherWorkflow',
+    '<serviceTask id="voisins" name="Voisins" flowable:delegateExpression="${dossierSearchTask}" flowable:searchCriteria="email = x" flowable:searchCountResult="nb" flowable:searchFirstReferenceResult="ref"/>',
+    ['voisins'],
+  )
+  await importBpmn(page, invalid, 'voisins')
+  await expect(page.locator('[data-element-id="voisins"].fb-block-warning')).toBeVisible()
+})

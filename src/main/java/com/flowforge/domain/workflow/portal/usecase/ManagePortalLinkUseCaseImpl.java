@@ -54,7 +54,7 @@ public final class ManagePortalLinkUseCaseImpl implements ManagePortalLinkUseCas
                 clock, null);
     }
 
-    /** {@code identities} : traces d'authentification forte montrées à l'instructeur (TODO §103) ; nul si absentes. */
+    /** {@code identities} : traces d'authentification forte montrées à l'instructeur (TODO §104) ; nul si absentes. */
     public ManagePortalLinkUseCaseImpl(
             String tenantId,
             PortalLinkRepository repository,

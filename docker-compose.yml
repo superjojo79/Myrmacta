@@ -46,7 +46,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.1
-    # TODO §103 — même port dans le conteneur et sur l'hôte : le realm flowforge appelle le simulateur FAS
+    # TODO §104 — même port dans le conteneur et sur l'hôte : le realm flowforge appelle le simulateur FAS
     # (fas-simulateur-realm.json) par http://localhost:<port>, l'adresse que voit aussi le navigateur.
     command: start-dev --import-realm --http-port=${KEYCLOAK_PORT:-8081}
     environment:

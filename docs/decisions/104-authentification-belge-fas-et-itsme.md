@@ -1,4 +1,4 @@
-# §103 — Authentification belge (FAS, itsme) des agents et des tiers du portail
+# §104 — Authentification belge (FAS, itsme) des agents et des tiers du portail
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 

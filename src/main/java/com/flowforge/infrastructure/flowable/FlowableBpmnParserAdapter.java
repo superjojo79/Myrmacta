@@ -392,7 +392,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             }
             return Optional.empty();
         }
-        // TODO §103 (T2) — dossierField: seulement : le NRN vit dans le dossier, jamais dans une variable (N2).
+        // TODO §104 (T2) — dossierField: seulement : le NRN vit dans le dossier, jamais dans une variable (N2).
         PortalIdentityField identityField = identityRaw == null ? null : PortalIdentityField.parse(identityRaw)
                 .orElseThrow(() -> new InvalidBpmnException(
                         owner + ": portalIdentityField must be dossierField:<name>"));

@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * TODO §103 (T2, D-BEAUTH-NRN-FIELD) — le champ d'identité d'une tâche à authentification forte doit être déclaré dans
+ * TODO §104 (T2, D-BEAUTH-NRN-FIELD) — le champ d'identité d'une tâche à authentification forte doit être déclaré dans
  * le type du dossier, de type {@code STRING} et {@code sensitive} : c'est le masquage des champs sensibles qui protège
  * le NRN une fois écrit (N1). Vérifié à l'émission du lien, le type ayant pu changer depuis le déploiement.
  */

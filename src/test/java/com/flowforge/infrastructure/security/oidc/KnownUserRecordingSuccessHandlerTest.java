@@ -67,7 +67,7 @@ class KnownUserRecordingSuccessHandlerTest {
     }
 
     /**
-     * TODO §103 (issue #210, A6) — l'annuaire était alimenté au retour de connexion, avant toute vérification du
+     * TODO §104 (issue #210, A6) — l'annuaire était alimenté au retour de connexion, avant toute vérification du
      * {@code tenant_id} : un compte créé par FAS sans {@code tenant_id}, ou un utilisateur d'un autre tenant du realm
      * partagé, y entrait. Il n'est plus enregistré, sa session est fermée et la réponse est un 403.
      */

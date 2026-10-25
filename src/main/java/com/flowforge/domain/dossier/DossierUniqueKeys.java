@@ -8,6 +8,7 @@ import com.flowforge.domain.dossier.model.UniqueKey;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,10 +40,21 @@ public final class DossierUniqueKeys {
         return UniqueFieldKeys.of(definitions, dossier.status(), fields);
     }
 
+    /** Nombre de références renvoyées par valeur. Le total reste dans {@link UniqueDuplicate#referenceCount()}. */
+    static final int REFERENCE_LIMIT = 20;
+
     /** Valeurs tenues par plus d'un des dossiers donnés (les clôturés ne tiennent rien), triées par champ puis valeur. */
     public List<UniqueDuplicate> duplicates(List<FieldDefinition> definitions, List<Dossier> dossiers) {
+        return index(definitions, dossiers).duplicates();
+    }
+
+    /**
+     * Même regroupement que {@link #duplicates}, plus toutes les références concernées : le décompte d'incompatibilité
+     * ne doit pas se limiter à l'échantillon renvoyé.
+     */
+    public DuplicateIndex index(List<FieldDefinition> definitions, List<Dossier> dossiers) {
         if (!UniqueFieldKeys.hasUniqueField(definitions)) {
-            return List.of();
+            return new DuplicateIndex(List.of(), Set.of());
         }
         Map<UniqueKey, List<String>> holders = new LinkedHashMap<>();
         for (Dossier dossier : dossiers) {
@@ -50,11 +62,21 @@ public final class DossierUniqueKeys {
                 holders.computeIfAbsent(key, k -> new ArrayList<>()).add(dossier.reference());
             }
         }
-        return holders.entrySet().stream()
+        List<UniqueDuplicate> duplicates = new ArrayList<>();
+        Set<String> concerned = new LinkedHashSet<>();
+        holders.entrySet().stream()
                 .filter(entry -> entry.getValue().size() > 1)
-                .map(entry -> new UniqueDuplicate(
-                        entry.getKey().field(), entry.getKey().value(), entry.getValue().stream().sorted().toList()))
-                .sorted(Comparator.comparing(UniqueDuplicate::field).thenComparing(UniqueDuplicate::value))
-                .toList();
+                .sorted(Comparator.comparing((Map.Entry<UniqueKey, List<String>> entry) -> entry.getKey().field())
+                        .thenComparing(entry -> entry.getKey().value()))
+                .forEach(entry -> {
+                    List<String> all = entry.getValue().stream().sorted().toList();
+                    concerned.addAll(all);
+                    List<String> shown = all.size() <= REFERENCE_LIMIT ? all : all.subList(0, REFERENCE_LIMIT);
+                    duplicates.add(new UniqueDuplicate(entry.getKey().field(), entry.getKey().value(), shown, all.size()));
+                });
+        return new DuplicateIndex(List.copyOf(duplicates), Set.copyOf(concerned));
+    }
+
+    public record DuplicateIndex(List<UniqueDuplicate> duplicates, Set<String> holders) {
     }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import type { FieldDefinition, FieldType } from '@/api/types'
 
 // TODO §76 (D1) : `mode` choisit les types proposés — `fields` (champs de dossier : tous), `task` (questions de tâche :
@@ -96,11 +96,19 @@ function parseRows(raw: string): number | null {
 }
 
 const SEARCHABLE_TYPES = ['STRING', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT']
+const UNIQUE_TYPES: FieldType[] = ['STRING', 'NUMBER', 'DATE']
+const uniqueReasonPrefix = useId()
+
+function uniqueReasonId(index: number): string {
+  return `${uniqueReasonPrefix}-unique-${index}`
+}
 
 function updateRow(index: number, patch: Partial<FieldDefinition>) {
   const next = { ...rows.value[index]!, ...patch }
   // TODO §81 (D2) : un champ sensible ou d'un type non scalaire ne peut pas être cherchable.
   if (next.searchable && (next.sensitive || !SEARCHABLE_TYPES.includes(next.type))) next.searchable = false
+  // TODO §102 : unique seulement sur texte, nombre ou date, jamais sur un champ sensible ni une colonne de groupe.
+  if (next.unique && (props.mode !== 'fields' || next.sensitive || !UNIQUE_TYPES.includes(next.type))) next.unique = false
   rows.value[index] = next
   emitRows()
 }
@@ -267,6 +275,26 @@ function parseOptions(raw: string): string[] {
         />
         {{ t('dossier.defsEditor.searchable') }}
       </label>
+      <div v-if="mode === 'fields'" class="field-def-editor__checkbox">
+        <label :title="UNIQUE_TYPES.includes(def.type) && !def.sensitive ? t('dossier.defsEditor.uniqueHint') : undefined">
+          <input
+            type="checkbox"
+            :checked="!!def.unique"
+            :disabled="!!def.sensitive || !UNIQUE_TYPES.includes(def.type)"
+            data-testid="field-def-unique"
+            :aria-describedby="def.sensitive || !UNIQUE_TYPES.includes(def.type) ? uniqueReasonId(index) : undefined"
+            @change="updateRow(index, { unique: ($event.target as HTMLInputElement).checked })"
+          />
+          {{ t('dossier.defsEditor.unique') }}
+        </label>
+        <small
+          v-if="def.sensitive || !UNIQUE_TYPES.includes(def.type)"
+          :id="uniqueReasonId(index)"
+          class="field-def-editor__hint"
+        >
+          {{ def.sensitive ? t('dossier.defsEditor.uniqueDisabledSensitive') : t('dossier.defsEditor.uniqueDisabledType') }}
+        </small>
+      </div>
       <details v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP' && def.type !== 'FILE'" class="field-def-editor__rules" data-testid="field-def-rules">
         <summary>{{ t('dossier.defsEditor.rules') }}</summary>
         <i18n-t keypath="dossier.defsEditor.rulesHint" tag="p" class="field-def-editor__hint">

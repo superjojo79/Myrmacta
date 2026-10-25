@@ -281,4 +281,75 @@ describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () =>
       expect((wrapper.get('[data-testid="field-def-searchable"]').element as HTMLInputElement).disabled).toBe(true)
     })
   })
+
+  describe('Valeur unique (TODO §102)', () => {
+    const row = (over: Partial<FieldDefinition> = {}): FieldDefinition => ({
+      name: 'plaque', label: 'Plaque', type: 'STRING', required: false, ...over,
+    })
+
+    it('offers the checkbox on text, number and date, including a computed field, and emits unique', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, {
+        props: { modelValue: [row(), row({ name: 'n', type: 'NUMBER' }), row({ name: 'd', type: 'DATE' }), row({ name: 'c', formula: '1' })] },
+      })
+      const boxes = wrapper.findAll('[data-testid="field-def-unique"]')
+      expect(boxes).toHaveLength(4)
+      expect(boxes.every((box) => (box.element as HTMLInputElement).disabled)).toBe(false)
+      expect(wrapper.text()).toContain('Valeur unique')
+      await boxes[0]!.setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[]
+      expect(emitted[0]!.unique).toBe(true)
+    })
+
+    it('disables the checkbox outside STRING, NUMBER and DATE, and on a sensitive field', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, {
+        props: {
+          modelValue: [
+            row({ type: 'BOOLEAN' }),
+            row({ name: 'sel', type: 'SELECT' }),
+            row({ name: 'f', type: 'FILE' }),
+            row({ name: 'secret', sensitive: true }),
+          ],
+        },
+      })
+      const boxes = wrapper.findAll('[data-testid="field-def-unique"]')
+      expect(boxes).toHaveLength(4)
+      expect(boxes.every((box) => (box.element as HTMLInputElement).disabled)).toBe(true)
+    })
+
+    it('shows why the unique checkbox is inactive, not only in a title', () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, {
+        props: { modelValue: [row({ type: 'BOOLEAN' }), row({ name: 'secret', sensitive: true })] },
+      })
+      const boxes = wrapper.findAll('[data-testid="field-def-unique"]')
+      const reason = (box: (typeof boxes)[number]) => {
+        const describedBy = box.attributes('aria-describedby')
+        return describedBy ? wrapper.get(`[id="${describedBy}"]`).text() : ''
+      }
+      expect(reason(boxes[0]!)).toContain('Réservé aux champs texte, nombre ou date')
+      expect(reason(boxes[1]!)).toContain('Un champ sensible ne peut pas être unique')
+      expect(wrapper.text()).toContain('Réservé aux champs texte, nombre ou date')
+      expect(wrapper.text()).toContain('Un champ sensible ne peut pas être unique')
+      for (const box of boxes) {
+        const describedBy = box.attributes('aria-describedby')
+        expect(describedBy).toBeTruthy()
+        expect(wrapper.get(`[id="${describedBy}"]`).element.closest('label')).toBeNull()
+      }
+    })
+
+    it('clears unique when the field becomes sensitive or leaves the allowed types', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, {
+        props: { modelValue: [row({ unique: true })] },
+      })
+      await wrapper.get('[data-testid="field-def-sensitive"]').setValue(true)
+      expect((wrapper.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[])[0]!.unique).toBe(false)
+      const typed = mount(FieldDefinitionDefsEditor, { props: { modelValue: [row({ unique: true })] } })
+      await typed.get('[data-testid="field-def-type"]').setValue('BOOLEAN')
+      expect((typed.emitted('update:modelValue')?.[0]?.[0] as FieldDefinition[])[0]!.unique).toBe(false)
+    })
+
+    it('hides the checkbox on group columns', () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, { props: { modelValue: [row()], mode: 'subfields' } })
+      expect(wrapper.find('[data-testid="field-def-unique"]').exists()).toBe(false)
+    })
+  })
 })

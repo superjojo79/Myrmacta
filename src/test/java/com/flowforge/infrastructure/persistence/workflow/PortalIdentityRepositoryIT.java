@@ -24,7 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** TODO §103 (D-BEAUTH-STORE, T9) — tentatives à usage unique, identité par lien, trace sans NRN, nettoyage, cascade. */
+/** TODO §104 (D-BEAUTH-STORE, T9) — tentatives à usage unique, identité par lien, trace sans NRN, nettoyage, cascade. */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
 class PortalIdentityRepositoryIT {

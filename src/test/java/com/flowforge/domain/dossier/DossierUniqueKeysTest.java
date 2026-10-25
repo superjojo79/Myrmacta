@@ -57,6 +57,20 @@ class DossierUniqueKeysTest {
     }
 
     @Test
+    void duplicatesSampleReferencesAndKeepTheFullHolderCount() {
+        var keys = new DossierUniqueKeys(DossierFieldRules.disabled());
+        var dossiers = new java.util.ArrayList<Dossier>();
+        for (int i = 0; i < 25; i++) {
+            dossiers.add(dossier("R" + i, DossierStatus.EN_COURS, Map.of("plaque", "A")));
+        }
+
+        var duplicate = keys.duplicates(List.of(PLAQUE), dossiers).getFirst();
+
+        assertThat(duplicate.references()).hasSize(20);
+        assertThat(duplicate.referenceCount()).isEqualTo(25);
+    }
+
+    @Test
     void nothingWithoutAUniqueFieldOrForAClosedDossier() {
         var keys = new DossierUniqueKeys(DossierFieldRules.disabled());
         var libre = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null);

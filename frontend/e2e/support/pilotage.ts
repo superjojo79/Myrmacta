@@ -1445,6 +1445,26 @@ export const BLOCK_CATALOG = {
       ],
     },
     {
+      id: 'search-dossiers',
+      label: 'Rechercher des dossiers',
+      description: 'Compte les dossiers en cours du même type qui partagent des valeurs.',
+      category: 'DOSSIER',
+      element: 'SERVICE_TASK',
+      marker: { delegate: 'dossierSearchTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false },
+      parameters: [
+        blockParam({
+          name: 'searchCriteria',
+          label: 'Critères',
+          required: true,
+          maxLength: 1000,
+          multiline: true,
+          help: 'Une ligne : champ = dossierField:<champ> ou champ = variable:<nom>.',
+        }),
+        blockParam({ name: 'searchCountResult', label: 'Variable du nombre trouvé', required: true, maxLength: 60 }),
+        blockParam({ name: 'searchFirstReferenceResult', label: 'Variable de la référence', required: true, maxLength: 60 }),
+      ],
+    },
+    {
       id: 'map-fields',
       label: 'Enregistrer des valeurs dans le dossier',
       description: 'Enregistre des valeurs calculées dans des champs du dossier.',

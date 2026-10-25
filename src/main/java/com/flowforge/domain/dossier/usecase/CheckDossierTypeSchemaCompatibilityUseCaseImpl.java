@@ -57,13 +57,15 @@ public final class CheckDossierTypeSchemaCompatibilityUseCaseImpl
 
         // TODO §102 (U10, D-UNIQUE-EXISTING) : un champ unique ne s'active pas tant que des dossiers ouverts en partagent la
         // valeur ; ces dossiers sont incompatibles au même titre que les autres.
-        List<UniqueDuplicate> duplicates = uniqueKeys.duplicates(query.newFieldDefinitions(), dossiers);
+        var duplicateIndex = uniqueKeys.index(query.newFieldDefinitions(), dossiers);
+        List<UniqueDuplicate> duplicates = duplicateIndex.duplicates();
         Set<String> incompatible = new LinkedHashSet<>(incompatibleReferences);
-        duplicates.forEach(duplicate -> incompatible.addAll(duplicate.references()));
+        incompatible.addAll(duplicateIndex.holders());
 
         return new Result(
                 incompatible.size(),
                 incompatible.stream().limit(SAMPLE_LIMIT).toList(),
-                duplicates.stream().limit(DUPLICATE_LIMIT).toList());
+                duplicates.stream().limit(DUPLICATE_LIMIT).toList(),
+                duplicates.size());
     }
 }

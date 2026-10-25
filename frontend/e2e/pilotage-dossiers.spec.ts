@@ -3,7 +3,9 @@ import { expect, test } from '@playwright/test'
 import {
   RICH_TYPE,
   DOSSIER_ID,
+  LINK_ID,
   dossierBody,
+  envelope,
   mockSession,
   openApp,
   createAndOpenDossier,
@@ -385,6 +387,101 @@ test('E2E-BASE-1 a nested route loaded directly renders the app', async ({ page 
   await page.goto('/dossiers/new')
   await expect(page.getByText('Ada')).toBeVisible()
   await expect(page.locator('#dossier-label')).toBeVisible()
+})
+
+test('E2E-UNIQUE-7 a linked task does not clear the dossier field banner', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true })
+  let fieldsPatch = 0
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/fields`, async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fallback()
+      return
+    }
+    fieldsPatch += 1
+    const offScreen = fieldsPatch === 1
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        offScreen
+          ? {
+              title: 'Dossier field validation failed',
+              status: 400,
+              detail: 'absent UNIQUE Value already used by dossier DOS-9',
+              errors: [{ field: 'absent', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+            }
+          : {
+              title: 'Dossier field validation failed',
+              status: 400,
+              detail: 'priority UNIQUE Value already used by dossier DOS-2',
+              errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-2', reference: 'DOS-2' }],
+            },
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${LINK_ID}/tasks*`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            taskId: 'task-1',
+            name: 'Review',
+            assignee: 'user-1',
+            taskDefinitionKey: 'review',
+            createTime: '2026-08-12T00:00:00Z',
+            formKey: 'dossier-fields',
+          },
+        ]),
+      ),
+    })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.locator('.dossier-fields-editor input').fill('HIGH')
+  await page.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  const fieldBanner = page.locator('.dossier-detail > .error')
+  await expect(fieldBanner).toContainText('DOS-9')
+  await page.locator('.dossier-fields-task-form input').fill('LOW')
+  await page.locator('.dossier-fields-task-form button').click()
+  await expect(page.locator('.dossier-fields-task-form').getByTestId('field-error')).toContainText('DOS-2')
+  await expect(fieldBanner).toContainText('DOS-9')
+  await expect(page.locator('.dossier-fields-task-form')).not.toContainText('DOS-9')
+})
+
+test('E2E-UNIQUE-3 creating a dossier with a taken value shows the holder reference under the field', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dossiers', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        title: 'Dossier field validation failed',
+        status: 400,
+        detail: 'priority UNIQUE Value already used by dossier DOS-9 SECRET-PLAQUE',
+        errors: [
+          { field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-9 SECRET-PLAQUE', reference: 'DOS-9' },
+          { field: 'priority', code: 'REQUIRED', message: 'Field is required', reference: null },
+        ],
+      }),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Nouveau dossier' }).click()
+  await page.locator('#dossier-label').fill('Doublon')
+  await page.getByRole('button', { name: 'Créer' }).click()
+  const alert = page.getByTestId('field-error')
+  await expect(alert).toContainText('Déjà utilisé par le dossier DOS-9')
+  await expect(alert).toContainText('Field is required')
+  await expect(alert).not.toContainText('SECRET-PLAQUE')
+  await expect(alert).not.toContainText('Value already used')
+  await expect(page.locator('.create-dossier input[aria-invalid="true"]')).toHaveCount(1)
+  await expect(page).toHaveURL(/\/dossiers\/new$/)
 })
 
 test('E2E-BASE-2 logout from a nested route posts to /api/auth/logout', async ({ page }) => {

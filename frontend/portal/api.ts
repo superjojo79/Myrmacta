@@ -20,7 +20,7 @@ export interface PortalAttachment {
 }
 
 /**
- * TODO §103 (T3b) — présent seulement pour une tâche à authentification forte. Non vérifiée : la page ne montre que le
+ * TODO §104 (T3b) — présent seulement pour une tâche à authentification forte. Non vérifiée : la page ne montre que le
  * choix du fournisseur ; vérifiée : le nom de la personne authentifiée.
  */
 export interface PortalIdentity {
@@ -117,7 +117,7 @@ export function submitAnswers(credential: PortalCredential, answers: Record<stri
 }
 
 /**
- * TODO §103 (T3) — « S'identifier » : renvoie l'URL d'autorisation du fournisseur, vers laquelle la page navigue. Le jeton
+ * TODO §104 (T3) — « S'identifier » : renvoie l'URL d'autorisation du fournisseur, vers laquelle la page navigue. Le jeton
  * du lien reste en mémoire et disparaît avec la navigation : au retour, la preuve d'identité le remplace.
  */
 export async function startIdentity(token: string, provider: string): Promise<string> {

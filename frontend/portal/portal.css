@@ -150,7 +150,7 @@ body {
   text-align: center;
 }
 
-/* TODO §103 — authentification forte : un bouton par fournisseur, identité vérifiée rappelée. */
+/* TODO §104 — authentification forte : un bouton par fournisseur, identité vérifiée rappelée. */
 .portal__providers {
   display: flex;
   flex-wrap: wrap;

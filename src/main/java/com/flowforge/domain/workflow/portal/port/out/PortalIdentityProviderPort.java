@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * TODO §103 (D-BEAUTH-PORTAL-CLIENT) — fournisseurs d'identité du portail (FAS, itsme), dont l'instance est elle-même
+ * TODO §104 (D-BEAUTH-PORTAL-CLIENT) — fournisseurs d'identité du portail (FAS, itsme), dont l'instance est elle-même
  * cliente OIDC : aucun compte n'est créé pour un tiers. Le protocole (PKCE, {@code private_key_jwt}, validation de
  * l'ID token) est un détail d'infrastructure.
  */

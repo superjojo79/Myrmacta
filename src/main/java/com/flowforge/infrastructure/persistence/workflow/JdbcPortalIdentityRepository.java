@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** TODO §103 (D-BEAUTH-STORE) — tables {@code portal_identity_attempt} et {@code portal_link_identity} (changeSet 038). */
+/** TODO §104 (D-BEAUTH-STORE) — tables {@code portal_identity_attempt} et {@code portal_link_identity} (changeSet 038). */
 @Component
 class JdbcPortalIdentityRepository implements PortalIdentityRepository {
 

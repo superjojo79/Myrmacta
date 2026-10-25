@@ -11,6 +11,8 @@ public class DossierTypeSchemaIncompatibleException extends IllegalStateExceptio
     private final int incompatibleCount;
     private final List<String> sampleReferences;
     private final List<UniqueDuplicate> duplicates;
+    /** Nombre total de valeurs en double, y compris celles absentes de {@link #duplicates} quand la liste est bornée. */
+    private final int duplicateCount;
 
     public DossierTypeSchemaIncompatibleException(int incompatibleCount, List<String> sampleReferences) {
         this(incompatibleCount, sampleReferences, List.of());
@@ -19,14 +21,30 @@ public class DossierTypeSchemaIncompatibleException extends IllegalStateExceptio
     /** TODO §102 (U10) — {@code duplicates} : valeurs d'un champ unique tenues par plusieurs dossiers ouverts. */
     public DossierTypeSchemaIncompatibleException(
             int incompatibleCount, List<String> sampleReferences, List<UniqueDuplicate> duplicates) {
+        this(incompatibleCount, sampleReferences, duplicates, duplicates.size());
+    }
+
+    /**
+     * TODO §102 — {@code duplicateCount} est le total des valeurs en double. {@code duplicates} peut n'en citer que 20.
+     */
+    public DossierTypeSchemaIncompatibleException(
+            int incompatibleCount, List<String> sampleReferences, List<UniqueDuplicate> duplicates, int duplicateCount) {
         super("Schema change incompatible with " + incompatibleCount + " existing dossier(s)");
         this.incompatibleCount = incompatibleCount;
         this.sampleReferences = List.copyOf(Objects.requireNonNull(sampleReferences, "sampleReferences"));
         this.duplicates = List.copyOf(Objects.requireNonNull(duplicates, "duplicates"));
+        if (duplicateCount < this.duplicates.size()) {
+            throw new IllegalArgumentException("duplicateCount");
+        }
+        this.duplicateCount = duplicateCount;
     }
 
     public List<UniqueDuplicate> duplicates() {
         return duplicates;
+    }
+
+    public int duplicateCount() {
+        return duplicateCount;
     }
 
     public int incompatibleCount() {

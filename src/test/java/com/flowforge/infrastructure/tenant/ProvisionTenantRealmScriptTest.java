@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * TODO §103 (issue #210, D-BEAUTH-PROVISION) — structure du realm par tenant généré par
+ * TODO §104 (issue #210, D-BEAUTH-PROVISION) — structure du realm par tenant généré par
  * {@code scripts/provision-tenant.sh --realm-per-tenant}. La preuve sur un vrai Keycloak est
  * {@code scripts/keycloak-realm-smoke.sh} (D-BEAUTH-KC-SMOKE) ; ce test fige ce que le fichier doit contenir et ne pas
  * contenir.

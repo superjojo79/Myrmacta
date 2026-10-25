@@ -325,7 +325,7 @@ test('E2E-I18N-1 language switch: the whole shell turns English, survives a relo
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
 })
 
-// TODO §103 (issue #210) — authentification forte d'un tiers : vue réduite, départ vers le fournisseur, retour avec la
+// TODO §104 (issue #210) — authentification forte d'un tiers : vue réduite, départ vers le fournisseur, retour avec la
 // preuve d'identité (D-BEAUTH-PROOF), soumission avec la preuve à la place du jeton, refus neutre.
 const IDENTITY_PROOF = 'p'.repeat(43)
 

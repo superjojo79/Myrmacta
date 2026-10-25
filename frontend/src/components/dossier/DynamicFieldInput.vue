@@ -14,6 +14,9 @@ const props = defineProps<{
   inputId?: string
   /** Nom accessible d'un contrôle sans libellé visible propre (cellule d'un groupe). */
   ariaLabel?: string
+  /** Erreur de validation serveur rattachée à ce champ (TODO §102). */
+  invalid?: boolean
+  describedBy?: string
 }>()
 
 const emit = defineEmits<{
@@ -76,6 +79,8 @@ const { t } = useI18n()
     :id="inputId"
     type="checkbox"
     :aria-label="ariaLabel"
+    :aria-invalid="invalid ? 'true' : undefined"
+    :aria-describedby="describedBy"
     :checked="Boolean(modelValue)"
     @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
   />
@@ -83,6 +88,8 @@ const { t } = useI18n()
     v-else-if="field.type === 'SELECT'"
     :id="inputId"
     :aria-label="ariaLabel"
+    :aria-invalid="invalid ? 'true' : undefined"
+    :aria-describedby="describedBy"
     :value="String(modelValue ?? '')"
     @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
   >
@@ -96,12 +103,16 @@ const { t } = useI18n()
       type="text"
       inputmode="decimal"
       autocomplete="off"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.amount', { label: ariaLabel ?? field.label })"
       :value="str(money.amount)"
       @input="setMoney({ amount: ($event.target as HTMLInputElement).value })"
     />
     <select
       v-if="options.length > 0"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.currency', { label: ariaLabel ?? field.label })"
       :value="str(money.currency)"
       @change="setMoney({ currency: ($event.target as HTMLSelectElement).value })"
@@ -116,6 +127,8 @@ const { t } = useI18n()
       size="4"
       placeholder="EUR"
       autocomplete="off"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.currency', { label: ariaLabel ?? field.label })"
       :value="str(money.currency)"
       @input="setMoney({ currency: ($event.target as HTMLInputElement).value.toUpperCase() })"
@@ -125,6 +138,8 @@ const { t } = useI18n()
   <span v-else-if="field.type === 'EXTERNAL_REF'" class="structured-input structured-input--ref">
     <select
       v-if="options.length > 0"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.system', { label: ariaLabel ?? field.label })"
       :value="str(ref.system)"
       @change="setRef({ system: ($event.target as HTMLSelectElement).value })"
@@ -137,6 +152,8 @@ const { t } = useI18n()
       type="text"
       :placeholder="t('dossier.placeholders.system')"
       autocomplete="off"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.system', { label: ariaLabel ?? field.label })"
       :value="str(ref.system)"
       @input="setRef({ system: ($event.target as HTMLInputElement).value })"
@@ -146,6 +163,8 @@ const { t } = useI18n()
       type="text"
       :placeholder="t('dossier.placeholders.identifier')"
       autocomplete="off"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.identifier', { label: ariaLabel ?? field.label })"
       :value="str(ref.id)"
       @input="setRef({ id: ($event.target as HTMLInputElement).value })"
@@ -154,13 +173,20 @@ const { t } = useI18n()
       type="text"
       :placeholder="t('dossier.placeholders.label')"
       autocomplete="off"
+      :aria-invalid="invalid ? 'true' : undefined"
+      :aria-describedby="describedBy"
       :aria-label="t('dossier.aria.refLabel', { label: ariaLabel ?? field.label })"
       :value="str(ref.label)"
       @input="setRef({ label: ($event.target as HTMLInputElement).value })"
     />
   </span>
 
-  <span v-else-if="field.type === 'REPEATABLE_GROUP'" class="structured-input structured-input--group">
+  <span
+    v-else-if="field.type === 'REPEATABLE_GROUP'"
+    class="structured-input structured-input--group"
+    :aria-invalid="invalid ? 'true' : undefined"
+    :aria-describedby="describedBy"
+  >
     <table v-if="rows.length > 0" class="group-table">
       <thead>
         <tr>
@@ -201,6 +227,8 @@ const { t } = useI18n()
     v-else
     :id="inputId"
     :aria-label="ariaLabel"
+    :aria-invalid="invalid ? 'true' : undefined"
+    :aria-describedby="describedBy"
     :type="field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'"
     :value="modelValue == null ? '' : String(modelValue)"
     @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"

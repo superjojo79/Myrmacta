@@ -131,20 +131,20 @@ L'application est construite sur le modèle **Ports & Adapters (hexagonal)** —
 | Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
 | Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, moteur d'exécution seul (pas de Flowable UI) |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
-| Génération PDF    | Flying Saucer 10.x + jsoup 1.x (versions exactes : `pom.xml`) | LGPL, sans licence commerciale              |
+| Génération PDF    | Flying Saucer 10.x + jsoup 1.x (versions exactes : `pom.xml`) | LGPL-2.1 or later ; voir l'[audit](docs/analyses/audit-licences-2026-10-24.md) |
 | Sécurité          | Spring Security 7 + OAuth2 Client | BFF intégré, provider-agnostique              |
 | Frontend          | Vue 3 + Vite + TypeScript + OpenVue (embarqué `static/`) | SPA même origine, typage statique aligné sur le contrat API, composants métier riches |
 | State management  | Pinia                           | Store réactif Vue 3                             |
 | Tests frontend    | Vitest + Playwright + ESLint/Prettier | Unitaire/composants **et** e2e (`npm run test:all`) obligatoires pour features FE ; aligné job CI `frontend` |
 | BPMN viewer/éditeur | bpmn-js + bpmn-js-properties-panel | Rendu fidèle, overlays d'état, édition (Modeler + panel de propriétés Flowable custom) |
-| DMN éditeur       | dmn-js                          | Même écosystème bpmn.io/Camunda, MIT + filigrane, `/admin/dmn-editor` |
+| DMN éditeur       | dmn-js                          | Même écosystème bpmn.io, permission Camunda + filigrane obligatoire, `/admin/dmn-editor` |
 | Stockage fichiers | Port S3 / filesystem             | `DocumentStoragePort` ; MinIO possible en local (pas de couplage) |
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
 | Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |
 
-### Licences — aucune contrainte commerciale
+### Licences des composants
 
-Toutes les librairies retenues sont sous licences libres (Apache 2.0, LGPL, MIT) compatibles avec un modèle SaaS commercial fermé. iText 7 (AGPL) a été explicitement écarté pour cette raison.
+Les licences des bibliothèques et les notices à conserver sont dans [`NOTICE`](NOTICE) et dans [l'audit](docs/analyses/audit-licences-2026-10-24.md). Aucun composant à copyleft fort n'est embarqué : iText 7 (AGPL) est absent du livrable.
 
 ------
 
@@ -214,6 +214,29 @@ La documentation d'architecture est disponible dans le répertoire `docs/specs` 
 | [10-visualisation-workflow.md](docs/specs/10-visualisation-workflow.md) | BPMN.js, historique, réassignation   |
 | [11-frontend.md](docs/specs/11-frontend.md)              | Vue 3, OpenVue, Pinia                |
 | [12-autorisation-conformite.md](docs/specs/12-autorisation-conformite.md) | RBAC, rétention, conformité RGPD     |
+
+------
+
+## Licence et marque
+
+Le code est **visible et utilisable à des fins non commerciales**, sous la
+**PolyForm Noncommercial License 1.0.0** ([`LICENSE`](LICENSE), identifiant SPDX
+`PolyForm-Noncommercial-1.0.0`), complétée par un [addendum de droit belge](LICENSE-ADDENDUM.md).
+Particuliers, associations, enseignement, recherche publique et autorités publiques (communes,
+CPAS, provinces, zones…) l'utilisent librement pour leurs missions ; une entreprise peut l'évaluer
+hors production pendant 90 jours. Tout autre usage commercial (usage en entreprise, prestation
+rémunérée pour un tiers, SaaS, revente) demande une **licence commerciale** :
+**contact@myrmacta.be**. Ce n'est pas une licence open source. Résumé : [LICENSING.md](LICENSING.md).
+
+Le nom de code, le nom commercial et le logo sont dans
+[TRADEMARKS.md](TRADEMARKS.md#denomination). Le nom commercial choisi est **Myrmacta**.
+Le dépôt de marque n'est pas fait : pas de ®, ™ au plus. La licence du code ne couvre ni le nom
+ni le logo. Le logo A3b et le favicon sont dans le dépôt
+([docs/brand/README.md](docs/brand/README.md), `frontend/public/`).
+
+Contributions de code externes : pas pour l'instant, issues bienvenues
+([CONTRIBUTING.md](CONTRIBUTING.md)).
+Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md).
 
 ------
 

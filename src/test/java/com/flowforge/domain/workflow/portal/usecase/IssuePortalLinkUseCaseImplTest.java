@@ -49,7 +49,7 @@ class IssuePortalLinkUseCaseImplTest {
         return new ExternalTaskCreated("task-1", "pi-1", dossierId, new PortalTaskDefinition("tiers", "avis", SOURCE, ttl));
     }
 
-    /** TODO §103 (T2) — champ d'identité inutilisable : lien non envoyé et participants notifiés, jamais d'incident. */
+    /** TODO §104 (T2) — champ d'identité inutilisable : lien non envoyé et participants notifiés, jamais d'incident. */
     @Test
     void strongAuthenticationTaskWithAnUnusableIdentityField_isNotSentAndNotifies() {
         var field = new com.flowforge.domain.workflow.portal.model.PortalIdentityField("nrnDemandeur");

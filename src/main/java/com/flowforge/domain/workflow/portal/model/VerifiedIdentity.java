@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Identité qu'un fournisseur (FAS, itsme) vient de vérifier pour un tiers du portail (TODO §103). Le NRN est absent
+ * Identité qu'un fournisseur (FAS, itsme) vient de vérifier pour un tiers du portail (TODO §104). Le NRN est absent
  * pour une identité eIDAS étrangère (T7). {@link #toString()} ne montre jamais le NRN.
  */
 public record VerifiedIdentity(

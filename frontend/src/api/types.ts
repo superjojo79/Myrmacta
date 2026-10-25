@@ -49,9 +49,29 @@ export interface FieldDefinition {
   requiredWhen?: string | null
   /** TODO §81 (D2) : le champ peut servir de filtre de recherche (jamais sensible ; STRING, NUMBER, DATE, BOOLEAN, SELECT). */
   searchable?: boolean
+  /** TODO §102 : une valeur ne figure que dans un dossier en cours du type (STRING, NUMBER, DATE ; jamais sensible). */
+  unique?: boolean
   /** TODO §85 (LC4a) : aide contextuelle (texte brut) et largeur ('HALF' = demi-largeur ; absent = pleine). */
   helpText?: string | null
   width?: 'HALF' | null
+}
+
+/** Erreur de validation d'un champ renvoyée dans `errors[]` (TODO §102, D-UNIQUE-HTTP). */
+export interface FieldError {
+  field: string
+  code: string
+  message: string
+  /** Référence d'un autre dossier : seulement le code UNIQUE la renseigne. */
+  reference: string | null
+}
+
+/** Valeur déjà partagée, renvoyée dans le 409 de mise à jour de type (TODO §102, U10). */
+export interface SchemaDuplicate {
+  field: string
+  value: string
+  references: string[]
+  /** Nombre de dossiers concernés quand le serveur n'en renvoie qu'un échantillon. */
+  referenceCount?: number
 }
 
 /** Aperçu des règles d'un type pour des valeurs en cours de saisie (`POST /api/dossier-types/{code}/evaluate-rules`). */

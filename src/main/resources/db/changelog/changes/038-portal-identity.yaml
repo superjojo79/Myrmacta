@@ -3,7 +3,7 @@ databaseChangeLog:
       id: 038-portal-identity
       author: flowforge
       comment: >-
-        TODO §103 (issue #210, D-BEAUTH-STORE) — authentification forte des tiers du portail. portal_identity_attempt :
+        TODO §104 (issue #210, D-BEAUTH-STORE) — authentification forte des tiers du portail. portal_identity_attempt :
         tentative d'authentification (state haché, nonce, vérificateur PKCE chiffré), à usage unique et de courte durée.
         portal_link_identity : identité vérifiée pour un lien (preuve hachée, NRN chiffré) puis, après la soumission,
         trace sans NRN ni preuve (fournisseur, niveau, nom, résultat). Les deux disparaissent avec le lien, donc avec

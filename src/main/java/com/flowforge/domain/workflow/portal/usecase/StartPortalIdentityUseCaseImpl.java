@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * TODO §103 (T3, D-BEAUTH-STORE) — ouvre une tentative d'authentification forte pour un lien vivant dont la tâche
+ * TODO §104 (T3, D-BEAUTH-STORE) — ouvre une tentative d'authentification forte pour un lien vivant dont la tâche
  * l'exige : {@code state} et {@code nonce} aléatoires (seul le hash du state est stocké), vérificateur PKCE chiffré,
  * dix minutes, usage unique. Lien inconnu, tâche sans champ d'identité ou fournisseur inconnu : refus neutre.
  */

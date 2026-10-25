@@ -19,7 +19,7 @@ import {
 
 // TODO §68 — états de la page publique. Tout refus serveur (404) produit le même écran
 // (US-3) : la page ne cherche jamais à distinguer lien expiré, révoqué ou inconnu.
-// TODO §103 — `identity-required` : tâche à authentification forte, seul le choix du fournisseur est montré (T3b) ;
+// TODO §104 — `identity-required` : tâche à authentification forte, seul le choix du fournisseur est montré (T3b) ;
 // `identity-refused` : retour du fournisseur refusé, écran neutre (T10).
 type State =
   | 'no-token'

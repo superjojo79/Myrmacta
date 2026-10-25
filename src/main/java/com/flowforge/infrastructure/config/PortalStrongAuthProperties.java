@@ -11,7 +11,7 @@ import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * TODO §103 (issue #210, E1, D-BEAUTH-ACTIVATION) — authentification forte des tiers du portail par FAS ou itsme.
+ * TODO §104 (issue #210, E1, D-BEAUTH-ACTIVATION) — authentification forte des tiers du portail par FAS ou itsme.
  * Désactivée par défaut ; activée, la configuration est vérifiée au démarrage (fail-fast, comme le portail) : au moins un
  * fournisseur complet et une clé de signature.
  *

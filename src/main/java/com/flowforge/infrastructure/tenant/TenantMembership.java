@@ -7,7 +7,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 /**
  * Règle unique « l'utilisateur appartient au tenant de cette instance » : claim {@code tenant_id} présent et égal à
  * {@link TenantProperties#id()}. Partagée par {@link TenantResolutionFilter} (chaque requête) et par l'enregistrement
- * dans l'annuaire au retour de connexion (TODO §103, A6), qui s'exécute avant que le filtre ne voie l'utilisateur.
+ * dans l'annuaire au retour de connexion (TODO §104, A6), qui s'exécute avant que le filtre ne voie l'utilisateur.
  */
 public final class TenantMembership {
 

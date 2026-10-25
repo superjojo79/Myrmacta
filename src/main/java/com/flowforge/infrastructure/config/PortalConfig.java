@@ -138,7 +138,7 @@ public class PortalConfig {
         return new PortalAccessResolver(repository, tokenPort, taskLookup, dossierRepository, CLOCK, identities);
     }
 
-    /** TODO §103 — NRN et vérificateur PKCE chiffrés au repos, avec la clé maîtresse des secrets de connecteur. */
+    /** TODO §104 — NRN et vérificateur PKCE chiffrés au repos, avec la clé maîtresse des secrets de connecteur. */
     @Bean
     PortalSecretCipherPort portalSecretCipherPort(TenantProperties tenantProperties, ConnectorSecretCipher cipher) {
         String tenantId = tenantProperties.id();
@@ -155,7 +155,7 @@ public class PortalConfig {
         };
     }
 
-    /** TODO §103 (T11) — clés de l'instance, lues au démarrage : un fichier absent ou invalide empêche le démarrage. */
+    /** TODO §104 (T11) — clés de l'instance, lues au démarrage : un fichier absent ou invalide empêche le démarrage. */
     @Bean
     @ConditionalOnProperty(prefix = "app.portal.strong-auth", name = "enabled", havingValue = "true")
     PortalIdentityKeys portalIdentityKeys(PortalStrongAuthProperties strongAuth) {
@@ -163,7 +163,7 @@ public class PortalConfig {
     }
 
     /**
-     * TODO §103 (E1, D-BEAUTH-PORTAL-CLIENT) — client OIDC direct de FAS et d'itsme si l'authentification forte est
+     * TODO §104 (E1, D-BEAUTH-PORTAL-CLIENT) — client OIDC direct de FAS et d'itsme si l'authentification forte est
      * activée (elle suppose le portail), sinon aucun fournisseur. L'URI de retour vient de l'URL publique du portail,
      * jamais de l'en-tête {@code Host}.
      */

@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
- * Numéro de registre national (TODO §103, N3) : 11 chiffres une fois retirés les séparateurs usuels (points, tirets,
+ * Numéro de registre national (TODO §104, N3) : 11 chiffres une fois retirés les séparateurs usuels (points, tirets,
  * espaces). Donnée sensible : {@link #toString()} ne montre jamais les chiffres (N2). La clé de contrôle n'est pas
  * vérifiée : le fournisseur d'identité fait autorité, et une valeur saisie dans le dossier est comparée telle quelle.
  */

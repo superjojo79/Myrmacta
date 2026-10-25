@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# scripts/keycloak-realm-smoke.sh — recette du realm par tenant sur un vrai Keycloak (TODO §103, D-BEAUTH-KC-SMOKE).
+# scripts/keycloak-realm-smoke.sh — recette du realm par tenant sur un vrai Keycloak (TODO §104, D-BEAUTH-KC-SMOKE).
 #
 # Démarre Keycloak (distribution zip, Java 21+), importe le simulateur FAS (docker/keycloak/import/fas-simulateur-realm.json),
 # provisionne deux tenants avec scripts/provision-tenant.sh --realm-per-tenant (un en idp-only, un en both), applique

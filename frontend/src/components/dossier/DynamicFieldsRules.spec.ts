@@ -33,6 +33,24 @@ describe('DynamicFields — règles du type (TODO §80)', () => {
   })
   afterEach(() => vi.useRealTimers())
 
+  it('reports a server error on a hidden field instead of dropping it (TODO §102)', async () => {
+    vi.mocked(evaluateFieldRules).mockResolvedValue(preview({ hidden: ['siret'] }))
+    const error = {
+      field: 'siret',
+      code: 'UNIQUE',
+      message: 'Value already used by dossier DOS-9 SECRET-PLAQUE',
+      reference: 'DOS-9',
+    }
+    const wrapper = mountFields({ modelValue: { pays: 'DE' }, serverErrors: [error] })
+    await settle()
+
+    expect(wrapper.find('[data-testid="field-error"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('SECRET-PLAQUE')
+    expect(wrapper.text()).not.toContain('Value already used')
+    const undisplayed = wrapper.emitted('undisplayed-errors')?.at(-1)?.[0]
+    expect(undisplayed).toEqual([error])
+  })
+
   it('hides a field that is not applicable, shows the server-computed value read-only and marks rule-required fields', async () => {
     vi.mocked(evaluateFieldRules).mockResolvedValue(preview({ computed: { ttc: 2400 }, hidden: ['siret'], requiredByRule: ['justificatif'] }))
     const wrapper = mountFields({ modelValue: { pays: 'DE', ht: 2000 } })

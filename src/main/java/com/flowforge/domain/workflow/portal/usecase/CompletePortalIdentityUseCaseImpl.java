@@ -25,7 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * TODO §103 (T4-T7, T10, D-BEAUTH-PROOF) — retour du fournisseur, dans l'ordre :
+ * TODO §104 (T4-T7, T10, D-BEAUTH-PROOF) — retour du fournisseur, dans l'ordre :
  * <ol>
  *   <li>tentative consommée (usage unique, avant tout appel au fournisseur : un {@code state} rejoué ne sert plus) ;</li>
  *   <li>lien vivant, tâche ouverte à authentification forte ;</li>

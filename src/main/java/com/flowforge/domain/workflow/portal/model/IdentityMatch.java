@@ -1,7 +1,7 @@
 package com.flowforge.domain.workflow.portal.model;
 
 /**
- * Correspondance entre l'identité vérifiée et le champ d'identité du dossier (TODO §103, T5-T7, D-BEAUTH-NRN-FIELD) :
+ * Correspondance entre l'identité vérifiée et le champ d'identité du dossier (TODO §104, T5-T7, D-BEAUTH-NRN-FIELD) :
  * champ rempli, il est attendu ; champ vide, le NRN vérifié y sera écrit à la soumission.
  */
 public enum IdentityMatch {

@@ -131,7 +131,7 @@ class ArchitectureRulesTest {
             // sensible du dossier courant (R8), la passe à la requête et ne la renvoie jamais (seuls un nombre et une
             // référence sortent).
             "com.flowforge.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl",
-            // TODO §103 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
+            // TODO §104 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
             // comparer au NRN vérifié par FAS ou itsme ; la valeur n'est jamais renvoyée au tiers ni journalisée.
             "com.flowforge.domain.workflow.portal.PortalIdentityFieldValue");
 

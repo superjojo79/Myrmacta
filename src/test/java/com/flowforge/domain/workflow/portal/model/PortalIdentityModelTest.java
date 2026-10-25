@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** TODO §103 (issue #210, lot B) — NRN (N3), niveau (T4), correspondance (T5-T7), trace (T8), champ d'identité (T2). */
+/** TODO §104 (issue #210, lot B) — NRN (N3), niveau (T4), correspondance (T5-T7), trace (T8), champ d'identité (T2). */
 class PortalIdentityModelTest {
 
     private static final String NRN = "85073003328";

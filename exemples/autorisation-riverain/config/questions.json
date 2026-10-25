@@ -4,14 +4,6 @@
     "label": "Instruction de la demande d'autorisation riverain",
     "fields": [
       {
-        "name": "doublonVerifie",
-        "label": "J'ai vérifié qu'aucune autre demande n'existe pour ce véhicule",
-        "type": "BOOLEAN",
-        "required": true,
-        "group": "Contrôles",
-        "helpText": "Rechercher les dossiers « Autorisation riverain » sur le champ « Clé d'unicité du véhicule » (ex. BE-1ABC123). S'il en existe un autre, refuser avec le motif « Une demande existe déjà pour ce véhicule »."
-      },
-      {
         "name": "decisionAgent",
         "label": "Décision",
         "type": "SELECT",

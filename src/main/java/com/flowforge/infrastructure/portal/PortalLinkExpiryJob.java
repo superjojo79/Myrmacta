@@ -30,7 +30,7 @@ class PortalLinkExpiryJob {
         if (expired > 0) {
             log.info("Portal link expiry job expired {} link(s)", expired);
         }
-        // TODO §103 (T9) — tentatives échues, identités non soumises échues ou d'un lien qui n'est plus actif (NRN chiffré
+        // TODO §104 (T9) — tentatives échues, identités non soumises échues ou d'un lien qui n'est plus actif (NRN chiffré
         // compris) : supprimées. Les traces des soumissions restent.
         int purged = identities.purgeExpired(java.time.Instant.now());
         if (purged > 0) {

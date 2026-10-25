@@ -64,7 +64,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * TODO §103 (issue #210, lot B) — authentification forte d'un tiers : démarrage (T3), retour du fournisseur (T4, T5,
+ * TODO §104 (issue #210, lot B) — authentification forte d'un tiers : démarrage (T3), retour du fournisseur (T4, T5,
  * T7, T10), vue réduite (T3b), soumission avec comparaison ou premier enregistrement du NRN (T5, T6, T8, T9).
  */
 class PortalIdentityUseCasesTest {

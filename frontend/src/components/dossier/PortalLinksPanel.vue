@@ -54,7 +54,7 @@ function statusText(link: PortalLinkView): string {
   return reason ? `${status} — ${reason}` : status
 }
 
-/** TODO §103 (T8) — « Identité vérifiée (FAS, élevé) : Alice Martin — premier enregistrement du NRN ». */
+/** TODO §104 (T8) — « Identité vérifiée (FAS, élevé) : Alice Martin — premier enregistrement du NRN ». */
 function identityText(link: PortalLinkView): string {
   const identity = link.identity
   if (!identity) return ''

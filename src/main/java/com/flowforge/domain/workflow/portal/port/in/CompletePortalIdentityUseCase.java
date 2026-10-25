@@ -1,7 +1,7 @@
 package com.flowforge.domain.workflow.portal.port.in;
 
 /**
- * TODO §103 (T4-T7, D-BEAUTH-PROOF) — retour du fournisseur : consomme la tentative, valide l'identité, la compare au
+ * TODO §104 (T4-T7, D-BEAUTH-PROOF) — retour du fournisseur : consomme la tentative, valide l'identité, la compare au
  * champ d'identité et, si elle convient, remet une preuve d'identité liée au lien.
  */
 public interface CompletePortalIdentityUseCase {

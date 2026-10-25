@@ -1,7 +1,7 @@
 package com.flowforge.domain.workflow.portal.model;
 
 /**
- * Justificatif présenté au portail (TODO §103, D-BEAUTH-PROOF) : le jeton du lien ({@code X-Portal-Token}), ou la preuve
+ * Justificatif présenté au portail (TODO §104, D-BEAUTH-PROOF) : le jeton du lien ({@code X-Portal-Token}), ou la preuve
  * d'identité remise après une authentification forte ({@code X-Portal-Identity}), qui le remplace ensuite. Jamais
  * affiché ({@link #toString()}).
  */

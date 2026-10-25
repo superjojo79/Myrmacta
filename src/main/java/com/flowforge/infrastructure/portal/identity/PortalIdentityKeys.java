@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * TODO §103 (T11) — clés de l'instance pour le portail : signature de l'assertion {@code private_key_jwt} (clé courante,
+ * TODO §104 (T11) — clés de l'instance pour le portail : signature de l'assertion {@code private_key_jwt} (clé courante,
  * plus une clé précédente publiée pendant une rotation) et déchiffrement d'un ID token chiffré (itsme). Lues au démarrage
  * depuis des fichiers PEM PKCS#8 (jamais depuis la base) ; RSA de 2048 bits au moins. Seules les parties publiques sont
  * publiées ({@link #publicJwkSetJson()}).

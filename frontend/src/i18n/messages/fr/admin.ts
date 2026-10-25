@@ -234,6 +234,8 @@ export default {
       schema: 'Enregistrement du schéma impossible',
       clearSla: 'Retrait SLA impossible',
     },
+    duplicate: '{field} = {value} : {references}',
+    duplicateReferences: '{references} ({total} au total)',
   },
   promotion: {
     title: 'Promotion de configuration',

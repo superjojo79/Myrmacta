@@ -20,7 +20,7 @@ public interface ManagePortalLinkUseCase {
 
     PortalLink revoke(UUID dossierId, UUID linkId, AccessContext.User actor);
 
-    /** {@code identities} : trace d'authentification forte par lien (TODO §103, T8), sans NRN. */
+    /** {@code identities} : trace d'authentification forte par lien (TODO §104, T8), sans NRN. */
     record PortalLinks(boolean canManage, List<PortalLink> links,
                        Map<UUID, IdentityVerification> identities) {
 

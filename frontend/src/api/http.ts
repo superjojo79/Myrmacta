@@ -1,10 +1,49 @@
 import axios, { type AxiosError } from 'axios'
+import type { FieldError, SchemaDuplicate } from '@/api/types'
 
 export type ProblemDetail = {
   type?: string
   title?: string
   status?: number
   detail?: string
+  errors?: unknown
+  duplicates?: unknown
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** `errors[]` d'un ProblemDetail, ou rien si le corps n'en a pas (les autres erreurs gardent `detail`). */
+export function fieldErrorsOf(problem: ProblemDetail): FieldError[] {
+  if (!Array.isArray(problem.errors)) return []
+  const parsed: FieldError[] = []
+  for (const item of problem.errors) {
+    if (!isRecord(item) || typeof item.field !== 'string' || typeof item.code !== 'string') continue
+    parsed.push({
+      field: item.field,
+      code: item.code,
+      message: typeof item.message === 'string' ? item.message : '',
+      reference: typeof item.reference === 'string' ? item.reference : null,
+    })
+  }
+  return parsed
+}
+
+/** `duplicates[]` d'un refus de schéma (409). Une entrée mal formée est ignorée. */
+export function schemaDuplicatesOf(problem: ProblemDetail): SchemaDuplicate[] {
+  if (!Array.isArray(problem.duplicates)) return []
+  const parsed: SchemaDuplicate[] = []
+  for (const item of problem.duplicates) {
+    if (!isRecord(item) || typeof item.field !== 'string' || typeof item.value !== 'string' || !Array.isArray(item.references)) {
+      continue
+    }
+    if (!item.references.every((reference) => typeof reference === 'string')) continue
+    const duplicate: SchemaDuplicate = { field: item.field, value: item.value, references: item.references }
+    if (typeof item.referenceCount === 'number') duplicate.referenceCount = item.referenceCount
+    parsed.push(duplicate)
+  }
+  return parsed
 }
 
 export function resolveApiBaseUrl(baseUri = globalThis.document?.baseURI ?? '/'): string {

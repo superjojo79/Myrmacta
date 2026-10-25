@@ -69,7 +69,7 @@ public final class PortalAccessResolver {
     }
 
     /**
-     * Même contrôle préalable pour tout justificatif (TODO §103) : jeton vivant, ou preuve valable dont le lien est
+     * Même contrôle préalable pour tout justificatif (TODO §104) : jeton vivant, ou preuve valable dont le lien est
      * vivant. Comme pour le jeton, aucune lecture de la tâche : l'exigence d'identité est vérifiée par {@link #resolve}
      * dans le use case. Le porteur du seul jeton d'une tâche à authentification forte peut donc faire lire un upload
      * avant son refus, comme tout porteur du lien le pouvait déjà ; la limite par IP s'applique.
@@ -84,7 +84,7 @@ public final class PortalAccessResolver {
 
     /**
      * Accès pour agir (dépôt, soumission) : une tâche à authentification forte exige une identité vérifiée pour ce lien
-     * (TODO §103, T3b). Tout manquement donne le refus neutre.
+     * (TODO §104, T3b). Tout manquement donne le refus neutre.
      */
     public ResolvedAccess resolve(PortalCredential credential) {
         ResolvedAccess access = resolveAllowingPendingIdentity(credential);
@@ -96,7 +96,7 @@ public final class PortalAccessResolver {
 
     /**
      * Accès qui tolère une identité encore à vérifier : vue réduite de la tâche et démarrage de l'authentification
-     * (TODO §103, T3b). L'appelant ne montre rien d'autre que le nom de la tâche et la référence tant que
+     * (TODO §104, T3b). L'appelant ne montre rien d'autre que le nom de la tâche et la référence tant que
      * {@link ResolvedAccess#identityRequired()} est vrai sans identité.
      */
     public ResolvedAccess resolveAllowingPendingIdentity(PortalCredential credential) {

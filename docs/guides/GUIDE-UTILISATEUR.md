@@ -40,7 +40,7 @@ Ces rôles sont attribués côté Keycloak, pas dans FlowForge — voir
 [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles) pour créer un utilisateur
 et lui attribuer un rôle.
 
-**Se connecter avec l'eID ou itsme (TODO §103).** Si la commune a activé FAS ou itsme, la page de connexion propose
+**Se connecter avec l'eID ou itsme (TODO §104).** Si la commune a activé FAS ou itsme, la page de connexion propose
 leurs boutons à côté du mot de passe, ou à sa place en mode « fournisseurs seuls ». À la **première** connexion par ce
 moyen :
 
@@ -77,6 +77,17 @@ l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur
 `TENANT_ADMIN`). Boutons ↑/↓ pour réordonner, **Supprimer** pour retirer une ligne. La
 sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
 interne `define_dossier_type`.
+
+**Valeur unique (TODO §102).** Une case « Valeur unique » est proposée pour un champ texte, nombre ou
+date qui n'est pas sensible, y compris un champ calculé. Elle est visible mais inactive pour les autres
+types et pour un champ sensible ; la raison est affichée à côté de la case. Cochée, une même valeur ne
+peut figurer que dans un seul dossier en cours de ce type (ni clôturé, ni archivé). Une valeur vide n'est
+jamais un doublon. À la création ou à la correction, un doublon est refusé sous le champ : « Déjà utilisé
+par le dossier {référence} ». Activer la case alors que des dossiers ouverts partagent déjà une valeur est
+refusé : l'écran liste les valeurs et des références (20 au plus ; le total est indiqué). Clôturer le
+dossier libère la valeur. L'exemple « autorisation riverain » l'utilise pour la clé calculée
+`plaqueNormalisee` (pays et plaque normalisés) : une seconde demande ouverte pour le même véhicule est
+refusée à la création, sans case à cocher par l'agent.
 
 **Types structurés (TODO §76).**
 
@@ -782,7 +793,7 @@ ouverte et les participants du workflow sont prévenus.
 envoyé*. Les réponses du tiers sont tracées (auteur `portal:<identifiant du lien>`), ses pièces
 apparaissent dans les éléments du dossier.
 
-**Authentification forte du tiers (TODO §103).** Une tâche peut exiger que le tiers s'identifie par FAS (eID, itsme,
+**Authentification forte du tiers (TODO §104).** Une tâche peut exiger que le tiers s'identifie par FAS (eID, itsme,
 eIDAS) ou par itsme. Le lien ne montre alors que le nom de la tâche et la référence du dossier, avec un bouton par moyen
 d'identification ; une fois identifié, le tiers voit la tâche et le rappel « Identité vérifiée : <nom> ». Si le dossier
 attend un autre numéro de registre national, il voit « Identification non reconnue » sans autre détail. L'identification

@@ -46,7 +46,7 @@ class FlowableBpmnParserAdapterPortalTest {
         });
     }
 
-    /** TODO §103 (T1, T2) — {@code portalIdentityField} marque une tâche externe à authentification forte. */
+    /** TODO §104 (T1, T2) — {@code portalIdentityField} marque une tâche externe à authentification forte. */
     @Test
     void externalTaskWithAnIdentityField_requiresStrongAuthentication() {
         byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""

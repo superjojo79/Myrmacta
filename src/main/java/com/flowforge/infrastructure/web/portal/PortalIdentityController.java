@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * TODO §103 (issue #210, D-BEAUTH-PORTAL-CLIENT, D-BEAUTH-PROOF) — authentification forte d'un tiers, dans la chaîne
+ * TODO §104 (issue #210, D-BEAUTH-PORTAL-CLIENT, D-BEAUTH-PROOF) — authentification forte d'un tiers, dans la chaîne
  * publique du portail (sans session ni cookie) :
  * <ul>
  *   <li>{@code POST /start} : jeton du lien en en-tête, fournisseur choisi ; renvoie l'URL d'autorisation ;</li>

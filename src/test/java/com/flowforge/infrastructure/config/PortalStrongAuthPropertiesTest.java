@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** TODO §103 (E1, D-BEAUTH-TTL, K5) — réglages de l'authentification forte, vérifiés au démarrage. */
+/** TODO §104 (E1, D-BEAUTH-TTL, K5) — réglages de l'authentification forte, vérifiés au démarrage. */
 class PortalStrongAuthPropertiesTest {
 
     private static final Keys KEYS = new Keys("/run/secrets/portal-signing.pem", "k1", null, null, null, null);

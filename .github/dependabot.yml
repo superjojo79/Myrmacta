@@ -7,3 +7,10 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+    # Décision n° 103. Liquibase >= 5.0.0 est sous FSL-1.1-ALv2 (la 5.0.0 a un POM
+    # qui dit Apache-2.0, mais le LICENSE.txt du tag est un contrat de souscription).
+    # Le pom épingle 4.33.0, dernière version Apache-2.0 vérifiée (texte et POM).
+    ignore:
+      - dependency-name: "org.liquibase:*"
+        versions:
+          - ">= 5.0.0"

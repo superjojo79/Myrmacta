@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/** TODO §103 (D-BEAUTH-STORE) — tentatives et identités vérifiées du portail. */
+/** TODO §104 (D-BEAUTH-STORE) — tentatives et identités vérifiées du portail. */
 public interface PortalIdentityRepository {
 
     void insertAttempt(PortalIdentityAttempt attempt);

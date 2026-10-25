@@ -19,7 +19,7 @@ export interface PortalLinkView {
   revokedAt: string | null
   createdBy: string
   revokedBy: string | null
-  /** TODO §103 (T8) — trace de l'authentification forte du tiers, sans NRN ; nom réservé à qui peut gérer le lien. */
+  /** TODO §104 (T8) — trace de l'authentification forte du tiers, sans NRN ; nom réservé à qui peut gérer le lien. */
   identity?: PortalLinkIdentity | null
 }
 

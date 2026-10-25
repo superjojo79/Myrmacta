@@ -1,9 +1,10 @@
 # §102 — Unicité d'un champ de dossier
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lot A (unicité, serveur et MCP) et lot B
-(brique « Rechercher des dossiers ») livrés ; restent l'interface (lot C) et l'exemple riverain (lot D).
+[x] clos (issue [#184](https://github.com/superjojo79/FlowForge/issues/184)). Lots A (unicité, serveur et MCP), B
+(brique « Rechercher des dossiers »), C (saisie) et D (exemple riverain) livrés. `plaqueNormalisee` est unique ;
+la vérification manuelle est retirée ; une seconde demande ouverte est refusée à la création.
 
 **Constat.** Aucun champ de dossier ne pouvait être déclaré unique. Dans l'exemple « autorisation riverain »
 (`exemples/autorisation-riverain/DIFFICULTES.md` §1), « une seule demande par plaque » reposait sur une case cochée par
@@ -21,8 +22,9 @@ du type. Toute écriture qui créerait un doublon est refusée, y compris sous �
   Conséquence assumée : des caractères visuellement identiques mais distincts (espace final, homoglyphe) ne sont pas des
   doublons, sauf si la formule les normalise.
 - **D-UNIQUE-EXISTING** (tranché par l'utilisateur) — activer `unique` alors que des dossiers ouverts partagent une valeur :
-  la mise à jour du type est refusée (409), avec les valeurs en double et les références (`duplicates`). Écarté : tolérer
-  les doublons existants.
+  la mise à jour du type est refusée (409), avec les valeurs en double et les références (`duplicates`). La réponse cite
+  au plus 20 valeurs (`duplicateCount` est le total, repris dans le `detail` quand la liste est tronquée) et, pour chaque
+  valeur, au plus 20 références (`referenceCount` est le total des détenteurs). Écarté : tolérer les doublons existants.
 - **D-UNIQUE-STORE** (tranché par l'utilisateur) — garantie en base : table `dossier_unique_value` (changeSet `037`), clé
   primaire `(tenant_id, dossier_type_code, field_name, field_value)`, tenue à jour par `JpaDossierRepositoryAdapter.save`
   dans la transaction de l'écriture (`insert … on conflict do nothing`), reconstruite par
@@ -114,7 +116,44 @@ incident, refus au déploiement).
   permet déjà (même type, champs cherchables). Le guide de conception demande de ne pas transmettre la référence à un tiers
   externe sans l'avoir voulu.
 
-**Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
+**Interface (lot C).**
+
+Choix faits sans arbitrage :
+- La case « Valeur unique » n'est proposée que pour les champs d'un type de dossier. Une question de tâche et une colonne
+  de groupe ne la montrent pas : le serveur refuse déjà `unique` sur un sous-champ, et une question n'est pas une valeur
+  de dossier. Hors `STRING`, `NUMBER` et `DATE`, ou sur un champ sensible, la case est visible mais inactive, avec la
+  raison en texte visible reliée à la case par `aria-describedby` ; cocher puis changer de type ou marquer le champ
+  sensible retire le drapeau.
+- Sous le champ, `UNIQUE` s'affiche « Déjà utilisé par le dossier {reference} » (anglais : « Already used by dossier
+  {reference} »). Le message serveur n'est pas recopié : il est en anglais et ne doit jamais devenir un canal pour la
+  valeur saisie. La référence d'un autre dossier n'est rendue que pour ce code. Les autres codes (`REQUIRED`,
+  `TYPE_MISMATCH`, …) gardent le message serveur, sous le champ.
+- Un échec sans `errors[]` (type inactif, conflit de version, réseau) continue d'afficher le `detail`, comme avant.
+  La création, la tâche `dossier-fields` et l'écran « corriger » de la fiche suivent le même contrat. Quand toutes les
+  erreurs tombent sur des champs visibles, le `detail` général n'est pas répété : il redirait la même chose en anglais,
+  référence comprise. La bannière précédente est retirée, y compris l'événement d'erreur de la tâche. Une erreur dont le
+  champ n'est pas à l'écran — inconnu du schéma, ou masqué par une règle de visibilité — reste dans cette bannière,
+  libellé compris ; elle en sort si le champ redevient visible.
+- Le refus 409 de l'administration des types garde la phrase du serveur dans un paragraphe et liste les valeurs en
+  double (`champ = valeur : références`), sans découper une valeur qui contient un retour à la ligne. Au plus 20
+  références sont citées, avec le nombre total ; le serveur applique le même plafond par valeur, sans réduire le nombre
+  de dossiers incompatibles. Au plus 20 valeurs sont citées ; `duplicateCount` et le `detail` donnent le total quand la
+  liste est tronquée. Ces valeurs ne sont pas sensibles : `unique` est refusé sur un champ sensible.
+- La bannière d'une erreur hors écran appartient au formulaire qui l'a produite (tâche `dossier-fields`, ou enregistrement
+  des champs de la fiche). Le `null` d'un autre formulaire ne l'efface pas. Après un PATCH accepté, la tâche ne republie
+  que les erreurs dont le champ est absent du correctif, et retire la bannière s'il n'en reste aucune : retirer la valeur
+  d'un champ masqué (`null`) efface son erreur. Un correctif vide ne retire rien, pas plus qu'une erreur hors schéma que
+  le correctif ne mentionne pas.
+- Les diagnostics de la palette reprennent la grammaire de `searchCriteria`, les noms de variables réservés et l'exigence
+  de deux sorties distinctes. L'identifiant de brique reste `search-dossiers`.
+
+**Revue adversariale du lot C (2026-10-24).** Sept constats (bannière de tâche qui gardait une référence, `detail`
+anglais sur l'écran « corriger », affichage du 409, accessibilité, diagnostics, raison de la case, test du corps sans
+`errors[]`) sont corrigés. Les revues de contrôle suivantes ont isolé la bannière par formulaire, puis demandé qu'un
+PATCH accepté retire l'erreur du champ qu'il corrige. Le lot D retire la vérification manuelle de l'exemple riverain.
+Le point est clos.
+
+**Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `exemples/autorisation-riverain/`, `docs/guides/GUIDE-UTILISATEUR.md`,
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§3octies et §7, lot B ; palette au lot C), golden OpenAPI (`FieldDefinition.unique`), catalogue des briques en version 3 (bloc `search-dossiers`),
 description MCP de `define_dossier_type`. Migration `037` (nouvelle table, vide au déploiement : elle se remplit à
 l'activation de `unique` sur un type).

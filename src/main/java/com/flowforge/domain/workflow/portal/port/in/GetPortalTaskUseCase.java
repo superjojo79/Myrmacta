@@ -17,7 +17,7 @@ public interface GetPortalTaskUseCase {
     }
 
     /**
-     * TODO §103 (T3b) — {@code identityRequired} sans identité vérifiée : vue réduite (référence, nom de la tâche et
+     * TODO §104 (T3b) — {@code identityRequired} sans identité vérifiée : vue réduite (référence, nom de la tâche et
      * fournisseurs seulement). {@code verifiedName} : nom de la personne authentifiée, sinon nul.
      */
     record PortalTaskView(

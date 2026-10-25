@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
  * gestionnaire par défaut d'{@code oauth2Login}. Un échec d'enregistrement ne bloque jamais la
  * connexion : l'annuaire n'est qu'une aide à la saisie des assignés.
  *
- * <p>TODO §103 (A6) — ce gestionnaire s'exécute avant que {@code TenantResolutionFilter} ne voie l'utilisateur : il
+ * <p>TODO §104 (A6) — ce gestionnaire s'exécute avant que {@code TenantResolutionFilter} ne voie l'utilisateur : il
  * applique donc lui-même {@link TenantMembership}. Un utilisateur sans le {@code tenant_id} de l'instance (compte créé
  * par un fournisseur d'identité, pas encore validé par un admin, ou utilisateur d'un autre tenant) n'est pas inscrit,
  * sa session est fermée et la réponse est un 403, comme celle du filtre.

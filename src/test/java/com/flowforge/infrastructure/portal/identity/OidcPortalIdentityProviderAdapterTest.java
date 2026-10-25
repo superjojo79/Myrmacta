@@ -51,7 +51,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * TODO §103 (issue #210, D-BEAUTH-PORTAL-CLIENT, T4, T11) — client OIDC direct du portail contre un fournisseur en
+ * TODO §104 (issue #210, D-BEAUTH-PORTAL-CLIENT, T4, T11) — client OIDC direct du portail contre un fournisseur en
  * mémoire : PKCE, assertion {@code private_key_jwt} signée par la clé de l'instance, ID token signé par le fournisseur
  * (et chiffré pour l'instance, comme itsme), contrôles de l'ID token, correspondance des claims.
  */

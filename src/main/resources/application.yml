@@ -290,7 +290,7 @@ app:
       per-ip-per-minute: 30
     max-body-bytes: 65536
     strong-auth:
-      # TODO §103 (issue #210) — authentification forte des tiers par FAS ou itsme, opt-in (D-BEAUTH-ACTIVATION).
+      # TODO §104 (issue #210) — authentification forte des tiers par FAS ou itsme, opt-in (D-BEAUTH-ACTIVATION).
       # Activée, elle exige le portail, au moins un fournisseur complet (providers.fas / providers.itsme : issuer-uri,
       # client-id, claims.nrn, claims.level, levels.HIGH / levels.SUBSTANTIAL) et une clé de signature PEM : démarrage
       # refusé sinon. Voir docs/guides/DEPLOIEMENT.md § Fournisseurs d'identité belges.

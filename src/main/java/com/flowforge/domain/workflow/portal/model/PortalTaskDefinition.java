@@ -6,7 +6,7 @@ import java.util.Objects;
  * Tâche externe telle que déclarée dans un BPMN (D-PORTAL-BPMN-MARKER) : {@code userTask}
  * portant {@code flowable:portalRecipient}. {@code ttlDays} est {@code null} quand
  * {@code flowable:portalLinkTtlDays} est absent (défaut tenant). {@code identityField} est {@code null} sauf pour une
- * tâche à authentification forte ({@code flowable:portalIdentityField}, TODO §103).
+ * tâche à authentification forte ({@code flowable:portalIdentityField}, TODO §104).
  */
 public record PortalTaskDefinition(
         String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays,

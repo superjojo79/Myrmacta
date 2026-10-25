@@ -18,7 +18,7 @@ export function takeTokenFromLocation(
 }
 
 /**
- * TODO §103 (D-BEAUTH-PROOF) — `identity` : retour du fournisseur d'identité, `token` est alors la preuve d'identité
+ * TODO §104 (D-BEAUTH-PROOF) — `identity` : retour du fournisseur d'identité, `token` est alors la preuve d'identité
  * qui remplace le jeton du lien ; `identity-refused` : refus neutre, sans jeton.
  */
 export type PortalLink =
@@ -31,7 +31,7 @@ const IDENTITY_REFUSED = 'identity-refused'
 
 /**
  * TODO §72 — le lien de signature est `#signature:<jeton>` ; le lien de tâche (§68) reste `#<jeton>` ; le retour d'une
- * authentification forte (§103) est `#identity:<preuve>` ou `#identity-refused`. Même règle : lu une fois, effacé de la
+ * authentification forte (§104) est `#identity:<preuve>` ou `#identity-refused`. Même règle : lu une fois, effacé de la
  * barre d'adresse, jamais stocké.
  */
 export function takeLinkFromLocation(

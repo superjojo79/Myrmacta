@@ -29,6 +29,11 @@ dans `target/classes/static/`) — pas d'étape manuelle séparée comme en dev 
 java -jar target/flowforge-*.jar
 ```
 
+Ce jar embarque `LICENSE` (PolyForm-Noncommercial-1.0.0) et `NOTICE`, aux entrées `META-INF/LICENSE` et
+`META-INF/NOTICE` (mêmes octets que les fichiers à la racine du dépôt).
+`scripts/check-license-notice-in-jar.sh` échoue si l'un des deux manque ou s'il en diffère.
+La CI lance ce contrôle après `./mvnw verify`, avec l'auto-test du script.
+
 ### Construire l'image conteneur
 
 Le `Dockerfile` à la racine du dépôt construit une image exécutable en 2 stages :
@@ -45,6 +50,7 @@ Décisions actées pour cette image (lot `provisioning-tenant`, voir
 | Image de base | `eclipse-temurin:25-jre` (stage runtime) — build avec `eclipse-temurin:25-jdk` (stage build) |
 | Utilisateur du conteneur | Non-root dédié (`flowforge`, UID/GID 10001) |
 | Heap JVM par défaut | Dynamique (`-XX:MaxRAMPercentage=75.0`), pas de `-Xmx` fixe — s'adapte à la limite mémoire du conteneur |
+| Licence | `LICENSE` et `NOTICE` dans l'image, sous `/usr/share/doc/flowforge/` (mêmes fichiers que la racine du dépôt et que `META-INF/` du jar) |
 
 ```bash
 docker run -d --name flowforge-<tenant_id> -p 127.0.0.1:8081:8080 \
@@ -253,7 +259,7 @@ FlowForge elle-même. Mécanisme : l'ID token transmis au BFF porte les rôles d
 autorités `ROLE_<nom>`, ce que l'API vérifie ensuite (`hasRole('TENANT_ADMIN')`, etc.). Keycloak
 n'émet pas cette structure dans l'ID token par défaut : les mappers du client BFF (§5) sont requis.
 
-**Comptes créés par FAS ou itsme (TODO §103).** Une première connexion par un fournisseur d'identité crée un compte
+**Comptes créés par FAS ou itsme (TODO §104).** Une première connexion par un fournisseur d'identité crée un compte
 **sans `tenant_id` ni rôle** : FlowForge le refuse (403) et ne l'inscrit pas dans l'annuaire des assignés. Pour le
 valider, ouvrir ce compte dans la console (il porte le prénom et le nom transmis par le fournisseur, jamais le NRN),
 poser l'attribut `tenant_id` (étape 4 ci-dessous) et ses rôles (étape 3). Un agent qui avait déjà un compte avec la même
@@ -595,7 +601,7 @@ L'interface existe en français et en anglais. Chaque utilisateur choisit sa lan
 **`APP_I18N_DEFAULT_LOCALE`** (`fr` par défaut, ou `en`) puis du navigateur. Cette même valeur fixe la langue des **e-mails envoyés à des tiers sans profil** (invitation de tâche externe, invitation de signature) :
 en anglais, le lien du portail porte `?lang=en`. Toute autre valeur arrête le démarrage. Les libellés saisis par le tenant (types, champs, statuts) restent dans la langue où ils ont été saisis.
 
-## 19. Fournisseurs d'identité belges (FAS, itsme) — TODO §103
+## 19. Fournisseurs d'identité belges (FAS, itsme) — TODO §104
 
 Deux usages, deux enregistrements chez chaque fournisseur, par tenant :
 

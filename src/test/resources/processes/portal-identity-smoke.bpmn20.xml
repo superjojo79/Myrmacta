@@ -3,7 +3,7 @@
              xmlns:flowable="http://flowable.org/bpmn"
              targetNamespace="http://flowforge/test">
 
-  <!-- TODO §103 (issue #210) : tâche externe à authentification forte — le tiers s'identifie par FAS ou itsme ; son NRN
+  <!-- TODO §104 (issue #210) : tâche externe à authentification forte — le tiers s'identifie par FAS ou itsme ; son NRN
        est comparé au champ nrnDemandeur du dossier, ou y est écrit s'il est vide. -->
   <process id="portalIdentitySmoke" name="Portal Identity Smoke" isExecutable="true">
     <startEvent id="portalIdentityStart"/>

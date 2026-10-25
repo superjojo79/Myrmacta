@@ -36,7 +36,7 @@ record PortalTaskResponse(
     }
 
     /**
-     * TODO §103 (T3b) — présent seulement pour une tâche à authentification forte : {@code verified} faux, la page
+     * TODO §104 (T3b) — présent seulement pour une tâche à authentification forte : {@code verified} faux, la page
      * montre le choix du fournisseur et rien d'autre ; vrai, le nom de la personne authentifiée.
      */
     record Identity(boolean verified, String name, List<Provider> providers) {}

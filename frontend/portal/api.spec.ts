@@ -53,7 +53,7 @@ describe('portal api client', () => {
     expect(uploadMock.mock.calls[0]![0]).toContain('/attachments')
   })
 
-  /** TODO §103 (D-BEAUTH-PROOF) — après l'authentification forte, la preuve remplace le jeton. */
+  /** TODO §104 (D-BEAUTH-PROOF) — après l'authentification forte, la preuve remplace le jeton. */
   it('sends the identity proof instead of the token once the third party is authenticated', async () => {
     const fetchMock = mockFetch(200, { attachments: [] })
 

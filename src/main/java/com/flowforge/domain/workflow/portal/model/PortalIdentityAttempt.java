@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Tentative d'authentification forte d'un tiers (TODO §103, D-BEAUTH-STORE) : ouverte par « S'identifier », close par
+ * Tentative d'authentification forte d'un tiers (TODO §104, D-BEAUTH-STORE) : ouverte par « S'identifier », close par
  * le retour du fournisseur. {@code stateHash} : SHA-256 du {@code state} envoyé au fournisseur (jamais le state en
  * clair) ; {@code pkceVerifierEnc} : vérificateur PKCE chiffré. À usage unique, quelques minutes.
  */

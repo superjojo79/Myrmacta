@@ -46,7 +46,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   --realm-per-tenant
                     Avec --instance-dir : realm Keycloak propre au tenant (flowforge-<tenant_id>,
-                     TODO §103, modèle par défaut en production). Écrit aussi
+                     TODO §104, modèle par défaut en production). Écrit aussi
                      <tenant_id>.realm.json (déclaratif, sans secret), que <tenant_id>.keycloak.sh
                      applique avant de créer le client machine-to-machine. Requiert jq.
   --idp fas|itsme   Fournisseur d'identité belge du realm (répétable) : FAS de BOSA (eID, itsme,
@@ -178,7 +178,7 @@ if [[ -n "$instance_dir" ]]; then
   fi
 fi
 
-# --- Realm par tenant (TODO §103) : options validées avant toute écriture ---------------------------------------
+# --- Realm par tenant (TODO §104) : options validées avant toute écriture ---------------------------------------
 if (( realm_per_tenant == 0 )); then
   if (( ${#idps[@]} > 0 )) || [[ "$password_login" != "both" ]]; then
     echo "--idp et --password-login requièrent --realm-per-tenant." >&2
@@ -227,11 +227,11 @@ generate_realm_json() {
     --arg flowId "$(new_uuid)" --argjson idps "$idps_json" --argjson claims "$claims_json"
 }
 
-# Section « realm » de <tenant>.keycloak.sh (TODO §103) : variables figées au provisionnement, puis logique littérale.
+# Section « realm » de <tenant>.keycloak.sh (TODO §104) : variables figées au provisionnement, puis logique littérale.
 generate_realm_section() {
   cat <<SECTION
 
-# --- Realm du tenant (TODO §103, D-BEAUTH-PROVISION) -------------------------------------------------------------
+# --- Realm du tenant (TODO §104, D-BEAUTH-PROVISION) -------------------------------------------------------------
 # Créé depuis ${tenant_id}.realm.json s'il est absent ; sinon complété par import partiel (clients, rôles,
 # fournisseurs existants conservés ; les flux d'authentification ne sont posés qu'à la création).
 REALM_FILE="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)/${tenant_id}.realm.json"

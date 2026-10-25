@@ -327,6 +327,94 @@ describe('DossierDetailView phase 8', () => {
     expect(wrapper.text()).toContain('invalid field')
   })
 
+  it('shows a UNIQUE refusal under the field and keeps the English detail off the banner (TODO §102)', async () => {
+    vi.mocked(dossiersApi.updateDossierFields).mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          detail: 'priority UNIQUE Value already used by dossier DOS-9',
+          errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-9 SECRET', reference: 'DOS-9' }],
+        },
+      },
+    })
+    const wrapper = await mountDetail(['TENANT_ADMIN'], true)
+    await wrapper.get('.dossier-fields-editor input').setValue('HIGH')
+    await wrapper.get('.dossier-fields-editor button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="field-error"]').text()).toContain('Déjà utilisé par le dossier DOS-9')
+    expect(wrapper.text()).not.toContain('Value already used')
+    expect(wrapper.text()).not.toContain('SECRET')
+    expect(wrapper.find('.dossier-detail > .error').exists()).toBe(false)
+  })
+
+  it('keeps an off-screen UNIQUE error in the banner, translated (TODO §102)', async () => {
+    vi.mocked(dossiersApi.updateDossierFields).mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          detail: 'absent UNIQUE Value already used by dossier DOS-9',
+          errors: [{ field: 'absent', code: 'UNIQUE', message: 'Value already used by dossier DOS-9 SECRET', reference: 'DOS-9' }],
+        },
+      },
+    })
+    const wrapper = await mountDetail(['TENANT_ADMIN'], true)
+    await wrapper.get('.dossier-fields-editor input').setValue('HIGH')
+    await wrapper.get('.dossier-fields-editor button').trigger('click')
+    await flushPromises()
+    const banner = wrapper.get('.dossier-detail > .error')
+    expect(banner.text()).toContain('absent')
+    expect(banner.text()).toContain('Déjà utilisé par le dossier DOS-9')
+    expect(wrapper.text()).not.toContain('Value already used')
+    expect(wrapper.text()).not.toContain('SECRET')
+    expect(wrapper.find('[data-testid="field-error"]').exists()).toBe(false)
+    expect(banner.attributes('role')).toBe('alert')
+  })
+
+  it('keeps the field editor off-screen holder when a linked task shows a visible UNIQUE error (TODO §102)', async () => {
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([
+        {
+          taskId: 'task-1',
+          name: 'Review',
+          assignee: 'u',
+          taskDefinitionKey: 'k',
+          createTime: null,
+          formKey: 'dossier-fields',
+        },
+      ]),
+    )
+    vi.mocked(dossiersApi.updateDossierFields)
+      .mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            detail: 'absent UNIQUE Value already used by dossier DOS-9',
+            errors: [{ field: 'absent', code: 'UNIQUE', message: 'Value already used by dossier DOS-9', reference: 'DOS-9' }],
+          },
+        },
+      })
+      .mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            detail: 'priority UNIQUE Value already used by dossier DOS-2',
+            errors: [{ field: 'priority', code: 'UNIQUE', message: 'Value already used by dossier DOS-2', reference: 'DOS-2' }],
+          },
+        },
+      })
+    const wrapper = await mountDetail(['TENANT_ADMIN'], true)
+    await wrapper.get('.dossier-fields-editor input').setValue('HIGH')
+    await wrapper.get('.dossier-fields-editor button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.dossier-detail > .error').text()).toContain('DOS-9')
+    await wrapper.get('.dossier-fields-task-form input').setValue('LOW')
+    await wrapper.get('.dossier-fields-task-form button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.dossier-detail > .error').text()).toContain('DOS-9')
+    expect(wrapper.get('.dossier-fields-task-form [data-testid="field-error"]').text()).toContain('DOS-2')
+    expect(wrapper.get('.dossier-fields-task-form').text()).not.toContain('DOS-9')
+  })
+
   it('shows purge request for tenant admin only', async () => {
     const admin = await mountDetail(['TENANT_ADMIN'])
     expect(admin.text()).toContain('Demander la purge')

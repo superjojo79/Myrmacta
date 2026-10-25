@@ -40,7 +40,7 @@ import org.springframework.web.multipart.MultipartFile;
 class PortalController {
 
     static final String TOKEN_HEADER = "X-Portal-Token";
-    /** TODO §103 (D-BEAUTH-PROOF) — preuve d'identité, qui remplace le jeton après une authentification forte. */
+    /** TODO §104 (D-BEAUTH-PROOF) — preuve d'identité, qui remplace le jeton après une authentification forte. */
     static final String IDENTITY_HEADER = "X-Portal-Identity";
 
     private final GetPortalTaskUseCase getUseCase;

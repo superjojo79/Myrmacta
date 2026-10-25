@@ -175,7 +175,7 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 Un realm partagé avec un claim `tenant_id` par utilisateur. Évolutif vers des realms dédiés si un
 tenant exige une configuration SSO spécifique (Azure AD, Google Workspace…).
 
-**Realm par tenant (TODO §103, D-BEAUTH-REALM).** C'est désormais le modèle par défaut en production :
+**Realm par tenant (TODO §104, D-BEAUTH-REALM).** C'est désormais le modèle par défaut en production :
 `scripts/provision-tenant.sh --realm-per-tenant` génère le realm `flowforge-<tenant>` (client BFF, rôles, profil,
 fournisseurs FAS et itsme), et l'instance pointe son `OIDC_ISSUER_URI` dessus. Chaque tenant a ses propres clés
 (`private_key_jwt` signé avec la clé du realm), sa page de connexion et ses comptes, ce qu'exigent des contrats FAS ou

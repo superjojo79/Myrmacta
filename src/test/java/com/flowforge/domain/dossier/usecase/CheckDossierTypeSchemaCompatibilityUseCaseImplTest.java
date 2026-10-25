@@ -76,6 +76,41 @@ class CheckDossierTypeSchemaCompatibilityUseCaseImplTest {
         assertThat(result.sampleReferences()).hasSize(5);
     }
 
+    @Test
+    void duplicateHolderCountStaysCompleteWhenReferencesAreSampled() {
+        List<Dossier> dossiers = java.util.stream.IntStream.range(0, 25)
+                .mapToObj(i -> dossier("R" + i, Map.of("plaque", "A")))
+                .toList();
+        when(dossierRepository.findByDossierTypeCode(TENANT, TYPE)).thenReturn(dossiers);
+        var plaque = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null, false, null,
+                null, null, null, null, null, false, null, null, true);
+
+        var result = useCase.check(new Query(TENANT, TYPE, List.of(plaque), false));
+
+        assertThat(result.incompatibleCount()).isEqualTo(25);
+        assertThat(result.duplicates()).singleElement().satisfies(duplicate -> {
+            assertThat(duplicate.references()).hasSize(20);
+            assertThat(duplicate.referenceCount()).isEqualTo(25);
+        });
+    }
+
+    @Test
+    void duplicateValuesAreCappedAndTheTotalIsKept() {
+        List<Dossier> dossiers = new java.util.ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            dossiers.add(dossier("A" + i, Map.of("plaque", "V" + i)));
+            dossiers.add(dossier("B" + i, Map.of("plaque", "V" + i)));
+        }
+        when(dossierRepository.findByDossierTypeCode(TENANT, TYPE)).thenReturn(dossiers);
+        var plaque = new FieldDefinition("plaque", "Plaque", FieldType.STRING, false, null, null, null, false, null,
+                null, null, null, null, null, false, null, null, true);
+
+        var result = useCase.check(new Query(TENANT, TYPE, List.of(plaque), false));
+
+        assertThat(result.duplicates()).hasSize(20);
+        assertThat(result.duplicateCount()).isEqualTo(21);
+    }
+
     private static FieldDefinition numberField(String name, boolean required) {
         return new FieldDefinition(name, name, FieldType.NUMBER, required, null, List.of(), null, false);
     }

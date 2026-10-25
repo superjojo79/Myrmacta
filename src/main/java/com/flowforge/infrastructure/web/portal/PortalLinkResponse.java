@@ -33,7 +33,7 @@ record PortalLinkResponse(
     }
 
     /**
-     * TODO §103 (T8) — trace de l'authentification forte, jamais le NRN. Le nom vérifié, donnée personnelle du tiers,
+     * TODO §104 (T8) — trace de l'authentification forte, jamais le NRN. Le nom vérifié, donnée personnelle du tiers,
      * suit la même règle que l'adresse : réservé à qui peut gérer le lien.
      */
     static PortalLinkResponse from(PortalLink link, boolean fullRecipient, IdentityVerification identity) {

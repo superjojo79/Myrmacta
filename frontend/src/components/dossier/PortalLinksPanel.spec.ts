@@ -103,7 +103,7 @@ describe('PortalLinksPanel (V-INT-1)', () => {
     expect(api.revokePortalLink).toHaveBeenCalledWith('d1', 'l1')
   })
 
-  /** TODO §103 (T8, T2) — trace de l'authentification forte et raison INVALID_IDENTITY_FIELD. */
+  /** TODO §104 (T8, T2) — trace de l'authentification forte et raison INVALID_IDENTITY_FIELD. */
   it('shows the strong authentication trace and the identity field reason', async () => {
     vi.mocked(api.listPortalLinks).mockResolvedValue({
       canManage: true,

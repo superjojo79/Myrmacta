@@ -17,19 +17,33 @@
     <name>FlowForge</name>
     <description>Plateforme de gestion de flux métier, de dossiers et de génération de documents</description>
 
+    <!-- Décision n° 103. Identifiant SPDX : PolyForm-Noncommercial-1.0.0. La licence commerciale est un contrat séparé. -->
+    <licenses>
+        <license>
+            <name>PolyForm Noncommercial License 1.0.0</name>
+            <url>https://polyformproject.org/licenses/noncommercial/1.0.0</url>
+            <distribution>repo</distribution>
+            <comments>SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0</comments>
+        </license>
+    </licenses>
+
     <properties>
         <java.version>25</java.version>
+        <!-- Décision n° 103. Spring Boot 4.1.1 gère Liquibase 5.0.3, sous FSL-1.1-ALv2.
+             4.33.0 est la dernière version dont le texte de licence et le POM sont Apache-2.0.
+             Dependabot ignore org.liquibase:* >= 5.0.0 (.github/dependabot.yml). -->
+        <liquibase.version>4.33.0</liquibase.version>
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
         <flying-saucer.version>10.6.0</flying-saucer.version>
         <jsoup.version>1.23.2</jsoup.version>
         <archunit.version>1.5.1</archunit.version>
-        <aws.sdk.version>2.55.15</aws.sdk.version>
+        <aws.sdk.version>2.57.0</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
         <sshj.version>0.41.2</sshj.version>
         <!-- LC2 (TODO §75) — JSONata, port Java de référence (Apache 2.0) -->
         <jsonata.version>0.9.10</jsonata.version>
-        <poi.version>5.5.1</poi.version>
+        <poi.version>6.0.0</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.1</spring-ai.version>
@@ -588,10 +602,34 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Décision n° 103. LICENSE et NOTICE accompagnent le jar, à META-INF/LICENSE et
+                 META-INF/NOTICE. Le repackager Spring Boot ne déplace pas ces entrées sous
+                 BOOT-INF/classes (contrairement à META-INF/services/). Contrôle :
+                 scripts/check-license-notice-in-jar.sh -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
+                    <execution>
+                        <id>copy-license-notice</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                        <include>NOTICE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>copy-frontend-dist</id>
                         <phase>process-resources</phase>

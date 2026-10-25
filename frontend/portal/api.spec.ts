@@ -50,7 +50,17 @@ describe('portal api client', () => {
     await uploadAttachment(TOKEN, new File(['%PDF'], 'd.pdf', { type: 'application/pdf' }), ' Devis ')
     const form = uploadMock.mock.calls[0]![1].body as FormData
     expect(form.get('label')).toBe('Devis')
+    expect(form.has('pieceKey')).toBe(false)
     expect(uploadMock.mock.calls[0]![0]).toContain('/attachments')
+  })
+
+  /** TODO §105 — le type de pièce choisi par le tiers part avec le fichier. */
+  it('sends the chosen piece type with the attachment', async () => {
+    const uploadMock = mockFetch(201, { id: '1', label: 'Preuve', filename: 'p.pdf', addedAt: '' })
+    await uploadAttachment(TOKEN, new File(['%PDF'], 'p.pdf', { type: 'application/pdf' }), '', 'preuveDomicile')
+    const form = uploadMock.mock.calls[0]![1].body as FormData
+    expect(form.get('pieceKey')).toBe('preuveDomicile')
+    expect(form.has('label')).toBe(false)
   })
 
   /** TODO §104 (D-BEAUTH-PROOF) — après l'authentification forte, la preuve remplace le jeton. */

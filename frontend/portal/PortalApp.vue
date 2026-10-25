@@ -57,6 +57,7 @@ const uploading = ref(false)
 const formError = ref('')
 const uploadError = ref('')
 const uploadLabel = ref('')
+const uploadPieceKey = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const expiresOn = computed(() =>
@@ -114,8 +115,12 @@ async function onUpload() {
   uploading.value = true
   uploadError.value = ''
   try {
-    attachments.value = [...attachments.value, await uploadAttachment(credential.value, file, uploadLabel.value)]
+    attachments.value = [
+      ...attachments.value,
+      await uploadAttachment(credential.value, file, uploadLabel.value, uploadPieceKey.value),
+    ]
     uploadLabel.value = ''
+    uploadPieceKey.value = ''
     if (fileInput.value) fileInput.value.value = ''
   } catch (error) {
     uploadError.value = handleError(error)
@@ -226,6 +231,15 @@ async function onSubmit() {
           <input id="portal-file" ref="fileInput" type="file" :disabled="uploading || submitting" />
           <label for="portal-file-label">{{ t('portal.fileLabel') }}</label>
           <input id="portal-file-label" v-model="uploadLabel" type="text" maxlength="200" :disabled="uploading" />
+          <template v-if="task?.pieceTypes?.length">
+            <label for="portal-piece-type">{{ t('portal.pieceType') }}</label>
+            <select id="portal-piece-type" v-model="uploadPieceKey" :disabled="uploading" data-testid="portal-piece-type">
+              <option value="">{{ t('portal.pieceTypeNone') }}</option>
+              <option v-for="pieceType in task.pieceTypes" :key="pieceType.key" :value="pieceType.key">
+                {{ pieceType.label }}
+              </option>
+            </select>
+          </template>
           <button type="button" class="portal__secondary" :disabled="uploading || submitting" @click="onUpload">
             {{ uploading ? t('portal.uploading') : t('portal.upload') }}
           </button>

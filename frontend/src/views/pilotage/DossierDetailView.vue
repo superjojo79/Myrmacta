@@ -166,13 +166,23 @@ async function onAddElement(payload: { type: ElementType; label: string; metadat
   }
 }
 
-async function onAddAttachment(payload: { file: File; label: string }) {
+async function onAddAttachment(payload: { file: File; label: string; pieceKey: string | null }) {
   actionError.value = null
   try {
-    await store.addAttachment(payload.file, payload.label)
+    await store.addAttachment(payload.file, payload.label, payload.pieceKey)
     addElementOpen.value = false
   } catch (err) {
     actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.add')
+  }
+}
+
+/** TODO §105 — reclassement d'une pièce jointe depuis la liste des éléments. */
+async function onClassify(elementId: string, pieceKey: string | null) {
+  actionError.value = null
+  try {
+    await store.classifyElement(elementId, pieceKey)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('dossier.pieceTypes.classifyError')
   }
 }
 
@@ -278,7 +288,10 @@ async function confirmReassign() {
       :elements="elements"
       :page="elementsPage"
       :total-pages="elementsTotalPages"
+      :piece-types="dossierType?.pieceTypes ?? []"
+      :can-classify="canEditDossier && !fieldsLocked"
       @update:page="store.loadElementsPage($event)"
+      @classify="onClassify"
     >
       <template #actions>
         <button v-if="canEditDossier" type="button" @click="addElementOpen = true">{{ t('dossierDetail.add') }}</button>
@@ -292,6 +305,7 @@ async function confirmReassign() {
     />
     <AddElementDialog
       :open="addElementOpen"
+      :piece-types="dossierType?.pieceTypes ?? []"
       @close="addElementOpen = false"
       @submit-element="onAddElement"
       @submit-attachment="onAddAttachment"

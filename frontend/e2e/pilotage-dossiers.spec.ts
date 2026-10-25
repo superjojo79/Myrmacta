@@ -1,6 +1,7 @@
 // E2E « pilotage » — Dossiers : création, statut, démarrage de workflow, détail (relations, éléments, champs) (TODO §95 : découpage de pilotage.spec.ts par écran).
 import { expect, test } from '@playwright/test'
 import {
+  CLAIM_TYPE,
   RICH_TYPE,
   DOSSIER_ID,
   LINK_ID,
@@ -150,6 +151,65 @@ test('E2E-17 upload an ATTACHMENT element from detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ajouter un élément' })).toHaveCount(0)
   await expect(page.locator('.elements-list strong', { hasText: 'Justificatif' })).toBeVisible()
   await expect(page.locator('.elements-list li', { hasText: 'Justificatif' }).getByText('Télécharger')).toBeVisible()
+})
+
+test('E2E-PIECE-1 an attachment is classified at upload, then reclassified from the list (TODO §105)', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...CLAIM_TYPE,
+        pieceTypes: [
+          { key: 'preuveDomicile', label: 'Preuve de domicile', sensitive: false },
+          { key: 'identite', label: "Pièce d'identité", sensitive: true },
+        ],
+      }),
+    }),
+  )
+  const element = (pieceKey: string | null) => ({
+    id: 'att-piece',
+    type: 'ATTACHMENT',
+    label: 'Facture Sibelga',
+    addedBy: 'user-1',
+    addedAt: '2026-10-25T00:00:00Z',
+    workflowStepId: null,
+    metadata: { filename: 'facture.pdf', contentType: 'application/pdf', sizeBytes: 4, ...(pieceKey ? { pieceKey } : {}) },
+    downloadable: true,
+  })
+  let uploadedPieceKey: string | undefined
+  await page.route('**/api/dossiers/**/elements/attachment', async (route) => {
+    uploadedPieceKey = (route.request().postData() ?? '').match(/name="pieceKey"\r?\n\r?\n([^\r\n]*)/)?.[1]
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(element(uploadedPieceKey ?? null)) })
+  })
+  const classified: unknown[] = []
+  await page.route('**/api/dossiers/**/elements/att-piece/piece-type', async (route) => {
+    const body = route.request().postDataJSON() as { pieceKey: string | null }
+    classified.push(body)
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(element(body.pieceKey)) })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  await page.getByRole('button', { name: 'Ajouter' }).click()
+  await page.locator('.dialog input[type="text"]').first().fill('Facture Sibelga')
+  await page.locator('.dialog input[type="file"]').setInputFiles({
+    name: 'facture.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-content'),
+  })
+  await page.getByTestId('add-element-piece-type').selectOption({ label: 'Preuve de domicile' })
+  await page.locator('.dialog button.primary').click()
+
+  const select = page.getByRole('combobox', { name: 'Classer la pièce Facture Sibelga' })
+  await expect(select).toHaveValue('preuveDomicile')
+  expect(uploadedPieceKey).toBe('preuveDomicile')
+  await select.selectOption({ label: "Pièce d'identité" })
+  await expect(select).toHaveValue('identite')
+  await select.selectOption({ label: 'Non classée' })
+  await expect(select).toHaveValue('')
+  expect(classified).toEqual([{ pieceKey: 'identite' }, { pieceKey: null }])
 })
 
 test('E2E-19 oversized attachment upload shows an error, no crash', async ({ page }) => {

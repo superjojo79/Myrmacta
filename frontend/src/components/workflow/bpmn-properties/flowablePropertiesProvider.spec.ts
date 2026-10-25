@@ -97,7 +97,12 @@ describe('FlowablePropertiesProvider', () => {
 
     expect(groups).toHaveLength(1)
     const entryIds = (groups[0] as { entries: Array<{ id: string }> }).entries.map((e) => e.id)
-    expect(entryIds).toEqual(['flowable:formKey', 'flowable:portalRecipient', 'flowable:portalLinkTtlDays'])
+    expect(entryIds).toEqual([
+      'flowable:formKey',
+      'flowable:portalRecipient',
+      'flowable:portalLinkTtlDays',
+      'flowable:portalPieceTypes',
+    ])
   })
 
   it('adds no custom group for an element without a relevant flowable:* attribute', () => {

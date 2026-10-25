@@ -1,13 +1,34 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { DossierElementView } from '@/api/types'
+import type { DossierElementView, PieceType } from '@/api/types'
 import { downloadElementContent, elementContentUrl } from '@/api/elements'
 import AdminPager from '@/components/admin/AdminPager.vue'
 
-defineProps<{
+const props = defineProps<{
   elements: DossierElementView[]
   totalPages?: number
+  /** TODO §105 — types de pièces du type de dossier ; sans eux, rien n'est affiché ni reclassable. */
+  pieceTypes?: PieceType[]
+  canClassify?: boolean
 }>()
+
+const emit = defineEmits<{ classify: [elementId: string, pieceKey: string | null] }>()
+
+/** Clé du type de la pièce, vide si elle n'est pas classée ou si son type n'est plus déclaré. */
+function pieceKeyOf(element: DossierElementView): string {
+  const key = element.metadata?.pieceKey
+  return typeof key === 'string' && (props.pieceTypes ?? []).some((type) => type.key === key) ? key : ''
+}
+
+function pieceLabelOf(element: DossierElementView): string {
+  const key = pieceKeyOf(element)
+  return (props.pieceTypes ?? []).find((type) => type.key === key)?.label ?? t('dossier.pieceTypes.unclassified')
+}
+
+function onClassify(element: DossierElementView, event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  emit('classify', element.id, value === '' ? null : value)
+}
 
 const page = defineModel<number>('page', { default: 0 })
 
@@ -46,6 +67,24 @@ const { t } = useI18n()
         <div>
           <strong>{{ el.label }}</strong>
           <span class="elements-list__meta">{{ el.type }} · {{ el.addedBy }}</span>
+          <template v-if="el.type === 'ATTACHMENT' && (pieceTypes?.length ?? 0) > 0">
+            <select
+              v-if="canClassify"
+              class="elements-list__piece"
+              :value="pieceKeyOf(el)"
+              :aria-label="t('dossier.pieceTypes.classify', { label: el.label })"
+              :data-testid="`element-piece-type-${el.id}`"
+              @change="onClassify(el, $event)"
+            >
+              <option value="">{{ t('dossier.pieceTypes.unclassified') }}</option>
+              <option v-for="pieceType in pieceTypes" :key="pieceType.key" :value="pieceType.key">
+                {{ pieceType.label }}
+              </option>
+            </select>
+            <span v-else class="elements-list__piece" :data-testid="`element-piece-label-${el.id}`">
+              {{ pieceLabelOf(el) }}
+            </span>
+          </template>
           <span v-if="el.type === 'NOTE'" class="elements-list__note">{{ el.metadata?.text }}</span>
           <a
             v-else-if="el.type === 'LINK'"
@@ -93,6 +132,11 @@ const { t } = useI18n()
   gap: 1rem;
   padding: 0.65rem 0;
   border-bottom: 1px solid #ddd;
+}
+.elements-list__piece {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
 }
 .elements-list__meta {
   display: block;

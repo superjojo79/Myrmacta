@@ -2,21 +2,24 @@
 import { labelOr } from '@/i18n'
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
-import { MANUAL_ELEMENT_TYPES, type ElementType } from '@/api/types'
+import { MANUAL_ELEMENT_TYPES, type ElementType, type PieceType } from '@/api/types'
 
 const props = defineProps<{
   open: boolean
+  /** TODO §105 — types de pièces du type de dossier ; vide : pièce non classée. */
+  pieceTypes?: PieceType[]
 }>()
 
 const emit = defineEmits<{
   close: []
   submitElement: [payload: { type: ElementType; label: string; metadata: Record<string, unknown> }]
-  submitAttachment: [payload: { file: File; label: string }]
+  submitAttachment: [payload: { file: File; label: string; pieceKey: string | null }]
 }>()
 
 const type = ref<ElementType>('ATTACHMENT')
 const label = ref('')
 const file = ref<File | null>(null)
+const pieceKey = ref('')
 const infoKey = ref('')
 const infoValue = ref('')
 const noteText = ref('')
@@ -35,6 +38,7 @@ watch(
     type.value = 'ATTACHMENT'
     label.value = ''
     file.value = null
+    pieceKey.value = ''
     infoKey.value = ''
     infoValue.value = ''
     noteText.value = ''
@@ -60,7 +64,7 @@ function confirm() {
       error.value = t('dossier.addElement.errors.file')
       return
     }
-    emit('submitAttachment', { file: file.value, label: label.value.trim() })
+    emit('submitAttachment', { file: file.value, label: label.value.trim(), pieceKey: pieceKey.value || null })
     return
   }
   if (type.value === 'INFORMATION') {
@@ -119,6 +123,15 @@ const { t } = useI18n()
     <label v-if="type === 'ATTACHMENT'">
       {{ t('dossier.addElement.file') }}
       <input type="file" @change="onFileChange" />
+    </label>
+    <label v-if="type === 'ATTACHMENT' && (pieceTypes?.length ?? 0) > 0">
+      {{ t('dossier.pieceTypes.choose') }}
+      <select v-model="pieceKey" data-testid="add-element-piece-type">
+        <option value="">{{ t('dossier.pieceTypes.unclassified') }}</option>
+        <option v-for="pieceType in pieceTypes" :key="pieceType.key" :value="pieceType.key">
+          {{ pieceType.label }}
+        </option>
+      </select>
     </label>
 
     <template v-if="type === 'INFORMATION'">

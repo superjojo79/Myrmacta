@@ -37,6 +37,8 @@ export interface PortalTask {
   expiresAt: string
   attachments: PortalAttachment[]
   identity?: PortalIdentity
+  /** TODO §105 — types de pièces que la tâche propose ; absent si elle n'en propose aucun. */
+  pieceTypes?: { key: string; label: string }[]
 }
 
 /** Jeton du lien, ou preuve d'identité qui le remplace après une authentification forte (D-BEAUTH-PROOF). */
@@ -99,11 +101,19 @@ export function fetchTask(credential: PortalCredential): Promise<PortalTask> {
   return request<PortalTask>(credential, '')
 }
 
-export function uploadAttachment(credential: PortalCredential, file: File, label: string): Promise<PortalAttachment> {
+export function uploadAttachment(
+  credential: PortalCredential,
+  file: File,
+  label: string,
+  pieceKey?: string,
+): Promise<PortalAttachment> {
   const body = new FormData()
   body.append('file', file)
   if (label.trim()) {
     body.append('label', label.trim())
+  }
+  if (pieceKey) {
+    body.append('pieceKey', pieceKey)
   }
   return request<PortalAttachment>(credential, '/attachments', { method: 'POST', body })
 }

@@ -106,4 +106,47 @@ describe('ElementsList', () => {
     })
     expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(false)
   })
+
+  /** TODO §105 — type de pièce affiché, et reclassement par un agent qui peut modifier le dossier. */
+  describe('piece types', () => {
+    const pieceTypes = [
+      { key: 'preuveDomicile', label: 'Preuve de domicile', sensitive: false },
+      { key: 'identite', label: "Pièce d'identité", sensitive: true },
+    ]
+    const attachment = (metadata: Record<string, unknown>) => ({
+      id: 'a1',
+      type: 'ATTACHMENT' as const,
+      label: 'Facture',
+      addedBy: 'u',
+      addedAt: '2026-10-25T00:00:00Z',
+      workflowStepId: null,
+      metadata,
+      downloadable: true,
+    })
+
+    it('shows the piece type, or unclassified when the type is unknown', () => {
+      const classified = mount(ElementsList, {
+        props: { elements: [attachment({ pieceKey: 'preuveDomicile' })], pieceTypes },
+      })
+      expect(classified.get('[data-testid="element-piece-label-a1"]').text()).toBe('Preuve de domicile')
+      const orphan = mount(ElementsList, { props: { elements: [attachment({ pieceKey: 'retire' })], pieceTypes } })
+      expect(orphan.get('[data-testid="element-piece-label-a1"]').text()).toBe('Non classée')
+      const none = mount(ElementsList, { props: { elements: [attachment({ pieceKey: 'preuveDomicile' })] } })
+      expect(none.find('[data-testid="element-piece-label-a1"]').exists()).toBe(false)
+    })
+
+    it('emits classify with the chosen key, or null to unclassify', async () => {
+      const wrapper = mount(ElementsList, {
+        props: { elements: [attachment({ pieceKey: 'preuveDomicile' })], pieceTypes, canClassify: true },
+      })
+      const select = wrapper.get('[data-testid="element-piece-type-a1"]')
+      expect(select.attributes('aria-label')).toBe('Classer la pièce Facture')
+      await select.setValue('identite')
+      await select.setValue('')
+      expect(wrapper.emitted('classify')).toEqual([
+        ['a1', 'identite'],
+        ['a1', null],
+      ])
+    })
+  })
 })

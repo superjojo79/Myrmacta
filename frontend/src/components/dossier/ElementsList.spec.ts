@@ -107,7 +107,7 @@ describe('ElementsList', () => {
     expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(false)
   })
 
-  /** TODO §105 — type de pièce affiché, et reclassement par un agent qui peut modifier le dossier. */
+  /** TODO §106 — type de pièce affiché, et reclassement par un agent qui peut modifier le dossier. */
   describe('piece types', () => {
     const pieceTypes = [
       { key: 'preuveDomicile', label: 'Preuve de domicile', sensitive: false },

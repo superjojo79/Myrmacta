@@ -98,7 +98,7 @@ export interface DossierType {
   pieceTypes?: PieceType[]
 }
 
-/** TODO §105 — type de pièce justificative déclaré sur un type de dossier (choisi au dépôt). */
+/** TODO §106 — type de pièce justificative déclaré sur un type de dossier (choisi au dépôt). */
 export interface PieceType {
   key: string
   label: string

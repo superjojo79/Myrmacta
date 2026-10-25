@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** TODO §105 (D-PIECE-TYPES) — types de pièces déclarés sur un type de dossier. */
+/** TODO §106 (D-PIECE-TYPES) — types de pièces déclarés sur un type de dossier. */
 class PieceTypeTest {
 
     @Test

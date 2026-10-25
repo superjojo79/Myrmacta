@@ -37,7 +37,7 @@ export interface PortalTask {
   expiresAt: string
   attachments: PortalAttachment[]
   identity?: PortalIdentity
-  /** TODO §105 — types de pièces que la tâche propose ; absent si elle n'en propose aucun. */
+  /** TODO §106 — types de pièces que la tâche propose ; absent si elle n'en propose aucun. */
   pieceTypes?: { key: string; label: string }[]
 }
 

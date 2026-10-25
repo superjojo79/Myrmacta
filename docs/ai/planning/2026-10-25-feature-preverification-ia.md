@@ -23,10 +23,11 @@ tant que les lots A à D ne sont pas livrés.
 
 ### Lot P — Types de pièces (R1 à R4)
 
-- [ ] P1 : `pieceTypes` sur le type de dossier (modèle, validation, compatibilité, changeSet 039, promotion, API, éditeur)
-- [ ] P2 : choix du type au dépôt sur la fiche ; reclassement d'une pièce non classée (EDIT, journalisé)
-- [ ] P3 : portail : `portalPieceTypes` sur la tâche externe, choix par le tiers
-- [ ] P4 : Vitest, Playwright, docs de spec (`04-dossiers.md`, `26-portail-externe.md`)
+- [x] P1 : `pieceTypes` sur le type de dossier (modèle, validation, compatibilité, changeSet 039, promotion, API, éditeur)
+- [x] P2 : choix du type au dépôt sur la fiche ; reclassement d'une pièce non classée (EDIT, journalisé)
+- [x] P3 : portail : `portalPieceTypes` sur la tâche externe, choix par le tiers
+- [x] P4 : Vitest, Playwright, docs de spec (`04-dossiers.md`, `26-portail-externe.md`), registre §106 (renuméroté :
+      §105 pris sur `main` par le nom commercial)
 
 ### Lot A — Fournisseur et extraction
 

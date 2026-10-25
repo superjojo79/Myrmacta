@@ -133,7 +133,7 @@ public class DefineDossierTypeTool {
                     List<String> documentTemplateKeys,
             @McpToolParam(
                             required = false,
-                            description = "Supporting-document types (TODO §105) — the full list every call, not a diff, "
+                            description = "Supporting-document types (TODO §106) — the full list every call, not a diff, "
                                     + "at most 30. Each item: {key (^[a-z][a-zA-Z0-9_]{0,59}$, unique), label (100 chars "
                                     + "max), sensitive (true = never read by an automated pre-check)}. An attachment "
                                     + "picks one at upload (pieceKey) or stays unclassified. Absent/null preserves the "
@@ -273,7 +273,7 @@ public class DefineDossierTypeTool {
         return rawList.stream().map(item -> objectMapper.convertValue(item, FieldDefinition.class)).toList();
     }
 
-    /** TODO §105 — {@code null} si absent (inchangé à la mise à jour) ; chaque élément validé par {@link PieceType}. */
+    /** TODO §106 — {@code null} si absent (inchangé à la mise à jour) ; chaque élément validé par {@link PieceType}. */
     private List<PieceType> parsePieceTypes(Object raw) {
         if (raw == null) {
             return null;

@@ -10,13 +10,13 @@ import java.util.Objects;
  * portant {@code flowable:portalRecipient}. {@code ttlDays} est {@code null} quand
  * {@code flowable:portalLinkTtlDays} est absent (défaut tenant). {@code identityField} est {@code null} sauf pour une
  * tâche à authentification forte ({@code flowable:portalIdentityField}, TODO §104). {@code pieceTypeKeys} : types de
- * pièces proposés au tiers ({@code flowable:portalPieceTypes}, TODO §105), vide si l'attribut est absent.
+ * pièces proposés au tiers ({@code flowable:portalPieceTypes}, TODO §106), vide si l'attribut est absent.
  */
 public record PortalTaskDefinition(
         String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays,
         PortalIdentityField identityField, List<String> pieceTypeKeys) {
 
-    /** TODO §105 — au plus 10 types de pièces proposés au tiers par tâche. */
+    /** TODO §106 — au plus 10 types de pièces proposés au tiers par tâche. */
     public static final int MAX_PIECE_TYPES = 10;
 
     public PortalTaskDefinition {
@@ -41,7 +41,7 @@ public record PortalTaskDefinition(
     }
 
     /**
-     * TODO §105 (D-PIECE-PORTAL) — {@code flowable:portalPieceTypes} : clés de types de pièces séparées par des virgules,
+     * TODO §106 (D-PIECE-PORTAL) — {@code flowable:portalPieceTypes} : clés de types de pièces séparées par des virgules,
      * valides et distinctes, {@value #MAX_PIECE_TYPES} au plus. Leur existence sur le type de dossier est vérifiée à
      * l'exécution (le BPMN ne connaît pas le type), une clé inconnue n'est simplement pas proposée.
      */

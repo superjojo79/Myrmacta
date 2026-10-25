@@ -150,7 +150,7 @@ public final class SecurityAuditLog {
     }
 
     /**
-     * TODO §105 (D-PIECE-CLASSIFY) — le type d'une pièce jointe a été attribué, changé ou retiré. INFO : action légitime,
+     * TODO §106 (D-PIECE-CLASSIFY) — le type d'une pièce jointe a été attribué, changé ou retiré. INFO : action légitime,
      * tracée ; seules les clés de type sont écrites, jamais le libellé ni le nom du fichier.
      */
     public static void attachmentClassified(HttpServletRequest request, Authentication authentication, UUID dossierId,

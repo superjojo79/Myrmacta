@@ -153,7 +153,7 @@ test('E2E-17 upload an ATTACHMENT element from detail', async ({ page }) => {
   await expect(page.locator('.elements-list li', { hasText: 'Justificatif' }).getByText('Télécharger')).toBeVisible()
 })
 
-test('E2E-PIECE-1 an attachment is classified at upload, then reclassified from the list (TODO §105)', async ({ page }) => {
+test('E2E-PIECE-1 an attachment is classified at upload, then reclassified from the list (TODO §106)', async ({ page }) => {
   await mockSession(page)
   await page.route('**/api/dossier-types/CLAIM', (route) =>
     route.fulfill({

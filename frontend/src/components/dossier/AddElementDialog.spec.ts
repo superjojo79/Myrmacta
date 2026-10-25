@@ -49,7 +49,7 @@ describe('AddElementDialog', () => {
     expect(wrapper.find('[data-testid="add-element-piece-type"]').exists()).toBe(false)
   })
 
-  /** TODO §105 — le type de pièce est choisi au dépôt quand le type de dossier en déclare. */
+  /** TODO §106 — le type de pièce est choisi au dépôt quand le type de dossier en déclare. */
   it('lets the agent pick a piece type for an attachment', async () => {
     const wrapper = mount(AddElementDialog, {
       props: {

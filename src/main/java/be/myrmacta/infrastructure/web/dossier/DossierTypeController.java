@@ -127,7 +127,7 @@ public class DossierTypeController {
                         request.documentTemplateKeys() == null
                                 ? existing.documentTemplateKeys()
                                 : listOrEmptyStrings(request.documentTemplateKeys()),
-                        request.pieceTypes()), // TODO §105 : null garde les types de pièces déclarés
+                        request.pieceTypes()), // TODO §106 : null garde les types de pièces déclarés
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }

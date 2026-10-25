@@ -184,7 +184,7 @@ async function saveSla() {
   }
 }
 
-/** TODO §105 — erreurs de saisie des types de pièces, traduites. */
+/** TODO §106 — erreurs de saisie des types de pièces, traduites. */
 function pieceTypeMessages(pieceTypes: PieceType[]): string[] {
   return validatePieceTypes(pieceTypes).map((issue) =>
     issue.code === 'tooMany'

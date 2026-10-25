@@ -5,7 +5,7 @@ import be.myrmacta.domain.dossier.model.DossierElement;
 import java.util.UUID;
 
 /**
- * TODO §105 (issue #211, lot P, D-PIECE-CLASSIFY) — attribuer, changer ou retirer le type d'une pièce jointe déjà déposée.
+ * TODO §106 (issue #211, lot P, D-PIECE-CLASSIFY) — attribuer, changer ou retirer le type d'une pièce jointe déjà déposée.
  * Droit EDIT sur le type du dossier, dossier non clos ; {@code pieceKey} {@code null} rend la pièce non classée.
  */
 public interface ClassifyDossierAttachmentUseCase {

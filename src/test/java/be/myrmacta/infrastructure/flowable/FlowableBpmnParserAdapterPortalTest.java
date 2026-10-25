@@ -78,7 +78,7 @@ class FlowableBpmnParserAdapterPortalTest {
                 .hasMessageContaining("portalIdentityField");
     }
 
-    /** TODO §105 (D-PIECE-PORTAL) — types de pièces proposés au tiers. */
+    /** TODO §106 (D-PIECE-PORTAL) — types de pièces proposés au tiers. */
     @Test
     void externalTaskWithPieceTypes_listsThemInOrder() {
         byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""

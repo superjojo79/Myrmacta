@@ -135,7 +135,7 @@ public final class BuildingBlockCatalog {
                     new BlockParameter("portalLinkTtlDays", "Validité du lien (jours)", ParameterType.INTEGER,
                             ParameterBinding.ATTRIBUTE, false, null, List.of(), 3, 1, 365,
                             "Durée de validité, dans la limite du plafond de l'instance."),
-                    // TODO §105 (D-PIECE-PORTAL) — types de pièces que le tiers choisit au dépôt.
+                    // TODO §106 (D-PIECE-PORTAL) — types de pièces que le tiers choisit au dépôt.
                     text("portalPieceTypes", "Types de pièces demandés", 700,
                             "Clés de types de pièces du type de dossier, séparées par des virgules (10 au plus). Ex. "
                                     + "preuveDomicile, certificatImmatriculation. Sans valeur : pièces non classées.",

@@ -226,7 +226,7 @@ class DossierElementUploadControllerTest {
                 null);
     }
 
-    /** TODO §105 (D-PIECE-CLASSIFY) — un type de pièce inconnu est refusé avant toute écriture dans le stockage. */
+    /** TODO §106 (D-PIECE-CLASSIFY) — un type de pièce inconnu est refusé avant toute écriture dans le stockage. */
     @Test
     void upload_unknownPieceKey_neverWritesToStorage() {
         UUID dossierId = UUID.randomUUID();

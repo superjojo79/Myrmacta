@@ -59,7 +59,7 @@ public final class UpdateDossierTypeUseCaseImpl implements UpdateDossierTypeUseC
                 command.retentionNever(),
                 command.slaTargetHours(),
                 command.documentTemplateKeys(),
-                // TODO §105 (H9) : retirer un type de pièce ne casse aucun dossier — ses pièces redeviennent non classées.
+                // TODO §106 (H9) : retirer un type de pièce ne casse aucun dossier — ses pièces redeviennent non classées.
                 command.pieceTypes() == null ? existing.pieceTypes() : command.pieceTypes(),
                 actor.userId());
 

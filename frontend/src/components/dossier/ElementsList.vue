@@ -7,7 +7,7 @@ import AdminPager from '@/components/admin/AdminPager.vue'
 const props = defineProps<{
   elements: DossierElementView[]
   totalPages?: number
-  /** TODO §105 — types de pièces du type de dossier ; sans eux, rien n'est affiché ni reclassable. */
+  /** TODO §106 — types de pièces du type de dossier ; sans eux, rien n'est affiché ni reclassable. */
   pieceTypes?: PieceType[]
   canClassify?: boolean
 }>()

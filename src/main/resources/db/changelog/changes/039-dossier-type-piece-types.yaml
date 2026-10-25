@@ -1,5 +1,5 @@
 databaseChangeLog:
-  # TODO §105 (issue #211, lot P, D-PIECE-TYPES) — types de pièces justificatives déclarés sur le type de dossier.
+  # TODO §106 (issue #211, lot P, D-PIECE-TYPES) — types de pièces justificatives déclarés sur le type de dossier.
   - changeSet:
       id: 039-dossier-type-piece-types
       author: flowforge

@@ -43,7 +43,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/** TODO §105 (D-PIECE-PORTAL) — types de pièces proposés au tiers par une tâche externe. */
+/** TODO §106 (D-PIECE-PORTAL) — types de pièces proposés au tiers par une tâche externe. */
 class PortalPieceTypesTest {
 
     private static final Instant NOW = Instant.parse("2026-10-25T10:00:00Z");

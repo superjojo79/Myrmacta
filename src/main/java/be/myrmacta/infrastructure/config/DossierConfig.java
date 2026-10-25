@@ -274,7 +274,7 @@ public class DossierConfig {
                 attachmentPieceTypes);
     }
 
-    /** TODO §105 (D-PIECE-CLASSIFY) — contrôle du type de pièce, partagé par le dépôt et le reclassement. */
+    /** TODO §106 (D-PIECE-CLASSIFY) — contrôle du type de pièce, partagé par le dépôt et le reclassement. */
     @Bean
     AttachmentPieceTypes attachmentPieceTypes(DossierTypeRepository typeRepository) {
         return new AttachmentPieceTypes(typeRepository);

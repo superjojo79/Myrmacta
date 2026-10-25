@@ -91,7 +91,7 @@ public class DossierElementUploadController {
         if (file == null || file.isEmpty()) {
             throw new InvalidDossierElementException("file is required");
         }
-        // TODO §105 (D-PIECE-CLASSIFY) — type facultatif, vérifié avant toute écriture dans le stockage.
+        // TODO §106 (D-PIECE-CLASSIFY) — type facultatif, vérifié avant toute écriture dans le stockage.
         String piece = pieceKey == null || pieceKey.isBlank() ? null : pieceKey.strip();
         if (piece != null) {
             pieceTypes.require(dossier, piece);
@@ -128,7 +128,7 @@ public class DossierElementUploadController {
     }
 
     /**
-     * TODO §105 (D-PIECE-CLASSIFY) — attribuer, changer ou retirer ({@code pieceKey} absent ou {@code null}) le type
+     * TODO §106 (D-PIECE-CLASSIFY) — attribuer, changer ou retirer ({@code pieceKey} absent ou {@code null}) le type
      * d'une pièce jointe. EDIT sur le type du dossier ; tracé dans le journal de sécurité (clés seulement).
      */
     @PutMapping(path = "/{id}/elements/{elementId}/piece-type", consumes = "application/json")

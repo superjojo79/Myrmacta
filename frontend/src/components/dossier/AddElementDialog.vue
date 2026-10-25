@@ -6,7 +6,7 @@ import { MANUAL_ELEMENT_TYPES, type ElementType, type PieceType } from '@/api/ty
 
 const props = defineProps<{
   open: boolean
-  /** TODO §105 — types de pièces du type de dossier ; vide : pièce non classée. */
+  /** TODO §106 — types de pièces du type de dossier ; vide : pièce non classée. */
   pieceTypes?: PieceType[]
 }>()
 

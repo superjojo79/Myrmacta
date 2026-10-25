@@ -37,7 +37,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** TODO §105 (D-PIECE-CLASSIFY) — reclassement d'une pièce jointe déjà déposée. */
+/** TODO §106 (D-PIECE-CLASSIFY) — reclassement d'une pièce jointe déjà déposée. */
 class ClassifyDossierAttachmentUseCaseImplTest {
 
     private static final Instant NOW = Instant.parse("2026-10-25T10:00:00Z");

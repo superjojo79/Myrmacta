@@ -100,7 +100,7 @@ describe('PortalApp', () => {
     expect(wrapper.find('[data-testid="portal-attachments"]').text()).toContain('Devis signé')
   })
 
-  /** TODO §105 — le tiers choisit le type de pièce parmi ceux que la tâche propose. */
+  /** TODO §106 — le tiers choisit le type de pièce parmi ceux que la tâche propose. */
   it('lets the third party pick one of the offered piece types', async () => {
     vi.spyOn(api, 'fetchTask').mockResolvedValue({
       ...task,

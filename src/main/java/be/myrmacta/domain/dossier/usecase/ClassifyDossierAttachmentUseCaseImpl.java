@@ -21,13 +21,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * TODO §105 (D-PIECE-CLASSIFY) — le classement est tracé sur l'élément lui-même ({@code pieceClassifiedBy},
+ * TODO §106 (D-PIECE-CLASSIFY) — le classement est tracé sur l'élément lui-même ({@code pieceClassifiedBy},
  * {@code pieceClassifiedAt}) et dans le journal de sécurité par l'adaptateur web ; le contenu de la pièce n'est jamais lu.
  */
 public final class ClassifyDossierAttachmentUseCaseImpl implements ClassifyDossierAttachmentUseCase {
-
-    static final String CLASSIFIED_BY = "pieceClassifiedBy";
-    static final String CLASSIFIED_AT = "pieceClassifiedAt";
 
     private final String tenantId;
     private final DossierRepository dossierRepository;
@@ -80,8 +77,8 @@ public final class ClassifyDossierAttachmentUseCaseImpl implements ClassifyDossi
         } else {
             metadata.put(PieceType.METADATA_KEY, key);
         }
-        metadata.put(CLASSIFIED_BY, actor.userId());
-        metadata.put(CLASSIFIED_AT, clock.instant().toString());
+        metadata.put(PieceType.CLASSIFIED_BY_KEY, actor.userId());
+        metadata.put(PieceType.CLASSIFIED_AT_KEY, clock.instant().toString());
         DossierElement saved = elementRepository.save(new DossierElement(element.id(), element.dossierId(),
                 element.tenantId(), element.type(), element.label(), element.storageRef(), metadata, element.addedBy(),
                 element.addedAt(), element.workflowStepId()));

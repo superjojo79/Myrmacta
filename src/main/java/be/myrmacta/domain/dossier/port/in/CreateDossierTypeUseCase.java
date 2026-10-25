@@ -23,7 +23,7 @@ public interface CreateDossierTypeUseCase {
             List<String> documentTemplateKeys,
             List<PieceType> pieceTypes) {
 
-        /** Convenience for callers built before {@code pieceTypes} existed (TODO §105) — no piece type. */
+        /** Convenience for callers built before {@code pieceTypes} existed (TODO §106) — no piece type. */
         public CreateDossierTypeCommand(
                 String tenantId,
                 String code,

@@ -22,7 +22,7 @@ record PortalTaskResponse(
         List<Attachment> attachments,
         // Absent pour une tâche sans authentification forte : le contrat minimal de D-PORTAL-DATA ne change pas.
         @JsonInclude(JsonInclude.Include.NON_NULL) Identity identity,
-        // TODO §105 (D-PIECE-PORTAL) — absent si la tâche ne propose aucun type de pièce (contrat minimal inchangé).
+        // TODO §106 (D-PIECE-PORTAL) — absent si la tâche ne propose aucun type de pièce (contrat minimal inchangé).
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<PieceTypeOption> pieceTypes) {
 
     static PortalTaskResponse from(PortalTaskView view) {

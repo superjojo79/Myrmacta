@@ -49,7 +49,7 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
         this(tenantId, accessResolver, allowedContentType, scanPort, storagePort, addElementUseCase, null);
     }
 
-    /** @param pieceTypes {@code null} : aucun type de pièce accepté du tiers (TODO §105). */
+    /** @param pieceTypes {@code null} : aucun type de pièce accepté du tiers (TODO §106). */
     public AddPortalAttachmentUseCaseImpl(
             String tenantId,
             PortalAccessResolver accessResolver,
@@ -111,7 +111,7 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
     }
 
     /**
-     * TODO §105 (D-PIECE-PORTAL) — le tiers ne choisit qu'un type que la tâche propose et que le type du dossier déclare ;
+     * TODO §106 (D-PIECE-PORTAL) — le tiers ne choisit qu'un type que la tâche propose et que le type du dossier déclare ;
      * vérifié avant toute écriture en stockage.
      */
     private String pieceKey(PortalAccessResolver.ResolvedAccess access, String requested) {

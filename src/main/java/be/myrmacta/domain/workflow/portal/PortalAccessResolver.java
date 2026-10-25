@@ -159,7 +159,7 @@ public final class PortalAccessResolver {
     /**
      * {@code identityField} : champ d'identité de la tâche, nul sans authentification forte. {@code identity} : identité
      * vérifiée présentée par la preuve, nulle sur un accès par le jeton. {@code pieceTypeKeys} : types de pièces que la
-     * tâche propose au tiers (TODO §105), vide sans {@code flowable:portalPieceTypes}.
+     * tâche propose au tiers (TODO §106), vide sans {@code flowable:portalPieceTypes}.
      */
     public record ResolvedAccess(
             PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier, PortalIdentityField identityField,

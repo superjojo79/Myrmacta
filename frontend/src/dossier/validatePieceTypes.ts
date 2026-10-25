@@ -1,6 +1,6 @@
 import type { PieceType } from '@/api/types'
 
-/** TODO §105 — mêmes règles que `PieceType` côté serveur (le serveur reste la source de vérité). */
+/** TODO §106 — mêmes règles que `PieceType` côté serveur (le serveur reste la source de vérité). */
 export const PIECE_TYPE_KEY = /^[a-z][a-zA-Z0-9_]{0,59}$/
 export const MAX_PIECE_TYPES = 30
 export const MAX_PIECE_TYPE_LABEL = 100

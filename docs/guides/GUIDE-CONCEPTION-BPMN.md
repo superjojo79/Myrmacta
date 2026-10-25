@@ -301,6 +301,7 @@ les mêmes variables de process qu'une complétion interne.
 | `flowable:portalRecipient` | **Obligatoire** — `dossierField:<champ>` (champ du dossier) ou `variable:<nom>` (variable de process), nom simple sans point ni expression |
 | `flowable:formKey` | **Obligatoire** — `user-question:<schemaKey>` uniquement (le tiers n'écrit jamais dans les champs du dossier) |
 | `flowable:portalLinkTtlDays` | Facultatif — durée de validité en jours (1 à 365, et au plus le plafond de l'instance) ; défaut 7 |
+| `flowable:portalPieceTypes` | Facultatif (TODO §106) — types de pièces que le tiers choisit au dépôt : clés du type de dossier séparées par des virgules, 10 au plus (ex. `preuveDomicile, certificat`). Une clé que le type ne déclare pas n'est pas proposée ; sans attribut, les pièces arrivent non classées |
 | `documentation` | Facultatif — consignes affichées au tiers (texte simple, littéral) |
 | `assignee` / `candidateUsers` / `candidateGroups` | **Interdits** — une tâche externe n'est pas assignée en interne (elle reste complétable par un admin) |
 

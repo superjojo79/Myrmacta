@@ -31,7 +31,7 @@ public final class ConfigDocs {
         public DossierTypeDoc {
             fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
             documentTemplateKeys = documentTemplateKeys == null ? List.of() : List.copyOf(documentTemplateKeys);
-            // TODO §105 — un bundle antérieur aux types de pièces n'en déclare aucun (même règle que documentTemplateKeys).
+            // TODO §106 — un bundle antérieur aux types de pièces n'en déclare aucun (même règle que documentTemplateKeys).
             pieceTypes = pieceTypes == null ? List.of() : List.copyOf(pieceTypes);
         }
 

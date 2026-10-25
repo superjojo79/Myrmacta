@@ -54,7 +54,7 @@ describe('portal api client', () => {
     expect(uploadMock.mock.calls[0]![0]).toContain('/attachments')
   })
 
-  /** TODO §105 — le type de pièce choisi par le tiers part avec le fichier. */
+  /** TODO §106 — le type de pièce choisi par le tiers part avec le fichier. */
   it('sends the chosen piece type with the attachment', async () => {
     const uploadMock = mockFetch(201, { id: '1', label: 'Preuve', filename: 'p.pdf', addedAt: '' })
     await uploadAttachment(TOKEN, new File(['%PDF'], 'p.pdf', { type: 'application/pdf' }), '', 'preuveDomicile')

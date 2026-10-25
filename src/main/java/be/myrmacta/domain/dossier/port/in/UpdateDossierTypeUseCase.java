@@ -24,7 +24,7 @@ public interface UpdateDossierTypeUseCase {
             List<PieceType> pieceTypes) {
 
         /**
-         * Convenience for callers built before {@code pieceTypes} existed (TODO §105) — {@code null} keeps the piece types
+         * Convenience for callers built before {@code pieceTypes} existed (TODO §106) — {@code null} keeps the piece types
          * already declared on the type.
          */
         public UpdateDossierTypeCommand(

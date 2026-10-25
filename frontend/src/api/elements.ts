@@ -20,7 +20,7 @@ export async function uploadAttachment(
   return data
 }
 
-/** TODO §105 — attribuer, changer ou retirer (`null`) le type d'une pièce jointe (droit EDIT). */
+/** TODO §106 — attribuer, changer ou retirer (`null`) le type d'une pièce jointe (droit EDIT). */
 export async function classifyAttachment(
   dossierId: string,
   elementId: string,

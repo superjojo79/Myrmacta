@@ -396,7 +396,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             }
             return Optional.empty();
         }
-        // TODO §105 (D-PIECE-PORTAL) — types de pièces proposés au tiers lors d'un dépôt.
+        // TODO §106 (D-PIECE-PORTAL) — types de pièces proposés au tiers lors d'un dépôt.
         List<String> pieceTypeKeys;
         try {
             pieceTypeKeys = pieceTypesRaw == null ? List.of() : PortalTaskDefinition.parsePieceTypeKeys(pieceTypesRaw);

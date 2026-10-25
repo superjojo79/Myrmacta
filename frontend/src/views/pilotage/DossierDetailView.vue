@@ -176,7 +176,7 @@ async function onAddAttachment(payload: { file: File; label: string; pieceKey: s
   }
 }
 
-/** TODO §105 — reclassement d'une pièce jointe depuis la liste des éléments. */
+/** TODO §106 — reclassement d'une pièce jointe depuis la liste des éléments. */
 async function onClassify(elementId: string, pieceKey: string | null) {
   actionError.value = null
   try {

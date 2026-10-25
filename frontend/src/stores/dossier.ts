@@ -253,7 +253,7 @@ export const useDossierStore = defineStore('dossier', () => {
     return created
   }
 
-  /** TODO §105 — reclasse une pièce jointe et remplace l'élément dans la liste affichée. */
+  /** TODO §106 — reclasse une pièce jointe et remplace l'élément dans la liste affichée. */
   async function classifyElement(elementId: string, pieceKey: string | null): Promise<DossierElementView> {
     if (!dossier.value) throw new Error('No dossier loaded')
     const updated = await classifyAttachment(dossier.value.id, elementId, pieceKey)

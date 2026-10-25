@@ -48,14 +48,16 @@ public record DossierType(
         }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
         documentTemplateKeys = documentTemplateKeys == null ? List.of() : List.copyOf(documentTemplateKeys);
+        if (pieceTypes != null) {
+            PieceType.requireValid(pieceTypes); // avant List.copyOf, qui refuserait un élément null par une NPE (500)
+        }
         pieceTypes = pieceTypes == null ? List.of() : List.copyOf(pieceTypes);
         requireUniqueFieldNames(fieldDefinitions);
-        PieceType.requireValid(pieceTypes);
         validateRetention(retentionDays, retentionNever);
         validateSlaTargetHours(slaTargetHours);
     }
 
-    /** Convenience for callers built before {@code pieceTypes} existed (TODO §105) — no piece type declared. */
+    /** Convenience for callers built before {@code pieceTypes} existed (TODO §106) — no piece type declared. */
     public DossierType(
             UUID id,
             String tenantId,
@@ -162,7 +164,7 @@ public record DossierType(
                 "system");
     }
 
-    /** Update that keeps the declared piece types (callers built before TODO §105). */
+    /** Update that keeps the declared piece types (callers built before TODO §106). */
     public DossierType withUpdate(
             String label,
             String workflowKey,
@@ -208,7 +210,7 @@ public record DossierType(
                 updatedBy);
     }
 
-    /** TODO §105 — type de pièce déclaré pour cette clé, ou vide (clé inconnue ou retirée : pièce non classée). */
+    /** TODO §106 — type de pièce déclaré pour cette clé, ou vide (clé inconnue ou retirée : pièce non classée). */
     public Optional<PieceType> pieceType(String key) {
         return pieceTypes.stream().filter(type -> type.key().equals(key)).findFirst();
     }

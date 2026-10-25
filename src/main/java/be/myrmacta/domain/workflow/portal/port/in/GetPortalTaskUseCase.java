@@ -20,7 +20,7 @@ public interface GetPortalTaskUseCase {
     /**
      * TODO §104 (T3b) — {@code identityRequired} sans identité vérifiée : vue réduite (référence, nom de la tâche et
      * fournisseurs seulement). {@code verifiedName} : nom de la personne authentifiée, sinon nul. {@code pieceTypes} :
-     * types de pièces que le tiers peut choisir au dépôt (TODO §105), vide si la tâche n'en propose pas.
+     * types de pièces que le tiers peut choisir au dépôt (TODO §106), vide si la tâche n'en propose pas.
      */
     record PortalTaskView(
             String dossierReference,

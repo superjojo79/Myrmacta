@@ -256,7 +256,7 @@ describe('DossierTypesAdminView', () => {
     expect(wrapper.find('[data-testid="type-edit-fields-panel"]').exists()).toBe(false)
   })
 
-  /** TODO §105 — types de pièces : prérempli, enregistré avec le schéma, clé invalide bloquée avant l'envoi. */
+  /** TODO §106 — types de pièces : prérempli, enregistré avec le schéma, clé invalide bloquée avant l'envoi. */
   it('edits the piece types of a type and blocks an invalid key', async () => {
     vi.mocked(api.listDossierTypes).mockResolvedValue(
       asPage([{ ...sampleType, pieceTypes: [{ key: 'preuve', label: 'Preuve', sensitive: false }] }]),

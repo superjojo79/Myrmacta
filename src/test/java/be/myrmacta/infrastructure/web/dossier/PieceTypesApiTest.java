@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/** TODO §105 (issue #211, lot P) — types de pièces : déclaration, dépôt classé, reclassement (PostgreSQL réel). */
+/** TODO §106 (issue #211, lot P) — types de pièces : déclaration, dépôt classé, reclassement (PostgreSQL réel). */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(OidcClientTestConfiguration.class)
@@ -67,6 +67,10 @@ class PieceTypesApiTest {
                 .andExpect(status().isBadRequest());
         patchType(code, "{\"pieceTypes\": [{\"key\": \"a\", \"label\": \"A\"}, {\"key\": \"a\", \"label\": \"B\"}]}")
                 .andExpect(status().isBadRequest());
+        patchType(code, "{\"pieceTypes\": [null]}").andExpect(status().isBadRequest());
+        patchType(code, "{\"pieceTypes\": [{\"key\": \"sansIndicateur\", \"label\": \"Sans indicateur\"}]}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pieceTypes[0].sensitive").value(false));
     }
 
     @Test

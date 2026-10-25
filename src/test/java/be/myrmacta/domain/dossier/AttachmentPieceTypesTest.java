@@ -22,7 +22,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** TODO §105 (D-PIECE-CLASSIFY, D-PIECE-PORTAL). */
+/** TODO §106 (D-PIECE-CLASSIFY, D-PIECE-PORTAL). */
 class AttachmentPieceTypesTest {
 
     private final DossierTypeRepository typeRepository = mock(DossierTypeRepository.class);
@@ -52,6 +52,16 @@ class AttachmentPieceTypesTest {
         assertThatThrownBy(() -> pieceTypes.requireValid(dossier, ElementType.NOTE, Map.of("pieceKey", "preuve")))
                 .isInstanceOf(InvalidDossierElementException.class);
         assertThatThrownBy(() -> pieceTypes.requireValid(dossier, ElementType.ATTACHMENT, Map.of("pieceKey", 3)))
+                .isInstanceOf(InvalidDossierElementException.class);
+    }
+
+    @Test
+    void rejectsAForgedClassificationTrace() {
+        assertThatThrownBy(() -> pieceTypes.requireValid(dossier, ElementType.ATTACHMENT,
+                        Map.of("pieceKey", "preuve", "pieceClassifiedBy", "quelquun")))
+                .isInstanceOf(InvalidDossierElementException.class);
+        assertThatThrownBy(() -> pieceTypes.requireValid(dossier, ElementType.NOTE,
+                        Map.of("text", "x", "pieceClassifiedAt", "2026-01-01T00:00:00Z")))
                 .isInstanceOf(InvalidDossierElementException.class);
     }
 

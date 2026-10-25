@@ -131,6 +131,12 @@ cochée ici, un `userTask` avec `flowable:formKey=document-generation` sur un do
 affiche un picker vide plutôt qu'un fallback « tous les templates » — associer explicitement les
 templates pertinents avant de déployer un process qui les utilise.
 
+**Types de pièces justificatives (TODO §106).** Section **Types de pièces justificatives** du formulaire de création et
+du panneau **Modifier les champs** : une ligne par type (clé, libellé, case **Sensible**), 30 au plus. La clé commence par
+une minuscule, puis lettres, chiffres ou `_` ; une clé invalide ou en double bloque l'enregistrement. Un type
+**sensible** n'est jamais lu par une pré-vérification automatique. Retirer un type ne supprime aucune pièce : celles de ce
+type redeviennent *Non classées*.
+
 ### Rétention (conformité RGPD)
 
 En haut du même écran **Admin → Types**, deux réglages distincts de la politique de rétention :
@@ -171,6 +177,11 @@ Le dossier est créé puis la page bascule automatiquement sur sa fiche détail
 
 > **Le workflow ne démarre pas automatiquement à la création du dossier.** C'est une action
 > séparée et explicite, décrite au §3.
+
+**Pièces justificatives classées (TODO §106).** Sur la fiche, **Ajouter** → *Pièce jointe* propose un **Type de pièce**
+quand le type de dossier en déclare (§1) ; *Non classée* reste possible. Dans la liste des éléments, un éditeur du
+dossier change le type d'une pièce (ou la remet *Non classée*) avec la liste déroulante de la pièce ; un simple lecteur
+voit le type. Un dossier clos ne se reclasse plus. Chaque changement est tracé (qui, quand).
 
 ------
 
@@ -765,7 +776,8 @@ concerné (citoyen, fournisseur, partenaire… **sans compte**) un e-mail conten
 personnel**. En l'ouvrant, le tiers voit la référence du dossier, l'intitulé et les consignes de la
 tâche, remplit le formulaire, dépose des pièces et envoie sa réponse — la tâche se termine et le
 workflow continue. Le tiers ne voit **rien d'autre** du dossier (ni ses champs, ni ses documents,
-ni les pièces déposées par d'autres).
+ni les pièces déposées par d'autres). Si la tâche propose des types de pièces (`flowable:portalPieceTypes`, TODO §106),
+le tiers choisit le type de chaque pièce déposée ; sinon ses pièces arrivent *Non classées*, à classer depuis la fiche (§2).
 
 Le portail est **désactivé par défaut** : il doit être activé par l'exploitant
 (`APP_PORTAL_ENABLED`, voir [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#9-portail-externe-tiers-sans-compte)).

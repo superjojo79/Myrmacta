@@ -41,6 +41,7 @@ erDiagram
         varchar workflow_key
         boolean active
         json field_definitions
+        json piece_types "TODO §106 : types de pièces (clé, libellé, sensible)"
     }
     DOSSIER_TYPE_ACL {
         uuid id PK

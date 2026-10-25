@@ -45,7 +45,7 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
         this(tenantId, accessResolver, schemaRepository, elementRepository, identityProviders, null);
     }
 
-    /** @param pieceTypes {@code null} : aucun type de pièce proposé au tiers (TODO §105). */
+    /** @param pieceTypes {@code null} : aucun type de pièce proposé au tiers (TODO §106). */
     public GetPortalTaskUseCaseImpl(
             String tenantId,
             PortalAccessResolver accessResolver,

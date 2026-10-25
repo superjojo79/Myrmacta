@@ -60,7 +60,7 @@ public class DossierTypeJpaEntity {
     @Column(name = "document_template_keys", nullable = false, columnDefinition = "json")
     private List<String> documentTemplateKeys = List.of();
 
-    // TODO §105 (D-PIECE-TYPES) — types de pièces justificatives du type.
+    // TODO §106 (D-PIECE-TYPES) — types de pièces justificatives du type.
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "piece_types", nullable = false, columnDefinition = "json")
     private List<PieceType> pieceTypes = List.of();

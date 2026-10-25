@@ -185,7 +185,7 @@ describe('dossier store', () => {
     expect(store.elements[0]?.id).toBe('e2')
   })
 
-  /** TODO §105 — le reclassement remplace l'élément sans recharger la liste. */
+  /** TODO §106 — le reclassement remplace l'élément sans recharger la liste. */
   it('classifyElement replaces the element in place', async () => {
     const store = useDossierStore()
     store.dossier = { id: 'd1' } as never

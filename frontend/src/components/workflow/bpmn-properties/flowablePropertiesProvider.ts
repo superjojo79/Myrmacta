@@ -93,7 +93,7 @@ const PortalRecipient = textFieldEntry(
   'Tiers externe — adresse (dossierField:<champ> ou variable:<nom>)',
 )
 const PortalLinkTtlDays = textFieldEntry('flowable:portalLinkTtlDays', 'Tiers externe — validité du lien (jours)')
-// TODO §105 (D-PIECE-PORTAL) : types de pièces que le tiers choisit au dépôt.
+// TODO §106 (D-PIECE-PORTAL) : types de pièces que le tiers choisit au dépôt.
 const PortalPieceTypes = textFieldEntry(
   'flowable:portalPieceTypes',
   'Tiers externe — types de pièces demandés (clés séparées par des virgules)',

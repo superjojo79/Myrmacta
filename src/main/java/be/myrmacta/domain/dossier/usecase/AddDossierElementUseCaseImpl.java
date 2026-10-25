@@ -93,7 +93,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         }
 
         Map<String, Object> metadata = command.metadata() == null ? Map.of() : command.metadata();
-        // TODO §105 (D-PIECE-CLASSIFY) — même contrôle pour la fiche, le portail et MCP (add_dossier_element).
+        // TODO §106 (D-PIECE-CLASSIFY) — même contrôle pour la fiche, le portail et MCP (add_dossier_element).
         pieceTypes.requireValid(dossier, type, metadata);
         DossierElement element = new DossierElement(
                 UUID.randomUUID(),

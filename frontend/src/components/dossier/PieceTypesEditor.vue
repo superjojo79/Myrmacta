@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import type { PieceType } from '@/api/types'
 import { MAX_PIECE_TYPES } from '@/dossier/validatePieceTypes'
 
-// TODO §105 (issue #211, lot P) — types de pièces justificatives d'un type de dossier, écran Admin → Types.
+// TODO §106 (issue #211, lot P) — types de pièces justificatives d'un type de dossier, écran Admin → Types.
 const model = defineModel<PieceType[]>({ required: true })
 
 function update(index: number, patch: Partial<PieceType>) {

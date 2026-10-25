@@ -161,7 +161,7 @@ Phase 1 tranchée par l'utilisateur le 2026-10-25 (décisions **P1-…** ci-dess
 
 ## Questions & Open Items
 
-Ouverts à la fin de la phase 1 ; O1, O2 et O4 tranchés en phase 2 (R1 à R7), O3 renvoyé en phase 3 :
+Ouverts à la fin de la phase 1 ; O1, O2 et O4 tranchés en phase 2 (R1 à R7), O3 en phase 3 (C1 : `spring-ai-openai`) :
 
 - **O1 — Identifier une pièce attendue.** Une pièce est un élément `ATTACHMENT` à libellé libre : aucun lien avec un
   champ `FILE` (rendu comme une zone de texte) ni avec un type de pièce. Comment la brique désigne-t-elle « la preuve de

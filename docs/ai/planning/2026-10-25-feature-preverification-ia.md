@@ -12,7 +12,7 @@ tant que les lots A à D ne sont pas livrés.
 ## Milestones
 
 - [x] Phase 2 : revue des exigences, O1, O2, O4 tranchées (R1 à R7), O3 renvoyée en phase 3
-- [ ] Phase 3 : conception validée
+- [x] Phase 3 : conception validée (C1 à C8, HC1 à HC12) ; ordre P, A, B, C, D
 - [ ] Lot P fusionné : types de pièces
 - [ ] Lot A fusionné : fournisseur et extraction
 - [ ] Lot B fusionné : moteur, brique, REST, MCP
@@ -23,14 +23,14 @@ tant que les lots A à D ne sont pas livrés.
 
 ### Lot P — Types de pièces (R1 à R4)
 
-- [ ] P1 : `pieceTypes` sur le type de dossier (modèle, validation, compatibilité, API, éditeur d'administration)
+- [ ] P1 : `pieceTypes` sur le type de dossier (modèle, validation, compatibilité, changeSet 039, promotion, API, éditeur)
 - [ ] P2 : choix du type au dépôt sur la fiche ; reclassement d'une pièce non classée (EDIT, journalisé)
 - [ ] P3 : portail : `portalPieceTypes` sur la tâche externe, choix par le tiers
 - [ ] P4 : Vitest, Playwright, docs de spec (`04-dossiers.md`, `26-portail-externe.md`)
 
 ### Lot A — Fournisseur et extraction
 
-- [ ] A1 : `PrecheckModelPort` et adaptateur compatible OpenAI (O3), HTTPS, délai, sans redirection
+- [ ] A1 : `PrecheckModelPort`, adaptateur `spring-ai-openai` (C1) et Anthropic ; dépendances et exclusions (HC1)
 - [ ] A2 : `app.precheck.*` (activation, fournisseur, URL, clé, modèle, délai, plafonds, bornes), démarrage refusé si
       incohérent
 - [ ] A3 : plafond de jetons par jour et par instance
@@ -42,7 +42,7 @@ tant que les lots A à D ne sont pas livrés.
 - [ ] B1 : spécification de la brique et validation (déploiement et exécution)
 - [ ] B2 : passe 1 complétude
 - [ ] B3 : entrée masquée, prompt versionné, validation de la sortie
-- [ ] B4 : changeSet 039, dépôt
+- [ ] B4 : changeSet 040, dépôt, relais de la file avec bail (C2)
 - [ ] B5 : délégué `aiPrecheckTask`, catalogue, liste blanche, refus au déploiement (async, désactivée)
 - [ ] B6 : REST (relancer, lire, décider, export) et MCP (lancer, lire)
 - [ ] B7 : test « sensible nulle part », injection simulée, revue adversariale du lot

@@ -333,7 +333,7 @@ national (NRN) :
 |---|---|
 | Source | `dossierField:<champ>` seulement : le NRN ne transite jamais par une variable de process |
 | Champ | Déclaré dans le type, de type **Texte** et **sensible** ; sinon le lien est *Non envoyé — champ d'identité…* (pas d'incident) |
-| Activation | Déploiement **refusé** tant que l'authentification forte n'est pas activée (`APP_PORTAL_STRONG_AUTH_ENABLED`, [DEPLOIEMENT.md §19](DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-103)) |
+| Activation | Déploiement **refusé** tant que l'authentification forte n'est pas activée (`APP_PORTAL_STRONG_AUTH_ENABLED`, [DEPLOIEMENT.md §19](DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-104)) |
 | Niveau | eIDAS substantiel ou élevé ; une identité étrangère sans NRN est refusée si un NRN est attendu, acceptée sans écriture sinon |
 | Avant l'identification | Le tiers ne voit que le nom de la tâche et la référence du dossier |
 

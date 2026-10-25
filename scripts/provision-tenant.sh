@@ -46,7 +46,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   --realm-per-tenant
                     Avec --instance-dir : realm Keycloak propre au tenant (flowforge-<tenant_id>,
-                     TODO §104, modèle par défaut en production). Écrit aussi
+                     TODO §104, recommandé en production ; sans l'option, realm partagé). Écrit aussi
                      <tenant_id>.realm.json (déclaratif, sans secret), que <tenant_id>.keycloak.sh
                      applique avant de créer le client machine-to-machine. Requiert jq.
   --idp fas|itsme   Fournisseur d'identité belge du realm (répétable) : FAS de BOSA (eID, itsme,

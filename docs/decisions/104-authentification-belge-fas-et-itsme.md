@@ -16,8 +16,9 @@ Les communes l'exigent en premier (marché de Schaerbeek, échéance 05/11/2026)
   une demande (#188).
 - **D-BEAUTH-PROVIDERS** — FAS (BOSA : eID, itsme, eIDAS) et itsme en direct, activables par tenant. Écarté : FAS seul ;
   fournisseur OIDC générique sans gabarit.
-- **D-BEAUTH-REALM** — un realm Keycloak par tenant (`flowforge-<tenant>`), modèle par défaut en production : clés,
-  page de connexion et comptes propres. Le realm partagé reste possible. Écarté : realm partagé avec un alias de
+- **D-BEAUTH-REALM** — un realm Keycloak par tenant (`flowforge-<tenant>`), modèle recommandé en production : clés,
+  page de connexion et comptes propres. Activé par `--realm-per-tenant` ; sans l'option, l'instance reste sur le realm
+  partagé, et aucune instance existante n'est migrée d'office. Écarté : realm partagé avec un alias de
   fournisseur par tenant (clés communes à toutes les communes).
 - **D-BEAUTH-FIRST-LOGIN** — première connexion par un fournisseur : compte créé **sans `tenant_id` ni rôle**, refusé
   par FlowForge (403) jusqu'à validation par un admin ; rattachement à un compte existant par ré-authentification (même

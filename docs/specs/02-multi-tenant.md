@@ -172,16 +172,20 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 
 ### Provider OIDC — Keycloak (realm partagé ou realm par tenant)
 
-Un realm partagé avec un claim `tenant_id` par utilisateur. Évolutif vers des realms dédiés si un
-tenant exige une configuration SSO spécifique (Azure AD, Google Workspace…).
+Deux modèles, choisis au provisionnement de chaque instance :
 
-**Realm par tenant (TODO §104, D-BEAUTH-REALM).** C'est désormais le modèle par défaut en production :
-`scripts/provision-tenant.sh --realm-per-tenant` génère le realm `flowforge-<tenant>` (client BFF, rôles, profil,
-fournisseurs FAS et itsme), et l'instance pointe son `OIDC_ISSUER_URI` dessus. Chaque tenant a ses propres clés
-(`private_key_jwt` signé avec la clé du realm), sa page de connexion et ses comptes, ce qu'exigent des contrats FAS ou
-itsme propres à chaque commune. Le claim `tenant_id` reste vérifié de la même façon : un compte créé par un fournisseur
-d'identité n'en a pas tant qu'un admin ne l'a pas validé, et il est refusé. Le realm partagé reste possible (dev,
-déploiements existants). Voir [DEPLOIEMENT.md §19](../guides/DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-103).
+- **Realm partagé** : un seul realm, un claim `tenant_id` par utilisateur. C'est ce que fait
+  `scripts/provision-tenant.sh` sans option, et le modèle du dev (`docker-compose.yml`, realm `flowforge`) ;
+- **Realm par tenant** : un realm dédié, activé par `--realm-per-tenant`. C'est le modèle recommandé en production.
+
+Aucune instance ne bascule seule d'un modèle à l'autre : la migration d'un tenant vers son realm est manuelle
+([DEPLOIEMENT.md §19](../guides/DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-104)).
+
+**Realm par tenant (TODO §104, D-BEAUTH-REALM).** `scripts/provision-tenant.sh --realm-per-tenant` génère le realm
+`flowforge-<tenant>` (client BFF, rôles, profil, fournisseurs FAS et itsme), et l'instance pointe son `OIDC_ISSUER_URI`
+dessus. Chaque tenant a ses propres clés (`private_key_jwt` signé avec la clé du realm), sa page de connexion et ses
+comptes, ce qu'exigent des contrats FAS ou itsme propres à chaque commune. Le claim `tenant_id` reste vérifié de la même
+façon : un compte créé par un fournisseur d'identité n'en a pas tant qu'un admin ne l'a pas validé, et il est refusé.
 
 ### Connexion à la base — schéma fixé à la configuration
 

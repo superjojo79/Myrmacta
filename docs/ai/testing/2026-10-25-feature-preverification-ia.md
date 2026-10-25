@@ -20,15 +20,26 @@ description: Issue #211 — scénarios dérivés des critères de succès (broui
 
 - [ ] Pièces, questions et champs valides acceptés ; question vide, doublon de clé, plus de 20 questions refusés
 - [ ] Champ sensible ou inconnu dans `precheckFields` refusé au déploiement
+- [ ] Type de pièce sensible marqué `lire` refusé au déploiement ; marqué seulement `obligatoire` accepté (R5)
 - [ ] Brique sans `flowable:async="true"` refusée au déploiement
 - [ ] Fonction désactivée : déploiement refusé avec un message explicite
+
+### Types de pièces (lot P)
+
+- [ ] `pieceTypes` valides acceptés ; clé invalide, doublon, plus de 30 refusés
+- [ ] Dépôt avec un type inconnu du type de dossier refusé ; sans type = non classée
+- [ ] Reclassement : EDIT exigé, journalisé ; type inconnu refusé
+- [ ] Portail : seuls les types de `portalPieceTypes` proposés et acceptés
+- [ ] Type retiré du type de dossier : éléments redeviennent non classés (H9)
 
 ### Complétude (passe 1)
 
 - [ ] Champ obligatoire vide → `MISSING` déterministe
 - [ ] Champ rendu obligatoire par une règle (`requiredByRule`) → `MISSING`
 - [ ] Champ sensible obligatoire vide → `MISSING` (contrôlé sans être envoyé)
-- [ ] Pièce attendue absente → `MISSING` (selon O1)
+- [ ] Pièce marquée `obligatoire` dans la brique et absente (aucun élément de ce type) → `MISSING`
+- [ ] Pièce non classée ignorée par la complétude
+- [ ] Variable de règle (R6) vraie → constat déterministe ; variable absente → `À VÉRIFIER` « règle non évaluée »
 
 ### Entrée et sortie du modèle
 

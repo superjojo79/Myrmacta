@@ -11,14 +11,22 @@ tant que les lots A à D ne sont pas livrés.
 
 ## Milestones
 
-- [ ] Phase 2 : revue des exigences, O1 à O4 tranchées
+- [x] Phase 2 : revue des exigences, O1, O2, O4 tranchées (R1 à R7), O3 renvoyée en phase 3
 - [ ] Phase 3 : conception validée
+- [ ] Lot P fusionné : types de pièces
 - [ ] Lot A fusionné : fournisseur et extraction
 - [ ] Lot B fusionné : moteur, brique, REST, MCP
 - [ ] Lot C fusionné : panneau sur la fiche
 - [ ] Lot D fusionné : docs, exemple, évaluation, revue adversariale ; `docs/ai` de la feature vidé ; #211 close
 
 ## Task Breakdown
+
+### Lot P — Types de pièces (R1 à R4)
+
+- [ ] P1 : `pieceTypes` sur le type de dossier (modèle, validation, compatibilité, API, éditeur d'administration)
+- [ ] P2 : choix du type au dépôt sur la fiche ; reclassement d'une pièce non classée (EDIT, journalisé)
+- [ ] P3 : portail : `portalPieceTypes` sur la tâche externe, choix par le tiers
+- [ ] P4 : Vitest, Playwright, docs de spec (`04-dossiers.md`, `26-portail-externe.md`)
 
 ### Lot A — Fournisseur et extraction
 
@@ -53,12 +61,13 @@ tant que les lots A à D ne sont pas livrés.
 
 ## Dependencies
 
-- Lot B dépend de A ; C dépend de B (API) ; D en dernier.
+- Lots P et A indépendants ; B dépend de P et A ; C dépend de B (API) ; D en dernier.
 - Aucune dépendance externe pour les tests (faux fournisseur) ; une clé ou un Ollama local pour la démo réelle.
 
 ## Timeline & Estimates
 
-Fiche : 35 à 57 j/p au total. Répartition indicative : A 8–15, B 15–22, C 5–8, D 7–12.
+Fiche : 35 à 57 j/p, hors types de pièces. Répartition indicative : P 5–8 (ajout de la phase 2), A 8–15, B 15–22,
+C 5–8, D 7–12.
 
 ## Risks & Mitigation
 

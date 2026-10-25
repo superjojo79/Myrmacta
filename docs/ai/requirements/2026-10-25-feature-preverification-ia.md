@@ -35,6 +35,7 @@ Phase 1 tranchée par l'utilisateur le 2026-10-25 (décisions **P1-…** ci-dess
 - L'agent **accepte ou écarte** chaque constat ; son choix est journalisé (P4). Rien n'avance le workflow ni n'écrit
   dans un champ du dossier.
 - Fournisseur par **API compatible OpenAI** (Mistral, vLLM, Ollama, Azure OpenAI UE…) ; Anthropic reste possible (P1).
+- **Types de pièces** sur le type de dossier, choisis au dépôt (fiche et portail), reclassables (R1 à R4).
 
 **Objectifs secondaires**
 
@@ -71,6 +72,25 @@ Phase 1 tranchée par l'utilisateur le 2026-10-25 (décisions **P1-…** ci-dess
 | P12 | Rupture | Ouverture des données de dossier à l'IA limitée à la pré-vérification, consignée au registre |
 | P13 | Livraison | Une PR par lot, fusionnée au fil de l'eau ; fonction désactivée par défaut tant que tout n'est pas livré |
 
+## Décisions de la phase 2 (utilisateur, 2026-10-25)
+
+| # | Sujet | Décision |
+|---|---|---|
+| R1 (O1) | Identifier une pièce | **Types de pièces** déclarés sur le type de dossier (clé, libellé, sensible) ; le type est choisi au dépôt (métadonnée `pieceKey` de l'élément `ATTACHMENT`) |
+| R2 | Pièce obligatoire | Déclarée **dans la brique** : pièces attendues à ce stade du processus (pas d'obligation portée par le type) |
+| R3 | Pièce sans type | « Non classée » : ni comptée ni lue ; un agent avec EDIT peut lui attribuer un type après coup (journalisé) ; le type reste facultatif au dépôt |
+| R4 | Portail | La tâche externe peut déclarer les types de pièces demandés ; le tiers choisit parmi eux ; sans déclaration, dépôt non classé comme aujourd'hui |
+| R5 (O2) | Pièces sensibles | Liste blanche : le modèle ne lit que les pièces nommées dans la brique ; un type de pièce marqué sensible est refusé au déploiement s'il est désigné pour lecture (sa présence reste contrôlable) |
+| R6 (O4) | Règles déterministes | La brique lit des **variables de process** posées par des briques précédentes (DMN, formule, recherche de doublons) et en fait des constats déterministes ; elle n'évalue pas d'expression elle-même |
+| R7 | Échec d'un lancement manuel | Bouton ou MCP : exécution en tâche de fond ; en échec, exécution « échouée » (motif générique) dans le panneau avec les constats déterministes, relançable ; une seule exécution en cours par dossier |
+
+**Hypothèses de la phase 2**
+
+- **H9** — retirer un type de pièce du type de dossier laisse les éléments déjà classés avec une clé orpheline : ils
+  redeviennent « non classés » (aucune donnée perdue).
+- **H10** — le champ `FILE` existant n'est pas modifié (hors périmètre) ; les types de pièces le remplacent pour cet usage.
+- **H11** — O3 (adaptateur du fournisseur) est un choix technique, tranché en phase 3.
+
 **Hypothèses acceptées (H, restituées le 2026-10-25, validées avec « OK »)**
 
 - **H1** — un seul appel au modèle, **sans outils**, sortie JSON validée par un schéma ; le contenu des pièces est une
@@ -97,6 +117,9 @@ Phase 1 tranchée par l'utilisateur le 2026-10-25 (décisions **P1-…** ci-dess
   rejouable (§94), sans bloquer les autres dossiers.
 - **US5 — Délégué à la protection des données.** J'exporte le journal d'une exécution (modèle, version du prompt,
   empreinte des entrées, constats, choix de l'agent) pour un audit ou une AIPD.
+- **US7 — Administrateur fonctionnel.** Je déclare les types de pièces d'un type de dossier (« Preuve de domicile »,
+  « Certificat d'immatriculation »), dont certains sensibles ; l'agent et le tiers du portail choisissent le type au
+  dépôt ; l'agent reclasse une pièce non classée.
 - **US6 — Intégrateur.** Par MCP (mode opération), je lance une pré-vérification et je lis son résultat.
 
 **Cas limites**
@@ -138,7 +161,7 @@ Phase 1 tranchée par l'utilisateur le 2026-10-25 (décisions **P1-…** ci-dess
 
 ## Questions & Open Items
 
-Ouverts à la fin de la phase 1, **à trancher en phase 2** :
+Ouverts à la fin de la phase 1 ; O1, O2 et O4 tranchés en phase 2 (R1 à R7), O3 renvoyé en phase 3 :
 
 - **O1 — Identifier une pièce attendue.** Une pièce est un élément `ATTACHMENT` à libellé libre : aucun lien avec un
   champ `FILE` (rendu comme une zone de texte) ni avec un type de pièce. Comment la brique désigne-t-elle « la preuve de

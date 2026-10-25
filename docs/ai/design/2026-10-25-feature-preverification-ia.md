@@ -6,8 +6,8 @@ description: Issue #211 — architecture, données, API et décisions (brouillon
 
 # Pré-vérification IA des dossiers — conception
 
-> **Statut :** brouillon de phase 1. Les choix marqués *(proposition)* sont à confirmer en phase 3 ; les questions
-> O1 à O4 des exigences sont à trancher en phase 2.
+> **Statut :** brouillon. Phase 2 close (R1 à R7 des exigences) ; les choix marqués *(proposition)* sont à confirmer en
+> phase 3, dont O3 (adaptateur du fournisseur).
 
 ## Architecture Overview
 
@@ -41,10 +41,16 @@ graph TD
 
 | Attribut | Contenu |
 |---|---|
-| `precheckPieces` | Pièces à lire, une par ligne (forme selon O1) |
+| `precheckPieces` | Une ligne par type de pièce : `clé [obligatoire] [lire]` — obligatoire = contrôlée par la passe 1 (R2), lire = texte envoyé au modèle (R5 : refusé si le type est sensible) |
+| `precheckRules` | Une ligne par constat déterministe tiré d'une variable posée avant (R6) : variable, condition, type de constat, message |
 | `precheckQuestions` | Questions fermées, une par ligne : `clé = texte de la question` ; 20 au plus |
 | `precheckFields` | Champs non sensibles transmis au modèle (liste blanche) ; sensibles refusés au déploiement |
 | `precheckResult` *(facultatif)* | Variable qui reçoit un résumé (nombre de constats par type) pour une passerelle |
+
+**Types de pièces (R1)** *(proposition)* : `pieceTypes` sur le type de dossier, `[{ key, label, sensitive }]` (30 au plus,
+clé `^[a-z][a-zA-Z0-9_]{0,59}$`) ; la clé choisie au dépôt est rangée dans la métadonnée `pieceKey` de l'élément
+`ATTACHMENT` ; reclassement par `PUT /api/dossiers/{id}/elements/{elementId}/piece-type` (EDIT, journalisé). Tâche
+externe : attribut `portalPieceTypes` (liste de clés) proposé au tiers (R4).
 
 **Tables (changeSet `039-dossier-precheck.yaml`)** *(proposition)* :
 
@@ -75,6 +81,7 @@ rejeté.
 
 | Lot | Contenu |
 |---|---|
+| P — Types de pièces | `pieceTypes` sur le type de dossier (validation, compatibilité, éditeur), choix au dépôt (fiche, portail via `portalPieceTypes`), reclassement journalisé |
 | A — Fournisseur et extraction | `PrecheckModelPort` + adaptateur compatible OpenAI (O3), faux fournisseur de test, `app.precheck.*`, plafond de jetons, `PieceTextExtractorPort` + PDFBox borné |
 | B — Moteur et brique | Spécification et validation, passe 1, construction de l'entrée masquée, prompt versionné, validation de la sortie, tables 039, délégué asynchrone, refus au déploiement, REST, MCP |
 | C — Panneau | `PrecheckPanel.vue`, accepter / écarter, relancer, marquage IA, i18n, E2E Playwright |

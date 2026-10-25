@@ -2,6 +2,10 @@
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 
+> **Actualisation (2026-10-25).** Le préfixe de realm par défaut est `myrmacta-`, plus
+> `flowforge-`. L'énoncé daté n'est pas réécrit. Un realm déjà importé n'est pas migré
+> ([RENAMING.md](../RENAMING.md)).
+
 [x] livré (issue [#210](https://github.com/superjojo79/FlowForge/issues/210)) : lots A (Keycloak, agents), B (portail,
 serveur), C (page du portail) et D (documentation, revue adversariale). Reste la recette contre les vrais FAS et itsme,
 qui dépend des contrats : suivie dans l'issue [#192](https://github.com/superjojo79/FlowForge/issues/192).

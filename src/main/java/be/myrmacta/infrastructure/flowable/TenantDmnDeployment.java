@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * {@code grille-eligibilite-client.dmn}, the illustrative scenario from
  * https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-11-feature-introduction-dmn.md) is deployed directly on the real
  * {@link DmnRepositoryService} at startup, for every tenant, the same way shipped BPMN processes
- * bypass {@code FlowableBpmnParserAdapter} at boot -- these are FlowForge-authored fixtures, not
+ * bypass {@code FlowableBpmnParserAdapter} at boot -- these are Myrmacta-authored fixtures, not
  * user-submitted content, so the JUEL allowlist is not the boundary here (it is still exercised by
  * a dedicated non-regression test on every shipped file, mirroring
  * FlowableBpmnParserAdapterShippedProcessesTest).

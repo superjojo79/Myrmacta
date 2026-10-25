@@ -90,10 +90,10 @@ provision() {
     --realm-per-tenant --idp fas --password-login "$mode" >/dev/null 2>&1
 
   # Le simulateur connaît un client par realm consommateur : private_key_jwt vérifié sur la JWKS de ce realm.
-  "$kcadm" get clients -r fas-simulateur -q clientId=keycloak-flowforge | jq --arg t "$tenant" --arg kc "$kc_url" '
+  "$kcadm" get clients -r fas-simulateur -q clientId=keycloak-myrmacta | jq --arg t "$tenant" --arg kc "$kc_url" '
     .[0] | del(.id) | .clientId = "keycloak-\($t)"
-    | .redirectUris = ["\($kc)/realms/flowforge-\($t)/broker/fas/endpoint"]
-    | .attributes["jwks.url"] = "\($kc)/realms/flowforge-\($t)/protocol/openid-connect/certs"
+    | .redirectUris = ["\($kc)/realms/myrmacta-\($t)/broker/fas/endpoint"]
+    | .attributes["jwks.url"] = "\($kc)/realms/myrmacta-\($t)/protocol/openid-connect/certs"
     | .protocolMappers |= map(del(.id))' | "$kcadm" create clients -r fas-simulateur -f - >/dev/null
 
   for _ in 1 2; do
@@ -123,11 +123,11 @@ smoke() {
 
 check "provisionnement idp-only appliqué deux fois sans erreur" provision recette_idp idp-only
 check "provisionnement both appliqué deux fois sans erreur" provision recette_both both
-password_user flowforge-recette_idp recette_idp
-password_user flowforge-recette_both recette_both
+password_user myrmacta-recette_idp recette_idp
+password_user myrmacta-recette_both recette_both
 
 for tenant in recette_idp recette_both; do
-  realm="flowforge-${tenant}"
+  realm="myrmacta-${tenant}"
   secret="$(bff_secret "$realm")"
   redirect="http://localhost:8080/${tenant}/login/oauth2/code/oidc"
   out="$(smoke agent-fas realm="$realm" secret="$secret" redirect="$redirect" user=agent.dupont \
@@ -143,38 +143,38 @@ for tenant in recette_idp recette_both; do
 done
 
 # A3 — un agent qui a déjà un compte à mot de passe relie FAS en se ré-authentifiant : même sub, mêmes droits.
-"$kcadm" create users -r flowforge-recette_both -s username=agent.existant -s enabled=true -s email=bruno@simulateur.local \
+"$kcadm" create users -r myrmacta-recette_both -s username=agent.existant -s enabled=true -s email=bruno@simulateur.local \
   -s firstName=Bruno -s lastName=Lambert -s 'attributes.tenant_id=["recette_both"]' >/dev/null 2>&1
-"$kcadm" set-password -r flowforge-recette_both --username agent.existant --new-password existant-1 >/dev/null
-"$kcadm" add-roles -r flowforge-recette_both --uusername agent.existant --rolename DOSSIER_MANAGER >/dev/null
-existing_sub="$("$kcadm" get users -r flowforge-recette_both -q exact=true -q username=agent.existant --fields id \
+"$kcadm" set-password -r myrmacta-recette_both --username agent.existant --new-password existant-1 >/dev/null
+"$kcadm" add-roles -r myrmacta-recette_both --uusername agent.existant --rolename DOSSIER_MANAGER >/dev/null
+existing_sub="$("$kcadm" get users -r myrmacta-recette_both -q exact=true -q username=agent.existant --fields id \
   --format csv --noquotes)"
-out="$(smoke rattachement realm=flowforge-recette_both secret="$(bff_secret flowforge-recette_both)" \
+out="$(smoke rattachement realm=myrmacta-recette_both secret="$(bff_secret myrmacta-recette_both)" \
   redirect=http://localhost:8080/recette_both/login/oauth2/code/oidc user=bruno password=bruno idp=fas \
   link_user=agent.existant link_password=existant-1)"
 check "both : compte existant relié à FAS, même sub et mêmes droits (A3)" \
   jq -e --arg sub "$existing_sub" '.result == "logged-in" and .claims.sub == $sub and .claims.tenant_id == "recette_both"
     and (.claims.realm_access.roles | index("DOSSIER_MANAGER"))' <<<"$out"
 
-out="$(smoke mot-de-passe realm=flowforge-recette_both secret="$(bff_secret flowforge-recette_both)" \
+out="$(smoke mot-de-passe realm=myrmacta-recette_both secret="$(bff_secret myrmacta-recette_both)" \
   redirect=http://localhost:8080/recette_both/login/oauth2/code/oidc user=agent.mdp password=agent.mdp)"
 check "both : connexion directe par mot de passe Keycloak" jq -e '.result == "logged-in" and .claims.tenant_id == "recette_both"' <<<"$out"
 
-secret="$(bff_secret flowforge-recette_idp)"
+secret="$(bff_secret myrmacta-recette_idp)"
 redirect=http://localhost:8080/recette_idp/login/oauth2/code/oidc
-out="$(smoke mot-de-passe realm=flowforge-recette_idp secret="$secret" redirect="$redirect" user=agent.mdp password=agent.mdp)"
+out="$(smoke mot-de-passe realm=myrmacta-recette_idp secret="$secret" redirect="$redirect" user=agent.mdp password=agent.mdp)"
 check "idp-only : mot de passe refusé à un compte ordinaire" jq -e '.result == "refused"' <<<"$out"
 
-out="$(smoke secours realm=flowforge-recette_idp secret="$secret" redirect="$redirect" user=secours \
+out="$(smoke secours realm=myrmacta-recette_idp secret="$secret" redirect="$redirect" user=secours \
   password=Secours-temporaire-1 new_password=Secours-definitif-2)"
 check "idp-only : secours connecté (mot de passe changé, OTP enrôlé)" \
   jq -e '.result == "logged-in" and .claims.tenant_id == "recette_idp" and (.claims.realm_access.roles | index("TENANT_ADMIN"))' \
   <<<"$out"
 otp_secret="$(jq -r '.otp_secret // ""' <<<"$out")"
-out="$(smoke secours-otp realm=flowforge-recette_idp secret="$secret" redirect="$redirect" user=secours \
+out="$(smoke secours-otp realm=myrmacta-recette_idp secret="$secret" redirect="$redirect" user=secours \
   password=Secours-definitif-2 otp_secret="$otp_secret")"
 check "idp-only : secours reconnecté par mot de passe et OTP" jq -e '.result == "logged-in"' <<<"$out"
-out="$(smoke secours-sans-otp realm=flowforge-recette_idp secret="$secret" redirect="$redirect" user=secours \
+out="$(smoke secours-sans-otp realm=myrmacta-recette_idp secret="$secret" redirect="$redirect" user=secours \
   password=Secours-definitif-2)"
 check "idp-only : secours sans OTP arrêté à l'OTP" jq -e '.result == "otp-required"' <<<"$out"
 

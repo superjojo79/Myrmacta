@@ -8,7 +8,7 @@
 -->
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/processes">
+             targetNamespace="http://myrmacta/processes">
   <process id="dmnGrilleEligibiliteSmoke" name="Grille d'éligibilité (démonstration DMN)" isExecutable="true">
     <startEvent id="start" name="Start"/>
     <sequenceFlow id="flow1" sourceRef="start" targetRef="evaluateEligibilite"/>

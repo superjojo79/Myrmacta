@@ -14,7 +14,7 @@ class SpringKafkaConsumerFactoryTest {
     void plaintext_setsNoSaslProperties() {
         Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
                 "bootstrapServers", "localhost:9092",
-                "groupId", "flowforge",
+                "groupId", "myrmacta",
                 "securityProtocol", "PLAINTEXT"));
 
         assertThat(props).containsEntry("security.protocol", "PLAINTEXT");
@@ -25,7 +25,7 @@ class SpringKafkaConsumerFactoryTest {
     void saslSsl_setsJaasConfigFromCredentials() {
         Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
                 "bootstrapServers", "localhost:9092",
-                "groupId", "flowforge",
+                "groupId", "myrmacta",
                 "securityProtocol", "SASL_SSL",
                 "saslUsername", "svc",
                 "saslPassword", "s3cr3t"));
@@ -43,7 +43,7 @@ class SpringKafkaConsumerFactoryTest {
         // un guillemet ou un backslash ne doit pas casser la syntaxe du sasl.jaas.config généré.
         Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
                 "bootstrapServers", "localhost:9092",
-                "groupId", "flowforge",
+                "groupId", "myrmacta",
                 "securityProtocol", "SASL_SSL",
                 "saslUsername", "svc",
                 "saslPassword", "a\"b\\c"));
@@ -55,12 +55,12 @@ class SpringKafkaConsumerFactoryTest {
     void bootstrapServersAndGroupId_arePropagated() {
         Map<String, Object> props = SpringKafkaConsumerFactory.buildConsumerProperties(Map.of(
                 "bootstrapServers", "broker1:9092,broker2:9092",
-                "groupId", "flowforge-group",
+                "groupId", "myrmacta-group",
                 "securityProtocol", "PLAINTEXT"));
 
         assertThat(props)
                 .containsEntry("bootstrap.servers", "broker1:9092,broker2:9092")
-                .containsEntry("group.id", "flowforge-group")
+                .containsEntry("group.id", "myrmacta-group")
                 .containsEntry("auto.offset.reset", "latest");
     }
 }

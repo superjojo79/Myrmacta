@@ -3,7 +3,7 @@ package be.myrmacta.infrastructure.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import be.myrmacta.FlowForgeApplication;
+import be.myrmacta.MyrmactaApplication;
 import be.myrmacta.infrastructure.tenant.InvalidTenantIdException;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class TenantConfigTest {
         // de SpringApplicationBuilder ici plutôt que withUserConfiguration(TenantConfig.class).
         // Args CLI > application.yml (Builder.properties() serait écrasé par le yaml).
         assertThatThrownBy(() -> new SpringApplicationBuilder(
-                                FlowForgeApplication.class, OidcClientTestConfiguration.class)
+                                MyrmactaApplication.class, OidcClientTestConfiguration.class)
                         .web(WebApplicationType.NONE)
                         .run("--app.tenant.id=tenant-a"))
                 .isInstanceOf(InvalidTenantIdException.class)

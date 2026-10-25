@@ -477,9 +477,10 @@ jointes contrôlées, réponses automatiques refusées, expéditeur attesté, ri
   **Restreignez-la à la boîte voulue** (stratégie d'accès d'application Exchange Online), sinon l'application peut lire toutes les boîtes du tenant.
 - **Boîte** : `mailbox` (adresse de la boîte, boîte partagée comprise). `folder` vaut `Inbox` ou le nom d'un dossier de premier niveau qui doit exister ; `processedFolder` et `rejectedFolder`
   sont des dossiers de premier niveau créés au besoin. `graphBaseUrl` n'accepte que les hôtes Microsoft Graph, en https.
-- **Rangement et idempotence** : le message est déplacé (jamais supprimé) ; un message remis reçoit d'abord la catégorie Outlook `FlowForge-delivered`, de sorte qu'un déplacement qui échoue ne provoque pas de seconde remise.
+- **Rangement et idempotence** : le message est déplacé (jamais supprimé) ; un message remis reçoit d'abord la catégorie Outlook `Myrmacta-delivered`, de sorte qu'un déplacement qui échoue ne provoque pas de seconde remise.
   La seule fenêtre résiduelle est l'échec simultané du marquage **et** du déplacement (panne de Graph entre les deux) : le message serait alors remis au tour suivant — comme en IMAP, il n'y a pas de détection de doublon par `Message-ID`.
-  Il n'y a pas de curseur à conserver : un message pris en charge quitte le dossier lu. Pour rejouer un message déjà traité, remettez-le dans le dossier lu **et retirez-lui la catégorie** `FlowForge-delivered`.
+  Il n'y a pas de curseur à conserver : un message pris en charge quitte le dossier lu. Pour rejouer un message déjà traité, remettez-le dans le dossier lu **et retirez-lui la catégorie** `Myrmacta-delivered`.
+  Une catégorie posée avant le renommage des identifiants est encore reconnue ([docs/RENAMING.md](../RENAMING.md)).
   Un message qui ne peut pas être déplacé (verrou, conflit) est signalé dans les journaux et laissé en place, sans bloquer les suivants ; un message de plus de 4 Mo (corps et en-têtes) est refusé.
 - **Pièces jointes** : seules les pièces *fichier* sont prises ; les images incrustées (logos de signature) sont ignorées, les messages joints et liens sont comptés dans `inboundAttachmentsSkipped`.
   Le total des pièces d'un message est borné (25 Mo par défaut), quelle que soit la taille annoncée.
@@ -495,8 +496,8 @@ toutes les `pollSeconds` secondes (30 au minimum).
 - **Connexion** : `host`, `port` (993), `security` — `SSL` (IMAPS) ou `STARTTLS` (jamais facultatif) ; le certificat du serveur est toujours vérifié.
   Le serveur doit répondre sur une adresse publique. **Authentification** : mot de passe, ou **OAuth2** (`authMode = OAUTH2_CLIENT_CREDENTIALS`, application
   Microsoft Entra ID, `oauthScope = https://outlook.office365.com/.default`) — Exchange Online n'accepte plus le mot de passe seul.
-- **Rangement** : un message pris en charge est déplacé dans `processedFolder` (`FlowForge-processed`), un message refusé dans `rejectedFolder`
-  (`FlowForge-rejected`) ; **rien n'est jamais supprimé**. Sont refusés : les réponses automatiques (absence, accusés), les listes de diffusion, les messages sans expéditeur,
+- **Rangement** : un message pris en charge est déplacé dans `processedFolder` (`Myrmacta-processed`), un message refusé dans `rejectedFolder`
+  (`Myrmacta-rejected`) ; **rien n'est jamais supprimé**. Sont refusés : les réponses automatiques (absence, accusés), les listes de diffusion, les messages sans expéditeur,
   trop gros (25 Mo) ou dont un champ mappé est vide.
 - **Corrélation** : `referencePattern` est une expression régulière à **un seul groupe** appliquée à l'objet, par exemple `\[(DOS-[0-9-]+)\]` : une réponse
   « RE: [DOS-2026-0042] … » est ajoutée à ce dossier ; une référence inconnue (faute de frappe) crée un nouveau dossier plutôt que de perdre le message.
@@ -511,10 +512,10 @@ toutes les `pollSeconds` secondes (30 au minimum).
   `spf=pass` **aligné sur le domaine de l'adresse « De »**. Sinon un nouveau dossier est créé et le processus voit `mailReferenceIgnored` et `mailSenderAuthenticated = false`
   (toujours posée). `trustedAuthservId` est **obligatoire** dès qu'un `referencePattern` est défini (sauf `requireAuthenticatedSender = false`, qui revient à accepter que **quiconque
   devine une référence puisse alimenter ce dossier**). Cela suppose que votre serveur ajoute lui-même cet en-tête en tête et retire ceux qui prétendent venir de lui.
-- **Idempotence du rangement.** Un message déjà remis dont le rangement échoue (quota, droits) est marqué du mot-clé IMAP `FlowForgeDelivered` : il n'est plus remis, seul le rangement est
-  réessayé. Les messages marqués supprimés ne comptent pas dans la limite d'un lot.
+- **Idempotence du rangement.** Un message déjà remis dont le rangement échoue (quota, droits) est marqué du mot-clé IMAP `MyrmactaDelivered` : il n'est plus remis, seul le rangement est
+  réessayé. Le mot-clé posé avant le renommage des identifiants est encore reconnu ([docs/RENAMING.md](../RENAMING.md)). Les messages marqués supprimés ne comptent pas dans la limite d'un lot.
 - **Fiabilité.** Le message n'est rangé dans « traités » qu'**après** l'enregistrement du dossier. S'il ne peut pas être pris en charge (type de dossier inconnu, champ invalide, base
-  indisponible), il est rangé dans **`FlowForge-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
+  indisponible), il est rangé dans **`Myrmacta-rejected`** (avec une alerte dans les journaux) : replacez-le dans la boîte après correction pour le rejouer. Un message illisible
   (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
   `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par Myrmacta portent `Auto-Submitted: auto-generated` : ils ne
   rebouclent pas.

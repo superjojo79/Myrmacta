@@ -182,7 +182,7 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
    supprimer sans remplacement — le reste du fichier (SSRF, anti-fuite de secrets) doit continuer de
    protéger le code fusionné.
 6. **Documentation à mettre à jour une fois livré** (rappel de convention, skill
-   `flowforge-conventions` § « Workflow de feature » point 6) : tableau catalogue de
+   `myrmacta-conventions` § « Workflow de feature » point 6) : tableau catalogue de
    [06-connecteurs.md](06-connecteurs.md) (colonne « V1 livré »), [README.md](../../README.md) (§
    Système de connecteurs), et tout renvoi à ce skeleton comme « hors V1 » dans le registre des décisions (`docs/decisions/`) /
    [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) / [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md).

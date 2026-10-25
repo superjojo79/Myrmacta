@@ -46,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(prefix = "app.portal.strong-auth", name = "enabled", havingValue = "true")
 class PortalIdentityController {
 
-    static final String REFUSED_METRIC = "flowforge.portal.identity.refused";
+    static final String REFUSED_METRIC = "myrmacta.portal.identity.refused";
     private static final Logger log = LoggerFactory.getLogger(PortalIdentityController.class);
     private static final MediaType JWK_SET = MediaType.parseMediaType("application/jwk-set+json");
 

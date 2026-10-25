@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- Issue #201 : une tâche humaine s'intercale entre la génération (simulée au démarrage) et « Joindre le document ». -->
   <process id="attachAfterUserTask" name="Attach After User Task" isExecutable="true">

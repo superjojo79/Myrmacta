@@ -1088,7 +1088,7 @@ export async function mockRulesDossier(page: Page) {
 }
 
 export const BPMN_FOR_OTHER_WORKFLOW = `<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://flowforge/e2e">
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://myrmacta/e2e">
   <process id="otherWorkflow" isExecutable="true">
     <startEvent id="start"/>
     <userTask id="wait" name="Wait"/>
@@ -1106,7 +1106,7 @@ export const BPMN_IMPORTED = `<?xml version="1.0" encoding="UTF-8"?>
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             targetNamespace="http://flowforge/e2e">
+             targetNamespace="http://myrmacta/e2e">
   <process id="importedProcess" isExecutable="true">
     <startEvent id="start"/>
     <endEvent id="end"/>
@@ -1137,7 +1137,7 @@ export const BPMN_FOR_OTHER_WORKFLOW_EDITABLE = `<?xml version="1.0" encoding="U
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             targetNamespace="http://flowforge/e2e">
+             targetNamespace="http://myrmacta/e2e">
   <process id="otherWorkflow" isExecutable="true">
     <startEvent id="start"/>
     <userTask id="wait" name="Wait"/>
@@ -1191,7 +1191,7 @@ export const BPMN_WITH_SERVICE_TASK = `<?xml version="1.0" encoding="UTF-8"?>
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/e2e">
+             targetNamespace="http://myrmacta/e2e">
   <process id="dmnFieldProcess" isExecutable="true">
     <startEvent id="start"/>
     <serviceTask id="svc" name="Evaluate"/>
@@ -1255,7 +1255,7 @@ export const BPMN_FOR_OTHER_WORKFLOW_WITH_FLOWABLE_NS = `<?xml version="1.0" enc
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
              xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             targetNamespace="http://flowforge/e2e">
+             targetNamespace="http://myrmacta/e2e">
   <process id="otherWorkflow" isExecutable="true">
     <startEvent id="start"/>
     <userTask id="wait" name="Wait"/>
@@ -1532,7 +1532,7 @@ export function editableBpmn(processKey: string, tasks: string, taskIds: string[
   return `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn"
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             targetNamespace="http://flowforge/e2e">
+             targetNamespace="http://myrmacta/e2e">
   <process id="${processKey}" isExecutable="true">
     <startEvent id="start"/>
     ${tasks}

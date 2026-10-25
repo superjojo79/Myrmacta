@@ -4,9 +4,11 @@ import { messages } from './messages/bundle'
 import {
   DEFAULT_LOCALE,
   FORMAT_TAGS,
+  LEGACY_LOCALE_STORAGE_KEY,
   LOCALE_STORAGE_KEY,
   SUPPORTED_LOCALES,
   normalizeLocale,
+  readStoredLocale,
   resolveLocale,
   type AppLocale,
 } from './locales'
@@ -14,15 +16,12 @@ import {
 export { DEFAULT_LOCALE, SUPPORTED_LOCALES, type AppLocale } from './locales'
 
 function readStored(): string | null {
-  try {
-    return window.localStorage.getItem(LOCALE_STORAGE_KEY)
-  } catch {
-    return null // stockage bloqué (fenêtre privée, politique) : la langue vient alors du lien, du tenant ou du navigateur
-  }
+  return readStoredLocale(window.localStorage)
 }
 
 function writeStored(locale: AppLocale | null): void {
   try {
+    window.localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY)
     if (locale) window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
     else window.localStorage.removeItem(LOCALE_STORAGE_KEY)
   } catch {

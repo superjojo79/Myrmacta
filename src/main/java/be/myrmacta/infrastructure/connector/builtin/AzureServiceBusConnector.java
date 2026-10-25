@@ -36,7 +36,7 @@ import tools.jackson.databind.ObjectMapper;
  * lecture : un message JSON crée (ou alimente) un dossier, avec le même mapping que Kafka ({@code fields}, {@code variables},
  * {@code processKeyPath}, {@code dossierTypeCodePath}, {@code existingDossierReferencePath}). Débloque les Business Events D365 F&amp;O
  * sans relais. Le message n'est retiré de la file qu'une fois converti ; un message illisible est rendu au courtier, qui le met en
- * lettres mortes après {@code MaxDeliveryCount} (jamais de boucle sans fin côté FlowForge). Hôte limité aux domaines Service Bus.
+ * lettres mortes après {@code MaxDeliveryCount} (jamais de boucle sans fin côté Myrmacta). Hôte limité aux domaines Service Bus.
  * Authentification : signature d'accès partagé (SAS) ou OAuth2 {@code client_credentials} (D3a, scope {@code https://servicebus.azure.net/.default}).
  */
 @Component

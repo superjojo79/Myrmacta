@@ -12,7 +12,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
  */
 public class SecretsEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
-    static final Set<String> DENIED_PASSWORDS = Set.of("flowforge", "postgres", "admin", "password");
+    static final Set<String> DENIED_PASSWORDS = Set.of("myrmacta", "flowforge", "postgres", "admin", "password"); // flowforge-legacy
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {

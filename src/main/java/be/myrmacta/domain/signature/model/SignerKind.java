@@ -1,6 +1,6 @@
 package be.myrmacta.domain.signature.model;
 
-/** D-SIGNATURE-SIGNER-KIND : un signataire est un tiers (portail) ou un utilisateur FlowForge. */
+/** D-SIGNATURE-SIGNER-KIND : un signataire est un tiers (portail) ou un utilisateur Myrmacta. */
 public enum SignerKind {
     EXTERNAL,
     INTERNAL;

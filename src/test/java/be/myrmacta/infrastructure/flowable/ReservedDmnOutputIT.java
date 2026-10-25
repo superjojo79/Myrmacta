@@ -126,14 +126,14 @@ class ReservedDmnOutputIT {
                 .hasMessageContaining("DMN cannot write the reserved variable '" + reserved + "'");
     }
 
-    /** start → décision → {@code next} → fin, la table et le process déployés sans passer par les parseurs FlowForge. */
+    /** start → décision → {@code next} → fin, la table et le process déployés sans passer par les parseurs Myrmacta. */
     private void deploy(String dmn, String decisionKey, String next) {
         dmnDeploymentId = dmnRepositoryService.createDeployment().name("reserved-dmn-output.dmn")
                 .addString("reserved-dmn-output.dmn", dmn).deploy().getId();
         String bpmn = """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://flowforge/test">
+                             xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://myrmacta/test">
                   <process id="reservedDmnOutput" isExecutable="true">
                     <startEvent id="start"/>
                     <serviceTask id="decide" flowable:type="dmn">
@@ -157,7 +157,7 @@ class ReservedDmnOutputIT {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="%s" name="Choix">
                     <decisionTable id="dt" hitPolicy="%s">
                       <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>

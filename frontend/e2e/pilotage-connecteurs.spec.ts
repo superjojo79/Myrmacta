@@ -191,7 +191,7 @@ test('E2E-CONN-BATCH-IMPORT-KEY admin configures batch-import with a private key
   await form.getByPlaceholder('nom').fill('Import nightly')
   await form.getByTestId('connector-type').selectOption('batch-import')
   await form.getByTestId('connector-config-field-sftpHost').fill('sftp.example.com')
-  await form.getByTestId('connector-config-field-sftpUsername').fill('flowforge')
+  await form.getByTestId('connector-config-field-sftpUsername').fill('myrmacta')
   await form.getByTestId('connector-config-field-sftpAuthType').selectOption('PRIVATE_KEY')
 
   const privateKeyField = form.getByTestId('connector-config-field-sftpPrivateKey')

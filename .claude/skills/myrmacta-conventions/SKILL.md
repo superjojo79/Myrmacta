@@ -1,11 +1,11 @@
 ---
-name: flowforge-conventions
+name: myrmacta-conventions
 description: Myrmacta · Conventions projet (architecture hexagonale, multi-tenant, stack, commandes). À utiliser pour toute implémentation, revue ou planification dans ce dépôt. Racine de paquet be.myrmacta.
 ---
 
 # Myrmacta — conventions projet
 
-Nom commercial : Myrmacta. Racine de paquet et `groupId` : `be.myrmacta`. L'`artifactId` Maven reste `flowforge` (`docs/RENAMING.md`).
+Nom commercial : Myrmacta. Racine de paquet et `groupId` : `be.myrmacta`. `artifactId` Maven : `myrmacta` (`docs/RENAMING.md`). Le dépôt GitHub n'est pas renommé.
 
 Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et le registre des décisions `docs/decisions/` priment.
 
@@ -15,7 +15,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 |--------|--------|
 | Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
 | Workflow | Flowable 8 Community (BPMN 2.0) |
-| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `FLOWFORGE_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
+| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `MYRMACTA_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
 | Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |

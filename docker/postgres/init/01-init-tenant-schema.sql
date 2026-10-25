@@ -8,9 +8,11 @@
 -- ne démontre pas l'isolation par schéma. On crée donc explicitement le schéma par défaut
 -- (tenant_dev, cf. application.yml) pour un getting-started fidèle au modèle multi-tenant.
 --
--- D-41 : le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge`) sert au bootstrap.
--- L'application se connecte avec `flowforge_tenant_dev` (USAGE/CREATE sur tenant_dev seulement).
--- Volume existant : `docker compose down -v` pour rejouer ce script.
+-- D-41 : le superuser du conteneur (`POSTGRES_USER`, défaut `myrmacta`) sert au bootstrap.
+-- L'application se connecte avec `myrmacta_tenant_dev` (USAGE/CREATE sur tenant_dev seulement).
+-- Volume existant : ce script ne se rejoue pas. Un volume créé avant le renommage des
+-- identifiants garde son nom de base et son rôle (docs/RENAMING.md). `docker compose down -v`
+-- recrée un volume vide et réexécute ce script.
 --
 -- Pour ajouter un second tenant local : CREATE SCHEMA + CREATE ROLE + GRANT (voir
 -- docs/specs/02-multi-tenant.md), puis une seconde instance APP_TENANT_ID / DB_USERNAME.
@@ -18,26 +20,26 @@ CREATE SCHEMA IF NOT EXISTS tenant_dev;
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flowforge_tenant_dev') THEN
-        CREATE ROLE flowforge_tenant_dev LOGIN PASSWORD 'flowforge';
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'myrmacta_tenant_dev') THEN
+        CREATE ROLE myrmacta_tenant_dev LOGIN PASSWORD 'myrmacta';
     END IF;
 END
 $$;
 
 DO $$
 BEGIN
-    EXECUTE format('GRANT CONNECT ON DATABASE %I TO flowforge_tenant_dev', current_database());
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO myrmacta_tenant_dev', current_database());
 END
 $$;
 
 REVOKE ALL ON SCHEMA tenant_dev FROM PUBLIC;
-REVOKE CREATE ON SCHEMA public FROM flowforge_tenant_dev;
-GRANT USAGE ON SCHEMA public TO flowforge_tenant_dev;
-GRANT USAGE, CREATE ON SCHEMA tenant_dev TO flowforge_tenant_dev;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA tenant_dev TO flowforge_tenant_dev;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA tenant_dev TO flowforge_tenant_dev;
+REVOKE CREATE ON SCHEMA public FROM myrmacta_tenant_dev;
+GRANT USAGE ON SCHEMA public TO myrmacta_tenant_dev;
+GRANT USAGE, CREATE ON SCHEMA tenant_dev TO myrmacta_tenant_dev;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA tenant_dev TO myrmacta_tenant_dev;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA tenant_dev TO myrmacta_tenant_dev;
 ALTER DEFAULT PRIVILEGES IN SCHEMA tenant_dev
-    GRANT ALL ON TABLES TO flowforge_tenant_dev;
+    GRANT ALL ON TABLES TO myrmacta_tenant_dev;
 ALTER DEFAULT PRIVILEGES IN SCHEMA tenant_dev
-    GRANT ALL ON SEQUENCES TO flowforge_tenant_dev;
+    GRANT ALL ON SEQUENCES TO myrmacta_tenant_dev;
 

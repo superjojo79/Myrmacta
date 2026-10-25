@@ -1,5 +1,5 @@
 {
-  "realm": "flowforge",
+  "realm": "myrmacta",
   "enabled": true,
   "sslRequired": "none",
   "clients": [
@@ -76,7 +76,7 @@
       "emailVerified": true,
       "firstName": "Demo",
       "lastName": "User",
-      "email": "demo@flowforge.local",
+      "email": "demo@myrmacta.local",
       "attributes": {
         "tenant_id": [
           "tenant_dev"
@@ -100,7 +100,7 @@
       "emailVerified": true,
       "firstName": "Manager",
       "lastName": "User",
-      "email": "manager@flowforge.local",
+      "email": "manager@myrmacta.local",
       "attributes": {
         "tenant_id": [
           "tenant_dev"
@@ -123,7 +123,7 @@
       "emailVerified": true,
       "firstName": "Viewer",
       "lastName": "User",
-      "email": "viewer@flowforge.local",
+      "email": "viewer@myrmacta.local",
       "attributes": {
         "tenant_id": [
           "tenant_dev"
@@ -165,7 +165,7 @@
       "linkOnly": false,
       "firstBrokerLoginFlowAlias": "first broker login",
       "config": {
-        "clientId": "keycloak-flowforge",
+        "clientId": "keycloak-myrmacta",
         "clientAuthMethod": "private_key_jwt",
         "clientAssertionSigningAlg": "RS256",
         "authorizationUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/auth",

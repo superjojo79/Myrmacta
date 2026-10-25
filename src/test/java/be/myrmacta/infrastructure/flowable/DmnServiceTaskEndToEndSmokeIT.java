@@ -33,7 +33,7 @@ class DmnServiceTaskEndToEndSmokeIT {
             """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                         namespace="http://flowforge/test">
+                         namespace="http://myrmacta/test">
               <decision id="dmnSmokeEligibilite" name="Eligibilite">
                 <decisionTable id="dt" hitPolicy="FIRST">
                   <input>

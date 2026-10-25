@@ -25,8 +25,15 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class WebhookRestAdapter implements WebhookPort {
 
-    private static final String SIGNATURE_HEADER = "X-FlowForge-Signature";
+    static final String SIGNATURE_HEADER = "X-Myrmacta-Signature";
+    /** Encore émis, même valeur, pour un récepteur déjà déployé. */
+    static final String LEGACY_SIGNATURE_HEADER = "X-FlowForge-Signature"; // flowforge-legacy
     private static final String SIGNATURE_PREFIX = "sha256=";
+
+    /** Un vérificateur interne accepte le nom actuel et l'ancien. */
+    static boolean acceptsSignatureHeader(String name) {
+        return SIGNATURE_HEADER.equalsIgnoreCase(name) || LEGACY_SIGNATURE_HEADER.equalsIgnoreCase(name);
+    }
 
     static {
         // Must run before the JDK's sun.net.www.protocol.http.HttpURLConnection class
@@ -81,7 +88,9 @@ public class WebhookRestAdapter implements WebhookPort {
         headers.put("Content-Type", MediaType.APPLICATION_JSON_VALUE);
         headers.put("Host", pinned.originalHost());
         if (StringUtils.hasText(command.secretPlain())) {
-            headers.put(SIGNATURE_HEADER, SIGNATURE_PREFIX + hmacHex(command.secretPlain(), body));
+            String signature = SIGNATURE_PREFIX + hmacHex(command.secretPlain(), body);
+            headers.put(SIGNATURE_HEADER, signature);
+            headers.put(LEGACY_SIGNATURE_HEADER, signature);
         }
 
         httpSender.post(pinned.requestUrl(), body, headers);

@@ -105,9 +105,9 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 new ConfigField("password", "Mailbox password", ConfigFieldType.PASSWORD, false, null, List.of(),
                         "Encrypted at rest. Required with PASSWORD."),
                 new ConfigField("folder", "Folder to read", ConfigFieldType.STRING, false, "INBOX", List.of(), null),
-                new ConfigField("processedFolder", "Processed folder", ConfigFieldType.STRING, false, "FlowForge-processed", List.of(),
+                new ConfigField("processedFolder", "Processed folder", ConfigFieldType.STRING, false, "Myrmacta-processed", List.of(),
                         "Taken-in messages are moved here (created if missing), never deleted."),
-                new ConfigField("rejectedFolder", "Rejected folder", ConfigFieldType.STRING, false, "FlowForge-rejected", List.of(),
+                new ConfigField("rejectedFolder", "Rejected folder", ConfigFieldType.STRING, false, "Myrmacta-rejected", List.of(),
                         "Automatic replies, lists, oversized or invalid messages are moved here.")));
         fields.addAll(InboundMailRouting.fields());
         fields.addAll(OAuth2ConfigSupport.fields());
@@ -151,9 +151,9 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 throw new ConnectorValidationException(key + " is not a valid folder name");
             }
         }
-        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"))) {
+        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"))) {
             // Casse ignorée : « inbox » et « INBOX » sont le même dossier IMAP (revue D3c/D3d, M-A : sinon le message se copierait dans la boîte).
             throw new ConnectorValidationException("processedFolder and rejectedFolder must differ from the folder read and from each other");
         }
@@ -171,8 +171,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         } catch (IllegalArgumentException ex) {
             throw new IllegalStateException("host is not an acceptable public address");
         }
-        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
-                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {
+        if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
+                || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {
             throw new IllegalStateException("processedFolder and rejectedFolder must differ from the folder read");
         }
         boolean oauth = OAuth2ConfigSupport.isOAuth(config);
@@ -185,8 +185,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 secret,
                 oauth,
                 InboundMailRouting.stringOr(config.get("folder"), "INBOX"),
-                InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed"),
-                InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected"),
+                InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"),
+                InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"),
                 Math.toIntExact(Duration.ofSeconds(30).toMillis()));
         ImapMailbox.Limits limits = new ImapMailbox.Limits(inbound.maxMessageBytes(), inbound.maxBodyChars(),
                 inbound.maxAttachmentBytes(), InboundMailRouting.intOr(config.get("maxAttachments"), 5));

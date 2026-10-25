@@ -1031,7 +1031,7 @@ infrastructure
 - **ClamAV :** protocole `INSTREAM` de `clamd` en TCP brut, sans bibliothèque cliente (D-AV-CLAMAV-PROTO). Un verdict
   infecté bloque le dépôt.
 - **Panne de `clamd` :** fail-open (D-AV-CLAMAV-FAILMODE) — la pièce est acceptée, un `WARN` est journalisé et le
-  compteur `flowforge_attachment_scan_fail_open_total` est incrémenté (D-AV-CLAMAV-HEALTH), pour qu'une panne
+  compteur `myrmacta_attachment_scan_fail_open_total` est incrémenté (D-AV-CLAMAV-HEALTH), pour qu'une panne
   prolongée reste visible dans Prometheus.
 - **Démarrage :** depuis TODO §95, `noop` est refusé en `production` sans
   `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true`, et signalé en `staging`.

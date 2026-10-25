@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 public final class NotificationDlqMeterBinder implements MeterBinder {
 
-    static final String WEBHOOK_DEAD = "flowforge.notification.webhook.dead";
+    static final String WEBHOOK_DEAD = "myrmacta.notification.webhook.dead";
 
     private static final Logger log = LoggerFactory.getLogger(NotificationDlqMeterBinder.class);
 

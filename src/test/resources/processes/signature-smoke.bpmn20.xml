@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- TODO §72 (signature-electronique) : bloc « Demander une signature » suivi de l'attente du
        message signatureCompleted et d'un routage sur signatureOutcome. Deux signataires externes

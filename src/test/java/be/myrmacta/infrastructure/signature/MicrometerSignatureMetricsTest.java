@@ -22,15 +22,15 @@ class MicrometerSignatureMetricsTest {
         metrics.dispatchGaveUp();
         metrics.callbackRejected("bad hmac: alice@example.org\nX-Evil: 1");
 
-        assertThat(registry.get("flowforge.signature.requests").tag("provider", "stub").tag("simulated", "true")
+        assertThat(registry.get("myrmacta.signature.requests").tag("provider", "stub").tag("simulated", "true")
                         .counter().count()).isEqualTo(1.0);
-        assertThat(registry.get("flowforge.signature.outcomes").tag("outcome", "SIGNED").counter().count())
+        assertThat(registry.get("myrmacta.signature.outcomes").tag("outcome", "SIGNED").counter().count())
                 .isEqualTo(2.0);
-        assertThat(registry.get("flowforge.signature.outcomes").tag("outcome", "DECLINED").counter().count())
+        assertThat(registry.get("myrmacta.signature.outcomes").tag("outcome", "DECLINED").counter().count())
                 .isEqualTo(1.0);
-        assertThat(registry.get("flowforge.signature.dispatch.retries").counter().count()).isEqualTo(1.0);
-        assertThat(registry.get("flowforge.signature.dispatch.gave_up").counter().count()).isEqualTo(1.0);
-        String reasonTag = registry.get("flowforge.signature.callbacks.rejected").counter().getId().getTag("reason");
+        assertThat(registry.get("myrmacta.signature.dispatch.retries").counter().count()).isEqualTo(1.0);
+        assertThat(registry.get("myrmacta.signature.dispatch.gave_up").counter().count()).isEqualTo(1.0);
+        String reasonTag = registry.get("myrmacta.signature.callbacks.rejected").counter().getId().getTag("reason");
         assertThat(reasonTag).hasSizeLessThanOrEqualTo(40).matches("[A-Za-z0-9_-]+").doesNotContain("@");
     }
 }

@@ -66,7 +66,7 @@ podman compose version                                  # doit afficher « Docke
 - **`podman compose` n'embarque pas de moteur compose** : il délègue à `docker-compose` ou
   `podman-compose`, sinon `Error: looking up compose provider failed`. Le binaire autonome
   `docker-compose` (sans Docker Desktop) est recommandé : il gère les valeurs par défaut imbriquées
-  de `docker-compose.yml` (`${POSTGRES_PASSWORD:-${DB_PASSWORD:-flowforge}}`).
+  de `docker-compose.yml` (`${POSTGRES_PASSWORD:-${DB_PASSWORD:-myrmacta}}`).
 - **PATH non rafraîchi** : un terminal (ou un IDE / agent) ouvert avant l'installation ne voit pas
   `podman` / `docker-compose`. Rouvrir le terminal, ou recharger le PATH dans la session :
   `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`.
@@ -95,7 +95,7 @@ défauts adaptés au dev local — voir `.env.local.example`.
 
 Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.local.example`) autorise les
 secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist
-(`flowforge`, `postgres`, `admin`, `password`, vide) et tout `M2M_JWT_SECRET` non vide.
+(`myrmacta`, `postgres`, `admin`, `password`, vide) et tout `M2M_JWT_SECRET` non vide.
 `APP_ENVIRONMENT` est le seul interrupteur « mode dev » (TODO §95) : le profil `local` exige
 `APP_ENVIRONMENT=local` et le profil `test` est refusé quand `APP_ENVIRONMENT=production` (valeur par
 défaut) — un `.env` de dev recopié tel quel sur un serveur ne démarre donc pas.
@@ -121,14 +121,14 @@ docker compose up -d
 Démarre uniquement `postgres` et `keycloak` (les services de stockage objet sont derrière des
 profils, voir §5 — inactifs par défaut). Au premier démarrage :
 
-- PostgreSQL crée la base `flowforge` **et** le schéma `tenant_dev` (script
+- PostgreSQL crée la base `myrmacta` **et** le schéma `tenant_dev` (script
   [`docker/postgres/init/01-init-tenant-schema.sql`](../../docker/postgres/init/01-init-tenant-schema.sql))
   — nécessaire car l'application ne fait que `SET search_path` à la connexion, elle ne crée jamais
   le schéma elle-même (décision n° 13, [docs/specs/02-multi-tenant.md](../specs/02-multi-tenant.md)).
-  Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge`) n'est **pas** le user JDBC de
-  l'app (`DB_USERNAME=flowforge_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
-- Keycloak importe un realm `flowforge` préconfiguré
-  ([`docker/keycloak/import/flowforge-realm.json`](../../docker/keycloak/import/flowforge-realm.json)) :
+  Le superuser du conteneur (`POSTGRES_USER`, défaut `myrmacta`) n'est **pas** le user JDBC de
+  l'app (`DB_USERNAME=myrmacta_tenant_dev`) : ce rôle LOGIN n'a de droits que sur `tenant_dev`.
+- Keycloak importe un realm `myrmacta` préconfiguré
+  ([`docker/keycloak/import/myrmacta-realm.json`](../../docker/keycloak/import/myrmacta-realm.json)) :
   client `mon-app` (celui attendu par `application.yml`) et trois utilisateurs de test, tous avec
   l'attribut `tenant_id=tenant_dev` (mot de passe = identifiant) :
 
@@ -142,7 +142,9 @@ profils, voir §5 — inactifs par défaut). Au premier démarrage :
   mappers du client émettent `realm_access.roles` et `tenant_id` dans l'ID token, ce qu'exige le
   BFF — voir [docs/guides/DEPLOIEMENT.md §5](DEPLOIEMENT.md#5-keycloak-en-production). Après une modification
   du fichier de realm : `docker compose rm -sf keycloak`, `docker volume rm <projet>_keycloak_data`
-  puis `docker compose up -d keycloak` (un realm déjà présent n'est pas réimporté).
+  puis `docker compose up -d keycloak` (un realm déjà présent n'est pas réimporté). Un volume
+  PostgreSQL ou Keycloak créé avant le renommage des identifiants garde les anciens noms :
+  les variables à figer sont dans [docs/RENAMING.md](../RENAMING.md).
 
 Vérifier que tout est prêt :
 
@@ -176,7 +178,7 @@ démarrer son profil Compose :
 | **AWS S3 réel** (ou tout autre object store compatible S3) | rien à lancer localement | laisser vide, renseigner la vraie région + les clés IAM |
 
 Chaque profil lance aussi un service `*-init` (basé sur `minio/mc`, un client S3 générique — pas
-spécifique à MinIO) qui crée automatiquement le bucket `flowforge-documents`. Ensuite, dans `.env` :
+spécifique à MinIO) qui crée automatiquement le bucket `myrmacta-documents`. Ensuite, dans `.env` :
 
 ```bash
 APP_STORAGE_TYPE=s3
@@ -377,7 +379,7 @@ curl -i http://localhost:8080/api/m2m/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"local-test","version":"0.1.0"}}}'
 ```
 
-Une réponse `200` avec `"serverInfo":{"name":"flowforge",...}` confirme l'endpoint actif. La
+Une réponse `200` avec `"serverInfo":{"name":"myrmacta",...}` confirme l'endpoint actif. La
 liste des tools (`tools/list`, qui fait foi pour leur nombre exact) et leurs schémas d'entrée
 sont générés automatiquement depuis le code (`infrastructure.mcp.tool`) — pas de documentation à
 maintenir manuellement en plus de celle-ci. Aucune UI dédiée côté SPA : ce canal est réservé à
@@ -481,10 +483,11 @@ s'ignore sans démon Docker.
 - **PostgreSQL externe** (poste où les binaires embarqués ne conviennent pas, ou root imposé) :
 
   ```bash
-  export FLOWFORGE_TEST_PG_URL=jdbc:postgresql://localhost:5432/postgres
-  export FLOWFORGE_TEST_PG_USER=postgres          # doit pouvoir CREATE DATABASE et CREATE ROLE
-  export FLOWFORGE_TEST_PG_PASSWORD=...
+  export MYRMACTA_TEST_PG_URL=jdbc:postgresql://localhost:5432/postgres
+  export MYRMACTA_TEST_PG_USER=postgres          # doit pouvoir CREATE DATABASE et CREATE ROLE
+  export MYRMACTA_TEST_PG_PASSWORD=...
   ./mvnw verify
+  # Les anciens noms de ces trois variables sont encore lus (docs/RENAMING.md).
   ```
 
 - Les classes `*IT` s'exécutent désormais dans `./mvnw verify` (plus besoin de `-Dtest='*IT'`).
@@ -508,24 +511,24 @@ démarrages.
 
 ```bash
 ./mvnw -Pembedded-db package
-APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/flowforge-*.jar   # + variables du §3 (OIDC…)
+APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/myrmacta-*.jar   # + variables du §3 (OIDC…)
 ```
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `APP_EMBEDDED_DB_DATA_DIR` | `~/.flowforge/embedded-db` | répertoire persistant (cluster `pgdata/`, secret du rôle applicatif, verrou) |
+| `APP_EMBEDDED_DB_DATA_DIR` | `~/.myrmacta/embedded-db` | répertoire persistant (cluster `pgdata/`, secret du rôle applicatif, verrou). Un répertoire déjà présent sous l'ancien chemin est encore utilisé ([docs/RENAMING.md](../RENAMING.md)). |
 | `APP_EMBEDDED_DB_PORT` | `15432` | port TCP (127.0.0.1) ; `0` = port libre aléatoire |
 
 - Le profil `embedded-db` remplace `DB_URL`/`DB_USERNAME`/`DB_PASSWORD` : le rôle applicatif
-  (`flowforge_tenant_dev`) reçoit un **mot de passe généré** (`app-role-password`, droits 0600).
+  (`myrmacta_tenant_dev`) reçoit un **mot de passe généré** (`app-role-password`, droits 0600).
   Hors profil `local`/`test`, les autres secrets (clé connecteurs, client OIDC) restent exigés.
 - Un seul tenant (`tenant_dev`) ; une seule instance par répertoire (verrou) ; un cluster initialisé
   par une autre version majeure de PostgreSQL est refusé avec un message explicite.
 - **Exploitation** : `scripts/embedded-db.sh status | backup <archive.tar.gz> | restore <archive.tar.gz> |
   dump <fichier.sql> | reset`. `backup`/`restore`/`reset` exigent l'application arrêtée ; `dump`
   (pg_dump du schéma tenant) se fait à chaud.
-- **Image Docker de démo** : `docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .`
-  puis `docker run -v flowforge-data:/data -e APP_ENVIRONMENT=staging -e SPRING_PROFILES_ACTIVE=local,embedded-db …` (le volume
+- **Image Docker de démo** : `docker build --build-arg MAVEN_PROFILES=embedded-db -t myrmacta:demo .`
+  puis `docker run -v myrmacta-data:/data -e APP_ENVIRONMENT=staging -e SPRING_PROFILES_ACTIVE=local,embedded-db …` (le volume
   `/data` conserve les données ; l'application tourne en utilisateur non-root).
 - **Interdit en production** : le jar standard ne contient pas ce mode, et le profil est refusé si un
   profil `prod`/`production` est actif ou si `APP_ENVIRONMENT` est absent ou vaut `production` (à

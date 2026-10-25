@@ -114,7 +114,7 @@ fi
 jar_path="${1:-}"
 if [[ -z "$jar_path" ]]; then
   shopt -s nullglob
-  candidates=("$root"/target/flowforge-*.jar)
+  candidates=("$root"/target/myrmacta-*.jar)
   shopt -u nullglob
   for candidate in "${candidates[@]}"; do
     [[ "$candidate" == *.original ]] && continue

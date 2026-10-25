@@ -3,16 +3,16 @@
 # Les deux fichiers d'environnement sont générés par :
 #   TENANT_DB_PASSWORD='…' scripts/provision-tenant.sh <tenant_id> --instance-dir <dossier> --port <port>
 # puis, une fois les variables vides de <dossier>/<tenant_id>.env renseignées :
-#   docker compose -p flowforge-<tenant_id> --env-file <dossier>/<tenant_id>.compose.env \
+#   docker compose -p myrmacta-<tenant_id> --env-file <dossier>/<tenant_id>.compose.env \
 #     -f docker/tenant/compose.tenant.yml up -d
 #
 # PostgreSQL, Keycloak, ClamAV et le stockage S3 sont des services externes partagés, déjà provisionnés
 # (docs/guides/DEPLOIEMENT.md §4, §5, §8) : ce fichier ne démarre que l'application du tenant, publiée sur
 # 127.0.0.1:<port> derrière le reverse-proxy (<dossier>/<tenant_id>.apache.conf).
 services:
-  flowforge:
-    image: ${FLOWFORGE_IMAGE:?FLOWFORGE_IMAGE (image construite en DEPLOIEMENT.md §1) est requis}
-    container_name: flowforge-${TENANT_ID:?TENANT_ID est requis}
+  myrmacta:
+    image: ${MYRMACTA_IMAGE:-${FLOWFORGE_IMAGE:?MYRMACTA_IMAGE ou FLOWFORGE_IMAGE (flowforge-legacy) est requis}}
+    container_name: myrmacta-${TENANT_ID:?TENANT_ID est requis}
     env_file:
       - ${TENANT_ENV_FILE:?TENANT_ENV_FILE (fichier généré <tenant_id>.env) est requis}
     environment:

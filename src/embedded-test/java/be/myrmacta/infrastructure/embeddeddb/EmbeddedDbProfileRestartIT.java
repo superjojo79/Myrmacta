@@ -2,7 +2,7 @@ package be.myrmacta.infrastructure.embeddeddb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import be.myrmacta.FlowForgeApplication;
+import be.myrmacta.MyrmactaApplication;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class EmbeddedDbProfileRestartIT {
 
     private static ConfigurableApplicationContext run(Path baseDir) {
-        SpringApplication application = new SpringApplication(FlowForgeApplication.class, OidcClientTestConfiguration.class);
+        SpringApplication application = new SpringApplication(MyrmactaApplication.class, OidcClientTestConfiguration.class);
         return application.run(
                 "--spring.profiles.active=test,embedded-db",
                 "--test.embedded-postgres.enabled=false",

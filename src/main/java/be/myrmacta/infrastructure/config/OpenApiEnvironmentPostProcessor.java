@@ -25,7 +25,7 @@ public class OpenApiEnvironmentPostProcessor implements EnvironmentPostProcessor
         environment
                 .getPropertySources()
                 .addFirst(new MapPropertySource(
-                        "flowforgeOpenApiGate",
+                        "myrmactaOpenApiGate",
                         Map.of(
                                 "springdoc.api-docs.enabled", Boolean.toString(enabled),
                                 "springdoc.swagger-ui.enabled", Boolean.toString(enabled))));

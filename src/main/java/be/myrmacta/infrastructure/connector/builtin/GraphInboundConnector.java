@@ -103,9 +103,9 @@ public class GraphInboundConnector implements ConnectorDefinition, PollingTrigge
                                 + "microsoftgraph.chinacloudapi.cn), https, e.g. " + DEFAULT_BASE_URL + "."),
                 new ConfigField("folder", "Folder to read", ConfigFieldType.STRING, false, "Inbox", List.of(),
                         "Inbox, or the display name of a top-level folder (it must exist)."),
-                new ConfigField("processedFolder", "Processed folder", ConfigFieldType.STRING, false, "FlowForge-processed", List.of(),
+                new ConfigField("processedFolder", "Processed folder", ConfigFieldType.STRING, false, "Myrmacta-processed", List.of(),
                         "Taken-in messages are moved here (top-level folder, created if missing), never deleted."),
-                new ConfigField("rejectedFolder", "Rejected folder", ConfigFieldType.STRING, false, "FlowForge-rejected", List.of(),
+                new ConfigField("rejectedFolder", "Rejected folder", ConfigFieldType.STRING, false, "Myrmacta-rejected", List.of(),
                         "Automatic replies, lists and invalid messages are moved here (top-level folder, created if missing).")));
         fields.addAll(InboundMailRouting.fields());
         fields.addAll(OAuth2ConfigSupport.fields());
@@ -129,8 +129,8 @@ public class GraphInboundConnector implements ConnectorDefinition, PollingTrigge
             }
         }
         String read = InboundMailRouting.stringOr(config.get("folder"), "Inbox");
-        String processed = InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed");
-        String rejected = InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected");
+        String processed = InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed");
+        String rejected = InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected");
         if (same(processed, read) || same(rejected, read) || same(processed, rejected)) {
             throw new ConnectorValidationException("processedFolder and rejectedFolder must differ from the folder read and from each other");
         }
@@ -160,8 +160,8 @@ public class GraphInboundConnector implements ConnectorDefinition, PollingTrigge
             throw new IllegalStateException(ex.getMessage());
         }
         String read = InboundMailRouting.stringOr(config.get("folder"), "Inbox");
-        String processed = InboundMailRouting.stringOr(config.get("processedFolder"), "FlowForge-processed");
-        String rejected = InboundMailRouting.stringOr(config.get("rejectedFolder"), "FlowForge-rejected");
+        String processed = InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed");
+        String rejected = InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected");
         if (same(processed, read) || same(rejected, read) || same(processed, rejected)) {
             throw new IllegalStateException("processedFolder and rejectedFolder must differ from the folder read and from each other");
         }

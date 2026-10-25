@@ -38,7 +38,7 @@ class ProvisionTenantRealmScriptTest {
         builder.environment().putAll(Map.of(
                 "TENANT_DB_PASSWORD", "pw-de-test",
                 "KEYCLOAK_URL", "https://auth.example.be",
-                "PUBLIC_BASE_URL", "https://flowforge.example.be"));
+                "PUBLIC_BASE_URL", "https://myrmacta.example.be"));
         Process process = builder.start();
         String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
         return new Run(process.waitFor(), stderr);
@@ -62,7 +62,7 @@ class ProvisionTenantRealmScriptTest {
         Run run = provision();
         assertThat(run.exit()).as(run.stderr()).isZero();
         assertThat(dir.resolve("tenant_b.realm.json")).doesNotExist();
-        assertThat(Files.readString(dir.resolve("tenant_b.keycloak.sh"))).contains("flowforge-m2m-tenant_b")
+        assertThat(Files.readString(dir.resolve("tenant_b.keycloak.sh"))).contains("myrmacta-m2m-tenant_b")
                 .doesNotContain("realm.json");
     }
 
@@ -72,7 +72,7 @@ class ProvisionTenantRealmScriptTest {
         assertThat(run.exit()).as(run.stderr()).isZero();
         JsonNode realm = realm();
 
-        assertThat(realm.path("realm").asText()).isEqualTo("flowforge-tenant_b");
+        assertThat(realm.path("realm").asText()).isEqualTo("myrmacta-tenant_b");
         assertThat(realm.path("sslRequired").asText()).isEqualTo("external");
         assertThat(realm.path("registrationAllowed").asBoolean(true)).isFalse();
 
@@ -80,14 +80,14 @@ class ProvisionTenantRealmScriptTest {
         assertThat(bff.path("publicClient").asBoolean(true)).isFalse();
         assertThat(bff.has("secret")).as("aucun secret dans le fichier").isFalse();
         assertThat(list(bff.path("redirectUris")).stream().map(JsonNode::asText))
-                .containsExactly("https://flowforge.example.be/tenant_b/*");
+                .containsExactly("https://myrmacta.example.be/tenant_b/*");
         assertThat(list(bff.path("protocolMappers")).stream().map(m -> m.path("config").path("claim.name").asText()))
                 .contains("realm_access.roles", "tenant_id");
         assertThat(bff.has("authenticationFlowBindingOverrides")).as("mode both : flux standard").isFalse();
 
         assertThat(list(realm.path("roles").path("realm")).stream().map(r -> r.path("name").asText()))
                 .contains("TENANT_ADMIN", "WORKFLOW_ADMIN", "DOSSIER_MANAGER", "DOSSIER_VIEWER");
-        // A2 : un compte créé par un fournisseur ne reçoit aucun rôle FlowForge.
+        // A2 : un compte créé par un fournisseur ne reçoit aucun rôle Myrmacta.
         assertThat(realm.path("defaultRole").path("composites").path("realm").toString())
                 .doesNotContain("TENANT_ADMIN", "WORKFLOW_ADMIN", "DOSSIER_MANAGER", "DOSSIER_VIEWER");
 

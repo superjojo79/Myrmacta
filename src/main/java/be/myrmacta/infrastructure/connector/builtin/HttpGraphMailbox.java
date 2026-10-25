@@ -33,7 +33,9 @@ class HttpGraphMailbox implements GraphMailbox {
     /** Réponses JSON (liste de messages avec corps) : bornées pour qu'une passerelle défaillante ne sature pas la mémoire. */
     static final int MAX_JSON_BYTES = 16 * 1024 * 1024;
     /** Catégorie posée sur un message remis dont le rangement a échoué : il ne sera pas remis une seconde fois. */
-    static final String DELIVERED = "FlowForge-delivered";
+    static final String DELIVERED = "Myrmacta-delivered";
+    /** Ancienne catégorie, encore reconnue. */
+    static final String LEGACY_DELIVERED = "FlowForge-delivered"; // flowforge-legacy
     /** Un message (corps et en-têtes compris) plus gros que cela est refusé : il ne doit pas pouvoir saturer ni bloquer la boîte. */
     static final int MAX_MESSAGE_JSON_BYTES = 4 * 1024 * 1024;
     /** Durée maximale d'un appel, corps compris. */
@@ -88,7 +90,7 @@ class HttpGraphMailbox implements GraphMailbox {
             if (id.isBlank()) {
                 continue;
             }
-            boolean alreadyDelivered = hasCategory(node, DELIVERED);
+            boolean alreadyDelivered = wasDelivered(node);
             ImapMailbox.Outcome outcome;
             JsonNode full = null;
             if (alreadyDelivered) {
@@ -242,6 +244,10 @@ class HttpGraphMailbox implements GraphMailbox {
             }
         }
         return null;
+    }
+
+    static boolean wasDelivered(JsonNode node) {
+        return hasCategory(node, DELIVERED) || hasCategory(node, LEGACY_DELIVERED);
     }
 
     private static boolean hasCategory(JsonNode node, String category) {

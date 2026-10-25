@@ -28,9 +28,9 @@ import liquibase.resource.ClassLoaderResourceAccessor;
  * {@code tenant_dev} + rôle applicatif non-superuser, comme en production.
  *
  * <p>Pour utiliser un PostgreSQL externe à la place (poste sans binaires embarqués, par exemple
- * lorsque les tests tournent sous root, qu'initdb refuse), définir {@code FLOWFORGE_TEST_PG_URL}
- * ({@code jdbc:postgresql://hôte:port/base}), {@code FLOWFORGE_TEST_PG_USER} et {@code FLOWFORGE_TEST_PG_PASSWORD}
- * (anciens noms {@code TEST_PG_*} acceptés) :
+ * lorsque les tests tournent sous root, qu'initdb refuse), définir {@code MYRMACTA_TEST_PG_URL}
+ * ({@code jdbc:postgresql://hôte:port/base}), {@code MYRMACTA_TEST_PG_USER} et {@code MYRMACTA_TEST_PG_PASSWORD}
+ * (anciens noms {@code FLOWFORGE_TEST_PG_*} et {@code TEST_PG_*} encore lus, flowforge-legacy) :
  * le rôle doit pouvoir {@code CREATE DATABASE} et {@code CREATE ROLE}.
  *
  * <p>Le schéma applicatif n'est pas créé par du code de production (le bootstrap décrit dans
@@ -39,8 +39,8 @@ import liquibase.resource.ClassLoaderResourceAccessor;
  */
 public final class EmbeddedPostgresSupport {
 
-    public static final String APP_ROLE = "flowforge_tenant_dev";
-    public static final String APP_PASSWORD = "flowforge";
+    public static final String APP_ROLE = "myrmacta_tenant_dev";
+    public static final String APP_PASSWORD = "myrmacta";
 
     private static final String CHANGELOG = "db/changelog/db.changelog-master.yaml";
     private static final Path INIT_SQL = Path.of("docker/postgres/init/01-init-tenant-schema.sql");
@@ -62,7 +62,7 @@ public final class EmbeddedPostgresSupport {
 
     private static synchronized Server server() {
         if (server == null) {
-            String externalUrl = env("FLOWFORGE_TEST_PG_URL", "TEST_PG_URL", null);
+            String externalUrl = env(null, "MYRMACTA_TEST_PG_URL", "FLOWFORGE_TEST_PG_URL", "TEST_PG_URL"); // flowforge-legacy
             server = externalUrl != null && !externalUrl.isBlank() ? external(externalUrl) : startEmbedded();
         }
         return server;
@@ -82,19 +82,21 @@ public final class EmbeddedPostgresSupport {
             throw new IllegalStateException(
                     "Impossible de démarrer PostgreSQL embarqué (zonky). Si les tests tournent sous root, "
                             + "initdb refuse de démarrer : les lancer avec un utilisateur non-root, ou fournir "
-                            + "FLOWFORGE_TEST_PG_URL / _USER / _PASSWORD (voir docs/guides/GETTING-STARTED.md).",
+                            + "MYRMACTA_TEST_PG_URL / _USER / _PASSWORD (ancien nom FLOWFORGE_TEST_PG_* encore lu, flowforge-legacy ; voir docs/guides/GETTING-STARTED.md).",
                     e);
         }
         // Arrêt : zonky enregistre son propre shutdown hook et supprime le répertoire de données.
         return new Server("localhost", embedded.getPort(), "postgres", "postgres", "postgres");
     }
 
-    private static String env(String name, String legacyName, String defaultValue) {
-        String value = System.getenv(name);
-        if (value == null || value.isEmpty()) {
-            value = System.getenv(legacyName);
+    private static String env(String defaultValue, String... names) {
+        for (String name : names) {
+            String value = System.getenv(name);
+            if (value != null && !value.isEmpty()) {
+                return value;
+            }
         }
-        return value == null || value.isEmpty() ? defaultValue : value;
+        return defaultValue;
     }
 
     private static Server external(String jdbcUrl) {
@@ -102,8 +104,8 @@ public final class EmbeddedPostgresSupport {
         java.net.URI uri = java.net.URI.create(jdbcUrl.substring("jdbc:".length()));
         int port = uri.getPort() > 0 ? uri.getPort() : 5432;
         String database = uri.getPath() == null || uri.getPath().length() < 2 ? "postgres" : uri.getPath().substring(1);
-        String user = env("FLOWFORGE_TEST_PG_USER", "TEST_PG_USER", "postgres");
-        String password = env("FLOWFORGE_TEST_PG_PASSWORD", "TEST_PG_PASSWORD", "");
+        String user = env("postgres", "MYRMACTA_TEST_PG_USER", "FLOWFORGE_TEST_PG_USER", "TEST_PG_USER"); // flowforge-legacy
+        String password = env("", "MYRMACTA_TEST_PG_PASSWORD", "FLOWFORGE_TEST_PG_PASSWORD", "TEST_PG_PASSWORD"); // flowforge-legacy
         return new Server(uri.getHost(), port, database, user, password);
     }
 

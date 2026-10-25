@@ -37,7 +37,7 @@ public class ZonkyEmbeddedDbLauncher implements EmbeddedDbLauncher {
     /** Version majeure des binaires (BOM zonky) — verrouillée par {@code ZonkyEmbeddedDbLauncherTest}. */
     static final int PG_MAJOR = 17;
 
-    static final String APP_ROLE = "flowforge_tenant_dev";
+    static final String APP_ROLE = "myrmacta_tenant_dev";
     private static final String INIT_SQL_RESOURCE = "/db/embedded/01-init-tenant-schema.sql";
     private static final String SUPERUSER = "postgres";
     private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

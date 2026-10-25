@@ -137,7 +137,7 @@ class FlowableBpmnParserAdapterReservedWriteTest {
                              xmlns:flowable="http://flowable.org/bpmn"
                              xmlns:activiti="http://activiti.org/bpmn"
                              xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     %s
                   </process>

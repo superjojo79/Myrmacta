@@ -62,7 +62,7 @@ class McpDirectPublicationIntegrationTest {
         String key = "mcpDirect" + UUID.randomUUID().toString().substring(0, 8);
         String xml = """
                 <?xml version="1.0" encoding="UTF-8"?>
-                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://flowforge/test">
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://myrmacta/test">
                   <process id="%s" isExecutable="true"><startEvent id="s"/><userTask id="w" name="W"/><endEvent id="e"/>
                     <sequenceFlow id="f1" sourceRef="s" targetRef="w"/><sequenceFlow id="f2" sourceRef="w" targetRef="e"/></process>
                 </definitions>

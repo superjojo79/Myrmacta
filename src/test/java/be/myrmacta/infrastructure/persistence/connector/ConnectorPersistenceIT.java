@@ -73,7 +73,7 @@ class ConnectorPersistenceIT {
                 true,
                 Map.ofEntries(
                         Map.entry("sftpHost", "sftp.example.com"),
-                        Map.entry("sftpUsername", "flowforge"),
+                        Map.entry("sftpUsername", "myrmacta"),
                         Map.entry("sftpAuthType", "PRIVATE_KEY"),
                         Map.entry("sftpPrivateKey", privateKey),
                         Map.entry("sftpHostKeyFingerprint", "SHA256:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"),

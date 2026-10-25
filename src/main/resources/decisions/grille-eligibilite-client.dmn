@@ -14,7 +14,7 @@
 <definitions xmlns="http://www.omg.org/spec/DMN/20151101"
              id="Definitions_grilleEligibiliteClient"
              name="Grille d'éligibilité client"
-             namespace="http://flowforge/decisions/grille-eligibilite-client">
+             namespace="http://myrmacta/decisions/grille-eligibilite-client">
   <decision id="grilleEligibiliteClient" name="Grille d'éligibilité client">
     <decisionTable id="DecisionTable_grilleEligibiliteClient" hitPolicy="FIRST">
       <input id="Input_typeDemandeur" label="Type de demandeur">

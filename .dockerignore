@@ -21,7 +21,7 @@ frontend/node_modules/
 
 # Docs, scripts et fichiers projet non nécessaires au build de l'image.
 # LICENSE et NOTICE (sans extension) restent dans le contexte : le stage build les met
-# dans le jar, le stage runtime les copie sous /usr/share/doc/flowforge/.
+# dans le jar, le stage runtime les copie sous /usr/share/doc/myrmacta/.
 *.md
 docs/specs/
 docs/

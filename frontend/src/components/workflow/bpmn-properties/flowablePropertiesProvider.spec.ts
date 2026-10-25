@@ -125,7 +125,7 @@ describe('FlowablePropertiesProvider', () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/processes">
+             targetNamespace="http://myrmacta/processes">
   <process id="testProcess" isExecutable="true">
     <userTask id="task1" flowable:formKey="myForm"/>
   </process>

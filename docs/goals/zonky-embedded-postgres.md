@@ -20,7 +20,7 @@ Remplacer H2 (et Testcontainers) par un PostgreSQL embarqué zonky (io.zonky.tes
 - Prod/dev : PostgreSQL 17 (docker-compose), schéma + rôle par tenant (`docker/postgres/init/01-init-tenant-schema.sql`), `hikari.connection-init-sql: SET search_path TO ${app.tenant.id}, public`, Liquibase, Flowable 8, Spring Boot 4.1.1, Java 25.
 
 ### Contraintes non négociables
-- Respecter le skill `flowforge-conventions` : hexagonal (le code embedded vit dans `infrastructure/config` ; ArchUnit doit rester vert), TDD, `verify` avant toute affirmation de succès, ne pas trancher silencieusement une décision ouverte.
+- Respecter le skill `myrmacta-conventions` : hexagonal (le code embedded vit dans `infrastructure/config` ; ArchUnit doit rester vert), TDD, `verify` avant toute affirmation de succès, ne pas trancher silencieusement une décision ouverte.
 - Ne JAMAIS modifier un changeSet Liquibase existant côté PostgreSQL (checksum). On ne supprime que les changeSets/branches `dbms: h2` ; vérifier avec un test de migration idempotente (rejeu sur une base déjà migrée) que les checksums PostgreSQL n'ont pas bougé.
 - Le runtime embedded ne doit PAS être embarqué dans le jar de production : profil Maven dédié (ex. `-Pembedded-db`) + `@Profile("embedded-db")`/`@ConditionalOnClass`, avec fail-fast si le profil est actif en prod (ex. `app.env=prod`). La dépendance zonky est en scope `test` pour les tests, et en scope compile uniquement dans le profil Maven démo.
 - Version : binaires PostgreSQL 17 via `embedded-postgres-binaries-bom`, alignés sur docker-compose.
@@ -36,7 +36,7 @@ P2 — Tests de concurrence : basculer d'abord `ConcurrentWorkflowReservationTes
 P3 — Migration en masse : basculer les @SpringBootTest vers zonky (supprimer le datasource H2 de `src/test/resources/application.properties`). Traiter les écarts (ordre des NULL, messages d'erreur, types). Mesurer la durée totale avant/après et la reporter.
 P4 — Suppression de l'émulation : retirer H2 du pom, les branches `dbms: h2` et les fichiers `*-h2.sql` devenus morts ; retirer Testcontainers du pom s'il n'est plus utilisé (le justifier). Mettre à jour `ci.yml` (plus de dépendance à Docker pour les tests).
 P5 — Mode démo/QA persistant : profil Spring `embedded-db` qui démarre un PostgreSQL zonky AVANT la création du DataSource (EnvironmentPostProcessor ou équivalent, dans le style de `SecretsEnvironmentPostProcessor`) et fixe `spring.datasource.*`. Exigences :
-  - répertoire de données persistant et configurable (`APP_EMBEDDED_DB_DATA_DIR`, défaut hors du dépôt, ex. `~/.flowforge/pgdata`), `cleanDataDirectory=false`, port configurable (défaut fixe, 0 = aléatoire) ;
+  - répertoire de données persistant et configurable (`APP_EMBEDDED_DB_DATA_DIR`, défaut hors du dépôt, ex. `~/.myrmacta/pgdata`), `cleanDataDirectory=false`, port configurable (défaut fixe, 0 = aléatoire) ;
   - bootstrap idempotent du schéma tenant et du rôle applicatif, en réutilisant la même source SQL que `docker/postgres/init/01-init-tenant-schema.sql` (pas de copie divergente) ;
   - arrêt propre (shutdown hook, arrêt "fast") pour ne pas corrompre les données ; verrou/détection d'une seconde instance sur le même répertoire ;
   - marqueur de version majeure PostgreSQL dans le répertoire : refuser de démarrer avec un message clair si la version diffère ;

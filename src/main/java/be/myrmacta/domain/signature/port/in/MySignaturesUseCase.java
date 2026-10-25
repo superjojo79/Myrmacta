@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * « Mes signatures » : les demandes adressées à un utilisateur FlowForge, qu'il lit et signe depuis la
+ * « Mes signatures » : les demandes adressées à un utilisateur Myrmacta, qu'il lit et signe depuis la
  * SPA authentifiée (TODO §72, US-10, D-SIGNATURE-INTERNAL-UX, A4). Un signataire interne ne voit et
  * ne signe que les demandes qui lui sont adressées, à son tour, et seulement s'il a le droit de lecture
  * du dossier ; tout autre cas est traité comme une ressource inexistante.

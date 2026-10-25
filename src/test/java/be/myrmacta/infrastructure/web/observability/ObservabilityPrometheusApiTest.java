@@ -22,18 +22,18 @@ class ObservabilityPrometheusApiTest {
     int managementPort;
 
     @Test
-    void prometheus_isScrapableWithoutOidc_andListsFlowforgeMeters() throws Exception {
+    void prometheus_isScrapableWithoutOidc_andListsMyrmactaMeters() throws Exception {
         HttpResponse<String> scrape = get("/actuator/prometheus");
         assertThat(scrape.statusCode()).isEqualTo(200);
         assertThat(scrape.body())
-                .contains("flowforge_outbox_trigger_oldest_pending_age_seconds")
-                .contains("flowforge_outbox_notification_oldest_pending_age_seconds")
-                .contains("flowforge_outbox_purge_oldest_unfinished_age_seconds")
-                .contains("flowforge_flowable_jobs_dead_letter")
-                .contains("flowforge_flowable_jobs_exception")
-                .contains("flowforge_pdf_render_seconds")
-                .contains("flowforge_notification_webhook_dead")
-                .contains("flowforge_sse_emitters_active")
+                .contains("myrmacta_outbox_trigger_oldest_pending_age_seconds")
+                .contains("myrmacta_outbox_notification_oldest_pending_age_seconds")
+                .contains("myrmacta_outbox_purge_oldest_unfinished_age_seconds")
+                .contains("myrmacta_flowable_jobs_dead_letter")
+                .contains("myrmacta_flowable_jobs_exception")
+                .contains("myrmacta_pdf_render_seconds")
+                .contains("myrmacta_notification_webhook_dead")
+                .contains("myrmacta_sse_emitters_active")
                 .doesNotContain("secret");
     }
 

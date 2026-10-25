@@ -164,7 +164,7 @@ class AssistantIntegrationTest {
     void toolsRunAsTheSessionUser_andTheirDraftsCarryTheAssistantProvenance() {
         String key = "assistant-" + UUID.randomUUID().toString().substring(0, 8);
         String xml = """
-                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://flowforge/test">
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://myrmacta/test">
                   <process id="%s" isExecutable="true">
                     <startEvent id="start"/><userTask id="wait" name="Wait"/><endEvent id="end"/>
                     <sequenceFlow id="f1" sourceRef="start" targetRef="wait"/><sequenceFlow id="f2" sourceRef="wait" targetRef="end"/>

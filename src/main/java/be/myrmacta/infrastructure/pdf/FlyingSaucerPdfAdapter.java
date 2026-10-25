@@ -15,7 +15,7 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 @Component
 public class FlyingSaucerPdfAdapter implements PdfRenderer {
 
-    public static final String PDF_RENDER_TIMER = "flowforge.pdf.render";
+    public static final String PDF_RENDER_TIMER = "myrmacta.pdf.render";
 
     private static final ClasspathFontRegistrar CLASSPATH_FONTS = new ClasspathFontRegistrar();
 

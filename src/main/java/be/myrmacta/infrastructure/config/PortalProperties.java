@@ -73,7 +73,7 @@ public record PortalProperties(
         if (url == null || url.isBlank()) {
             throw new IllegalStateException(
                     "APP_PORTAL_PUBLIC_BASE_URL is required when APP_PORTAL_ENABLED=true "
-                            + "(public URL of this tenant instance, e.g. https://flowforge.example.org/tenant-a)");
+                            + "(public URL of this tenant instance, e.g. https://myrmacta.example.org/tenant-a)");
         }
         URI uri;
         try {

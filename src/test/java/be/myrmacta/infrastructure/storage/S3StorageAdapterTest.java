@@ -26,7 +26,7 @@ class S3StorageAdapterTest {
     @Test
     void storeRetrieveExists_useBucketAndKey() {
         S3Client client = mock(S3Client.class);
-        S3StorageAdapter storage = new S3StorageAdapter(client, "flowforge-docs");
+        S3StorageAdapter storage = new S3StorageAdapter(client, "myrmacta-docs");
         byte[] pdf = "%PDF".getBytes(StandardCharsets.UTF_8);
 
         when(client.getObjectAsBytes(any(GetObjectRequest.class)))
@@ -39,7 +39,7 @@ class S3StorageAdapterTest {
 
         ArgumentCaptor<PutObjectRequest> putCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(client).putObject(putCaptor.capture(), any(RequestBody.class));
-        assertThat(putCaptor.getValue().bucket()).isEqualTo("flowforge-docs");
+        assertThat(putCaptor.getValue().bucket()).isEqualTo("myrmacta-docs");
         assertThat(putCaptor.getValue().key()).isEqualTo(ref);
         assertThat(putCaptor.getValue().contentType()).isEqualTo("application/pdf");
 
@@ -59,13 +59,13 @@ class S3StorageAdapterTest {
     @Test
     void delete_sendsDeleteObjectForValidKey() {
         S3Client client = mock(S3Client.class);
-        S3StorageAdapter storage = new S3StorageAdapter(client, "flowforge-docs");
+        S3StorageAdapter storage = new S3StorageAdapter(client, "myrmacta-docs");
 
         storage.delete("tenant_dev", "tenant_dev/doc.pdf");
 
         ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
         verify(client).deleteObject(captor.capture());
-        assertThat(captor.getValue().bucket()).isEqualTo("flowforge-docs");
+        assertThat(captor.getValue().bucket()).isEqualTo("myrmacta-docs");
         assertThat(captor.getValue().key()).isEqualTo("tenant_dev/doc.pdf");
     }
 

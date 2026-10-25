@@ -2,7 +2,7 @@
 
 Mettre en place et valider l'outillage local de Myrmacta sous Windows avec **Podman** (pas
 Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-compose.yml` et la skill
-`flowforge-conventions`.
+`myrmacta-conventions`.
 
 ## Contexte poste
 
@@ -22,17 +22,17 @@ Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-
 2. **Config** — créer `.env` depuis `.env.example` sans changer les valeurs par défaut sauf
    nécessité (justifier chaque écart). Charger les variables dans le shell PowerShell avant le
    backend (méthode de `docs/guides/GETTING-STARTED.md` §3).
-3. **PostgreSQL** — `podman compose up -d`. Vérifier : postgres healthy, base `flowforge`,
-   schéma `tenant_dev`, rôle `flowforge_tenant_dev` capable de se connecter avec le mot de passe
+3. **PostgreSQL** — `podman compose up -d`. Vérifier : postgres healthy, base `myrmacta`,
+   schéma `tenant_dev`, rôle `myrmacta_tenant_dev` capable de se connecter avec le mot de passe
    de `.env` (script `docker/postgres/init`).
-4. **Keycloak** — realm `flowforge` importé ; client `mon-app` (secret + redirect URI
+4. **Keycloak** — realm `myrmacta` importé ; client `mon-app` (secret + redirect URI
    `http://localhost:8080/*`) cohérent avec `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` ; utilisateur
    `demo` / `demo` avec des rôles de realm suffisants (au moins `TENANT_ADMIN`). Corriger
-   `docker/keycloak/import/flowforge-realm.json` si besoin puis réimporter (supprimer le volume
+   `docker/keycloak/import/myrmacta-realm.json` si besoin puis réimporter (supprimer le volume
    `keycloak_data` si nécessaire).
 5. **Tests backend** — `.\mvnw.cmd verify` complet (unitaires, `*IT`, ArchUnit, couverture).
    - Si le PostgreSQL embarqué zonky échoue sous Windows : diagnostiquer, puis repli
-     `FLOWFORGE_TEST_PG_URL` / `_USER` / `_PASSWORD` (`docs/guides/GETTING-STARTED.md` §17) sur le postgres
+     `MYRMACTA_TEST_PG_URL` / `_USER` / `_PASSWORD` (`docs/guides/GETTING-STARTED.md` §17) sur le postgres
      Podman.
    - `ClamAvAttachmentScanIT` (Testcontainers) : tenter de faire pointer Testcontainers vers
      Podman (`DOCKER_HOST` sur le pipe Podman, Ryuk adapté). Si impossible, il doit s'ignorer
@@ -66,7 +66,7 @@ Docker). Lire d'abord `docs/guides/GETTING-STARTED.md`, `.env.example`, `docker-
 - (a) `.\mvnw.cmd verify` → `BUILD SUCCESS`
 - (b) lint, typecheck, Vitest et Playwright au vert
 - (c) postgres + keycloak démarrés sous Podman, config de base vérifiée (schéma `tenant_dev`,
-  rôle applicatif, realm `flowforge`, client `mon-app`, utilisateur `demo` avec ses rôles)
+  rôle applicatif, realm `myrmacta`, client `mon-app`, utilisateur `demo` avec ses rôles)
 - (d) backend démarré, health `UP`
 - (e) connexion à Myrmacta réussie avec `demo` / `demo`, `/api/auth/me` → 200
 

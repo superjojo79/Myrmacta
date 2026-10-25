@@ -1,8 +1,10 @@
 # FlowForge → Myrmacta
 
-Myrmacta (myrmex + acta) est le nom commercial. FlowForge reste le nom de code du dépôt, des
-paquets et de l'artefact tant que la PR technique n'est pas mergée. Le dépôt GitHub
-`superjojo79/FlowForge` n'est pas renommé.
+Myrmacta (myrmex + acta) est le nom commercial. Le dépôt GitHub `superjojo79/FlowForge`
+n'est pas renommé : FlowForge en reste le nom de code. Les paquets Java sont `be.myrmacta`
+et l'`artifactId` est `myrmacta` (section « Identifiants »). Les sections qui suivent
+décrivent ce que chaque PR a fait, dans l'ordre ; l'état courant est la section
+« Identifiants ».
 
 Signature : « L'intelligence collective au service de vos dossiers et décisions ».
 
@@ -83,7 +85,10 @@ utilisateur et tag d'image, noms de base et d'identifiants par défaut, `targetN
 BPMN `http://flowforge/...`, auteur Liquibase `flowforge`. La liste tenue de ce qui reste
 exprès est la section suivante.
 
-## Laissé exprès
+## Laissé exprès par la PR paquets
+
+La liste qui suit décrit l'état **après la PR paquets** (#227). La section « Identifiants »
+plus bas dit ce que la PR suivante en a fait.
 
 - Permaliens `github.com/superjojo79/FlowForge`, y compris les SHA `e91aa7b`, `555a692`,
   `dcb7e49`, et les liens `/pull/`.
@@ -103,3 +108,126 @@ exprès est la section suivante.
   (`/usr/share/doc/flowforge`, tag `flowforge:demo`).
 - Jeux de diapositives : aucun n'est modifié.
 - Pas de remplacement insensible à la casse de `flowforge`.
+
+## Identifiants
+
+La PR identifiants reprend ce que la PR paquets avait laissé. La recette rejouable est
+[`scripts/rename-flowforge-identifiers.py`](../scripts/rename-flowforge-identifiers.py)
+(`--dry-run`, `--apply`, `--check`). Les lignes de compatibilité portent le marqueur
+`flowforge-legacy` : le script ne les réécrit pas.
+
+Commits séparés : plan, `git mv` des fichiers, remplacement mécanique du contenu,
+puis compatibilité. Aucun changeSet Liquibase n'est modifié. Liquibase reste 4.33.0.
+
+| Catégorie | Devenu |
+|---|---|
+| `artifactId`, jar `myrmacta-*.jar`, scripts `check-*-in-jar.sh` | `myrmacta` |
+| Utilisateur d'image, `/usr/share/doc/myrmacta`, tag `myrmacta:demo` | `myrmacta` |
+| `FlowForgeApplication` | `MyrmactaApplication` |
+| Serveur MCP, préfixe de métriques, `job_name` Prometheus | `myrmacta` |
+| Défauts locaux (base, rôle, bucket, MinIO, realm et clients Keycloak) | `myrmacta` |
+| `targetNamespace` / `namespace` `http://flowforge/...` | `http://myrmacta/...` |
+| En-tête de webhook sortant | `X-Myrmacta-Signature` (l'ancien est encore émis) |
+| Dossiers, drapeau IMAP, catégorie Outlook | nouveaux noms en écriture, anciens reconnus en lecture |
+| Clé navigateur | `myrmacta.locale` (l'ancienne est migrée) |
+| Skill | `myrmacta-conventions` |
+| Maquette | `docs/specs/Myrmacta - Maquettes UI.html` |
+| Export realm | `docker/keycloak/import/myrmacta-realm.json` |
+
+Aucun `id` BPMN ou DMN du dépôt ne contenait `flowforge`. La clé de process vient de
+`process/@id` (`FlowableBpmnParserAdapter`), la clé de décision de `decision/@id`
+(`FlowableDmnParserAdapter`), pas du namespace. Les noms de beans Flowable ne changent pas.
+Il n'y a pas de tableau de bord Grafana dans le dépôt : seul le `job_name` Prometheus
+`myrmacta` est versionné. Les règles de scrape externes qui filtraient `flowforge` ou
+`flowforge_*` doivent être mises à jour.
+
+### Compatibilité
+
+- **Webhook.** `WebhookRestAdapter` envoie `X-Myrmacta-Signature` et `X-FlowForge-Signature`
+  avec la même valeur `sha256=…`. `acceptsSignatureHeader` reconnaît les deux. L'en-tête
+  entrant des connecteurs (`X-Signature-256`) n'a pas changé.
+- **Courrier.** Écriture : dossiers `Myrmacta-processed` / `Myrmacta-rejected`, drapeau
+  `MyrmactaDelivered`, catégorie `Myrmacta-delivered`. Lecture : `FlowForgeDelivered` et
+  `FlowForge-delivered` comptent comme déjà remis. Une configuration de connecteur déjà
+  enregistrée (noms de dossiers) est une donnée : elle n'est pas migrée.
+- **Langue.** `flowforge.locale` est lue une fois, recopiée dans `myrmacta.locale`, puis retirée.
+- **Variables.** `FLOWFORGE_TEST_PG_URL`, `_USER`, `_PASSWORD`, `FLOWFORGE_IMAGE`,
+  `FLOWFORGE_BASE_URL` et `FLOWFORGE_PORTAL_JWKS_URL` sont lues si la variable `MYRMACTA_*`
+  correspondante est absente. `TEST_PG_*` reste accepté pour les tests.
+- **Base embarquée.** Si `~/.myrmacta/embedded-db` n'existe pas et que
+  `~/.flowforge/embedded-db` existe, ce répertoire et la base `flowforge` qu'il contient
+  restent utilisés. Un répertoire explicite (`app.embedded-db.data-dir` ou
+  `APP_EMBEDDED_DB_DATA_DIR`) garde le nom de base `myrmacta`, même s'il pointe vers
+  l'ancien chemin. Le rôle applicatif créé ensuite est `myrmacta_tenant_dev`.
+- **Mot de passe.** Hors profils `local` et `test`, `myrmacta` et `flowforge` sont refusés.
+- **Volume Docker déjà créé.** `POSTGRES_DB` / le rôle ne sont pas renommés par un
+  redémarrage. Fixer `DB_NAME=flowforge`, `POSTGRES_USER=flowforge`,
+  `DB_USERNAME=flowforge_tenant_dev`, `DB_PASSWORD=flowforge` et l'URL JDBC vers la base
+  `flowforge`. Keycloak n'a pas réimporté un realm déjà présent : laisser
+  `OIDC_ISSUER_URI` sur `realms/flowforge`, ou supprimer le volume `keycloak_data` pour
+  importer `myrmacta`.
+- **Tenant déjà provisionné.** `scripts/provision-tenant.sh` crée désormais le rôle
+  `myrmacta_<tenant>` et le realm `myrmacta-<tenant>`. Ne pas le relancer sur un tenant
+  existant pour « renommer » : le rôle et le realm d'origine restent la référence.
+  `MYRMACTA_IMAGE` remplace `FLOWFORGE_IMAGE` (l'ancien nom est encore lu).
+
+### Reliquats volontaires
+
+`python3 scripts/rename-flowforge-identifiers.py --check` échoue si un fichier vivant
+contient `flowforge` hors de cette liste.
+
+- URL `github.com/superjojo79/FlowForge`, y compris les permaliens `e91aa7b`, `555a692`,
+  `dcb7e49` et les liens `/pull/`. Le dépôt n'est pas renommé : le faire ou non reste à
+  décider par Benoit.
+- Tag annoté `pre-myrmacta`.
+- `TRADEMARKS.md` : le nom de code du dépôt, et `flowforge.be` (société tierce, pas nous).
+- `CHANGELOG.md`.
+- `docs/decisions/` et `docs/analyses/` : historique daté. Notes d'actualisation seulement
+  sur les décisions 046, 104 et 105, et sur les phrases qui étaient aux lignes 27 et 89 de
+  `docs/analyses/REVUE-ALIGNEMENT-SECURITE.md`. L'index `identifiants.md` suit le code pour
+  `D-BRAND-NAME` et `D-BEAUTH-REALM`.
+- Auteur `flowforge` des changeSets Liquibase existants (`src/main/resources/db/changelog/`).
+  Aucun changeSet n'a été édité. Les prochains changeSets utilisent l'auteur `myrmacta`.
+  La référence `src/test/resources/db/changelog/checksums-baseline.csv` garde cet auteur :
+  c'est la clé du checksum, pas un identifiant à renommer. Le script de renommage l'ignore.
+- Commentaire de `src/main/resources/decisions/grille-eligibilite-client.dmn` (il ne contient
+  pas le mot). Le `namespace` du fichier est `http://myrmacta/...`.
+- Lignes marquées `flowforge-legacy` (en-tête, drapeau, catégorie, clé de langue, variables,
+  mot de passe refusé, répertoire et base embarqués).
+- Slug `docs/decisions/039-construction-de-diagrammes-bpmn-dans-flowforge-ecart.md` : identité
+  du point, pas renuméroté. `rg` ne le voit que si le contenu contient le mot.
+- Aucun jeu de diapositives dans l'arbre.
+- Ce fichier.
+
+### Rebase d'une branche parallèle
+
+Au départ de cette PR, `git fetch origin` puis `git branch -r --sort=-committerdate` :
+aucune pull request ouverte, et aucune branche distante n'avait `1dac9ab` (squash de la PR
+#227) pour ancêtre avec des commits absents de `main` (`b38f666e`). Les branches non
+contenues dans `main` ont un merge-base antérieur à ce squash (restes de PR déjà
+squash-mergées, ou travail plus ancien). `origin/ccr-1b2a2fd0-r71qj0` (issue #211) était
+alors contenue dans `main` (jusqu'à la PR #231). On n'y a pas touché.
+
+Rebase final sur `origin/main` `ffcd6b5c` (PR #233, lot A de la pré-vérification, même
+ligne `ccr-1b2a2fd0-r71qj0`). Un conflit : `AnthropicChatModels.java`. Le lot A passe le
+User-Agent en paramètre ; la valeur de l'assistant reste `myrmacta-assistant`, le reste du
+lot est conservé. Après ce rebase, cette branche distante n'a plus de commit absent de
+`main`. Un lot suivant, non poussé, reste le point de conflit probable.
+
+Un lot poussé ensuite depuis ce tip, ou toute branche rebasée sur `main` après cette PR,
+rencontre des conflits là où elle édite les mêmes fichiers. Zones les plus exposées :
+`application.yml`, `docker-compose.yml`, `Dockerfile`, `pom.xml`, les connecteurs IMAP et
+Graph, `frontend/src/i18n/`, les guides, les ressources BPMN/DMN, le skill de conventions.
+
+Procédure, sur **la branche concernée** (pas depuis ici) :
+
+1. `git fetch origin && git rebase origin/main`
+2. Pour un fichier déplacé (`FlowForgeApplication`, `flowforge-realm.json`, la maquette,
+   `flowforge-conventions`) : garder le nouveau chemin, reporter le changement métier dessus.
+3. Pour un conflit de contenu : garder le travail de `main` sur les identifiants, puis
+   réappliquer le changement métier.
+4. `python3 scripts/rename-flowforge-identifiers.py --apply` réécrit les `flowforge` encore
+   vivants introduits par la branche. Il ne touche pas aux URL du dépôt, aux changeSets
+   Liquibase, au registre, ni aux lignes `flowforge-legacy`.
+5. `python3 scripts/rename-flowforge-identifiers.py --check` doit rester vert.
+6. Ne pas modifier un changeSet Liquibase existant. Un changeSet nouveau a l'auteur `myrmacta`.

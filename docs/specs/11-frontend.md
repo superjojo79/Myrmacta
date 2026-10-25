@@ -20,13 +20,13 @@ Signature : « L'intelligence collective au service de vos dossiers et décision
 
 La construction de l'interface doit se baser sur le mock HTML présent dans ce dossier :
 
-- **[FlowForge - Maquettes UI.html](FlowForge%20-%20Maquettes%20UI.html)** — maquettes UI de référence (écrans, navigation, composition visuelle). Le fichier garde son nom : les liens existants ne bougent pas. Le nom affiché dans la maquette est Myrmacta.
+- **[Myrmacta - Maquettes UI.html](Myrmacta%20-%20Maquettes%20UI.html)** — maquettes UI de référence (écrans, navigation, composition visuelle). Le nom affiché dans la maquette est Myrmacta.
 
 Toute implémentation Vue / OpenVue (layouts, pages, composants métier, hiérarchie visuelle) doit s'aligner sur ce mock. En cas d'écart entre la maquette et les choix techniques de cette analyse (OpenVue, BFF, etc.), la maquette prime pour le rendu et l'UX ; la stack technique documentée ici reste celle à utiliser pour l'implémenter. PrimeVue (devenu propriétaire) a été remplacé par **OpenVue**, fork communautaire MIT (PR #165) : mêmes composants et thème Aura, seuls les imports changent.
 
 Pour faciliter la création de l'interface, s'appuyer sur les **skills spécialisés** du dépôt (à charger avant d'écrire le code UI) :
 
-- [`flowforge-conventions`](../../.claude/skills/flowforge-conventions/SKILL.md) — conventions projet (stack FE, packaging, priorités)
+- [`myrmacta-conventions`](../../.claude/skills/myrmacta-conventions/SKILL.md) — conventions projet (stack FE, packaging, priorités)
 - [`vue-best-practices`](../../.claude/skills/vue-best-practices/SKILL.md) — Composition API, structure des composants, patterns Vue
 - [`vue`](../../.claude/skills/vue/SKILL.md) — SFC, réactivité, macros `<script setup>`
 - [`pinia`](../../.claude/skills/pinia/SKILL.md) — stores et état applicatif

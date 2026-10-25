@@ -35,7 +35,7 @@ class PortalPropertiesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"flowforge.example.org", "ftp://x.org", "https://x.org/a?b=1", "https://x.org/#f",
+    @ValueSource(strings = {"myrmacta.example.org", "ftp://x.org", "https://x.org/a?b=1", "https://x.org/#f",
             "https://user:pw@x.org", "javascript:alert(1)"})
     void enabledWithInvalidBaseUrl_failsFast(String url) {
         assertThatThrownBy(() -> props(true, url)).isInstanceOf(IllegalStateException.class);

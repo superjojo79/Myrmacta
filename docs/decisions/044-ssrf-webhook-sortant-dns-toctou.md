@@ -14,7 +14,7 @@ header `Host` restreint et envoie l'IP pinnée à la place (observé : test
 isolation — la course entre forks Surefire réutilisés déterminait quelle
 classe chargeait `HttpURLConnection` en premier). Corrigé par
 `sun.net.http.allowRestrictedHeaders=true`, posé au plus tôt à trois
-endroits complémentaires (`FlowForgeApplication.main`, static init
+endroits complémentaires (`MyrmactaApplication.main`, static init
 `WebhookRestAdapter`, `systemPropertyVariables` Surefire pour les forks de
 test) — le pin IP / TOCTOU (D-44 lui-même) n'était pas affecté, seul le
 header `Host` du serveur cible l'était. Détail :

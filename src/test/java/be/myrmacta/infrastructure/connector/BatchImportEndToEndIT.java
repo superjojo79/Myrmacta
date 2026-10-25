@@ -78,7 +78,7 @@ class BatchImportEndToEndIT {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("sftpHost", "sftp.example.com");
         config.put("sftpPort", 22);
-        config.put("sftpUsername", "flowforge");
+        config.put("sftpUsername", "myrmacta");
         config.put("sftpAuthType", "PASSWORD");
         config.put("sftpPassword", "secret12345678901234");
         config.put("sftpHostKeyFingerprint", "SHA256:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG");

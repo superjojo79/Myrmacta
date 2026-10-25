@@ -46,7 +46,7 @@ describe('AppShell language (D7)', () => {
     await wrapper.get('[data-testid="locale-switcher"]').setValue('en')
     expect(wrapper.text()).toContain('Log out')
     expect(currentLocale()).toBe('en')
-    expect(window.localStorage.getItem('flowforge.locale')).toBe('en')
+    expect(window.localStorage.getItem('myrmacta.locale')).toBe('en')
     await wrapper.get('[data-testid="locale-switcher"]').setValue('fr')
     expect(wrapper.text()).toContain('Déconnexion')
   })

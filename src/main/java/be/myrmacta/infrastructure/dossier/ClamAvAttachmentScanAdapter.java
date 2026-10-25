@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ClamAvAttachmentScanAdapter implements AttachmentScanPort {
 
-    public static final String FAIL_OPEN_COUNTER = "flowforge.attachment.scan.fail_open";
+    public static final String FAIL_OPEN_COUNTER = "myrmacta.attachment.scan.fail_open";
 
     /**
      * Borne haute sur la réponse {@code clamd} bufferisée — un statut clamd tient normalement en

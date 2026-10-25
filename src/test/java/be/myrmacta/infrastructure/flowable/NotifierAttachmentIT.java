@@ -41,7 +41,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @Import(OidcClientTestConfiguration.class)
 class NotifierAttachmentIT {
 
-    private static final byte[] PDF = "%PDF-1.7\n% FlowForge\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] PDF = "%PDF-1.7\n% Myrmacta\n".getBytes(StandardCharsets.US_ASCII);
 
     @Autowired
     private RepositoryService repositoryService;

@@ -283,12 +283,12 @@ CSS, avec des `data-testid` pour Playwright — pas de composants PrimeVue. Le n
    confirmer que son ajout fait bien partie du périmètre de cette feature (proposé en §2) plutôt que
    d'un lot séparé.
 4. **Alignement maquette** — [11-frontend.md](11-frontend.md) impose de s'aligner sur
-   `FlowForge - Maquettes UI.html` ; aucun écran de ce fichier ne couvre aujourd'hui l'édition du
+   `Myrmacta - Maquettes UI.html` ; aucun écran de ce fichier ne couvre aujourd'hui l'édition du
    schéma de champs (recherche infructueuse lors de cette analyse). À vérifier en phase design avant
    d'improviser une disposition, ou à faire ajouter au mock si absent.
 5. **`docs/guides/GUIDE-UTILISATEUR.md` §1** — à mettre à jour une fois la feature livrée (le paragraphe
    « Limite actuelle de l'écran » cité en §1 devient obsolète) : rappel de convention (§ « Workflow
-   de feature » point 6 de la skill `flowforge-conventions`), non fait dans ce document puisqu'aucun
+   de feature » point 6 de la skill `myrmacta-conventions`), non fait dans ce document puisqu'aucun
    code n'est encore livré.
 6. **Nommage du lot** — aucun nom de feature n'est réservé dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) /
    [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) pour ce sujet à ce jour ; à choisir en séquençant avec le reste de la file

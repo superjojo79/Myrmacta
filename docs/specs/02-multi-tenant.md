@@ -175,14 +175,14 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
 Deux modèles, choisis au provisionnement de chaque instance :
 
 - **Realm partagé** : un seul realm, un claim `tenant_id` par utilisateur. C'est ce que fait
-  `scripts/provision-tenant.sh` sans option, et le modèle du dev (`docker-compose.yml`, realm `flowforge`) ;
+  `scripts/provision-tenant.sh` sans option, et le modèle du dev (`docker-compose.yml`, realm `myrmacta`) ;
 - **Realm par tenant** : un realm dédié, activé par `--realm-per-tenant`. C'est le modèle recommandé en production.
 
 Aucune instance ne bascule seule d'un modèle à l'autre : la migration d'un tenant vers son realm est manuelle
 ([DEPLOIEMENT.md §19](../guides/DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-104)).
 
 **Realm par tenant (TODO §104, D-BEAUTH-REALM).** `scripts/provision-tenant.sh --realm-per-tenant` génère le realm
-`flowforge-<tenant>` (client BFF, rôles, profil, fournisseurs FAS et itsme), et l'instance pointe son `OIDC_ISSUER_URI`
+`myrmacta-<tenant>` (client BFF, rôles, profil, fournisseurs FAS et itsme), et l'instance pointe son `OIDC_ISSUER_URI`
 dessus. Chaque tenant a ses propres clés (`private_key_jwt` signé avec la clé du realm), sa page de connexion et ses
 comptes, ce qu'exigent des contrats FAS ou itsme propres à chaque commune. Le claim `tenant_id` reste vérifié de la même
 façon : un compte créé par un fournisseur d'identité n'en a pas tant qu'un admin ne l'a pas validé, et il est refusé.
@@ -196,7 +196,7 @@ Puisqu'une instance ne dessert jamais qu'un seul schéma, le SPI multi-tenant d'
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://db-host:5432/flowforge
+    url: jdbc:postgresql://db-host:5432/myrmacta
     hikari:
       connection-init-sql: SET search_path TO ${app.tenant.id}, public
 ```
@@ -209,9 +209,9 @@ redevient une configuration JPA ordinaire, sans multi-tenancy.
 `search_path` n'est **pas** une barrière d'autorisation. Un rôle PostgreSQL superuser (ou un rôle
 avec `USAGE` sur tous les schémas) peut lire un autre schéma même si son `search_path` pointe
 ailleurs. **D-41 :** chaque tenant a un rôle **LOGIN** dédié, avec `GRANT` uniquement sur son
-schéma. Le superuser du conteneur (`POSTGRES_USER`, défaut `flowforge` en local) sert au bootstrap
+schéma. Le superuser du conteneur (`POSTGRES_USER`, défaut `myrmacta` en local) sert au bootstrap
 (init SQL, éventuellement ops) ; l'application se connecte avec `DB_USERNAME`
-(`flowforge_tenant_dev` en local). Voir
+(`myrmacta_tenant_dev` en local). Voir
 [`docker/postgres/init/01-init-tenant-schema.sql`](../../docker/postgres/init/01-init-tenant-schema.sql).
 Un volume Postgres déjà initialisé **ne rejoue pas** ce script : `docker compose down -v` puis
 `up -d`. Le provisioning d'un second tenant (CLI / orchestrateur) reste hors V1 (point 31).

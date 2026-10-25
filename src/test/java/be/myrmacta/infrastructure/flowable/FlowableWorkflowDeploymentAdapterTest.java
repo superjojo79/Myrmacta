@@ -22,7 +22,7 @@ class FlowableWorkflowDeploymentAdapterTest {
     private static final String BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                         targetNamespace="http://flowforge/test">
+                         targetNamespace="http://myrmacta/test">
               <process id="%s" isExecutable="true">
                 <startEvent id="start"/>
                 <userTask id="wait" name="Wait"/>

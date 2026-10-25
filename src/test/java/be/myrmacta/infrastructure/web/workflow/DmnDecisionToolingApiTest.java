@@ -32,7 +32,7 @@ class DmnDecisionToolingApiTest {
     private static final String DMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                         namespace="http://flowforge/test">
+                         namespace="http://myrmacta/test">
               <decision id="%s" name="Def">
                 <decisionTable id="dt" hitPolicy="UNIQUE">
                   <input>

@@ -29,7 +29,7 @@ public abstract class SignaturePortContract {
 
     /**
      * Point d'extension pour un adaptateur dont l'état vit ailleurs que chez un fournisseur externe
-     * (le stub relit la demande FlowForge) : appelé après chaque {@code submit}.
+     * (le stub relit la demande Myrmacta) : appelé après chaque {@code submit}.
      */
     protected void onSubmitted(UUID requestId, SignaturePort.SignatureSubmission submission) {}
 

@@ -23,7 +23,7 @@ COPY frontend/ frontend/
 COPY LICENSE NOTICE ./
 
 # Image de production par défaut. Image de DÉMO/QA avec PostgreSQL embarqué persistant :
-#   docker build --build-arg MAVEN_PROFILES=embedded-db -t flowforge:demo .
+#   docker build --build-arg MAVEN_PROFILES=embedded-db -t myrmacta:demo .
 # (voir docs/guides/GETTING-STARTED.md § « Base embarquée persistante » ; jamais en production).
 ARG MAVEN_PROFILES=""
 RUN ./mvnw -B clean package -DskipTests ${MAVEN_PROFILES:+-P${MAVEN_PROFILES}}
@@ -37,23 +37,23 @@ LABEL org.opencontainers.image.title="Myrmacta" \
       org.opencontainers.image.description="L'intelligence collective au service de vos dossiers et décisions" \
       org.opencontainers.image.licenses="PolyForm-Noncommercial-1.0.0"
 
-RUN groupadd --system --gid 10001 flowforge \
-    && useradd --system --uid 10001 --gid flowforge --no-create-home --shell /usr/sbin/nologin flowforge
+RUN groupadd --system --gid 10001 myrmacta \
+    && useradd --system --uid 10001 --gid myrmacta --no-create-home --shell /usr/sbin/nologin myrmacta
 
 WORKDIR /app
-COPY --from=build --chown=flowforge:flowforge /workspace/target/flowforge-*.jar app.jar
+COPY --from=build --chown=myrmacta:myrmacta /workspace/target/myrmacta-*.jar app.jar
 # LICENSE (PolyForm-Noncommercial-1.0.0) et NOTICE, mêmes fichiers que la racine du dépôt et que
 # META-INF/ du jar. Lisibles par l'utilisateur applicatif.
-COPY --from=build --chown=flowforge:flowforge /workspace/LICENSE /workspace/NOTICE /usr/share/doc/flowforge/
+COPY --from=build --chown=myrmacta:myrmacta /workspace/LICENSE /workspace/NOTICE /usr/share/doc/myrmacta/
 
 # Répertoire des données du PostgreSQL embarqué (profil Spring embedded-db, image de démo/QA
-# uniquement) : à monter en volume (-v flowforge-data:/data) pour conserver les données entre
+# uniquement) : à monter en volume (-v myrmacta-data:/data) pour conserver les données entre
 # deux démarrages. Sans effet dans l'image de production.
-RUN mkdir -p /data/embedded-db && chown -R flowforge:flowforge /data
+RUN mkdir -p /data/embedded-db && chown -R myrmacta:myrmacta /data
 ENV APP_EMBEDDED_DB_DATA_DIR=/data/embedded-db
 VOLUME /data
 
-USER flowforge
+USER myrmacta
 
 # Port applicatif par défaut (server.port). Le port management (actuator, D-42) bind
 # volontairement 127.0.0.1 côté conteneur et n'est pas exposé ici — à publier

@@ -57,7 +57,7 @@ class SignatureConfigTest {
                     assertThat(ctx.getBean(SignaturePort.class).code()).isEqualTo("stub");
                     assertThat(ctx.getBean(SignatureAvailabilityPort.class).providerActive()).isTrue();
                     assertThat(ctx.getBean(MeterRegistry.class)
-                                    .get("flowforge.signature.stub.active")
+                                    .get("myrmacta.signature.stub.active")
                                     .tag("outside_local", "true")
                                     .gauge()
                                     .value())

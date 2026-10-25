@@ -12,7 +12,7 @@
 |---|---|
 | Moteur de test | PostgreSQL **réel et embarqué** (`io.zonky.test:embedded-postgres`), version majeure **17** alignée sur docker-compose. H2 et son mode `PostgreSQL` sont supprimés. |
 | Isolation | Une instance par JVM de test, **une base par contexte Spring**, initialisée par `docker/postgres/init/01-init-tenant-schema.sql` (schéma `tenant_dev` + rôle applicatif non-superuser). |
-| Exécution | Sans Docker. `initdb` refuse root : utilisateur non-root, ou `FLOWFORGE_TEST_PG_URL` pour un PostgreSQL externe. |
+| Exécution | Sans Docker. `initdb` refuse root : utilisateur non-root, ou `MYRMACTA_TEST_PG_URL` pour un PostgreSQL externe. |
 | `*IT` | Inclus dans `./mvnw verify` (ils n'y étaient pas : pas de Failsafe). |
 | Changelogs | Plus aucune branche `dbms: h2` ; checksums PostgreSQL inchangés, gardés par `ChangelogChecksumStabilityIT`. |
 | Démo/QA | Profil Spring `embedded-db` + profil Maven `embedded-db` : base **persistante** (`APP_EMBEDDED_DB_DATA_DIR`), absente du jar de production, interdite avec un profil `prod`/`production` ou `APP_ENVIRONMENT=production` (défaut). |

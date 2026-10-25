@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * TODO §72 — émission d'une demande. Ordre imposé par le stub (qui relit l'état FlowForge) : la
+ * TODO §72 — émission d'une demande. Ordre imposé par le stub (qui relit l'état Myrmacta) : la
  * demande est insérée {@code PENDING} <strong>avant</strong> l'appel à {@link SignaturePort#submit},
  * puis mise à jour avec la référence du fournisseur. Toute erreur métier ou fournisseur ferme la
  * demande {@code FAILED} (motif consigné) au lieu de lever : le process ne doit jamais bloquer.

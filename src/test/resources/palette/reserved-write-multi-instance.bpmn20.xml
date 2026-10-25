@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- Issue #203, scénario A : la boucle multi-instance recopie une valeur posée à la complétion dans generatedDocumentId.
        Refusé au déploiement (TODO §99) ; ReservedVariableWriteIT le déploie directement dans le moteur pour prouver l'effet. -->

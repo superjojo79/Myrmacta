@@ -56,7 +56,7 @@ class FlowableBpmnParserAdapterUelSurfaceTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:activiti="http://activiti.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <userTask id="wait" activiti:formKey="%s"/>
@@ -172,7 +172,7 @@ class FlowableBpmnParserAdapterUelSurfaceTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <!DOCTYPE definitions [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start" name="&xxe;"/>
                     <endEvent id="end"/>
@@ -206,7 +206,7 @@ class FlowableBpmnParserAdapterUelSurfaceTest {
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     %s
                   </process>

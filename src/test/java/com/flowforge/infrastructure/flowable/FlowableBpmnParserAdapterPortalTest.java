@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowforge.domain.workflow.model.InvalidBpmnException;
+import com.flowforge.domain.workflow.portal.model.PortalIdentityField;
 import com.flowforge.domain.workflow.portal.model.PortalRecipientSource;
 import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +44,47 @@ class FlowableBpmnParserAdapterPortalTest {
             assertThat(t.ttlDays()).isNull();
             assertThat(t.recipientSource().kind()).isEqualTo(PortalRecipientSource.Kind.PROCESS_VARIABLE);
         });
+    }
+
+    /** TODO §104 (T1, T2) — {@code portalIdentityField} marque une tâche externe à authentification forte. */
+    @Test
+    void externalTaskWithAnIdentityField_requiresStrongAuthentication() {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:contactEmail\""
+                + " flowable:portalIdentityField=\"dossierField:nrnDemandeur\"/>");
+
+        adapter.extractProcessDefinitionKey(xml);
+        assertThat(adapter.extractPortalTasks(xml)).singleElement().satisfies(t -> {
+            assertThat(t.identityField()).isEqualTo(new PortalIdentityField("nrnDemandeur"));
+            assertThat(t.requiresStrongAuthentication()).isTrue();
+        });
+        byte[] plain = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:contactEmail\"/>");
+        assertThat(adapter.extractPortalTasks(plain).getFirst().requiresStrongAuthentication()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            // le NRN ne transite jamais par une variable de process (N2)
+            "flowable:portalIdentityField=\"variable:nrn\"",
+            "flowable:portalIdentityField=\"nrn\"",
+            "flowable:portalIdentityField=\"dossierField:\"",
+            "flowable:portalIdentityField=\"dossierField:a.b\""})
+    void invalidIdentityField_isRejected(String attribute) {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:email\" " + attribute + "/>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("portalIdentityField");
+    }
+
+    @Test
+    void identityFieldWithoutRecipient_isRejected() {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalIdentityField=\"dossierField:nrn\"/>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("portalIdentityField requires portalRecipient");
     }
 
     @Test

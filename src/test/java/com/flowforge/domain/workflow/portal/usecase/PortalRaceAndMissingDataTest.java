@@ -25,6 +25,7 @@ import com.flowforge.domain.workflow.port.out.TaskQuestionAnswerRepository;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowEnginePort;
 import com.flowforge.domain.workflow.portal.PortalAccessResolver;
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
 import com.flowforge.domain.workflow.portal.PortalParticipantNotifier;
 import com.flowforge.domain.workflow.portal.model.PortalAccessDeniedException;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
@@ -116,7 +117,7 @@ class PortalRaceAndMissingDataTest {
     void submit_losingTheCompletionRace_recordsNothing_completesNothing_notifiesNobody() {
         PortalAccessResolver.ResolvedAccess access = resolver.resolve(TOKEN);
         PortalAccessResolver racing = mock(PortalAccessResolver.class);
-        when(racing.resolve(TOKEN)).thenReturn(access);
+        when(racing.resolve(PortalCredential.of(TOKEN, null))).thenReturn(access);
         repository.loseEveryRace = true;
         SubmitPortalTaskUseCaseImpl useCase = new SubmitPortalTaskUseCaseImpl("tenant_dev", racing, schemas,
                 new UserQuestionAnswers("tenant_dev", answers), engine, repository, notifier, clock);

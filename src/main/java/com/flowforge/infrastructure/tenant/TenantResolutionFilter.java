@@ -21,10 +21,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class TenantResolutionFilter extends OncePerRequestFilter {
 
-    private final TenantProperties tenantProperties;
+    private final TenantMembership tenantMembership;
 
     public TenantResolutionFilter(TenantProperties tenantProperties) {
-        this.tenantProperties = tenantProperties;
+        this.tenantMembership = new TenantMembership(tenantProperties);
     }
 
     @Override
@@ -33,9 +33,8 @@ public class TenantResolutionFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof OidcUser user) {
-            String claimedTenantId = user.getClaimAsString("tenant_id");
-            if (!tenantProperties.id().equals(claimedTenantId)) {
-                SecurityAuditLog.tenantMismatch(request, claimedTenantId);
+            if (!tenantMembership.belongs(user)) {
+                SecurityAuditLog.tenantMismatch(request, TenantMembership.claimedTenantId(user));
                 HttpSession session = request.getSession(false);
                 if (session != null) {
                     session.invalidate();

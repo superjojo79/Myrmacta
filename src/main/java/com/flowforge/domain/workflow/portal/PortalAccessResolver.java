@@ -3,7 +3,12 @@ package com.flowforge.domain.workflow.portal;
 import com.flowforge.domain.dossier.model.Dossier;
 import com.flowforge.domain.dossier.port.out.DossierRepository;
 import com.flowforge.domain.workflow.portal.model.PortalAccessDeniedException;
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
+import com.flowforge.domain.workflow.portal.model.PortalIdentityField;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
+import com.flowforge.domain.workflow.portal.model.PortalLinkIdentity;
+import com.flowforge.domain.workflow.portal.model.PortalTaskDefinition;
+import com.flowforge.domain.workflow.portal.port.out.PortalIdentityRepository;
 import com.flowforge.domain.workflow.portal.port.out.PortalLinkRepository;
 import com.flowforge.domain.workflow.portal.port.out.PortalTaskLookupPort;
 import com.flowforge.domain.workflow.portal.port.out.PortalTokenPort;
@@ -27,6 +32,7 @@ public final class PortalAccessResolver {
     private final PortalTaskLookupPort taskLookup;
     private final DossierRepository dossierRepository;
     private final Clock clock;
+    private final PortalIdentityRepository identities;
 
     public PortalAccessResolver(
             PortalLinkRepository repository,
@@ -34,11 +40,23 @@ public final class PortalAccessResolver {
             PortalTaskLookupPort taskLookup,
             DossierRepository dossierRepository,
             Clock clock) {
+        this(repository, tokenPort, taskLookup, dossierRepository, clock, null);
+    }
+
+    /** {@code identities} nul : aucune preuve d'identité n'est acceptée (authentification forte absente). */
+    public PortalAccessResolver(
+            PortalLinkRepository repository,
+            PortalTokenPort tokenPort,
+            PortalTaskLookupPort taskLookup,
+            DossierRepository dossierRepository,
+            Clock clock,
+            PortalIdentityRepository identities) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.tokenPort = Objects.requireNonNull(tokenPort, "tokenPort");
         this.taskLookup = Objects.requireNonNull(taskLookup, "taskLookup");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.identities = identities;
     }
 
     /**
@@ -47,12 +65,44 @@ public final class PortalAccessResolver {
      * {@link #resolve}, que le use case appelle ensuite.
      */
     public void assertUsableToken(String token) {
-        usableLink(token, clock.instant());
+        assertUsable(new PortalCredential.LinkToken(token));
+    }
+
+    /**
+     * Même contrôle préalable pour tout justificatif (TODO §104) : jeton vivant, ou preuve valable dont le lien est
+     * vivant. Comme pour le jeton, aucune lecture de la tâche : l'exigence d'identité est vérifiée par {@link #resolve}
+     * dans le use case. Le porteur du seul jeton d'une tâche à authentification forte peut donc faire lire un upload
+     * avant son refus, comme tout porteur du lien le pouvait déjà ; la limite par IP s'applique.
+     */
+    public void assertUsable(PortalCredential credential) {
+        usable(credential, clock.instant());
     }
 
     public ResolvedAccess resolve(String token) {
+        return resolve(new PortalCredential.LinkToken(token));
+    }
+
+    /**
+     * Accès pour agir (dépôt, soumission) : une tâche à authentification forte exige une identité vérifiée pour ce lien
+     * (TODO §104, T3b). Tout manquement donne le refus neutre.
+     */
+    public ResolvedAccess resolve(PortalCredential credential) {
+        ResolvedAccess access = resolveAllowingPendingIdentity(credential);
+        if (access.identityRequired() && access.identity() == null) {
+            throw new PortalAccessDeniedException("identity required for link " + access.link().id());
+        }
+        return access;
+    }
+
+    /**
+     * Accès qui tolère une identité encore à vérifier : vue réduite de la tâche et démarrage de l'authentification
+     * (TODO §104, T3b). L'appelant ne montre rien d'autre que le nom de la tâche et la référence tant que
+     * {@link ResolvedAccess#identityRequired()} est vrai sans identité.
+     */
+    public ResolvedAccess resolveAllowingPendingIdentity(PortalCredential credential) {
         Instant now = clock.instant();
-        PortalLink link = usableLink(token, now);
+        Credentialed found = usable(credential, now);
+        PortalLink link = found.link();
         PortalTaskLookupPort.OpenTask task = taskLookup.findOpenTask(link.taskId())
                 .orElseThrow(() -> new PortalAccessDeniedException("task gone for link " + link.id()));
         Dossier dossier = dossierRepository.findById(link.dossierId())
@@ -61,7 +111,38 @@ public final class PortalAccessResolver {
         if (!repository.transition(link, accessed)) {
             throw new PortalAccessDeniedException("link " + link.id() + " changed concurrently");
         }
-        return new ResolvedAccess(accessed, task, dossier);
+        return new ResolvedAccess(accessed, task, dossier, identityFieldOf(link), found.identity());
+    }
+
+    private record Credentialed(PortalLink link, PortalLinkIdentity identity) {}
+
+    private Credentialed usable(PortalCredential credential, Instant now) {
+        return switch (Objects.requireNonNull(credential, "credential")) {
+            case PortalCredential.LinkToken token -> new Credentialed(usableLink(token.value(), now), null);
+            case PortalCredential.IdentityProof proof -> {
+                PortalLinkIdentity identity = usableIdentity(proof.value(), now);
+                PortalLink link = repository.findById(identity.linkId())
+                        .filter(candidate -> candidate.isUsable(now))
+                        .orElseThrow(() -> new PortalAccessDeniedException(
+                                "link " + identity.linkId() + " of the identity proof is not usable"));
+                yield new Credentialed(link, identity);
+            }
+        };
+    }
+
+    private PortalLinkIdentity usableIdentity(String proof, Instant now) {
+        if (identities == null || proof == null || proof.isBlank() || proof.length() > MAX_TOKEN_LENGTH) {
+            throw new PortalAccessDeniedException("missing or malformed identity proof");
+        }
+        return identities.findByProofHash(tokenPort.hash(proof))
+                .filter(identity -> identity.isUsable(now))
+                .orElseThrow(() -> new PortalAccessDeniedException("unknown, expired or used identity proof"));
+    }
+
+    private PortalIdentityField identityFieldOf(PortalLink link) {
+        return taskLookup.findExternalTaskDefinition(link.taskId())
+                .map(PortalTaskDefinition::identityField)
+                .orElse(null);
     }
 
     private PortalLink usableLink(String token, Instant now) {
@@ -76,5 +157,20 @@ public final class PortalAccessResolver {
         return link;
     }
 
-    public record ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier) {}
+    /**
+     * {@code identityField} : champ d'identité de la tâche, nul sans authentification forte. {@code identity} : identité
+     * vérifiée présentée par la preuve, nulle sur un accès par le jeton.
+     */
+    public record ResolvedAccess(
+            PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier, PortalIdentityField identityField,
+            PortalLinkIdentity identity) {
+
+        public ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier) {
+            this(link, task, dossier, null, null);
+        }
+
+        public boolean identityRequired() {
+            return identityField != null;
+        }
+    }
 }

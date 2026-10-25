@@ -1,10 +1,12 @@
 package com.flowforge.infrastructure.config;
 
 import com.flowforge.domain.dossier.port.out.DossierRepository;
+import com.flowforge.domain.dossier.port.out.DossierTypeRepository;
 import com.flowforge.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import com.flowforge.domain.notification.port.in.SendNotificationUseCase;
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import com.flowforge.domain.workflow.port.out.WorkflowParticipantPort;
+import com.flowforge.domain.workflow.portal.PortalIdentityFieldCheck;
 import com.flowforge.domain.workflow.portal.PortalParticipantNotifier;
 import com.flowforge.domain.workflow.portal.port.in.InvalidatePortalLinksForTaskUseCase;
 import com.flowforge.domain.workflow.portal.port.in.IssuePortalLinkUseCase;
@@ -42,17 +44,35 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import com.flowforge.domain.connector.port.out.ConnectorSecretCipher;
+import com.flowforge.domain.dossier.port.in.UpdateDossierFieldsUseCase;
+import com.flowforge.domain.workflow.portal.port.in.CompletePortalIdentityUseCase;
+import com.flowforge.domain.workflow.portal.port.in.StartPortalIdentityUseCase;
+import com.flowforge.domain.workflow.portal.port.out.PortalIdentityProviderPort;
+import com.flowforge.domain.workflow.portal.port.out.PortalIdentityRepository;
+import com.flowforge.domain.workflow.portal.port.out.PortalSecretCipherPort;
+import com.flowforge.domain.workflow.portal.usecase.CompletePortalIdentityUseCaseImpl;
+import com.flowforge.domain.workflow.portal.usecase.StartPortalIdentityUseCaseImpl;
+import com.flowforge.infrastructure.portal.identity.OidcPortalIdentityProviderAdapter;
+import com.flowforge.infrastructure.portal.identity.PortalIdentityKeys;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /** TODO §68 (portail-externe) — câblage des use cases portail (domaine sans annotation Spring). */
 @Configuration
-@EnableConfigurationProperties(PortalProperties.class)
+@EnableConfigurationProperties({PortalProperties.class, PortalStrongAuthProperties.class})
 public class PortalConfig {
 
     private static final Clock CLOCK = Clock.systemUTC();
 
     @Bean
-    PortalAvailabilityPort portalAvailabilityPort(PortalProperties properties) {
+    PortalAvailabilityPort portalAvailabilityPort(PortalProperties properties, PortalStrongAuthProperties strongAuth) {
         return new PortalAvailabilityPort() {
+            @Override
+            public boolean isStrongAuthenticationEnabled() {
+                return strongAuth.enabled();
+            }
+
             @Override
             public boolean isPortalEnabled() {
                 return properties.enabled();
@@ -82,9 +102,12 @@ public class PortalConfig {
             TaskQuestionSchemaRepository schemaRepository,
             PortalRecipientResolverPort recipientResolver,
             PortalParticipantNotifier notifier,
-            PortalProperties properties) {
+            PortalProperties properties,
+            DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository) {
         return new IssuePortalLinkUseCaseImpl(tenantProperties.id(), repository, schemaRepository, recipientResolver,
-                notifier, CLOCK, properties.defaultLinkTtlDays(), properties.maxLinkTtlDays());
+                notifier, CLOCK, properties.defaultLinkTtlDays(), properties.maxLinkTtlDays(),
+                PortalIdentityFieldCheck.of(tenantProperties.id(), dossierRepository, dossierTypeRepository));
     }
 
     @Bean
@@ -110,8 +133,78 @@ public class PortalConfig {
             PortalLinkRepository repository,
             PortalTokenPort tokenPort,
             PortalTaskLookupPort taskLookup,
-            DossierRepository dossierRepository) {
-        return new PortalAccessResolver(repository, tokenPort, taskLookup, dossierRepository, CLOCK);
+            DossierRepository dossierRepository,
+            PortalIdentityRepository identities) {
+        return new PortalAccessResolver(repository, tokenPort, taskLookup, dossierRepository, CLOCK, identities);
+    }
+
+    /** TODO §104 — NRN et vérificateur PKCE chiffrés au repos, avec la clé maîtresse des secrets de connecteur. */
+    @Bean
+    PortalSecretCipherPort portalSecretCipherPort(TenantProperties tenantProperties, ConnectorSecretCipher cipher) {
+        String tenantId = tenantProperties.id();
+        return new PortalSecretCipherPort() {
+            @Override
+            public String encrypt(String plaintext) {
+                return cipher.encrypt(tenantId, plaintext);
+            }
+
+            @Override
+            public String decrypt(String ciphertext) {
+                return cipher.decrypt(tenantId, ciphertext);
+            }
+        };
+    }
+
+    /** TODO §104 (T11) — clés de l'instance, lues au démarrage : un fichier absent ou invalide empêche le démarrage. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.portal.strong-auth", name = "enabled", havingValue = "true")
+    PortalIdentityKeys portalIdentityKeys(PortalStrongAuthProperties strongAuth) {
+        return PortalIdentityKeys.load(strongAuth.keys());
+    }
+
+    /**
+     * TODO §104 (E1, D-BEAUTH-PORTAL-CLIENT) — client OIDC direct de FAS et d'itsme si l'authentification forte est
+     * activée (elle suppose le portail), sinon aucun fournisseur. L'URI de retour vient de l'URL publique du portail,
+     * jamais de l'en-tête {@code Host}.
+     */
+    @Bean
+    PortalIdentityProviderPort portalIdentityProviderPort(
+            PortalStrongAuthProperties strongAuth, PortalProperties portal, ObjectProvider<PortalIdentityKeys> keys) {
+        if (!strongAuth.enabled()) {
+            return PortalIdentityProviderPort.NONE;
+        }
+        if (!portal.enabled()) {
+            throw new IllegalStateException("app.portal.strong-auth.enabled requires app.portal.enabled=true");
+        }
+        return new OidcPortalIdentityProviderAdapter(strongAuth, portal.publicBaseUrl() + "/api/portal/identity/callback",
+                keys.getObject(), CLOCK);
+    }
+
+    @Bean
+    StartPortalIdentityUseCase startPortalIdentityUseCase(
+            TenantProperties tenantProperties,
+            PortalAccessResolver accessResolver,
+            PortalIdentityProviderPort providers,
+            PortalIdentityRepository identities,
+            PortalTokenPort tokenPort,
+            PortalSecretCipherPort cipher) {
+        return new StartPortalIdentityUseCaseImpl(tenantProperties.id(), accessResolver, providers, identities, tokenPort,
+                cipher, CLOCK);
+    }
+
+    @Bean
+    CompletePortalIdentityUseCase completePortalIdentityUseCase(
+            TenantProperties tenantProperties,
+            PortalIdentityRepository identities,
+            PortalLinkRepository repository,
+            PortalTaskLookupPort taskLookup,
+            DossierRepository dossierRepository,
+            PortalIdentityProviderPort providers,
+            PortalTokenPort tokenPort,
+            PortalSecretCipherPort cipher,
+            PortalStrongAuthProperties strongAuth) {
+        return new CompletePortalIdentityUseCaseImpl(tenantProperties.id(), identities, repository, taskLookup,
+                dossierRepository, providers, tokenPort, cipher, CLOCK, strongAuth.identityTtl());
     }
 
     @Bean
@@ -119,8 +212,10 @@ public class PortalConfig {
             TenantProperties tenantProperties,
             PortalAccessResolver accessResolver,
             TaskQuestionSchemaRepository schemaRepository,
-            DossierElementRepository elementRepository) {
-        return new GetPortalTaskUseCaseImpl(tenantProperties.id(), accessResolver, schemaRepository, elementRepository);
+            DossierElementRepository elementRepository,
+            PortalIdentityProviderPort providers) {
+        return new GetPortalTaskUseCaseImpl(tenantProperties.id(), accessResolver, schemaRepository, elementRepository,
+                providers);
     }
 
     @Bean
@@ -143,10 +238,13 @@ public class PortalConfig {
             TaskQuestionAnswerRepository answerRepository,
             WorkflowEnginePort workflowEnginePort,
             PortalLinkRepository repository,
-            PortalParticipantNotifier notifier) {
+            PortalParticipantNotifier notifier,
+            PortalIdentityRepository identities,
+            PortalSecretCipherPort cipher,
+            UpdateDossierFieldsUseCase updateFields) {
         return new SubmitPortalTaskUseCaseImpl(tenantProperties.id(), accessResolver, schemaRepository,
                 new UserQuestionAnswers(tenantProperties.id(), answerRepository), workflowEnginePort, repository,
-                notifier, CLOCK);
+                notifier, CLOCK, identities, cipher, updateFields);
     }
 
     @Bean
@@ -164,8 +262,9 @@ public class PortalConfig {
             PortalTaskLookupPort taskLookup,
             WorkflowEnginePort workflowEnginePort,
             IssuePortalLinkUseCaseImpl issuer,
-            PortalAvailabilityPort availability) {
+            PortalAvailabilityPort availability,
+            PortalIdentityRepository identities) {
         return new ManagePortalLinkUseCaseImpl(tenantProperties.id(), repository, dossierRepository, accessPolicy,
-                taskLookup, workflowEnginePort, issuer, availability, CLOCK);
+                taskLookup, workflowEnginePort, issuer, availability, CLOCK, identities);
     }
 }

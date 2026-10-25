@@ -157,4 +157,89 @@ describe('PortalApp', () => {
 
     expect(wrapper.find('[data-testid="portal-denied"]').exists()).toBe(true)
   })
+
+  /** TODO §104 (T3b, D-BEAUTH-PROOF, T10) — authentification forte d'un tiers. */
+  describe('strong authentication', () => {
+    const reduced: api.PortalTask = {
+      dossierReference: 'DOS-2026-0042',
+      taskName: 'Avis du demandeur',
+      instructions: null,
+      form: { label: null, fields: [] },
+      expiresAt: '2026-10-01T10:00:00Z',
+      attachments: [],
+      identity: {
+        verified: false,
+        name: null,
+        providers: [
+          { id: 'fas', label: 'eID, itsme et autres (FAS)' },
+          { id: 'itsme', label: 'itsme' },
+        ],
+      },
+    }
+
+    it('shows only the task name, the reference and one button per provider', async () => {
+      vi.spyOn(api, 'fetchTask').mockResolvedValue(reduced)
+      const wrapper = mount(PortalApp, { props: { token: TOKEN } })
+      await flushPromises()
+
+      const screen = wrapper.get('[data-testid="portal-identity-required"]')
+      expect(screen.text()).toContain('Avis du demandeur')
+      expect(wrapper.text()).toContain('DOS-2026-0042')
+      expect(screen.findAll('button').map((b) => b.text())).toEqual(['eID, itsme et autres (FAS)', 'itsme'])
+      expect(wrapper.find('#portal-file').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Envoyer ma réponse')
+    })
+
+    it('starts the authentication with the link token and navigates to the provider', async () => {
+      vi.spyOn(api, 'fetchTask').mockResolvedValue(reduced)
+      const start = vi.spyOn(api, 'startIdentity').mockResolvedValue('https://idp.example/auth?state=s')
+      const navigate = vi.spyOn(api, 'navigateTo').mockImplementation(() => {})
+      const wrapper = mount(PortalApp, { props: { token: TOKEN } })
+      await flushPromises()
+
+      await wrapper.get('[data-testid="portal-identity-itsme"]').trigger('click')
+      await flushPromises()
+
+      expect(start).toHaveBeenCalledWith(TOKEN, 'itsme')
+      expect(navigate).toHaveBeenCalledWith('https://idp.example/auth?state=s')
+    })
+
+    it('uses the identity proof once back from the provider, and shows who is verified', async () => {
+      const fetchSpy = vi.spyOn(api, 'fetchTask').mockResolvedValue({
+        ...task,
+        identity: { verified: true, name: 'Alice Martin', providers: [] },
+      })
+      const submit = vi.spyOn(api, 'submitAnswers').mockResolvedValue()
+      const wrapper = mount(PortalApp, { props: { token: TOKEN, kind: 'identity' } })
+      await flushPromises()
+
+      expect(fetchSpy).toHaveBeenCalledWith({ proof: TOKEN })
+      expect(wrapper.get('[data-testid="portal-identity-verified"]').text()).toContain('Alice Martin')
+      await wrapper.get('#field-disponible').setValue(true)
+      await wrapper.find('.portal__actions .portal__primary').trigger('click')
+      await flushPromises()
+      expect(submit).toHaveBeenCalledWith({ proof: TOKEN }, expect.anything())
+    })
+
+    it('shows the neutral refusal without calling the API', async () => {
+      const fetchSpy = vi.spyOn(api, 'fetchTask')
+      const wrapper = mount(PortalApp, { props: { token: null, kind: 'identity-refused' } })
+      await flushPromises()
+
+      expect(wrapper.get('[data-testid="portal-identity-refused"]').text()).toContain('Identification non reconnue')
+      expect(fetchSpy).not.toHaveBeenCalled()
+    })
+
+    it('shows the denied screen when the link is no longer valid at start', async () => {
+      vi.spyOn(api, 'fetchTask').mockResolvedValue(reduced)
+      vi.spyOn(api, 'startIdentity').mockRejectedValue(new api.PortalApiError(404, ''))
+      const wrapper = mount(PortalApp, { props: { token: TOKEN } })
+      await flushPromises()
+
+      await wrapper.get('[data-testid="portal-identity-fas"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="portal-denied"]').exists()).toBe(true)
+    })
+  })
 })

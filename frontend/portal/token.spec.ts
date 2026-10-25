@@ -46,3 +46,28 @@ describe('takeLinkFromLocation (S-VT-1)', () => {
     ).toBeNull()
   })
 })
+
+/** TODO §104 (D-BEAUTH-PROOF) — retour du fournisseur d'identité : preuve dans le fragment, ou refus neutre. */
+describe('takeLinkFromLocation — strong authentication return', () => {
+  it('reads the identity proof, clears it from the address bar and never stores it', () => {
+    const replaceState = vi.fn()
+    expect(
+      takeLinkFromLocation({ hash: `#identity:${TOKEN}`, pathname: '/tenant-a/portal/', search: '' }, { replaceState }),
+    ).toEqual({ kind: 'identity', token: TOKEN })
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/tenant-a/portal/')
+  })
+
+  it('recognises the neutral refusal', () => {
+    const replaceState = vi.fn()
+    expect(
+      takeLinkFromLocation({ hash: '#identity-refused', pathname: '/portal/', search: '' }, { replaceState }),
+    ).toEqual({ kind: 'identity-refused', token: null })
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/portal/')
+  })
+
+  it('rejects a malformed proof', () => {
+    expect(
+      takeLinkFromLocation({ hash: '#identity:<x>', pathname: '/portal/', search: '' }, { replaceState: vi.fn() }),
+    ).toBeNull()
+  })
+})

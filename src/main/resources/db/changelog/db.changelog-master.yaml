@@ -73,3 +73,5 @@ databaseChangeLog:
       file: db/changelog/changes/036-connector-stored-object.yaml
   - include:
       file: db/changelog/changes/037-dossier-unique-value.yaml
+  - include:
+      file: db/changelog/changes/038-portal-identity.yaml

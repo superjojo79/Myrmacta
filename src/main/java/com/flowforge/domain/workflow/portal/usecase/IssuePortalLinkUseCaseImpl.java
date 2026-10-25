@@ -1,8 +1,10 @@
 package com.flowforge.domain.workflow.portal.usecase;
 
 import com.flowforge.domain.workflow.port.out.TaskQuestionSchemaRepository;
+import com.flowforge.domain.workflow.portal.PortalIdentityFieldCheck;
 import com.flowforge.domain.workflow.portal.PortalParticipantNotifier;
 import com.flowforge.domain.workflow.portal.model.PortalEmails;
+import com.flowforge.domain.workflow.portal.model.PortalIdentityField;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatus;
 import com.flowforge.domain.workflow.portal.model.PortalLinkStatusReason;
@@ -33,6 +35,7 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
     private final Clock clock;
     private final int defaultTtlDays;
     private final int maxTtlDays;
+    private final PortalIdentityFieldCheck identityFieldCheck;
 
     public IssuePortalLinkUseCaseImpl(
             String tenantId,
@@ -43,6 +46,20 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
             Clock clock,
             int defaultTtlDays,
             int maxTtlDays) {
+        this(tenantId, repository, schemaRepository, recipientResolver, notifier, clock, defaultTtlDays, maxTtlDays,
+                PortalIdentityFieldCheck.NONE);
+    }
+
+    public IssuePortalLinkUseCaseImpl(
+            String tenantId,
+            PortalLinkRepository repository,
+            TaskQuestionSchemaRepository schemaRepository,
+            PortalRecipientResolverPort recipientResolver,
+            PortalParticipantNotifier notifier,
+            Clock clock,
+            int defaultTtlDays,
+            int maxTtlDays,
+            PortalIdentityFieldCheck identityFieldCheck) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.schemaRepository = Objects.requireNonNull(schemaRepository, "schemaRepository");
@@ -51,6 +68,7 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
         this.clock = Objects.requireNonNull(clock, "clock");
         this.defaultTtlDays = defaultTtlDays;
         this.maxTtlDays = maxTtlDays;
+        this.identityFieldCheck = Objects.requireNonNull(identityFieldCheck, "identityFieldCheck");
     }
 
     @Override
@@ -63,6 +81,7 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
                 event.definition().schemaKey(),
                 event.definition().recipientSource(),
                 event.definition().ttlDays(),
+                event.definition().identityField(),
                 CREATED_BY_ENGINE));
     }
 
@@ -73,7 +92,7 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
     PortalLink issue(
             String taskId, String processInstanceId, UUID dossierId, String schemaKey,
             com.flowforge.domain.workflow.portal.model.PortalRecipientSource source, Integer requestedTtlDays,
-            String createdBy) {
+            PortalIdentityField identityField, String createdBy) {
         Instant now = clock.instant();
         int ttl = Math.min(requestedTtlDays == null ? defaultTtlDays : requestedTtlDays, maxTtlDays);
         UUID id = UUID.randomUUID();
@@ -86,6 +105,8 @@ public final class IssuePortalLinkUseCaseImpl implements IssuePortalLinkUseCase 
             reason = PortalLinkStatusReason.NO_ADDRESS;
         } else if (email.isEmpty()) {
             reason = PortalLinkStatusReason.INVALID_ADDRESS;
+        } else if (identityField != null && !identityFieldCheck.isUsable(dossierId, identityField)) {
+            reason = PortalLinkStatusReason.INVALID_IDENTITY_FIELD;
         }
         PortalLink link = reason == null
                 ? PortalLink.pendingSend(id, tenantId, dossierId, taskId, processInstanceId, schemaKey, email.get(),

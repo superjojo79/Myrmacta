@@ -1,0 +1,319 @@
+{
+  "realm": "fas-simulateur",
+  "displayName": "Simulateur FAS / itsme (dev et recette, TODO §104)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "clients": [
+    {
+      "clientId": "keycloak-flowforge",
+      "name": "Realm flowforge (agents, dev)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-jwt",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "http://localhost:${KEYCLOAK_PORT:8081}/realms/flowforge/broker/fas/endpoint"
+      ],
+      "attributes": {
+        "use.jwks.url": "true",
+        "jwks.url": "http://localhost:${KEYCLOAK_PORT:8081}/realms/flowforge/protocol/openid-connect/certs",
+        "token.endpoint.auth.signing.alg": "RS256",
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "egovNRN",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "nrn",
+            "claim.name": "egovNRN",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "loa",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "loa",
+            "claim.name": "loa",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "givenName",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "claim.name": "givenName",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "surname",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "claim.name": "surname",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "mail",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "mail",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "portail-dev",
+      "name": "Portail FlowForge (tiers, dev)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-jwt",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "${FLOWFORGE_BASE_URL:http://localhost:8080}/api/portal/identity/callback"
+      ],
+      "attributes": {
+        "use.jwks.url": "true",
+        "jwks.url": "${FLOWFORGE_PORTAL_JWKS_URL:http://host.docker.internal:8080/api/portal/identity/jwks}",
+        "token.endpoint.auth.signing.alg": "RS256",
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "egovNRN",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "nrn",
+            "claim.name": "egovNRN",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "loa",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "loa",
+            "claim.name": "loa",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "givenName",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "claim.name": "givenName",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "surname",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "claim.name": "surname",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "mail",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "mail",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Martin",
+      "email": "alice@simulateur.local",
+      "attributes": {
+        "nrn": [
+          "85073003328"
+        ],
+        "loa": [
+          "high"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "bruno",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Lambert",
+      "email": "bruno@simulateur.local",
+      "attributes": {
+        "nrn": [
+          "90011512462"
+        ],
+        "loa": [
+          "substantial"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bruno",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "faible",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Fanny",
+      "lastName": "Faible",
+      "email": "faible@simulateur.local",
+      "attributes": {
+        "nrn": [
+          "78041256760"
+        ],
+        "loa": [
+          "low"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "faible",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "erika",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Erika",
+      "lastName": "Schmidt",
+      "email": "erika@simulateur.local",
+      "attributes": {
+        "loa": [
+          "substantial"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "erika",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "agent.dupont",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "email": "agent.dupont@simulateur.local",
+      "attributes": {
+        "nrn": [
+          "92022834582"
+        ],
+        "loa": [
+          "high"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "agent.dupont",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"nrn\", \"displayName\": \"Numéro de registre national (simulé)\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"loa\", \"displayName\": \"Niveau eIDAS (simulé)\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}]}"
+          ]
+        }
+      }
+    ]
+  }
+}

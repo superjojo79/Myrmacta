@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.security.oidc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -7,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.flowforge.domain.user.port.in.RecordUserLoginUseCase;
+import com.flowforge.infrastructure.config.TenantProperties;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,7 @@ class KnownUserRecordingSuccessHandlerTest {
     void setUp() {
         recordUserLogin = mock(RecordUserLoginUseCase.class);
         delegate = mock(AuthenticationSuccessHandler.class);
-        handler = new KnownUserRecordingSuccessHandler(recordUserLogin, delegate);
+        handler = new KnownUserRecordingSuccessHandler(recordUserLogin, new TenantProperties("tenant_dev"), delegate);
     }
 
     @Test
@@ -64,6 +66,27 @@ class KnownUserRecordingSuccessHandlerTest {
         verify(delegate).onAuthenticationSuccess(request, response, authentication);
     }
 
+    /**
+     * TODO §104 (issue #210, A6) — l'annuaire était alimenté au retour de connexion, avant toute vérification du
+     * {@code tenant_id} : un compte créé par FAS sans {@code tenant_id}, ou un utilisateur d'un autre tenant du realm
+     * partagé, y entrait. Il n'est plus enregistré, sa session est fermée et la réponse est un 403.
+     */
+    @Test
+    void aUserWithoutTheTenantOfThisInstanceIsNeitherRecordedNorLoggedIn() throws Exception {
+        for (Map<String, Object> claims : List.<Map<String, Object>>of(
+                Map.of("name", "Inconnu"), Map.of("name", "Autre", "tenant_id", "tenant_b"))) {
+            var req = new MockHttpServletRequest();
+            var res = new MockHttpServletResponse();
+            req.getSession(true);
+
+            handler.onAuthenticationSuccess(req, res, oidcAuthentication(claims, false));
+
+            assertThat(res.getStatus()).isEqualTo(403);
+            assertThat(req.getSession(false)).isNull();
+        }
+        verifyNoInteractions(recordUserLogin, delegate);
+    }
+
     @Test
     void ignoresNonOidcPrincipal() throws Exception {
         var authentication = new TestingAuthenticationToken("user", "pw", "ROLE_TENANT_ADMIN");
@@ -75,8 +98,15 @@ class KnownUserRecordingSuccessHandlerTest {
     }
 
     private static OAuth2AuthenticationToken oidcAuthentication(Map<String, Object> extraClaims) {
+        return oidcAuthentication(extraClaims, true);
+    }
+
+    private static OAuth2AuthenticationToken oidcAuthentication(Map<String, Object> extraClaims, boolean thisTenant) {
         var claims = new java.util.HashMap<String, Object>(extraClaims);
         claims.put("sub", "sub-1");
+        if (thisTenant) {
+            claims.put("tenant_id", "tenant_dev");
+        }
         var idToken = new OidcIdToken("token", Instant.now(), Instant.now().plusSeconds(60), claims);
         var authorities = List.of(new SimpleGrantedAuthority("ROLE_TENANT_ADMIN"), new SimpleGrantedAuthority("OIDC_USER"));
         var user = new DefaultOidcUser(authorities, idToken);

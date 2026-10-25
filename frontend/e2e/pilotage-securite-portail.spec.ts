@@ -324,3 +324,81 @@ test('E2E-I18N-1 language switch: the whole shell turns English, survives a relo
   await expect(page.getByRole('link', { name: 'Tâches' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
 })
+
+// TODO §104 (issue #210) — authentification forte d'un tiers : vue réduite, départ vers le fournisseur, retour avec la
+// preuve d'identité (D-BEAUTH-PROOF), soumission avec la preuve à la place du jeton, refus neutre.
+const IDENTITY_PROOF = 'p'.repeat(43)
+
+test('E2E-PORTAL-6 strong authentication: reduced view, provider round trip, submission with the identity proof', async ({ page }) => {
+  const seen: { path: string; token?: string; proof?: string }[] = []
+  let started: unknown = null
+  let submitted: unknown = null
+  await page.route('**/api/portal/identity/start', async (route) => {
+    const headers = route.request().headers()
+    seen.push({ path: 'start', token: headers['x-portal-token'], proof: headers['x-portal-identity'] })
+    started = route.request().postDataJSON()
+    // Le fournisseur simulé renvoie aussitôt vers l'instance, comme le ferait le callback serveur.
+    const back = new URL('?retour=1', page.url())
+    back.hash = `identity:${IDENTITY_PROOF}`
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authorizationUrl: back.toString() }) })
+  })
+  await page.route('**/api/portal/task/submit', async (route) => {
+    const headers = route.request().headers()
+    seen.push({ path: 'submit', token: headers['x-portal-token'], proof: headers['x-portal-identity'] })
+    submitted = route.request().postDataJSON()
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.route('**/api/portal/task', async (route) => {
+    const headers = route.request().headers()
+    seen.push({ path: 'task', token: headers['x-portal-token'], proof: headers['x-portal-identity'] })
+    const verified = headers['x-portal-identity'] === IDENTITY_PROOF
+    const body = verified
+      ? { ...PORTAL_TASK, identity: { verified: true, name: 'Alice Martin', providers: [] } }
+      : {
+          ...PORTAL_TASK,
+          instructions: null,
+          form: { label: null, fields: [] },
+          attachments: [],
+          identity: { verified: false, name: null, providers: [{ id: 'fas', label: 'eID, itsme et autres (FAS)' }, { id: 'itsme', label: 'itsme' }] },
+        }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+
+  await page.goto(`./portal/#${PORTAL_TOKEN}`)
+
+  const screen = page.getByTestId('portal-identity-required')
+  await expect(screen.getByRole('heading', { name: 'Avis du tiers' })).toBeVisible()
+  await expect(page.getByText('Dossier DOS-2026-0042')).toBeVisible()
+  await expect(page.locator('#portal-file')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Envoyer ma réponse' })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'itsme', exact: true }).click()
+
+  await expect(page.getByTestId('portal-identity-verified')).toContainText('Alice Martin')
+  // La preuve a quitté la barre d'adresse, comme le jeton (D-PORTAL-CSRF-SESSION).
+  await expect(page).not.toHaveURL(new RegExp(IDENTITY_PROOF))
+  await page.locator('#field-disponible').check()
+  await page.getByRole('button', { name: 'Envoyer ma réponse' }).click()
+  await expect(page.getByTestId('portal-done')).toBeVisible()
+
+  expect(started).toEqual({ provider: 'itsme' })
+  expect(submitted).toEqual({ answers: { disponible: true } })
+  expect(seen.map((r) => r.path)).toEqual(['task', 'start', 'task', 'submit'])
+  expect(seen[0]).toMatchObject({ token: PORTAL_TOKEN, proof: undefined })
+  expect(seen[1]).toMatchObject({ token: PORTAL_TOKEN, proof: undefined })
+  expect(seen[2]).toMatchObject({ token: undefined, proof: IDENTITY_PROOF })
+  expect(seen[3]).toMatchObject({ token: undefined, proof: IDENTITY_PROOF })
+})
+
+test('E2E-PORTAL-7 a refused identity shows the neutral screen without any API call', async ({ page }) => {
+  const portalCalls: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/api/')) portalCalls.push(request.url())
+  })
+
+  await page.goto('./portal/#identity-refused')
+
+  await expect(page.getByTestId('portal-identity-refused')).toContainText('Identification non reconnue')
+  await expect(page).toHaveURL(/\/portal\/$/)
+  expect(portalCalls).toEqual([])
+})

@@ -83,3 +83,32 @@ Voir [docs/ai/requirements/2026-09-23-feature-portail-externe.md](https://github
 Les questions `D-SIGNATURE-*` ont été déplacées dans
 [30-signature-electronique.md](30-signature-electronique.md). `D-SIGNATURE-SCOPE` est **tranchée**
 par la scission : lot séparé, après le portail.
+
+## 5. Authentification forte du tiers (TODO §104)
+
+Livrée par l'issue #210 ([§104](../decisions/104-authentification-belge-fas-et-itsme.md)). Une tâche externe qui porte
+`flowable:portalIdentityField="dossierField:<champ>"` exige que le tiers s'identifie par FAS ou par itsme.
+
+- **Client OIDC direct** (D-BEAUTH-PORTAL-CLIENT) : l'instance parle au fournisseur sans Keycloak ni compte pour le tiers ;
+  code d'autorisation avec PKCE, `private_key_jwt` signé par la clé de l'instance (JWKS publiée sur
+  `/api/portal/identity/jwks`) ou `client_secret_post` si le fournisseur a émis un secret ; ID token éventuellement
+  chiffré, vérifié sur la JWKS du fournisseur (signature, émetteur de la découverte, audience, expiration, `nonce`).
+- **Routes** (chaîne portail, sans session, limite par IP) : `POST /api/portal/identity/start` (jeton du lien, fournisseur
+  choisi → URL d'autorisation) ; `GET /api/portal/identity/callback` (redirige vers `/portal/#identity:<preuve>` ou
+  `#identity-refused`) ; `GET /api/portal/identity/jwks`.
+- **Preuve d'identité** (D-BEAUTH-PROOF) : 256 bits, hachée en base, valable 60 minutes (plafond 4 h) et pour ce lien
+  seulement ; elle remplace ensuite le jeton (`X-Portal-Identity`). Aucun stockage navigateur, comme pour le jeton.
+- **Avant l'identification** (D-BEAUTH-PREVIEW) : `GET /api/portal/task` renvoie le nom de la tâche, la référence et les
+  fournisseurs (`identity.verified = false`), sans consignes, formulaire ni pièces ; dépôt et soumission refusés.
+- **Correspondance** (D-BEAUTH-NRN-FIELD, D-BEAUTH-LOA) : niveau eIDAS substantiel ou élevé ; champ rempli, le NRN vérifié
+  doit lui être égal (11 chiffres, séparateurs ignorés) ; champ vide, il y est écrit à la soumission par le use case de
+  correction des champs, en contexte système et à version attendue. La correspondance est recalculée sur le dossier relu
+  à la soumission. Tout écart donne le refus neutre.
+- **Trace** : fournisseur, niveau, nom et résultat, conservés après la soumission dans `portal_link_identity` (NRN et
+  preuve effacés) et montrés à l'instructeur avec le lien ; le nom est réservé à qui peut gérer le lien.
+- **Émission** : un champ d'identité absent du type, non textuel ou non sensible donne un lien `NOT_SENT`
+  (`INVALID_IDENTITY_FIELD`) et la notification des participants, jamais un incident.
+- **Preuves** : `PortalIdentityUseCasesTest`, `PortalAccessResolverIdentityTest`, `OidcPortalIdentityProviderAdapterTest`,
+  `PortalIdentityRepositoryIT`, `PortalStrongAuthApiTest` (bout en bout, NRN absent des journaux, des variables de
+  process et des outbox), Vitest du portail, Playwright `E2E-PORTAL-6` et `7`.
+

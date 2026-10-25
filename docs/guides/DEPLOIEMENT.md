@@ -199,6 +199,7 @@ OAuth2), les webhooks entrants et l'API machine-to-machine (§7) — pas de rout
    | `tenant_b.compose.env` | Paramètres de [`docker/tenant/compose.tenant.yml`](../../docker/tenant/compose.tenant.yml) (image, port, fichier d'environnement). |
    | `tenant_b.apache.conf`, `proxy-headers.conf` | Bloc reverse-proxy du tenant et en-têtes communs (§3). |
    | `tenant_b.keycloak.sh` | Client `client_credentials` du tenant (§7), par `kcadm.sh`, idempotent. |
+   | `tenant_b.realm.json` | Avec `--realm-per-tenant` seulement : realm Keycloak du tenant, sans secret (§19). |
 
    Le script refuse d'écraser les fichiers d'un tenant déjà généré.
 3. **Démarrer une nouvelle instance** (image buildée en §1) avec sa propre configuration :
@@ -257,6 +258,13 @@ FlowForge elle-même. Mécanisme : l'ID token transmis au BFF porte les rôles d
 **standard** Keycloak `realm_access.roles` ; `RealmAccessAuthoritiesMapper` les convertit en
 autorités `ROLE_<nom>`, ce que l'API vérifie ensuite (`hasRole('TENANT_ADMIN')`, etc.). Keycloak
 n'émet pas cette structure dans l'ID token par défaut : les mappers du client BFF (§5) sont requis.
+
+**Comptes créés par FAS ou itsme (TODO §104).** Une première connexion par un fournisseur d'identité crée un compte
+**sans `tenant_id` ni rôle** : FlowForge le refuse (403) et ne l'inscrit pas dans l'annuaire des assignés. Pour le
+valider, ouvrir ce compte dans la console (il porte le prénom et le nom transmis par le fournisseur, jamais le NRN),
+poser l'attribut `tenant_id` (étape 4 ci-dessous) et ses rôles (étape 3). Un agent qui avait déjà un compte avec la même
+adresse e-mail le relie lui-même à sa première connexion, en confirmant son mot de passe ; sans e-mail transmis par le
+fournisseur, il relie FAS depuis sa console de compte (*Comptes liés*).
 
 Procédure pour un nouvel utilisateur :
 
@@ -592,3 +600,79 @@ par comparaison-échange (D5), une seule réplique lit une boîte ou une file à
 L'interface existe en français et en anglais. Chaque utilisateur choisit sa langue (sélecteur en haut de page ; le choix reste dans son navigateur). Tant qu'il n'a rien choisi, la langue vient de
 **`APP_I18N_DEFAULT_LOCALE`** (`fr` par défaut, ou `en`) puis du navigateur. Cette même valeur fixe la langue des **e-mails envoyés à des tiers sans profil** (invitation de tâche externe, invitation de signature) :
 en anglais, le lien du portail porte `?lang=en`. Toute autre valeur arrête le démarrage. Les libellés saisis par le tenant (types, champs, statuts) restent dans la langue où ils ont été saisis.
+
+## 19. Fournisseurs d'identité belges (FAS, itsme) — TODO §104
+
+Deux usages, deux enregistrements chez chaque fournisseur, par tenant :
+
+| Usage | Client | URI de retour à enregistrer chez le fournisseur |
+|---|---|---|
+| Agents (connexion à FlowForge) | Keycloak, realm `flowforge-<tenant>` | `https://<keycloak>/realms/flowforge-<tenant>/broker/<fas\|itsme>/endpoint` |
+| Tiers du portail (tâche à authentification forte) | l'instance FlowForge elle-même, sans Keycloak | `<APP_PORTAL_PUBLIC_BASE_URL>/api/portal/identity/callback` |
+
+**Conditions d'accès.** FAS (BOSA) couvre eID, itsme, eIDAS et le code à usage unique par une seule connexion OIDC ; il
+est réservé aux administrations (communes, CPAS), qui signent la convention d'utilisation : c'est la commune, ou
+l'intégrateur pour son compte, qui l'active. itsme en direct demande un contrat avec Belgian Mobile ID ou un courtier, et
+impose `private_key_jwt`. L'usage du numéro de registre national suppose une **autorisation du Registre national**,
+propre à la commune : FlowForge ne l'écrit que dans un champ sensible désigné par le workflow.
+
+### Realm par tenant (agents)
+
+```bash
+TENANT_DB_PASSWORD='…' KEYCLOAK_URL=https://auth.example.be PUBLIC_BASE_URL=https://flowforge.example.be \
+  scripts/provision-tenant.sh tenant_b --apply --instance-dir /etc/flowforge/tenants --port 8082 \
+  --realm-per-tenant --idp fas --idp itsme --password-login both
+```
+
+- `--realm-per-tenant` écrit `tenant_b.realm.json` (realm `flowforge-tenant_b` : client BFF, rôles, profil, fournisseurs,
+  flux) et prépare `tenant_b.keycloak.sh` ; `tenant_b.env` pointe `OIDC_ISSUER_URI` vers ce realm. Requiert `jq`. Sans
+  l'option, rien ne change (realm partagé).
+- `--password-login idp-only` : seuls FAS et itsme donnent accès à FlowForge ; les comptes de rôle `secours` (créés par le
+  script, avec `TENANT_ADMIN`, mot de passe temporaire et OTP) gardent le mot de passe pour administrer FlowForge si FAS
+  est indisponible. En `both` (défaut), le mot de passe Keycloak reste proposé à tous.
+- `tenant_b.keycloak.sh`, idempotent, après `kcadm.sh config credentials …` :
+
+  | Variable | Rôle |
+  |---|---|
+  | `FAS_DISCOVERY_URL`, `FAS_CLIENT_ID` | URL `.well-known/openid-configuration` de l'intégration ou de la production BOSA, identifiant du client |
+  | `FAS_CLIENT_SECRET` | Facultatif : si BOSA a émis un secret ; sinon `private_key_jwt` avec la clé du realm (JWKS : `/realms/flowforge-<tenant>/protocol/openid-connect/certs`) |
+  | `ITSME_DISCOVERY_URL`, `ITSME_CLIENT_ID` | Idem pour itsme (toujours `private_key_jwt`) |
+  | `SECOURS_PASSWORD` | En `idp-only` : mot de passe temporaire du compte de secours (`SECOURS_USERNAME`, défaut `secours`) |
+
+  Un realm déjà présent est complété par import partiel : les flux d'authentification ne sont posés qu'à la création.
+- Noms des claims (prénom, nom, e-mail) : `FAS_CLAIM_*` et `ITSME_CLAIM_*` au provisionnement, à confirmer auprès du
+  fournisseur. Aucun mapper ne pose le NRN ni le `tenant_id` sur le compte d'un agent.
+- **Migration d'un tenant du realm partagé** : provisionner son realm, recréer ou exporter-importer ses comptes avec leur
+  `tenant_id` (le `sub` change : refaire les droits par type et les assignations), puis changer `OIDC_ISSUER_URI`. Pas
+  d'outil de migration automatique.
+
+### Authentification forte des tiers (portail)
+
+Désactivée par défaut ; elle suppose le portail (§9). Activée, le démarrage est refusé sans fournisseur complet ni clé.
+
+| Variable | Rôle |
+|---|---|
+| `APP_PORTAL_STRONG_AUTH_ENABLED` | `true` pour l'activer (un BPMN avec `flowable:portalIdentityField` est refusé sinon) |
+| `APP_PORTAL_STRONG_AUTH_SIGNING_KEY_FILE`, `…_SIGNING_KEY_ID` | Clé RSA ≥ 2048 de l'instance, PEM PKCS#8 (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out portal.pem`) ; publiée en JWKS sur `<APP_PORTAL_PUBLIC_BASE_URL>/api/portal/identity/jwks`, URL à donner au fournisseur |
+| `APP_PORTAL_STRONG_AUTH_PREVIOUS_SIGNING_KEY_FILE` | Clé précédente, encore publiée pendant une rotation |
+| `APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_FILE` | Clé de déchiffrement d'un ID token chiffré (itsme) |
+| `APP_PORTAL_STRONG_AUTH_IDENTITY_TTL` | Validité d'une identité vérifiée (défaut `60m`, plafond `4h`) |
+| `APP_PORTAL_STRONG_AUTH_PROVIDERS_FAS_ISSUER_URI`, `…_CLIENT_ID`, `…_CLIENT_SECRET` (facultatif), `…_SCOPES`, `…_ACR_VALUES` | Client du portail chez FAS (même forme pour `…_PROVIDERS_ITSME_…`) |
+| `…_PROVIDERS_FAS_CLAIMS_NRN`, `…_CLAIMS_GIVEN_NAME`, `…_CLAIMS_FAMILY_NAME`, `…_CLAIMS_LEVEL` | Noms des claims dans l'ID token |
+| `…_PROVIDERS_FAS_LEVELS_HIGH`, `…_LEVELS_SUBSTANTIAL` | Valeurs du claim de niveau (listes) ; toute autre valeur vaut « faible », donc un refus |
+
+Les noms de claims et de niveaux de FAS et d'itsme n'ont pas de valeur par défaut : ils ne sont confirmés par aucune
+source publique et seront vérifiés lors de la recette réelle (issue #192). Le NRN et le vérificateur PKCE sont chiffrés
+avec `APP_CONNECTOR_MASTER_KEY`. Désactiver l'authentification forte laisse les tâches qui l'exigent sans moyen de
+réponse : les terminer ou les réassigner avant.
+
+### Dev local et recette
+
+- `docker compose up` importe un **simulateur FAS** (realm `fas-simulateur`, utilisateurs `alice`, `bruno`, `faible`,
+  `erika`, `agent.dupont`, mot de passe = identifiant), branché sur le realm de dev `flowforge` (bouton « eID, itsme et
+  autres (FAS simulé) »). Son client `portail-dev` attend la JWKS de l'instance de dev (`FLOWFORGE_PORTAL_JWKS_URL`).
+- `scripts/keycloak-realm-smoke.sh` rejoue la recette sur un vrai Keycloak 26.7.1 (distribution zip et Java 21, ou
+  `KEYCLOAK_HOME`) : realm généré appliqué deux fois, connexion par le simulateur, compte sans `tenant_id`, aucun NRN
+  dans l'ID token, rattachement d'un compte existant, mot de passe direct en `both`, refus en `idp-only`, compte de
+  secours avec OTP.
+

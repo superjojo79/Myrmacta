@@ -130,7 +130,10 @@ class ArchitectureRulesTest {
             // TODO §102 (lot B) : la brique « Rechercher des dossiers » lit la valeur d'un champ source déclaré et non
             // sensible du dossier courant (R8), la passe à la requête et ne la renvoie jamais (seuls un nombre et une
             // référence sortent).
-            "com.flowforge.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl");
+            "com.flowforge.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl",
+            // TODO §104 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
+            // comparer au NRN vérifié par FAS ou itsme ; la valeur n'est jamais renvoyée au tiers ni journalisée.
+            "com.flowforge.domain.workflow.portal.PortalIdentityFieldValue");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(

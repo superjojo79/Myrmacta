@@ -122,6 +122,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 101 | [Le connecteur `document-storage` ne touche que ce qu'il a stocké pour le dossier](101-document-storage-limite-au-dossier.md) | clos | — |
 | 102 | [Unicité d'un champ de dossier](102-unicite-d-un-champ-de-dossier.md) | clos | — |
 | 103 | [Double licence AGPL-3.0-only et licence commerciale](103-double-licence-agpl-et-licence-commerciale.md) | ouvert | — |
+| 104 | [Authentification belge (FAS, itsme) des agents et des tiers du portail](104-authentification-belge-fas-et-itsme.md) | clos | — |
 
 ## Sections de l'ancien registre
 

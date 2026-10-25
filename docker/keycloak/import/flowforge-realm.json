@@ -153,5 +153,67 @@
         }
       }
     ]
-  }
+  },
+  "identityProviders": [
+    {
+      "alias": "fas",
+      "displayName": "eID, itsme et autres (FAS simulé)",
+      "providerId": "oidc",
+      "enabled": true,
+      "trustEmail": true,
+      "storeToken": false,
+      "linkOnly": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "keycloak-flowforge",
+        "clientAuthMethod": "private_key_jwt",
+        "clientAssertionSigningAlg": "RS256",
+        "authorizationUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/auth",
+        "tokenUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/token",
+        "userInfoUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/userinfo",
+        "jwksUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/certs",
+        "logoutUrl": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur/protocol/openid-connect/logout",
+        "issuer": "http://localhost:${KEYCLOAK_PORT:8081}/realms/fas-simulateur",
+        "validateSignature": "true",
+        "useJwksUrl": "true",
+        "pkceEnabled": "true",
+        "pkceMethod": "S256",
+        "defaultScope": "openid",
+        "syncMode": "IMPORT",
+        "backchannelSupported": "false"
+      }
+    }
+  ],
+  "identityProviderMappers": [
+    {
+      "name": "prénom",
+      "identityProviderAlias": "fas",
+      "identityProviderMapper": "oidc-user-attribute-idp-mapper",
+      "config": {
+        "claim": "givenName",
+        "user.attribute": "firstName",
+        "syncMode": "IMPORT"
+      }
+    },
+    {
+      "name": "nom",
+      "identityProviderAlias": "fas",
+      "identityProviderMapper": "oidc-user-attribute-idp-mapper",
+      "config": {
+        "claim": "surname",
+        "user.attribute": "lastName",
+        "syncMode": "IMPORT"
+      }
+    },
+    {
+      "name": "e-mail",
+      "identityProviderAlias": "fas",
+      "identityProviderMapper": "oidc-user-attribute-idp-mapper",
+      "config": {
+        "claim": "mail",
+        "user.attribute": "email",
+        "syncMode": "IMPORT"
+      }
+    }
+  ]
 }

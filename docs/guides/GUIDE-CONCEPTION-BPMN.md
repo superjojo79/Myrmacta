@@ -313,6 +313,32 @@ réagir à une absence de réponse (le lien expiré laisse la tâche ouverte).
 Les attributs se saisissent dans l'éditeur BPMN (panneau *Flowable* d'un `userTask` :
 *Tiers externe — adresse*, *Tiers externe — validité du lien*).
 
+### Exiger l'authentification forte du tiers (TODO §104, issue #210)
+
+`flowable:portalIdentityField="dossierField:<champ>"` sur une tâche externe exige que le tiers s'identifie par FAS
+(eID, itsme, eIDAS) ou par itsme avant de voir la tâche ou d'y répondre. Le champ désigné porte son numéro de registre
+national (NRN) :
+
+- **vide** : le NRN vérifié y est écrit quand le tiers envoie sa réponse (premier enregistrement) ;
+- **rempli** : c'est le NRN attendu ; une autre personne est refusée, sans savoir pourquoi.
+
+```xml
+<userTask id="avisDemandeur" name="Confirmation du demandeur"
+          flowable:formKey="user-question:confirmation"
+          flowable:portalRecipient="dossierField:emailDemandeur"
+          flowable:portalIdentityField="dossierField:nrnDemandeur"/>
+```
+
+| Règle | Détail |
+|---|---|
+| Source | `dossierField:<champ>` seulement : le NRN ne transite jamais par une variable de process |
+| Champ | Déclaré dans le type, de type **Texte** et **sensible** ; sinon le lien est *Non envoyé — champ d'identité…* (pas d'incident) |
+| Activation | Déploiement **refusé** tant que l'authentification forte n'est pas activée (`APP_PORTAL_STRONG_AUTH_ENABLED`, [DEPLOIEMENT.md §19](DEPLOIEMENT.md#19-fournisseurs-didentité-belges-fas-itsme--todo-103)) |
+| Niveau | eIDAS substantiel ou élevé ; une identité étrangère sans NRN est refusée si un NRN est attendu, acceptée sans écriture sinon |
+| Avant l'identification | Le tiers ne voit que le nom de la tâche et la référence du dossier |
+
+L'attribut se saisit à la main dans le XML : l'éditeur ne le propose pas encore.
+
 ## 3quater. Demander une signature électronique (TODO §72)
 
 Un `serviceTask` `${signatureRequestTask}` **demande** la signature d'un document par un ou plusieurs

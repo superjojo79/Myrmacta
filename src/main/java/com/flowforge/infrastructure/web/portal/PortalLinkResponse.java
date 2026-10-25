@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.portal;
 
+import com.flowforge.domain.workflow.portal.model.IdentityVerification;
 import com.flowforge.domain.workflow.portal.model.PortalLink;
 import java.time.Instant;
 import java.util.List;
@@ -24,9 +25,18 @@ record PortalLinkResponse(
         Instant completedAt,
         Instant revokedAt,
         String createdBy,
-        String revokedBy) {
+        String revokedBy,
+        IdentityResponse identity) {
 
     static PortalLinkResponse from(PortalLink link, boolean fullRecipient) {
+        return from(link, fullRecipient, null);
+    }
+
+    /**
+     * TODO §104 (T8) — trace de l'authentification forte, jamais le NRN. Le nom vérifié, donnée personnelle du tiers,
+     * suit la même règle que l'adresse : réservé à qui peut gérer le lien.
+     */
+    static PortalLinkResponse from(PortalLink link, boolean fullRecipient, IdentityVerification identity) {
         return new PortalLinkResponse(
                 link.id(),
                 link.taskId(),
@@ -41,7 +51,17 @@ record PortalLinkResponse(
                 link.completedAt(),
                 link.revokedAt(),
                 link.createdBy(),
-                link.revokedBy());
+                link.revokedBy(),
+                identity == null ? null : IdentityResponse.from(identity, fullRecipient));
+    }
+
+    record IdentityResponse(
+            String provider, String level, String givenName, String familyName, String result, Instant verifiedAt) {
+        static IdentityResponse from(IdentityVerification identity, boolean withName) {
+            return new IdentityResponse(identity.provider(), identity.level().name(),
+                    withName ? identity.givenName() : null, withName ? identity.familyName() : null,
+                    identity.result().name(), identity.verifiedAt());
+        }
     }
 
     record ListResponse(boolean canManage, List<PortalLinkResponse> links) {}

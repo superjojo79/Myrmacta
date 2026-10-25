@@ -23,6 +23,16 @@ const portal: typeof fr = {
     tooLarge: 'The file exceeds the allowed size.',
     generic: 'The request could not be processed.',
   },
+  identity: {
+    body: 'To reply, identify yourself with your electronic identity card or itsme.',
+    redirecting: 'Redirecting to the identification service…',
+    verified: 'Identity verified.',
+    verifiedAs: 'Identity verified: {name}.',
+    refused: {
+      title: 'Identification not recognised',
+      body: 'Your identity could not be verified for this link. Reopen the link you received by e-mail to try again, or contact the person who sent it to you.',
+    },
+  },
   signature: {
     loading: 'Loading the document to sign…',
     signed: { title: 'Thank you, your signature has been recorded' },

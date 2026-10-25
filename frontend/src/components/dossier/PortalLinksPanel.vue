@@ -17,7 +17,7 @@ const props = defineProps<{ dossierId: string }>()
 const { t, te } = useI18n()
 
 /** Libellé d'un code serveur : traduit s'il est connu, sinon le code tel quel (un nouveau code serveur ne casse pas l'écran). */
-function label(group: 'status' | 'reason', code: string): string {
+function label(group: 'status' | 'reason' | 'identityResult' | 'identityLevel' | 'identityProvider', code: string): string {
   const key = `dossier.portalLinks.${group}.${code}`
   return te(key) ? t(key) : code
 }
@@ -52,6 +52,19 @@ function statusText(link: PortalLinkView): string {
   const status = label('status', link.status)
   const reason = link.statusReason ? label('reason', link.statusReason) : ''
   return reason ? `${status} — ${reason}` : status
+}
+
+/** TODO §104 (T8) — « Identité vérifiée (FAS, élevé) : Alice Martin — premier enregistrement du NRN ». */
+function identityText(link: PortalLinkView): string {
+  const identity = link.identity
+  if (!identity) return ''
+  const name = [identity.givenName, identity.familyName].filter(Boolean).join(' ')
+  return t('dossier.portalLinks.identity', {
+    provider: label('identityProvider', identity.provider),
+    level: label('identityLevel', identity.level),
+    name: name || '—',
+    result: label('identityResult', identity.result),
+  })
 }
 
 async function load() {
@@ -118,7 +131,12 @@ watch(() => props.dossierId, load)
       <tbody>
         <tr v-for="link in links" :key="link.id" :data-status="link.status">
           <td>{{ link.recipient ?? '—' }}</td>
-          <td>{{ statusText(link) }}</td>
+          <td>
+            {{ statusText(link) }}
+            <span v-if="link.identity" class="portal-links__identity" data-testid="portal-link-identity">
+              {{ identityText(link) }}
+            </span>
+          </td>
           <td>{{ formatDate(link.sentAt) }}</td>
           <td>{{ formatDate(link.expiresAt) }}</td>
           <td>{{ formatDate(link.lastAccessedAt) }}</td>
@@ -147,6 +165,12 @@ watch(() => props.dossierId, load)
 </template>
 
 <style scoped>
+.portal-links__identity {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-muted, #5b6773);
+}
+
 .portal-links table {
   width: 100%;
   border-collapse: collapse;

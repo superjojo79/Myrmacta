@@ -1,5 +1,6 @@
 package com.flowforge.infrastructure.web.portal;
 
+import com.flowforge.domain.workflow.portal.model.PortalCredential;
 import com.flowforge.domain.workflow.portal.port.in.AddPortalAttachmentUseCase;
 import com.flowforge.domain.workflow.portal.port.in.GetPortalTaskUseCase;
 import com.flowforge.domain.workflow.portal.port.in.SubmitPortalTaskUseCase;
@@ -39,6 +40,8 @@ import org.springframework.web.multipart.MultipartFile;
 class PortalController {
 
     static final String TOKEN_HEADER = "X-Portal-Token";
+    /** TODO §104 (D-BEAUTH-PROOF) — preuve d'identité, qui remplace le jeton après une authentification forte. */
+    static final String IDENTITY_HEADER = "X-Portal-Identity";
 
     private final GetPortalTaskUseCase getUseCase;
     private final AddPortalAttachmentUseCase attachmentUseCase;
@@ -55,8 +58,10 @@ class PortalController {
 
     @GetMapping
     @Transactional
-    PortalTaskResponse get(@RequestHeader(name = TOKEN_HEADER, required = false) String token) {
-        return PortalTaskResponse.from(getUseCase.get(token));
+    PortalTaskResponse get(
+            @RequestHeader(name = TOKEN_HEADER, required = false) String token,
+            @RequestHeader(name = IDENTITY_HEADER, required = false) String proof) {
+        return PortalTaskResponse.from(getUseCase.get(PortalCredential.of(token, proof)));
     }
 
     @Hidden
@@ -65,9 +70,10 @@ class PortalController {
     @Transactional
     ResponseEntity<PortalTaskResponse.Attachment> addAttachment(
             @RequestHeader(name = TOKEN_HEADER, required = false) String token,
+            @RequestHeader(name = IDENTITY_HEADER, required = false) String proof,
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "label", required = false) String label) {
-        var element = attachmentUseCase.add(token, new AddPortalAttachmentUseCase.AttachmentUpload(
+        var element = attachmentUseCase.add(PortalCredential.of(token, proof), new AddPortalAttachmentUseCase.AttachmentUpload(
                 label, file.getOriginalFilename(), file.getContentType(), bytes(file)));
         return ResponseEntity.status(HttpStatus.CREATED).body(PortalTaskResponse.Attachment.from(element));
     }
@@ -76,8 +82,9 @@ class PortalController {
     @Transactional
     ResponseEntity<Void> submit(
             @RequestHeader(name = TOKEN_HEADER, required = false) String token,
+            @RequestHeader(name = IDENTITY_HEADER, required = false) String proof,
             @RequestBody SubmitRequest body) {
-        submitUseCase.submit(token, body == null ? Map.of() : body.answers());
+        submitUseCase.submit(PortalCredential.of(token, proof), body == null ? Map.of() : body.answers());
         return ResponseEntity.noContent().build();
     }
 

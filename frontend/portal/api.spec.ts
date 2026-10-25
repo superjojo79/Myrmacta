@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiBase, fetchTask, PortalApiError, submitAnswers, uploadAttachment } from './api'
+import { apiBase, fetchTask, PortalApiError, startIdentity, submitAnswers, uploadAttachment } from './api'
 
 const TOKEN = 't'.repeat(43)
 
@@ -51,5 +51,32 @@ describe('portal api client', () => {
     const form = uploadMock.mock.calls[0]![1].body as FormData
     expect(form.get('label')).toBe('Devis')
     expect(uploadMock.mock.calls[0]![0]).toContain('/attachments')
+  })
+
+  /** TODO §104 (D-BEAUTH-PROOF) — après l'authentification forte, la preuve remplace le jeton. */
+  it('sends the identity proof instead of the token once the third party is authenticated', async () => {
+    const fetchMock = mockFetch(200, { attachments: [] })
+
+    await fetchTask({ proof: TOKEN })
+
+    const init = fetchMock.mock.calls[0]![1]
+    expect((init.headers as Headers).get('X-Portal-Identity')).toBe(TOKEN)
+    expect((init.headers as Headers).get('X-Portal-Token')).toBeNull()
+    expect(init.credentials).toBe('omit')
+  })
+
+  it('starts the strong authentication with the token and returns the provider URL', async () => {
+    const fetchMock = mockFetch(200, { authorizationUrl: 'https://idp.example/auth?state=s' })
+    window.history.replaceState(null, '', '/tenant-a/portal/')
+
+    const url = await startIdentity(TOKEN, 'fas')
+
+    expect(url).toBe('https://idp.example/auth?state=s')
+    const [target, init] = fetchMock.mock.calls[0]!
+    expect(String(target)).toBe('/tenant-a/api/portal/identity/start')
+    expect(String(target)).not.toContain(TOKEN)
+    expect((init.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
+    expect(JSON.parse(init.body)).toEqual({ provider: 'fas' })
+    expect(init.credentials).toBe('omit')
   })
 })

@@ -4,6 +4,7 @@ import be.myrmacta.domain.dossier.model.AccessDeniedException;
 import be.myrmacta.domain.dossier.model.DossierConflictException;
 import be.myrmacta.domain.dossier.model.DossierFieldValidationException;
 import be.myrmacta.domain.dossier.model.DossierNotEligibleForPurgeException;
+import be.myrmacta.domain.dossier.model.DossierElementNotFoundException;
 import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.dossier.model.DossierTypeSchemaIncompatibleException;
 import be.myrmacta.domain.dossier.model.DuplicateDossierRelationException;
@@ -41,8 +42,8 @@ public class DossierExceptionHandler {
         return problem(HttpStatus.FORBIDDEN, "Access denied", ex.getMessage());
     }
 
-    @ExceptionHandler(DossierNotFoundException.class)
-    ProblemDetail handleNotFound(DossierNotFoundException ex) {
+    @ExceptionHandler({DossierNotFoundException.class, DossierElementNotFoundException.class})
+    ProblemDetail handleNotFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Dossier resource not found", ex.getMessage());
     }
 

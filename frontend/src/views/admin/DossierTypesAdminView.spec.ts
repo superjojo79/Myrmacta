@@ -256,6 +256,41 @@ describe('DossierTypesAdminView', () => {
     expect(wrapper.find('[data-testid="type-edit-fields-panel"]').exists()).toBe(false)
   })
 
+  /** TODO §106 — types de pièces : prérempli, enregistré avec le schéma, clé invalide bloquée avant l'envoi. */
+  it('edits the piece types of a type and blocks an invalid key', async () => {
+    vi.mocked(api.listDossierTypes).mockResolvedValue(
+      asPage([{ ...sampleType, pieceTypes: [{ key: 'preuve', label: 'Preuve', sensitive: false }] }]),
+    )
+    vi.mocked(api.updateDossierType).mockResolvedValue(sampleType)
+    const { wrapper } = await mountView(DossierTypesAdminView)
+    await flushPromises()
+    await wrapper.get('[data-testid="type-edit-fields"]').trigger('click')
+    const panel = '[data-testid="type-edit-fields-panel"] '
+    expect((wrapper.get(panel + '[data-testid="piece-type-key-0"]').element as HTMLInputElement).value).toBe('preuve')
+
+    await wrapper.get(panel + '[data-testid="piece-type-add"]').trigger('click')
+    await wrapper.get(panel + '[data-testid="piece-type-key-1"]').setValue('Identite')
+    await wrapper.get(panel + '[data-testid="piece-type-label-1"]').setValue('Identité')
+    await wrapper.get('[data-testid="type-edit-fields-save"]').trigger('click')
+    await flushPromises()
+    expect(api.updateDossierType).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Clé de type de pièce invalide « Identite »')
+
+    await wrapper.get(panel + '[data-testid="piece-type-key-1"]').setValue('identite')
+    await wrapper.get(panel + '[data-testid="piece-type-sensitive-1"]').setValue(true)
+    await wrapper.get('[data-testid="type-edit-fields-save"]').trigger('click')
+    await flushPromises()
+    expect(api.updateDossierType).toHaveBeenCalledWith(
+      'CLAIM',
+      expect.objectContaining({
+        pieceTypes: [
+          { key: 'preuve', label: 'Preuve', sensitive: false },
+          { key: 'identite', label: 'Identité', sensitive: true },
+        ],
+      }),
+    )
+  })
+
   it('shows the duplicate values when the server refuses the schema (409)', async () => {
     vi.mocked(api.updateDossierType).mockRejectedValue({
       response: {

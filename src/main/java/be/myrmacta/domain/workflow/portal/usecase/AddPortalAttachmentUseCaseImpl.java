@@ -2,11 +2,13 @@ package be.myrmacta.domain.workflow.portal.usecase;
 
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.AttachmentContentSniffer;
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.DossierConflictException;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.model.InvalidDossierElementException;
+import be.myrmacta.domain.dossier.model.PieceType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.dossier.port.out.AttachmentScanPort;
 import be.myrmacta.domain.dossier.port.out.AttachmentScanResult;
@@ -14,6 +16,7 @@ import be.myrmacta.domain.workflow.portal.PortalAccessResolver;
 import be.myrmacta.domain.workflow.portal.model.PortalCredential;
 import be.myrmacta.domain.workflow.portal.model.PortalLink;
 import be.myrmacta.domain.workflow.portal.port.in.AddPortalAttachmentUseCase;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -34,6 +37,7 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
     private final AttachmentScanPort scanPort;
     private final DocumentStoragePort storagePort;
     private final AddDossierElementUseCase addElementUseCase;
+    private final AttachmentPieceTypes pieceTypes;
 
     public AddPortalAttachmentUseCaseImpl(
             String tenantId,
@@ -42,6 +46,19 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
             AttachmentScanPort scanPort,
             DocumentStoragePort storagePort,
             AddDossierElementUseCase addElementUseCase) {
+        this(tenantId, accessResolver, allowedContentType, scanPort, storagePort, addElementUseCase, null);
+    }
+
+    /** @param pieceTypes {@code null} : aucun type de pièce accepté du tiers (TODO §106). */
+    public AddPortalAttachmentUseCaseImpl(
+            String tenantId,
+            PortalAccessResolver accessResolver,
+            Predicate<String> allowedContentType,
+            AttachmentScanPort scanPort,
+            DocumentStoragePort storagePort,
+            AddDossierElementUseCase addElementUseCase,
+            AttachmentPieceTypes pieceTypes) {
+        this.pieceTypes = pieceTypes;
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.allowedContentType = Objects.requireNonNull(allowedContentType, "allowedContentType");
@@ -57,6 +74,7 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
         if (access.dossier().status().blocksMutation()) {
             throw new DossierConflictException("Dossier elements cannot be added in status " + access.dossier().status());
         }
+        String pieceKey = pieceKey(access, upload.pieceKey());
         byte[] content = upload.content();
         if (content == null || content.length == 0) {
             throw new InvalidDossierElementException("file is required");
@@ -75,16 +93,37 @@ public final class AddPortalAttachmentUseCaseImpl implements AddPortalAttachment
         String storageRef = storagePort.store(tenantId, contentType, content);
         PortalLink link = access.link();
         String filename = upload.filename() == null ? "" : upload.filename();
+        Map<String, Object> metadata = new HashMap<>(
+                Map.of("filename", filename, "contentType", contentType, "sizeBytes", (long) content.length));
+        if (pieceKey != null) {
+            metadata.put(PieceType.METADATA_KEY, pieceKey);
+        }
         return addElementUseCase.add(
                 new AddDossierElementUseCase.AddCommand(
                         link.dossierId(),
                         ElementType.ATTACHMENT,
                         label(upload.label(), filename),
                         storageRef,
-                        Map.of("filename", filename, "contentType", contentType, "sizeBytes", (long) content.length),
+                        metadata,
                         link.actorId(),
                         null),
                 AccessContext.external(link.id()));
+    }
+
+    /**
+     * TODO §106 (D-PIECE-PORTAL) — le tiers ne choisit qu'un type que la tâche propose et que le type du dossier déclare ;
+     * vérifié avant toute écriture en stockage.
+     */
+    private String pieceKey(PortalAccessResolver.ResolvedAccess access, String requested) {
+        String key = requested == null || requested.isBlank() ? null : requested.strip();
+        if (key == null) {
+            return null;
+        }
+        if (pieceTypes == null || !access.pieceTypeKeys().contains(key)) {
+            throw new InvalidDossierElementException("piece type not offered by this task: " + key);
+        }
+        pieceTypes.require(access.dossier(), key);
+        return key;
     }
 
     private static String label(String requested, String filename) {

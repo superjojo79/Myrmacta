@@ -112,3 +112,15 @@ Livrée par l'issue #210 ([§104](../decisions/104-authentification-belge-fas-et
   `PortalIdentityRepositoryIT`, `PortalStrongAuthApiTest` (bout en bout, NRN absent des journaux, des variables de
   process et des outbox), Vitest du portail, Playwright `E2E-PORTAL-6` et `7`.
 
+## 6. Types de pièces proposés au tiers (TODO §106)
+
+Issue #211, lot P (D-PIECE-PORTAL). `flowable:portalPieceTypes="preuveDomicile, certificat"` sur la tâche externe : clés
+de types de pièces du type de dossier ([04-dossiers.md](04-dossiers.md#types-de-pièces-justificatives-todo-106-issue-211-lot-p)),
+séparées par des virgules, valides et distinctes, 10 au plus (forme vérifiée au déploiement, `portalRecipient` requis).
+
+- `GET /api/portal/task` ajoute `pieceTypes` (`key`, `label`) : les clés de la tâche que le type du dossier déclare,
+  dans l'ordre du BPMN ; absent si aucune. L'indicateur `sensitive` n'est jamais exposé au tiers.
+- `POST /api/portal/attachments` accepte `pieceKey` : refusé (400) avant toute écriture dans le stockage si la tâche ne
+  le propose pas ou si le type du dossier ne le déclare plus. Sans `pieceKey`, la pièce est non classée, comme avant.
+- **Preuves** : `PortalPieceTypesTest`, `FlowableBpmnParserAdapterPortalTest`, Vitest du portail.
+

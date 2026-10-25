@@ -180,9 +180,32 @@ describe('dossier store', () => {
       downloadable: true,
     })
     await store.addAttachment(file, 'Justificatif')
-    expect(elementsApi.uploadAttachment).toHaveBeenCalledWith('d1', file, 'Justificatif')
+    expect(elementsApi.uploadAttachment).toHaveBeenCalledWith('d1', file, 'Justificatif', undefined)
     expect(store.elements).toHaveLength(1)
     expect(store.elements[0]?.id).toBe('e2')
+  })
+
+  /** TODO §106 — le reclassement remplace l'élément sans recharger la liste. */
+  it('classifyElement replaces the element in place', async () => {
+    const store = useDossierStore()
+    store.dossier = { id: 'd1' } as never
+    const original = {
+      id: 'e1',
+      type: 'ATTACHMENT' as const,
+      label: 'Facture',
+      addedBy: 'u',
+      addedAt: '',
+      workflowStepId: null,
+      metadata: { filename: 'f.pdf' },
+      downloadable: true,
+    }
+    store.elements = [original]
+    vi.mocked(elementsApi.classifyAttachment).mockResolvedValue({ ...original, metadata: { pieceKey: 'preuve' } })
+
+    await store.classifyElement('e1', 'preuve')
+
+    expect(elementsApi.classifyAttachment).toHaveBeenCalledWith('d1', 'e1', 'preuve')
+    expect(store.elements[0]?.metadata).toEqual({ pieceKey: 'preuve' })
   })
 
   it('patches status with expectedVersion from current dossier', async () => {

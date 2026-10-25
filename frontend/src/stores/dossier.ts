@@ -15,7 +15,7 @@ import {
   updateDossierStatus,
 } from '@/api/dossiers'
 import { getDossierType } from '@/api/dossierTypes'
-import { uploadAttachment } from '@/api/elements'
+import { classifyAttachment, uploadAttachment } from '@/api/elements'
 import {
   getWorkflowDiagram,
   getWorkflowHistory,
@@ -246,11 +246,19 @@ export const useDossierStore = defineStore('dossier', () => {
     return created
   }
 
-  async function addAttachment(file: File, label: string): Promise<DossierElementView> {
+  async function addAttachment(file: File, label: string, pieceKey?: string | null): Promise<DossierElementView> {
     if (!dossier.value) throw new Error('No dossier loaded')
-    const created = await uploadAttachment(dossier.value.id, file, label)
+    const created = await uploadAttachment(dossier.value.id, file, label, pieceKey)
     elements.value = [...elements.value, created]
     return created
+  }
+
+  /** TODO §106 — reclasse une pièce jointe et remplace l'élément dans la liste affichée. */
+  async function classifyElement(elementId: string, pieceKey: string | null): Promise<DossierElementView> {
+    if (!dossier.value) throw new Error('No dossier loaded')
+    const updated = await classifyAttachment(dossier.value.id, elementId, pieceKey)
+    elements.value = elements.value.map((element) => (element.id === elementId ? updated : element))
+    return updated
   }
 
   async function patchStatus(status: DossierStatus): Promise<void> {
@@ -329,6 +337,7 @@ export const useDossierStore = defineStore('dossier', () => {
     linkDossier,
     addElement,
     addAttachment,
+    classifyElement,
     patchStatus,
     patchFields,
     startWorkflow,

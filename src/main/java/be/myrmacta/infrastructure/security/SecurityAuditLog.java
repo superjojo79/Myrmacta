@@ -148,4 +148,21 @@ public final class SecurityAuditLog {
                 linkId,
                 jobId);
     }
+
+    /**
+     * TODO §106 (D-PIECE-CLASSIFY) — le type d'une pièce jointe a été attribué, changé ou retiré. INFO : action légitime,
+     * tracée ; seules les clés de type sont écrites, jamais le libellé ni le nom du fichier.
+     */
+    public static void attachmentClassified(HttpServletRequest request, Authentication authentication, UUID dossierId,
+            UUID elementId, String previousPieceKey, String pieceKey) {
+        LOGGER.info(
+                "event=attachment_classified method={} path={} principal={} dossierId={} elementId={} from={} to={}",
+                request.getMethod(),
+                request.getRequestURI(),
+                authentication == null ? "anonymous" : authentication.getName(),
+                dossierId,
+                elementId,
+                previousPieceKey == null ? "-" : previousPieceKey,
+                pieceKey == null ? "-" : pieceKey);
+    }
 }

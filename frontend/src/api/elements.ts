@@ -6,14 +6,29 @@ export async function uploadAttachment(
   dossierId: string,
   file: File,
   label: string,
+  pieceKey?: string | null,
 ): Promise<DossierElementView> {
   const form = new FormData()
   form.append('file', file)
   form.append('label', label)
+  if (pieceKey) form.append('pieceKey', pieceKey)
   const { data } = await axios.post<DossierElementView>(
     `/api/dossiers/${dossierId}/elements/attachment`,
     form,
     { headers: { 'Content-Type': 'multipart/form-data' } },
+  )
+  return data
+}
+
+/** TODO §106 — attribuer, changer ou retirer (`null`) le type d'une pièce jointe (droit EDIT). */
+export async function classifyAttachment(
+  dossierId: string,
+  elementId: string,
+  pieceKey: string | null,
+): Promise<DossierElementView> {
+  const { data } = await axios.put<DossierElementView>(
+    `/api/dossiers/${dossierId}/elements/${elementId}/piece-type`,
+    { pieceKey },
   )
   return data
 }

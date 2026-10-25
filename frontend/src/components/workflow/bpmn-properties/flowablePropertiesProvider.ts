@@ -93,6 +93,11 @@ const PortalRecipient = textFieldEntry(
   'Tiers externe — adresse (dossierField:<champ> ou variable:<nom>)',
 )
 const PortalLinkTtlDays = textFieldEntry('flowable:portalLinkTtlDays', 'Tiers externe — validité du lien (jours)')
+// TODO §106 (D-PIECE-PORTAL) : types de pièces que le tiers choisit au dépôt.
+const PortalPieceTypes = textFieldEntry(
+  'flowable:portalPieceTypes',
+  'Tiers externe — types de pièces demandés (clés séparées par des virgules)',
+)
 const Type = textFieldEntry('flowable:type', 'Type (ex. "dmn")')
 
 const FLOWABLE_NS_URI = 'http://flowable.org/bpmn'
@@ -246,6 +251,7 @@ function userTaskGroup(shouldOpen: boolean) {
       { id: 'flowable:formKey', component: FormKey, isEdited: isTextFieldEntryEdited },
       { id: 'flowable:portalRecipient', component: PortalRecipient, isEdited: isTextFieldEntryEdited },
       { id: 'flowable:portalLinkTtlDays', component: PortalLinkTtlDays, isEdited: isTextFieldEntryEdited },
+      { id: 'flowable:portalPieceTypes', component: PortalPieceTypes, isEdited: isTextFieldEntryEdited },
     ],
   }
 }

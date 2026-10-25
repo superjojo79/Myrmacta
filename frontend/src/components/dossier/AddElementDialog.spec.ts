@@ -45,7 +45,36 @@ describe('AddElementDialog', () => {
 
     const events = wrapper.emitted('submitAttachment')
     expect(events).toHaveLength(1)
-    expect(events?.[0]?.[0]).toEqual({ file, label: 'Justificatif' })
+    expect(events?.[0]?.[0]).toEqual({ file, label: 'Justificatif', pieceKey: null })
+    expect(wrapper.find('[data-testid="add-element-piece-type"]').exists()).toBe(false)
+  })
+
+  /** TODO §106 — le type de pièce est choisi au dépôt quand le type de dossier en déclare. */
+  it('lets the agent pick a piece type for an attachment', async () => {
+    const wrapper = mount(AddElementDialog, {
+      props: {
+        open: true,
+        pieceTypes: [
+          { key: 'preuveDomicile', label: 'Preuve de domicile', sensitive: false },
+          { key: 'identite', label: "Pièce d'identité", sensitive: true },
+        ],
+      },
+    })
+    await wrapper.get('input[type="text"]').setValue('Facture Sibelga')
+    const file = new File(['%PDF'], 'facture.pdf', { type: 'application/pdf' })
+    const fileInput = wrapper.get('input[type="file"]').element as HTMLInputElement
+    Object.defineProperty(fileInput, 'files', { value: [file] })
+    await wrapper.get('input[type="file"]').trigger('change')
+    const select = wrapper.get('[data-testid="add-element-piece-type"]')
+    expect(select.text()).toContain('Non classée')
+    await select.setValue('preuveDomicile')
+    await wrapper.get('button.primary').trigger('click')
+
+    expect(wrapper.emitted('submitAttachment')?.[0]?.[0]).toEqual({
+      file,
+      label: 'Facture Sibelga',
+      pieceKey: 'preuveDomicile',
+    })
   })
 
   it('resets its fields each time it reopens', async () => {

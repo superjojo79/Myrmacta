@@ -6,6 +6,7 @@ import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.DossierTypeSchemaIncompatibleException;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.PieceType;
 import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierTypeUseCase;
@@ -88,6 +89,7 @@ public class DefineDossierTypeTool {
                     + "cannot be set here: create defaults to inherit, update preserves the existing policy. "
                     + "documentTemplateKeys is optional: absent/null preserves the existing association on "
                     + "update (defaults to empty on create); provide the full list to replace it. "
+                    + "pieceTypes follows the same absent = unchanged rule. "
                     + "dryRun=true validates without persisting.")
     public Map<String, Object> defineDossierType(
             McpSchema.CallToolRequest request,
@@ -131,6 +133,14 @@ public class DefineDossierTypeTool {
                     List<String> documentTemplateKeys,
             @McpToolParam(
                             required = false,
+                            description = "Supporting-document types (TODO §106) — the full list every call, not a diff, "
+                                    + "at most 30. Each item: {key (^[a-z][a-zA-Z0-9_]{0,59}$, unique), label (100 chars "
+                                    + "max), sensitive (true = never read by an automated pre-check)}. An attachment "
+                                    + "picks one at upload (pieceKey) or stays unclassified. Absent/null preserves the "
+                                    + "existing list on update (empty on create).")
+                    List<Map<String, Object>> pieceTypes,
+            @McpToolParam(
+                            required = false,
                             description = "Validate without persisting (no save, no author stamp); default false")
                     Boolean dryRun) {
         // Note: the typed parameters above exist only to shape the generated JSON schema (see
@@ -151,6 +161,7 @@ public class DefineDossierTypeTool {
         boolean rawAllowUnknownFields = McpArgs.requireBoolean(args, "allowUnknownFields");
         List<FieldDefinition> rawFieldDefinitions = parseFieldDefinitions(args.get("fieldDefinitions"));
         List<String> rawDocumentTemplateKeys = parseDocumentTemplateKeys(args.get("documentTemplateKeys"));
+        List<PieceType> rawPieceTypes = parsePieceTypes(args.get("pieceTypes"));
         boolean rawDryRun = Boolean.TRUE.equals(args.get("dryRun"));
 
         AccessContext.User actor = accessContextFactory.currentActor();
@@ -160,11 +171,11 @@ public class DefineDossierTypeTool {
         if (existing == null) {
             return defineCreate(
                     tenantId, rawCode, rawLabel, rawWorkflowKey, rawActive, rawAllowUnknownFields,
-                    rawFieldDefinitions, rawDocumentTemplateKeys, rawDryRun, actor);
+                    rawFieldDefinitions, rawDocumentTemplateKeys, rawPieceTypes, rawDryRun, actor);
         }
         return defineUpdate(
                 existing, rawLabel, rawWorkflowKey, rawActive, rawAllowUnknownFields, rawFieldDefinitions,
-                rawDocumentTemplateKeys, rawDryRun, actor);
+                rawDocumentTemplateKeys, rawPieceTypes, rawDryRun, actor);
     }
 
     private DossierType findExisting(String tenantId, String code, AccessContext.User actor) {
@@ -184,6 +195,7 @@ public class DefineDossierTypeTool {
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
             List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes,
             boolean dryRun,
             AccessContext.User actor) {
         if (dryRun) {
@@ -194,7 +206,8 @@ public class DefineDossierTypeTool {
         DossierType created = createDossierTypeUseCase.create(
                 new CreateDossierTypeUseCase.CreateDossierTypeCommand(
                         tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions,
-                        null, false, null, documentTemplateKeys == null ? List.of() : documentTemplateKeys),
+                        null, false, null, documentTemplateKeys == null ? List.of() : documentTemplateKeys,
+                        pieceTypes == null ? List.of() : pieceTypes),
                 actor);
         return result("create", false, code, created);
     }
@@ -207,6 +220,7 @@ public class DefineDossierTypeTool {
             boolean allowUnknownFields,
             List<FieldDefinition> fieldDefinitions,
             List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes,
             boolean dryRun,
             AccessContext.User actor) {
         // D-DESIGN-CHECK-PLACEMENT: the real (non-dryRun) write path no longer checks
@@ -235,7 +249,7 @@ public class DefineDossierTypeTool {
                 new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(
                         existing.tenantId(), existing.code(), label, workflowKey, active, allowUnknownFields,
                         fieldDefinitions, existing.retentionDays(), existing.retentionNever(),
-                        existing.slaTargetHours(), resolvedDocumentTemplateKeys),
+                        existing.slaTargetHours(), resolvedDocumentTemplateKeys, pieceTypes),
                 actor);
         return result("update", false, existing.code(), updated);
     }
@@ -257,6 +271,19 @@ public class DefineDossierTypeTool {
             throw new IllegalArgumentException("fieldDefinitions must be an array");
         }
         return rawList.stream().map(item -> objectMapper.convertValue(item, FieldDefinition.class)).toList();
+    }
+
+    /** TODO §106 — {@code null} si absent (inchangé à la mise à jour) ; chaque élément validé par {@link PieceType}. */
+    private List<PieceType> parsePieceTypes(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (!(raw instanceof List<?> rawList)) {
+            throw new IllegalArgumentException("pieceTypes must be an array");
+        }
+        List<PieceType> parsed = rawList.stream().map(item -> objectMapper.convertValue(item, PieceType.class)).toList();
+        PieceType.requireValid(parsed); // dry-run compris : mêmes refus que l'enregistrement
+        return parsed;
     }
 
     private static List<String> parseDocumentTemplateKeys(Object raw) {

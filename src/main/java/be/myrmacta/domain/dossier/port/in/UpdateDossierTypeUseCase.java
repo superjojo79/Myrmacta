@@ -3,6 +3,7 @@ package be.myrmacta.domain.dossier.port.in;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.PieceType;
 import java.util.List;
 
 public interface UpdateDossierTypeUseCase {
@@ -19,5 +20,27 @@ public interface UpdateDossierTypeUseCase {
             Integer retentionDays,
             boolean retentionNever,
             Integer slaTargetHours,
-            List<String> documentTemplateKeys) {}
+            List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes) {
+
+        /**
+         * Convenience for callers built before {@code pieceTypes} existed (TODO §106) — {@code null} keeps the piece types
+         * already declared on the type.
+         */
+        public UpdateDossierTypeCommand(
+                String tenantId,
+                String code,
+                String label,
+                String workflowKey,
+                boolean active,
+                boolean allowUnknownFields,
+                List<FieldDefinition> fieldDefinitions,
+                Integer retentionDays,
+                boolean retentionNever,
+                Integer slaTargetHours,
+                List<String> documentTemplateKeys) {
+            this(tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions,
+                    retentionDays, retentionNever, slaTargetHours, documentTemplateKeys, null);
+        }
+    }
 }

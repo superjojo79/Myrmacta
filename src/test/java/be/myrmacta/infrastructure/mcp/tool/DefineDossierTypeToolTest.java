@@ -312,7 +312,7 @@ class DefineDossierTypeToolTest {
      * pass null for all of them.
      */
     private Map<String, Object> invoke(Map<String, Object> args) {
-        return tool.defineDossierType(request(args), null, null, null, null, null, null, null, null);
+        return tool.defineDossierType(request(args), null, null, null, null, null, null, null, null, null);
     }
 
     private static DossierType type(String code) {

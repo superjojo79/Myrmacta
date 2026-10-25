@@ -310,6 +310,30 @@ public class DossierElementJpaEntity {
 > tracer son origine. Les éléments d'un dossier restent donc visibles et
 > consultables quel que soit le nombre de workflows qui se sont succédé.
 
+### Types de pièces justificatives (TODO §106, issue #211, lot P)
+
+Un `DossierType` déclare ses **types de pièces** (`pieceTypes`, D-PIECE-TYPES) : clé
+(`^[a-z][a-zA-Z0-9_]{0,59}$`, unique), libellé (100 caractères au plus) et `sensitive` (le contenu d'une pièce de ce
+type n'est jamais lu par un traitement automatisé, comme la pré-vérification IA). 30 au plus ; colonne
+`dossier_type.piece_types` (changeSet `039`) ; même règle « absent = inchangé » que `documentTemplateKeys` en
+`PATCH /api/dossier-types/{code}` et dans `define_dossier_type` ; exportés par la promotion de configuration.
+
+Une pièce jointe porte son type dans la métadonnée **`pieceKey`** (D-PIECE-CLASSIFY) :
+
+- **Au dépôt** — paramètre `pieceKey` facultatif de `POST /api/dossiers/{id}/elements/attachment`, ou métadonnée de
+  `add_dossier_element` (MCP) ; une clé que le type du dossier ne déclare pas est refusée (400) **avant** toute écriture
+  dans le stockage. Seul un `ATTACHMENT` peut en porter une.
+- **Après coup** — `PUT /api/dossiers/{id}/elements/{elementId}/piece-type` `{ "pieceKey": "…" | null }` : droit EDIT
+  sur le type, dossier non clos, élément du dossier (sinon 404). Tracé sur l'élément (`pieceClassifiedBy`,
+  `pieceClassifiedAt`) et dans le journal de sécurité (`event=attachment_classified`, clés seulement).
+- **Non classée** — une pièce sans `pieceKey`, ou dont le type a été retiré du type de dossier, n'est d'aucun type ; elle
+  n'est pas modifiée par le retrait.
+- **Portail** — le tiers choisit parmi les types proposés par sa tâche (`flowable:portalPieceTypes`,
+  [26-portail-externe.md §6](26-portail-externe.md#6-types-de-pièces-proposés-au-tiers-todo-106)).
+
+Le caractère **obligatoire** d'une pièce n'est pas porté par le type de dossier : il est déclaré, pour un stade du
+processus, par la brique de pré-vérification (lot B de #211).
+
 ### `DossierWorkflowLink` — historique des workflows exécutés sur le dossier
 
 Un dossier peut être manipulé par plusieurs workflows au fil de sa vie

@@ -134,7 +134,12 @@ public final class BuildingBlockCatalog {
                             "Schéma de question rempli par le tiers."),
                     new BlockParameter("portalLinkTtlDays", "Validité du lien (jours)", ParameterType.INTEGER,
                             ParameterBinding.ATTRIBUTE, false, null, List.of(), 3, 1, 365,
-                            "Durée de validité, dans la limite du plafond de l'instance.")),
+                            "Durée de validité, dans la limite du plafond de l'instance."),
+                    // TODO §106 (D-PIECE-PORTAL) — types de pièces que le tiers choisit au dépôt.
+                    text("portalPieceTypes", "Types de pièces demandés", 700,
+                            "Clés de types de pièces du type de dossier, séparées par des virgules (10 au plus). Ex. "
+                                    + "preuveDomicile, certificatImmatriculation. Sans valeur : pièces non classées.",
+                            false)),
             block("request-signature", "Demander une signature",
                     "Demande la signature d'un document PDF ; à faire suivre de l'attente du message signatureCompleted.",
                     BlockCategory.SIGNATURE, BlockElement.SERVICE_TASK, BlockMarker.delegate("signatureRequestTask"),

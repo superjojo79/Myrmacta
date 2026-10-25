@@ -21,7 +21,9 @@ record PortalTaskResponse(
         Instant expiresAt,
         List<Attachment> attachments,
         // Absent pour une tâche sans authentification forte : le contrat minimal de D-PORTAL-DATA ne change pas.
-        @JsonInclude(JsonInclude.Include.NON_NULL) Identity identity) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) Identity identity,
+        // TODO §106 (D-PIECE-PORTAL) — absent si la tâche ne propose aucun type de pièce (contrat minimal inchangé).
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<PieceTypeOption> pieceTypes) {
 
     static PortalTaskResponse from(PortalTaskView view) {
         return new PortalTaskResponse(
@@ -32,8 +34,12 @@ record PortalTaskResponse(
                 view.expiresAt(),
                 view.ownAttachments().stream().map(Attachment::from).toList(),
                 view.identityRequired() ? new Identity(view.verifiedName() != null, view.verifiedName(),
-                        view.identityProviders().stream().map(p -> new Provider(p.id(), p.label())).toList()) : null);
+                        view.identityProviders().stream().map(p -> new Provider(p.id(), p.label())).toList()) : null,
+                view.pieceTypes().stream().map(type -> new PieceTypeOption(type.key(), type.label())).toList());
     }
+
+    /** Type de pièce proposé au tiers : clé et libellé seulement (jamais l'indicateur {@code sensitive}). */
+    record PieceTypeOption(String key, String label) {}
 
     /**
      * TODO §104 (T3b) — présent seulement pour une tâche à authentification forte : {@code verified} faux, la page

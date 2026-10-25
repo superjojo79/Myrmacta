@@ -1,5 +1,6 @@
 package be.myrmacta.domain.dossier.usecase;
 
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
 import be.myrmacta.domain.dossier.DossierAccessPolicy;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
@@ -36,6 +37,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
     private final DossierWorkflowLinkRepository linkRepository;
     private final WorkflowParticipantPort participantPort;
     private final SendNotificationUseCase sendNotificationUseCase;
+    private final AttachmentPieceTypes pieceTypes;
 
     public AddDossierElementUseCaseImpl(
             String tenantId,
@@ -44,7 +46,8 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
             DossierAccessPolicy accessPolicy,
             DossierWorkflowLinkRepository linkRepository,
             WorkflowParticipantPort participantPort,
-            SendNotificationUseCase sendNotificationUseCase) {
+            SendNotificationUseCase sendNotificationUseCase,
+            AttachmentPieceTypes pieceTypes) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
@@ -52,6 +55,7 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
         this.participantPort = Objects.requireNonNull(participantPort, "participantPort");
         this.sendNotificationUseCase = Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
+        this.pieceTypes = Objects.requireNonNull(pieceTypes, "pieceTypes");
     }
 
     @Override
@@ -89,6 +93,8 @@ public final class AddDossierElementUseCaseImpl implements AddDossierElementUseC
         }
 
         Map<String, Object> metadata = command.metadata() == null ? Map.of() : command.metadata();
+        // TODO §106 (D-PIECE-CLASSIFY) — même contrôle pour la fiche, le portail et MCP (add_dossier_element).
+        pieceTypes.requireValid(dossier, type, metadata);
         DossierElement element = new DossierElement(
                 UUID.randomUUID(),
                 dossier.id(),

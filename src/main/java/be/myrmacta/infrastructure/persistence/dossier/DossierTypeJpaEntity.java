@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.persistence.dossier;
 
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.PieceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -59,6 +60,11 @@ public class DossierTypeJpaEntity {
     @Column(name = "document_template_keys", nullable = false, columnDefinition = "json")
     private List<String> documentTemplateKeys = List.of();
 
+    // TODO §106 (D-PIECE-TYPES) — types de pièces justificatives du type.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "piece_types", nullable = false, columnDefinition = "json")
+    private List<PieceType> pieceTypes = List.of();
+
     @Column(name = "created_by", nullable = false, length = 128)
     private String createdBy;
 
@@ -82,6 +88,7 @@ public class DossierTypeJpaEntity {
             boolean retentionNever,
             Integer slaTargetHours,
             List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes,
             String createdBy,
             String updatedBy) {
         this.id = id;
@@ -96,6 +103,7 @@ public class DossierTypeJpaEntity {
         this.retentionNever = retentionNever;
         this.slaTargetHours = slaTargetHours;
         this.documentTemplateKeys = List.copyOf(documentTemplateKeys);
+        this.pieceTypes = List.copyOf(pieceTypes);
         this.createdBy = createdBy;
         this.updatedBy = updatedBy;
     }
@@ -114,6 +122,7 @@ public class DossierTypeJpaEntity {
                 type.retentionNever(),
                 type.slaTargetHours(),
                 type.documentTemplateKeys(),
+                type.pieceTypes(),
                 type.createdBy(),
                 type.updatedBy());
     }
@@ -132,6 +141,7 @@ public class DossierTypeJpaEntity {
                 retentionNever,
                 slaTargetHours,
                 documentTemplateKeys,
+                pieceTypes,
                 createdBy,
                 updatedBy);
     }

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AllowedDocumentTemplate, DossierPermission, DossierType, FieldDefinition, FieldRulesPreview } from './types'
+import type { AllowedDocumentTemplate, DossierPermission, DossierType, FieldDefinition, FieldRulesPreview, PieceType } from './types'
 import { listAllPages, type Page } from './page'
 
 export interface AdminListParams {
@@ -41,6 +41,7 @@ export async function createDossierType(payload: {
   retentionNever?: boolean
   slaTargetHours?: number | null
   documentTemplateKeys?: string[]
+  pieceTypes?: PieceType[]
 }): Promise<DossierType> {
   const { data } = await axios.post<DossierType>('/api/dossier-types', payload)
   return data
@@ -59,6 +60,7 @@ export async function updateDossierType(
     slaTargetHours: number | null
     clearSlaTargetHours: boolean
     documentTemplateKeys: string[]
+    pieceTypes: PieceType[]
   }>,
 ): Promise<DossierType> {
   const { data } = await axios.patch<DossierType>(`/api/dossier-types/${code}`, payload)

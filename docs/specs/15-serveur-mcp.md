@@ -97,7 +97,10 @@ documenté dans [04-dossiers.md](04-dossiers.md#dossiertype--schéma-dynamique-p
 
 Outil envisagé : `define_dossier_type` — création ou mise à jour (par
 `code`) d'un `DossierType` : `label`, `workflowKey`, `active`,
-`allowUnknownFields`, `fieldDefinitions` (liste de `FieldDefinition`).
+`allowUnknownFields`, `fieldDefinitions` (liste de `FieldDefinition`). Livré ; accepte aussi `pieceTypes`
+(TODO §106 : types de pièces justificatives, absent = inchangé à la mise à jour), et `add_dossier_element` accepte la
+métadonnée `pieceKey` d'une pièce jointe, contrôlée contre le type du dossier
+([04-dossiers.md](04-dossiers.md#types-de-pièces-justificatives-todo-106-issue-211-lot-p)).
 
 **Point de vigilance :** modifier le schéma d'un `DossierType` déjà utilisé
 par des dossiers existants peut casser la validation (`DossierFieldValidator`,

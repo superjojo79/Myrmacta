@@ -95,6 +95,15 @@ export interface DossierType {
   retentionNever?: boolean
   slaTargetHours?: number | null
   documentTemplateKeys?: string[]
+  pieceTypes?: PieceType[]
+}
+
+/** TODO §106 — type de pièce justificative déclaré sur un type de dossier (choisi au dépôt). */
+export interface PieceType {
+  key: string
+  label: string
+  /** Jamais lue par une pré-vérification automatique. */
+  sensitive: boolean
 }
 
 export interface Dossier {

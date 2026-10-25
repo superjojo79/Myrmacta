@@ -12,6 +12,8 @@ const portal: typeof fr = {
   attachments: 'Attachments',
   noAttachment: 'No file uploaded yet.',
   file: 'File',
+  pieceType: 'Document type',
+  pieceTypeNone: 'Other or not specified',
   fileLabel: 'Title (optional)',
   upload: 'Upload the file',
   uploading: 'Uploading…',

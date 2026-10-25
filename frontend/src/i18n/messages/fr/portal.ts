@@ -10,6 +10,8 @@ export default {
   attachments: 'Pièces jointes',
   noAttachment: 'Aucune pièce déposée pour l’instant.',
   file: 'Fichier',
+  pieceType: 'Type de pièce',
+  pieceTypeNone: 'Autre ou non précisé',
   fileLabel: 'Intitulé (facultatif)',
   upload: 'Déposer le fichier',
   uploading: 'Envoi…',

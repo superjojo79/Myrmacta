@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.config;
 
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
@@ -213,9 +214,10 @@ public class PortalConfig {
             PortalAccessResolver accessResolver,
             TaskQuestionSchemaRepository schemaRepository,
             DossierElementRepository elementRepository,
-            PortalIdentityProviderPort providers) {
+            PortalIdentityProviderPort providers,
+            AttachmentPieceTypes attachmentPieceTypes) {
         return new GetPortalTaskUseCaseImpl(tenantProperties.id(), accessResolver, schemaRepository, elementRepository,
-                providers);
+                providers, attachmentPieceTypes);
     }
 
     @Bean
@@ -225,9 +227,10 @@ public class PortalConfig {
             AttachmentUploadProperties uploadProperties,
             AttachmentScanPort scanPort,
             DocumentStoragePort storagePort,
-            AddDossierElementUseCase addDossierElementUseCase) {
+            AddDossierElementUseCase addDossierElementUseCase,
+            AttachmentPieceTypes attachmentPieceTypes) {
         return new AddPortalAttachmentUseCaseImpl(tenantProperties.id(), accessResolver, uploadProperties::isAllowed,
-                scanPort, storagePort, addDossierElementUseCase);
+                scanPort, storagePort, addDossierElementUseCase, attachmentPieceTypes);
     }
 
     @Bean

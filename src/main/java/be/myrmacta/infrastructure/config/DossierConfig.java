@@ -1,5 +1,9 @@
 package be.myrmacta.infrastructure.config;
 
+import java.time.Clock;
+import be.myrmacta.domain.dossier.usecase.ClassifyDossierAttachmentUseCaseImpl;
+import be.myrmacta.domain.dossier.port.in.ClassifyDossierAttachmentUseCase;
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
 import be.myrmacta.domain.dossier.DossierAccessPolicy;
 import be.myrmacta.domain.dossier.DossierFieldRules;
 import be.myrmacta.domain.dossier.DossierUniquenessCheck;
@@ -257,7 +261,8 @@ public class DossierConfig {
             DossierAccessPolicy accessPolicy,
             DossierWorkflowLinkRepository linkRepository,
             WorkflowParticipantPort participantPort,
-            SendNotificationUseCase sendNotificationUseCase) {
+            SendNotificationUseCase sendNotificationUseCase,
+            AttachmentPieceTypes attachmentPieceTypes) {
         return new AddDossierElementUseCaseImpl(
                 tenantProperties.id(),
                 dossierRepository,
@@ -265,7 +270,25 @@ public class DossierConfig {
                 accessPolicy,
                 linkRepository,
                 participantPort,
-                sendNotificationUseCase);
+                sendNotificationUseCase,
+                attachmentPieceTypes);
+    }
+
+    /** TODO §106 (D-PIECE-CLASSIFY) — contrôle du type de pièce, partagé par le dépôt et le reclassement. */
+    @Bean
+    AttachmentPieceTypes attachmentPieceTypes(DossierTypeRepository typeRepository) {
+        return new AttachmentPieceTypes(typeRepository);
+    }
+
+    @Bean
+    ClassifyDossierAttachmentUseCase classifyDossierAttachmentUseCase(
+            TenantProperties tenantProperties,
+            DossierRepository dossierRepository,
+            DossierElementRepository dossierElementRepository,
+            DossierAccessPolicy accessPolicy,
+            AttachmentPieceTypes attachmentPieceTypes) {
+        return new ClassifyDossierAttachmentUseCaseImpl(tenantProperties.id(), dossierRepository,
+                dossierElementRepository, accessPolicy, attachmentPieceTypes, Clock.systemUTC());
     }
 
     @Bean

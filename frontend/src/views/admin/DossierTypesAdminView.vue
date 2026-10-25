@@ -11,12 +11,14 @@ import {
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
 import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
 import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notificationWebhooks'
-import type { DossierPermission, DossierType, FieldDefinition, SchemaDuplicate } from '@/api/types'
+import type { DossierPermission, DossierType, FieldDefinition, PieceType, SchemaDuplicate } from '@/api/types'
 import { schemaDuplicatesOf, toProblemDetail } from '@/api/http'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import FormDesigner from '@/components/dossier/FormDesigner.vue'
 import DocumentTemplateKeysEditor from '@/components/dossier/DocumentTemplateKeysEditor.vue'
+import PieceTypesEditor from '@/components/dossier/PieceTypesEditor.vue'
 import { validateFieldDefinitions } from '@/dossier/validateFieldDefinitions'
+import { validatePieceTypes } from '@/dossier/validatePieceTypes'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
 const { page, size } = useAdminListQuery()
@@ -47,6 +49,7 @@ const form = ref({
   allowUnknownFields: false,
   fieldDefinitions: [] as FieldDefinition[],
   documentTemplateKeys: [] as string[],
+  pieceTypes: [] as PieceType[],
 })
 const acl = ref({ code: '', subjectUserId: '', permission: 'VIEW' as DossierPermission })
 
@@ -55,10 +58,12 @@ const editDraft = ref<{
   allowUnknownFields: boolean
   fieldDefinitions: FieldDefinition[]
   documentTemplateKeys: string[]
+  pieceTypes: PieceType[]
 }>({
   allowUnknownFields: false,
   fieldDefinitions: [],
   documentTemplateKeys: [],
+  pieceTypes: [],
 })
 const editFieldErrors = ref<string[]>([])
 /** Refus 409 : détail et doublons affichés tels quels, sans redécouper la valeur. */
@@ -179,6 +184,15 @@ async function saveSla() {
   }
 }
 
+/** TODO §106 — erreurs de saisie des types de pièces, traduites. */
+function pieceTypeMessages(pieceTypes: PieceType[]): string[] {
+  return validatePieceTypes(pieceTypes).map((issue) =>
+    issue.code === 'tooMany'
+      ? t('dossier.pieceTypes.errors.tooMany')
+      : t(`dossier.pieceTypes.errors.${issue.code}`, { key: issue.key }),
+  )
+}
+
 function retentionPayload() {
   if (form.value.retentionMode === 'never') {
     return { retentionDays: null, retentionNever: true }
@@ -192,7 +206,10 @@ function retentionPayload() {
 async function create() {
   error.value = null
   schemaNotice.value = null
-  const fieldErrors = validateFieldDefinitions(form.value.fieldDefinitions)
+  const fieldErrors = [
+    ...validateFieldDefinitions(form.value.fieldDefinitions),
+    ...pieceTypeMessages(form.value.pieceTypes),
+  ]
   if (fieldErrors.length > 0) {
     error.value = fieldErrors.join(' ')
     return
@@ -207,6 +224,7 @@ async function create() {
       fieldDefinitions: form.value.fieldDefinitions,
       slaTargetHours: form.value.slaTargetHours || null,
       documentTemplateKeys: form.value.documentTemplateKeys,
+      pieceTypes: form.value.pieceTypes,
       ...retentionPayload(),
     })
     form.value = {
@@ -220,6 +238,7 @@ async function create() {
       allowUnknownFields: false,
       fieldDefinitions: [],
       documentTemplateKeys: [],
+      pieceTypes: [],
     }
     await refresh()
   } catch (err) {
@@ -233,6 +252,7 @@ function startEditFields(type: DossierType) {
     allowUnknownFields: type.allowUnknownFields,
     fieldDefinitions: [...type.fieldDefinitions],
     documentTemplateKeys: [...(type.documentTemplateKeys ?? [])],
+    pieceTypes: (type.pieceTypes ?? []).map((pieceType) => ({ ...pieceType })),
   }
   editFieldErrors.value = []
   editSchemaNotice.value = null
@@ -245,7 +265,10 @@ function cancelEditFields() {
 }
 
 async function saveEditFields() {
-  const fieldErrors = validateFieldDefinitions(editDraft.value.fieldDefinitions)
+  const fieldErrors = [
+    ...validateFieldDefinitions(editDraft.value.fieldDefinitions),
+    ...pieceTypeMessages(editDraft.value.pieceTypes),
+  ]
   if (fieldErrors.length > 0) {
     editFieldErrors.value = fieldErrors
     editSchemaNotice.value = null
@@ -256,6 +279,7 @@ async function saveEditFields() {
       allowUnknownFields: editDraft.value.allowUnknownFields,
       fieldDefinitions: editDraft.value.fieldDefinitions,
       documentTemplateKeys: editDraft.value.documentTemplateKeys,
+      pieceTypes: editDraft.value.pieceTypes,
     })
     editingCode.value = null
     editFieldErrors.value = []
@@ -449,6 +473,10 @@ const { t } = useI18n()
         <legend>{{ t('admin.types.allowedTemplates') }}</legend>
         <DocumentTemplateKeysEditor v-model="form.documentTemplateKeys" />
       </fieldset>
+      <fieldset>
+        <legend>{{ t('dossier.pieceTypes.legend') }}</legend>
+        <PieceTypesEditor v-model="form.pieceTypes" />
+      </fieldset>
       <button type="submit">{{ t('admin.types.create') }}</button>
     </form>
     <table>
@@ -509,6 +537,10 @@ const { t } = useI18n()
       <fieldset>
         <legend>{{ t('admin.types.allowedTemplates') }}</legend>
         <DocumentTemplateKeysEditor v-model="editDraft.documentTemplateKeys" />
+      </fieldset>
+      <fieldset>
+        <legend>{{ t('dossier.pieceTypes.legend') }}</legend>
+        <PieceTypesEditor v-model="editDraft.pieceTypes" />
       </fieldset>
       <div class="edit-fields-panel__actions">
         <button type="button" data-testid="type-edit-fields-save" @click="saveEditFields">{{ t('admin.types.save') }}</button>

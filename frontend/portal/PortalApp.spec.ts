@@ -100,6 +100,36 @@ describe('PortalApp', () => {
     expect(wrapper.find('[data-testid="portal-attachments"]').text()).toContain('Devis signé')
   })
 
+  /** TODO §106 — le tiers choisit le type de pièce parmi ceux que la tâche propose. */
+  it('lets the third party pick one of the offered piece types', async () => {
+    vi.spyOn(api, 'fetchTask').mockResolvedValue({
+      ...task,
+      pieceTypes: [{ key: 'preuveDomicile', label: 'Preuve de domicile' }],
+    })
+    const upload = vi.spyOn(api, 'uploadAttachment').mockResolvedValue({
+      id: 'a1', label: 'Facture', filename: 'facture.pdf', addedAt: '2026-10-25T10:00:00Z',
+    })
+    const wrapper = mount(PortalApp, { props: { token: TOKEN } })
+    await flushPromises()
+
+    const input = wrapper.find('#portal-file').element as HTMLInputElement
+    Object.defineProperty(input, 'files', { value: [new File(['%PDF'], 'facture.pdf', { type: 'application/pdf' })] })
+    await wrapper.find('[data-testid="portal-piece-type"]').setValue('preuveDomicile')
+    await wrapper.find('.portal__secondary').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(TOKEN, expect.any(File), '', 'preuveDomicile')
+    expect((wrapper.find('[data-testid="portal-piece-type"]').element as HTMLSelectElement).value).toBe('')
+  })
+
+  it('shows no piece type choice when the task offers none', async () => {
+    vi.spyOn(api, 'fetchTask').mockResolvedValue(task)
+    const wrapper = mount(PortalApp, { props: { token: TOKEN } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="portal-piece-type"]').exists()).toBe(false)
+  })
+
   it('reports an upload error without leaving the page (V-PORTAL-4)', async () => {
     vi.spyOn(api, 'fetchTask').mockResolvedValue(task)
     vi.spyOn(api, 'uploadAttachment').mockRejectedValue(new api.PortalApiError(413, ''))

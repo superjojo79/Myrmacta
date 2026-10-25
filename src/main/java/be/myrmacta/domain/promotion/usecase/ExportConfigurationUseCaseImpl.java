@@ -121,7 +121,8 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
 
     static DossierTypeDoc typeDoc(DossierType t) {
         return new DossierTypeDoc(t.code(), t.label(), t.workflowKey(), t.active(), t.allowUnknownFields(),
-                t.fieldDefinitions(), t.retentionDays(), t.retentionNever(), t.slaTargetHours(), t.documentTemplateKeys());
+                t.fieldDefinitions(), t.retentionDays(), t.retentionNever(), t.slaTargetHours(), t.documentTemplateKeys(),
+                t.pieceTypes());
     }
 
     static TaskQuestionSchemaDoc schemaDoc(TaskQuestionSchema s) {

@@ -1,5 +1,7 @@
 package be.myrmacta.domain.dossier.usecase;
 
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
+import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,6 +63,9 @@ class AddDossierElementUseCaseImplTest {
     @Mock
     SendNotificationUseCase sendNotificationUseCase;
 
+    @Mock
+    DossierTypeRepository typeRepository;
+
     AddDossierElementUseCaseImpl useCase;
 
     @BeforeEach
@@ -72,7 +77,8 @@ class AddDossierElementUseCaseImplTest {
                 accessPolicy,
                 linkRepository,
                 participantPort,
-                sendNotificationUseCase);
+                sendNotificationUseCase,
+                new AttachmentPieceTypes(typeRepository));
     }
 
     @Test

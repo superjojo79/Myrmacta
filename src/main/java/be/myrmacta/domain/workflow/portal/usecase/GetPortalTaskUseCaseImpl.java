@@ -1,5 +1,6 @@
 package be.myrmacta.domain.workflow.portal.usecase;
 
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
@@ -25,6 +26,7 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
     private final TaskQuestionSchemaRepository schemaRepository;
     private final DossierElementRepository elementRepository;
     private final PortalIdentityProviderPort identityProviders;
+    private final AttachmentPieceTypes pieceTypes;
 
     public GetPortalTaskUseCaseImpl(
             String tenantId,
@@ -40,6 +42,18 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
             TaskQuestionSchemaRepository schemaRepository,
             DossierElementRepository elementRepository,
             PortalIdentityProviderPort identityProviders) {
+        this(tenantId, accessResolver, schemaRepository, elementRepository, identityProviders, null);
+    }
+
+    /** @param pieceTypes {@code null} : aucun type de pièce proposé au tiers (TODO §106). */
+    public GetPortalTaskUseCaseImpl(
+            String tenantId,
+            PortalAccessResolver accessResolver,
+            TaskQuestionSchemaRepository schemaRepository,
+            DossierElementRepository elementRepository,
+            PortalIdentityProviderPort identityProviders,
+            AttachmentPieceTypes pieceTypes) {
+        this.pieceTypes = pieceTypes;
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.schemaRepository = Objects.requireNonNull(schemaRepository, "schemaRepository");
@@ -67,7 +81,8 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
                 ownAttachments(access),
                 access.identityRequired(),
                 List.of(),
-                access.identity() == null ? null : verifiedName(access.identity()));
+                access.identity() == null ? null : verifiedName(access.identity()),
+                pieceTypes == null ? List.of() : pieceTypes.offered(access.dossier(), access.pieceTypeKeys()));
     }
 
     private static String verifiedName(PortalLinkIdentity identity) {

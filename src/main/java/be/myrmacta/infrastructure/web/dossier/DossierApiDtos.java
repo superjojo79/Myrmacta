@@ -8,6 +8,7 @@ import be.myrmacta.domain.dossier.model.DossierRelationView;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.PieceType;
 import be.myrmacta.domain.dossier.model.RelationDirection;
 import be.myrmacta.domain.dossier.model.RelationType;
 import java.time.Instant;
@@ -25,7 +26,8 @@ record CreateDossierTypeRequest(
         Integer retentionDays,
         Boolean retentionNever,
         Integer slaTargetHours,
-        List<String> documentTemplateKeys) {}
+        List<String> documentTemplateKeys,
+        List<PieceType> pieceTypes) {}
 
 record UpdateDossierTypeRequest(
         String label,
@@ -37,7 +39,8 @@ record UpdateDossierTypeRequest(
         Boolean retentionNever,
         Integer slaTargetHours,
         Boolean clearSlaTargetHours,
-        List<String> documentTemplateKeys) {}
+        List<String> documentTemplateKeys,
+        List<PieceType> pieceTypes) {}
 
 record DossierTypeResponse(
         UUID id,
@@ -51,7 +54,8 @@ record DossierTypeResponse(
         Integer retentionDays,
         boolean retentionNever,
         Integer slaTargetHours,
-        List<String> documentTemplateKeys) {
+        List<String> documentTemplateKeys,
+        List<PieceType> pieceTypes) {
 
     static DossierTypeResponse from(DossierType type) {
         return new DossierTypeResponse(
@@ -66,7 +70,8 @@ record DossierTypeResponse(
                 type.retentionDays(),
                 type.retentionNever(),
                 type.slaTargetHours(),
-                type.documentTemplateKeys());
+                type.documentTemplateKeys(),
+                type.pieceTypes());
     }
 }
 

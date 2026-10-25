@@ -17,23 +17,34 @@ export function takeTokenFromLocation(
   return TOKEN_PATTERN.test(raw) ? raw : null
 }
 
-export type PortalLink = { kind: 'task' | 'signature'; token: string }
+/**
+ * TODO §103 (D-BEAUTH-PROOF) — `identity` : retour du fournisseur d'identité, `token` est alors la preuve d'identité
+ * qui remplace le jeton du lien ; `identity-refused` : refus neutre, sans jeton.
+ */
+export type PortalLink =
+  | { kind: 'task' | 'signature' | 'identity'; token: string }
+  | { kind: 'identity-refused'; token: null }
 
 const SIGNATURE_PREFIX = 'signature:'
+const IDENTITY_PREFIX = 'identity:'
+const IDENTITY_REFUSED = 'identity-refused'
 
 /**
- * TODO §72 — le lien de signature est `#signature:<jeton>` ; le lien de tâche (§68) reste `#<jeton>`.
- * Même règle : lu une fois, effacé de la barre d'adresse, jamais stocké.
+ * TODO §72 — le lien de signature est `#signature:<jeton>` ; le lien de tâche (§68) reste `#<jeton>` ; le retour d'une
+ * authentification forte (§103) est `#identity:<preuve>` ou `#identity-refused`. Même règle : lu une fois, effacé de la
+ * barre d'adresse, jamais stocké.
  */
 export function takeLinkFromLocation(
   location: Pick<Location, 'hash' | 'pathname' | 'search'>,
   history: Pick<History, 'replaceState'>,
 ): PortalLink | null {
   const raw = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
-  const kind = raw.startsWith(SIGNATURE_PREFIX) ? 'signature' : 'task'
-  const token = takeTokenFromLocation(
-    { ...location, hash: kind === 'signature' ? '#' + raw.slice(SIGNATURE_PREFIX.length) : location.hash },
-    history,
-  )
+  if (raw === IDENTITY_REFUSED) {
+    history.replaceState(null, '', location.pathname + location.search)
+    return { kind: 'identity-refused', token: null }
+  }
+  const prefix = raw.startsWith(SIGNATURE_PREFIX) ? SIGNATURE_PREFIX : raw.startsWith(IDENTITY_PREFIX) ? IDENTITY_PREFIX : ''
+  const kind = prefix === SIGNATURE_PREFIX ? 'signature' : prefix === IDENTITY_PREFIX ? 'identity' : 'task'
+  const token = takeTokenFromLocation({ ...location, hash: '#' + raw.slice(prefix.length) }, history)
   return token ? { kind, token } : null
 }

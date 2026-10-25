@@ -7,25 +7,47 @@ import PortalQuestionForm from './PortalQuestionForm.vue'
 import PortalSignature from './PortalSignature.vue'
 import {
   fetchTask,
+  navigateTo,
   PortalApiError,
+  startIdentity,
   submitAnswers,
   uploadAttachment,
   type PortalAttachment,
+  type PortalCredential,
   type PortalTask,
 } from './api'
 
 // TODO §68 — états de la page publique. Tout refus serveur (404) produit le même écran
 // (US-3) : la page ne cherche jamais à distinguer lien expiré, révoqué ou inconnu.
-type State = 'no-token' | 'loading' | 'denied' | 'ready' | 'done' | 'unavailable'
+// TODO §103 — `identity-required` : tâche à authentification forte, seul le choix du fournisseur est montré (T3b) ;
+// `identity-refused` : retour du fournisseur refusé, écran neutre (T10).
+type State =
+  | 'no-token'
+  | 'loading'
+  | 'denied'
+  | 'ready'
+  | 'done'
+  | 'unavailable'
+  | 'identity-required'
+  | 'identity-refused'
 
-const props = withDefaults(defineProps<{ token: string | null; kind?: 'task' | 'signature' }>(), { kind: 'task' })
+const props = withDefaults(
+  defineProps<{ token: string | null; kind?: 'task' | 'signature' | 'identity' | 'identity-refused' }>(),
+  { kind: 'task' },
+)
 
 const { t } = useI18n()
 watchEffect(() => {
   document.title = t('portal.pageTitle')
 })
-const state = ref<State>(props.token ? 'loading' : 'no-token')
+const state = ref<State>(props.kind === 'identity-refused' ? 'identity-refused' : props.token ? 'loading' : 'no-token')
 const isSignature = computed(() => props.kind === 'signature' && !!props.token)
+/** D-BEAUTH-PROOF — après le retour du fournisseur, la preuve d'identité remplace le jeton du lien. */
+const credential = computed<PortalCredential | null>(() =>
+  !props.token ? null : props.kind === 'identity' ? { proof: props.token } : props.token,
+)
+const redirecting = ref(false)
+const identityError = ref('')
 const task = ref<PortalTask | null>(null)
 const answers = ref<Record<string, unknown>>({})
 const attachments = ref<PortalAttachment[]>([])
@@ -59,27 +81,39 @@ function handleError(error: unknown): string {
 }
 
 onMounted(async () => {
-  if (!props.token || isSignature.value) return
+  if (!credential.value || isSignature.value) return
   try {
-    task.value = await fetchTask(props.token)
+    task.value = await fetchTask(credential.value)
     attachments.value = task.value.attachments
-    state.value = 'ready'
+    state.value = task.value.identity && !task.value.identity.verified ? 'identity-required' : 'ready'
   } catch (error) {
     handleError(error)
     if (state.value === 'loading') state.value = 'unavailable'
   }
 })
 
+async function onIdentify(provider: string) {
+  if (!props.token || props.kind !== 'task') return
+  redirecting.value = true
+  identityError.value = ''
+  try {
+    navigateTo(await startIdentity(props.token, provider))
+  } catch (error) {
+    identityError.value = handleError(error)
+    redirecting.value = false
+  }
+}
+
 async function onUpload() {
   const file = fileInput.value?.files?.[0]
-  if (!props.token || !file) {
+  if (!credential.value || !file) {
     uploadError.value = t('portal.chooseFile')
     return
   }
   uploading.value = true
   uploadError.value = ''
   try {
-    attachments.value = [...attachments.value, await uploadAttachment(props.token, file, uploadLabel.value)]
+    attachments.value = [...attachments.value, await uploadAttachment(credential.value, file, uploadLabel.value)]
     uploadLabel.value = ''
     if (fileInput.value) fileInput.value.value = ''
   } catch (error) {
@@ -90,11 +124,11 @@ async function onUpload() {
 }
 
 async function onSubmit() {
-  if (!props.token) return
+  if (!credential.value) return
   submitting.value = true
   formError.value = ''
   try {
-    await submitAnswers(props.token, answers.value)
+    await submitAnswers(credential.value, answers.value)
     state.value = 'done'
   } catch (error) {
     formError.value = handleError(error)
@@ -133,6 +167,31 @@ async function onSubmit() {
       <p>{{ t('portal.unavailable.body') }}</p>
     </section>
 
+    <section v-else-if="state === 'identity-refused'" class="portal__card" data-testid="portal-identity-refused">
+      <h1>{{ t('portal.identity.refused.title') }}</h1>
+      <p>{{ t('portal.identity.refused.body') }}</p>
+    </section>
+
+    <section v-else-if="state === 'identity-required' && task" class="portal__card" data-testid="portal-identity-required">
+      <h1>{{ task.taskName || t('portal.defaultTaskName') }}</h1>
+      <p>{{ t('portal.identity.body') }}</p>
+      <div class="portal__providers">
+        <button
+          v-for="provider in task.identity?.providers ?? []"
+          :key="provider.id"
+          type="button"
+          class="portal__primary"
+          :data-testid="`portal-identity-${provider.id}`"
+          :disabled="redirecting"
+          @click="onIdentify(provider.id)"
+        >
+          {{ provider.label }}
+        </button>
+      </div>
+      <p v-if="redirecting" class="portal__muted" aria-live="polite">{{ t('portal.identity.redirecting') }}</p>
+      <p v-if="identityError" class="portal__error" role="alert">{{ identityError }}</p>
+    </section>
+
     <section v-else-if="state === 'done'" class="portal__card" data-testid="portal-done" aria-live="polite">
       <h1>{{ t('portal.done.title') }}</h1>
       <p>{{ t('portal.done.body') }}</p>
@@ -141,6 +200,9 @@ async function onSubmit() {
     <template v-else-if="task">
       <section class="portal__card">
         <h1>{{ task.taskName || t('portal.defaultTaskName') }}</h1>
+        <p v-if="task.identity?.verified" class="portal__verified" data-testid="portal-identity-verified">
+          {{ task.identity.name ? t('portal.identity.verifiedAs', { name: task.identity.name }) : t('portal.identity.verified') }}
+        </p>
         <p v-if="task.instructions" class="portal__instructions">{{ task.instructions }}</p>
         <p class="portal__expiry">{{ t('portal.expiry', { date: expiresOn }) }}</p>
       </section>

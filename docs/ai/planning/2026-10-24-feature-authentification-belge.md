@@ -37,8 +37,8 @@ Plan initial de phase 1. Chaque tâche de code commence par un test rouge (skill
 
 ## Lot C — tiers du portail, page
 
-- [ ] C1 Page portail : écran d'identité, redirection, retour, refus neutre (Vitest).
-- [ ] C2 Playwright (mocks).
+- [x] C1 Page portail : écran d'identité, redirection, retour, refus neutre (Vitest).
+- [x] C2 Playwright (mocks).
 
 ## Lot D — documentation et clôture
 

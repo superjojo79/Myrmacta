@@ -21,6 +21,16 @@ export default {
     tooLarge: 'Le fichier dépasse la taille autorisée.',
     generic: 'La demande n’a pas pu être traitée.',
   },
+  identity: {
+    body: 'Pour répondre, identifiez-vous avec votre carte d’identité électronique ou itsme.',
+    redirecting: 'Redirection vers le service d’identification…',
+    verified: 'Identité vérifiée.',
+    verifiedAs: 'Identité vérifiée : {name}.',
+    refused: {
+      title: 'Identification non reconnue',
+      body: 'Votre identité n’a pas pu être vérifiée pour ce lien. Rouvrez le lien reçu par e-mail pour réessayer, ou contactez la personne qui vous l’a envoyé.',
+    },
+  },
   signature: {
     loading: 'Chargement du document à signer…',
     signed: { title: 'Merci, votre signature a bien été enregistrée' },

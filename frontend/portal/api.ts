@@ -19,14 +19,28 @@ export interface PortalAttachment {
   addedAt: string
 }
 
+/**
+ * TODO §103 (T3b) — présent seulement pour une tâche à authentification forte. Non vérifiée : la page ne montre que le
+ * choix du fournisseur ; vérifiée : le nom de la personne authentifiée.
+ */
+export interface PortalIdentity {
+  verified: boolean
+  name: string | null
+  providers: { id: string; label: string }[]
+}
+
 export interface PortalTask {
   dossierReference: string
   taskName: string | null
   instructions: string | null
-  form: { label: string; fields: PortalField[] }
+  form: { label: string | null; fields: PortalField[] }
   expiresAt: string
   attachments: PortalAttachment[]
+  identity?: PortalIdentity
 }
+
+/** Jeton du lien, ou preuve d'identité qui le remplace après une authentification forte (D-BEAUTH-PROOF). */
+export type PortalCredential = string | { proof: string }
 
 export class PortalApiError extends Error {
   readonly status: number
@@ -40,6 +54,15 @@ export class PortalApiError extends Error {
 }
 
 const TOKEN_HEADER = 'X-Portal-Token'
+const IDENTITY_HEADER = 'X-Portal-Identity'
+
+function setCredential(headers: Headers, credential: PortalCredential) {
+  if (typeof credential === 'string') {
+    headers.set(TOKEN_HEADER, credential)
+  } else {
+    headers.set(IDENTITY_HEADER, credential.proof)
+  }
+}
 
 /** `{contexte}/portal/…` → `{contexte}/api/portal/task` (routage par chemin, décision n° 14). */
 export function apiBase(pathname: string = window.location.pathname): string {
@@ -49,13 +72,13 @@ export function apiBase(pathname: string = window.location.pathname): string {
   return `${prefix}/api/portal/task`
 }
 
-async function request<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(credential: PortalCredential, path: string, init: RequestInit = {}, base = apiBase()): Promise<T> {
   const headers = new Headers(init.headers)
-  headers.set(TOKEN_HEADER, token)
+  setCredential(headers, credential)
   headers.set('Accept', 'application/json')
   // credentials: 'omit' — la page publique ne doit jamais transporter le cookie de session du SPA
   // interne, même si le tiers est aussi un utilisateur connecté dans le même navigateur.
-  const response = await fetch(apiBase() + path, { ...init, headers, credentials: 'omit' })
+  const response = await fetch(base + path, { ...init, headers, credentials: 'omit' })
   if (!response.ok) {
     let detail = ''
     try {
@@ -72,25 +95,43 @@ async function request<T>(token: string, path: string, init: RequestInit = {}): 
   return (await response.json()) as T
 }
 
-export function fetchTask(token: string): Promise<PortalTask> {
-  return request<PortalTask>(token, '')
+export function fetchTask(credential: PortalCredential): Promise<PortalTask> {
+  return request<PortalTask>(credential, '')
 }
 
-export function uploadAttachment(token: string, file: File, label: string): Promise<PortalAttachment> {
+export function uploadAttachment(credential: PortalCredential, file: File, label: string): Promise<PortalAttachment> {
   const body = new FormData()
   body.append('file', file)
   if (label.trim()) {
     body.append('label', label.trim())
   }
-  return request<PortalAttachment>(token, '/attachments', { method: 'POST', body })
+  return request<PortalAttachment>(credential, '/attachments', { method: 'POST', body })
 }
 
-export function submitAnswers(token: string, answers: Record<string, unknown>): Promise<void> {
-  return request<void>(token, '/submit', {
+export function submitAnswers(credential: PortalCredential, answers: Record<string, unknown>): Promise<void> {
+  return request<void>(credential, '/submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ answers }),
   })
+}
+
+/**
+ * TODO §103 (T3) — « S'identifier » : renvoie l'URL d'autorisation du fournisseur, vers laquelle la page navigue. Le jeton
+ * du lien reste en mémoire et disparaît avec la navigation : au retour, la preuve d'identité le remplace.
+ */
+export async function startIdentity(token: string, provider: string): Promise<string> {
+  const response = await request<{ authorizationUrl: string }>(token, '/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
+  }, apiBase().replace(/\/task$/, '/identity'))
+  return response.authorizationUrl
+}
+
+/** Navigation de premier niveau vers le fournisseur d'identité (isolée pour les tests). */
+export function navigateTo(url: string): void {
+  window.location.assign(url)
 }
 
 // TODO §72 — signature électronique (jeton dans l'en-tête, aucune donnée du dossier hors contexte).

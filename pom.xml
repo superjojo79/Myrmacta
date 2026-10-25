@@ -207,6 +207,30 @@
             </exclusions>
         </dependency>
 
+        <!-- TODO §106 (issue #211, lot A, C1) — pré-vérification IA : fournisseurs compatibles OpenAI (Mistral, vLLM,
+             Ollama, Azure OpenAI) via le ChatModel de Spring AI. Module seul, sans starter : aucune auto-configuration
+             (le modèle est construit à la main, seulement si app.precheck.enabled=true). -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai</artifactId>
+            <exclusions>
+                <!-- Même exclusion que pour Anthropic : kotlin-stdlib-common 1.9.10 tiré par okio (CVE-2026-53914),
+                     artefact sans classe JVM ; kotlin-stdlib fournit tout. -->
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-common</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- TODO §106 (issue #211, lot A, P6) — texte des pièces PDF pour la pré-vérification IA, sans OCR
+             (Apache License 2.0). -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

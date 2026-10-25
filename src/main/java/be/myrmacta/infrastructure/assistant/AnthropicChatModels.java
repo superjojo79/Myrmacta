@@ -19,23 +19,31 @@ public final class AnthropicChatModels {
     private AnthropicChatModels() {}
 
     public static AnthropicChatModel create(AssistantProperties properties) {
-        Duration timeout = Duration.ofSeconds(properties.timeoutSeconds());
+        return create(properties.baseUrl(), properties.apiKey(), properties.model(), properties.anthropicVersion(),
+                properties.timeoutSeconds(), properties.maxOutputTokens(), "flowforge-assistant");
+    }
+
+    /** TODO §106 (lot A) — même construction pour la pré-vérification IA, avec ses propres réglages. */
+    public static AnthropicChatModel create(String baseUrl, String apiKey, String model, String anthropicVersion,
+            int timeoutSeconds, int maxOutputTokens, String userAgent) {
+        String url = baseUrl.replaceAll("/+$", "");
+        Duration timeout = Duration.ofSeconds(timeoutSeconds);
         AnthropicBackend backend = AnthropicBackend.builder()
-                .baseUrl(properties.baseUrl().replaceAll("/+$", ""))
-                .apiKey(properties.apiKey())
+                .baseUrl(url)
+                .apiKey(apiKey)
                 .build();
         NoRedirectHttpClient http = new NoRedirectHttpClient(timeout);
         ClientOptions.Builder options = ClientOptions.builder()
-                .baseUrl(properties.baseUrl().replaceAll("/+$", ""))
+                .baseUrl(url)
                 .timeout(timeout)
                 .maxRetries(0)
-                .putHeader("User-Agent", "flowforge-assistant")
-                .putHeader("anthropic-version", properties.anthropicVersion());
+                .putHeader("User-Agent", userAgent)
+                .putHeader("anthropic-version", anthropicVersion);
         backend.applyCredentials(http, options);
         AnthropicClient client = new AnthropicClientImpl(options.httpClient(http).build());
         AnthropicChatOptions defaults = AnthropicChatOptions.builder()
-                .model(properties.model())
-                .maxTokens(properties.maxOutputTokens())
+                .model(model)
+                .maxTokens(maxOutputTokens)
                 .build();
         return AnthropicChatModel.builder().anthropicClient(client).anthropicClientAsync(client.async()).options(defaults).build();
     }

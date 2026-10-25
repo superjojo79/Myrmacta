@@ -13,7 +13,7 @@ tant que les lots A à D ne sont pas livrés.
 
 - [x] Phase 2 : revue des exigences, O1, O2, O4 tranchées (R1 à R7), O3 renvoyée en phase 3
 - [x] Phase 3 : conception validée (C1 à C8, HC1 à HC12) ; ordre P, A, B, C, D
-- [ ] Lot P fusionné : types de pièces
+- [x] Lot P fusionné : types de pièces (PR #231)
 - [ ] Lot A fusionné : fournisseur et extraction
 - [ ] Lot B fusionné : moteur, brique, REST, MCP
 - [ ] Lot C fusionné : panneau sur la fiche
@@ -31,12 +31,12 @@ tant que les lots A à D ne sont pas livrés.
 
 ### Lot A — Fournisseur et extraction
 
-- [ ] A1 : `PrecheckModelPort`, adaptateur `spring-ai-openai` (C1) et Anthropic ; dépendances et exclusions (HC1)
-- [ ] A2 : `app.precheck.*` (activation, fournisseur, URL, clé, modèle, délai, plafonds, bornes), démarrage refusé si
+- [x] A1 : `PrecheckModelPort`, adaptateur `spring-ai-openai` (C1) et Anthropic ; dépendances et exclusions (HC1)
+- [x] A2 : `app.precheck.*` (activation, fournisseur, URL, clé, modèle, délai, plafonds, bornes), démarrage refusé si
       incohérent
-- [ ] A3 : plafond de jetons par jour et par instance
-- [ ] A4 : `PieceTextExtractorPort` et PDFBox borné (pages, caractères), « non lisible »
-- [ ] A5 : faux fournisseur de test
+- [x] A3 : plafond de jetons par jour et par instance (`PrecheckBudget` ; l'usage est lu dans `precheck_run`, lot B)
+- [x] A4 : `PieceTextExtractorPort` et PDFBox borné (pages, caractères), « non lisible »
+- [x] A5 : faux fournisseur de test (`support/InMemoryOpenAiCompatibleProvider`)
 
 ### Lot B — Moteur et brique
 

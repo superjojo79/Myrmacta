@@ -142,6 +142,20 @@ for tenant in recette_idp recette_both; do
     <<<"$out"
 done
 
+# A3 — un agent qui a déjà un compte à mot de passe relie FAS en se ré-authentifiant : même sub, mêmes droits.
+"$kcadm" create users -r flowforge-recette_both -s username=agent.existant -s enabled=true -s email=bruno@simulateur.local \
+  -s firstName=Bruno -s lastName=Lambert -s 'attributes.tenant_id=["recette_both"]' >/dev/null 2>&1
+"$kcadm" set-password -r flowforge-recette_both --username agent.existant --new-password existant-1 >/dev/null
+"$kcadm" add-roles -r flowforge-recette_both --uusername agent.existant --rolename DOSSIER_MANAGER >/dev/null
+existing_sub="$("$kcadm" get users -r flowforge-recette_both -q exact=true -q username=agent.existant --fields id \
+  --format csv --noquotes)"
+out="$(smoke rattachement realm=flowforge-recette_both secret="$(bff_secret flowforge-recette_both)" \
+  redirect=http://localhost:8080/recette_both/login/oauth2/code/oidc user=bruno password=bruno idp=fas \
+  link_user=agent.existant link_password=existant-1)"
+check "both : compte existant relié à FAS, même sub et mêmes droits (A3)" \
+  jq -e --arg sub "$existing_sub" '.result == "logged-in" and .claims.sub == $sub and .claims.tenant_id == "recette_both"
+    and (.claims.realm_access.roles | index("DOSSIER_MANAGER"))' <<<"$out"
+
 out="$(smoke mot-de-passe realm=flowforge-recette_both secret="$(bff_secret flowforge-recette_both)" \
   redirect=http://localhost:8080/recette_both/login/oauth2/code/oidc user=agent.mdp password=agent.mdp)"
 check "both : connexion directe par mot de passe Keycloak" jq -e '.result == "logged-in" and .claims.tenant_id == "recette_both"' <<<"$out"

@@ -40,6 +40,15 @@ Ces rôles sont attribués côté Keycloak, pas dans FlowForge — voir
 [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles) pour créer un utilisateur
 et lui attribuer un rôle.
 
+**Se connecter avec l'eID ou itsme (TODO §103).** Si la commune a activé FAS ou itsme, la page de connexion propose
+leurs boutons à côté du mot de passe, ou à sa place en mode « fournisseurs seuls ». À la **première** connexion par ce
+moyen :
+
+- **sans compte existant** : un compte est créé, mais il est **refusé** tant qu'un administrateur Keycloak ne lui a pas
+  attribué le tenant et des rôles ([DEPLOIEMENT.md §6](DEPLOIEMENT.md#6-gérer-les-utilisateurs-et-leurs-rôles)) ;
+- **avec un compte existant** (même adresse e-mail) : Keycloak propose de le relier ; vous confirmez avec votre mot de
+  passe une seule fois et gardez vos droits, vos tâches et vos dossiers suivis.
+
 ------
 
 ## 1. Préalable — configurer un type de dossier
@@ -772,6 +781,17 @@ ouverte et les participants du workflow sont prévenus.
 **Notifications** (cloche) : *Réponse d'un tiers externe*, *Lien tiers expiré*, *Lien tiers non
 envoyé*. Les réponses du tiers sont tracées (auteur `portal:<identifiant du lien>`), ses pièces
 apparaissent dans les éléments du dossier.
+
+**Authentification forte du tiers (TODO §103).** Une tâche peut exiger que le tiers s'identifie par FAS (eID, itsme,
+eIDAS) ou par itsme. Le lien ne montre alors que le nom de la tâche et la référence du dossier, avec un bouton par moyen
+d'identification ; une fois identifié, le tiers voit la tâche et le rappel « Identité vérifiée : <nom> ». Si le dossier
+attend un autre numéro de registre national, il voit « Identification non reconnue » sans autre détail. L'identification
+vaut une heure (réglage de l'exploitant) : au-delà, ou après un rechargement de la page, il rouvre le lien de l'e-mail.
+
+Dans le panneau, le statut d'un tel lien porte la trace : moyen, niveau, nom vérifié (droit EDIT seulement) et résultat
+(*conforme au dossier*, *NRN enregistré dans le dossier*, *sans numéro de registre national*). Le NRN n'est jamais
+affiché ici : quand il est enregistré, il l'est dans le champ sensible du dossier, masqué comme les autres. Un lien
+*Non envoyé — champ d'identité absent, non textuel ou non sensible* signale un type de dossier à corriger.
 
 **Antivirus** : les pièces déposées par un tiers suivent la même politique que les dépôts
 internes — si l'antivirus n'est pas activé ou ne répond pas, le fichier est **accepté** (risque

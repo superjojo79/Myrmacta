@@ -362,3 +362,25 @@ travail ([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1
   hors profils `local`/`test`, le démarrage est refusé (`SecurityHeadersEnvironmentPostProcessor`, TODO §64).
 - **Tests :** `SecurityHeadersCustomizerTest`, `SecurityHeadersApiTest`, `SecurityHeadersHstsApiTest`,
   `FrontendCspLiteralConsistencyTest` ; Playwright `E2E-HDR-1/2`.
+
+## Implémentation — fournisseurs d'identité belges (TODO §103, issue #210)
+
+- **Agents.** FAS (BOSA : eID, itsme, eIDAS) et itsme en direct sont des fournisseurs d'identité OIDC du realm Keycloak du
+  tenant (identity brokering) : le BFF voit toujours un ID token du realm, avec `tenant_id` et `realm_access.roles`.
+  Assertion `private_key_jwt` signée avec la clé du realm, PKCE. Les mappers des fournisseurs ne posent que le prénom, le
+  nom et l'e-mail : jamais le NRN (A5), jamais le `tenant_id` (D-BEAUTH-FIRST-LOGIN).
+- **Première connexion.** Flux `first broker login` standard : compte créé sans `tenant_id` ni rôle (refusé jusqu'à
+  validation par un admin), ou rattachement à un compte existant après ré-authentification (même `sub`, mêmes droits).
+- **Mot de passe** (D-BEAUTH-PASSWORD, D-BEAUTH-IDP-ONLY). `both` (défaut) : formulaire de mot de passe et boutons des
+  fournisseurs. `idp-only` : flux `browser-fournisseurs` attaché au seul client BFF (`authenticationFlowBindingOverrides`) ;
+  le formulaire d'identifiant ne mène au mot de passe et à l'OTP que pour un compte de rôle `secours`, les autres sont
+  refusés (`Deny Access`). La console d'administration du realm garde le flux standard.
+- **Annuaire (A6, défaut corrigé).** `KnownUserRecordingSuccessHandler` appliquait l'enregistrement dans l'annuaire avant
+  toute vérification du `tenant_id` ; il partage désormais la règle de `TenantResolutionFilter` (`TenantMembership`) :
+  pas d'enregistrement, session fermée et 403 pour un utilisateur qui n'appartient pas au tenant.
+- **Provisionnement** (D-BEAUTH-PROVISION) : `<tenant>.realm.json` (gabarit `scripts/tenant-realm.jq`) et
+  `<tenant>.keycloak.sh` ; recette sur un vrai Keycloak par `scripts/keycloak-realm-smoke.sh` (D-BEAUTH-KC-SMOKE).
+- **Tiers du portail** : voir [26-portail-externe.md §5](26-portail-externe.md#5-authentification-forte-du-tiers-todo-103).
+- **Tests** : `KnownUserRecordingSuccessHandlerTest`, `TenantResolutionFilterTest`, `ProvisionTenantRealmScriptTest`, et la
+  recette Keycloak (16 vérifications).
+

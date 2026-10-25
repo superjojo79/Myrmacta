@@ -78,12 +78,32 @@ public record PortalStrongAuthProperties(
             String signingKeyFile, String signingKeyId, String previousSigningKeyFile, String previousSigningKeyId,
             String encryptionKeyFile, String encryptionKeyId) {}
 
+    /**
+     * {@code clientSecret} : si le fournisseur a émis un secret (FAS selon l'enregistrement BOSA), le client s'authentifie
+     * par {@code client_secret_post} ; sinon par {@code private_key_jwt} avec la clé de l'instance (itsme l'impose).
+     */
     public record Provider(
             String label, String issuerUri, String clientId, String scopes, String acrValues, Claims claims,
-            Map<IdentityAssuranceLevel, List<String>> levels) {
+            Map<IdentityAssuranceLevel, List<String>> levels, String clientSecret) {
 
         public Provider {
             levels = levels == null || levels.isEmpty() ? Map.of() : new EnumMap<>(levels);
+        }
+
+        public Provider(
+                String label, String issuerUri, String clientId, String scopes, String acrValues, Claims claims,
+                Map<IdentityAssuranceLevel, List<String>> levels) {
+            this(label, issuerUri, clientId, scopes, acrValues, claims, levels, null);
+        }
+
+        public boolean usesClientSecret() {
+            return !isBlank(clientSecret);
+        }
+
+        @Override
+        public String toString() {
+            return "Provider[issuerUri=" + issuerUri + ", clientId=" + clientId + ", clientSecret="
+                    + (usesClientSecret() ? "***" : "none") + "]";
         }
 
         void requireComplete(String id) {

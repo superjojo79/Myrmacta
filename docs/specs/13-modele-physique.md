@@ -248,6 +248,13 @@ ce projet ; jusque-là, la répartition tenant/`platform` se résume à
   type sous verrou exclusif ; `dossier_id` en `ON DELETE CASCADE`. C'est
   l'équivalent d'un index unique partiel sur une valeur JSONB, sans DDL
   à l'exécution.
+- **`portal_identity_attempt`, `portal_link_identity`** (TODO §103, changeSet `038`,
+  [26-portail-externe.md](26-portail-externe.md#5-authentification-forte-du-tiers-todo-103)) — authentification forte
+  d'un tiers du portail. La tentative garde le hash du `state`, le `nonce` et le vérificateur PKCE chiffré, à usage
+  unique (`consumed_at` posé en compare-and-set) et dix minutes. L'identité vérifiée (une par lien, clé primaire
+  `portal_link_id`) garde le hash de la preuve remise au navigateur et le NRN chiffré jusqu'à la soumission, qui les
+  efface : il ne reste que la trace (fournisseur, niveau, nom, résultat). Les deux tables sont en `ON DELETE CASCADE`
+  depuis `portal_link`, donc purgées avec le dossier.
 
 ---
 

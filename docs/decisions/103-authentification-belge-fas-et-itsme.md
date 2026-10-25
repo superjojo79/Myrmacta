@@ -1,9 +1,10 @@
 # §103 — Authentification belge (FAS, itsme) des agents et des tiers du portail
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#210](https://github.com/superjojo79/FlowForge/issues/210)). Lots A (Keycloak, agents) et B (portail,
-serveur) livrés ; restent la page du portail (lot C) et la documentation (lot D).
+[x] livré (issue [#210](https://github.com/superjojo79/FlowForge/issues/210)) : lots A (Keycloak, agents), B (portail,
+serveur), C (page du portail) et D (documentation, revue adversariale). Reste la recette contre les vrais FAS et itsme,
+qui dépend des contrats : suivie dans l'issue [#192](https://github.com/superjojo79/FlowForge/issues/192).
 
 **Constat.** FlowForge ne proposait ni eID, ni itsme, ni CSAM ; le realm Keycloak n'avait aucun fournisseur d'identité.
 Les communes l'exigent en premier (marché de Schaerbeek, échéance 05/11/2026). Les agents se connectent au BFF par OIDC
@@ -99,6 +100,31 @@ outbox).
 **Constats de la recette Keycloak.** Keycloak refuse un fournisseur qui valide les signatures sans URL JWKS : le JSON
 n'active la validation qu'avec les URL posées par le script (découverte). Le client BFF généré n'exige pas PKCE, comme le
 client du realm de dev : rien ne garantit que le BFF l'envoie.
+
+**Lot C — page du portail.** Écran d'identification (nom de la tâche, référence, un bouton par fournisseur), départ vers
+le fournisseur, retour `#identity:<preuve>` lu une fois puis effacé, `#identity-refused` neutre, rappel « Identité vérifiée
+: <nom> » ; panneau instructeur avec la trace et la raison `INVALID_IDENTITY_FIELD`. Vitest et Playwright `E2E-PORTAL-6`,
+`E2E-PORTAL-7`.
+
+**Revue adversariale (2026-10-25).**
+- *Corrigé* — le client du portail ne savait s'authentifier que par `private_key_jwt` : si BOSA n'émet qu'un secret pour
+  FAS, le portail ne pouvait pas s'y connecter alors que Keycloak le pouvait. `client_secret_post` quand un secret est
+  configuré (`OidcPortalIdentityProviderAdapterTest`).
+- *Corrigé* — le rattachement d'un compte existant (A3) n'était pas prouvé : scénario ajouté à la recette Keycloak (même
+  `sub`, mêmes rôles après ré-authentification).
+- *Vérifié* — `state` à usage unique avant tout appel au fournisseur ; preuve hachée, liée au lien, inutilisable une fois
+  le lien révoqué, expiré ou soumis ; aucune session ni cookie ; `Location` du retour construite depuis l'URL publique
+  configurée (pas de redirection ouverte) ; `start` exige l'en-tête du jeton (pas de requête intersite sans pré-vol) ;
+  aucun compte Keycloak pour un tiers ; JWKS sans partie privée ; motifs de refus journalisés sans NRN (messages internes
+  et noms de classes d'exception) ; NRN absent des journaux, des variables de process et des outbox (test de bout en bout).
+- *Accepté* — un tiers légitime d'un dossier dont le champ d'identité est vide peut amener une autre personne à
+  s'identifier sur son lien : le NRN de cette personne serait écrit dans ce dossier si elle soumettait la réponse ;
+  l'instructeur voit le nom vérifié dans la trace. Le porteur du seul jeton d'une tâche à authentification forte peut
+  faire lire un upload avant son refus, comme avant (limite par IP). En `idp-only`, l'identifiant saisi révèle si le
+  compte est un compte de secours. Désactiver l'authentification forte laisse sans réponse possible les tâches qui
+  l'exigent (guide de déploiement).
+- *Non vérifiable ici* — noms des claims et valeurs de niveau réels de FAS et d'itsme (réglables, aucune valeur par
+  défaut) : recette réelle dans #192.
 
 **Impacte :** `docs/specs/03-authentification.md`, `docs/specs/02-multi-tenant.md`, `docs/specs/26-portail-externe.md`,
 `docs/guides/DEPLOIEMENT.md`, `docs/guides/GUIDE-CONCEPTION-BPMN.md`, `docs/guides/GUIDE-UTILISATEUR.md`.

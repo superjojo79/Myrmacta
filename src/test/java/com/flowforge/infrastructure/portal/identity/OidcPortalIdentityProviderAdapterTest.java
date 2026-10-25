@@ -122,6 +122,22 @@ class OidcPortalIdentityProviderAdapterTest {
     private void token(HttpExchange exchange) throws IOException {
         Map<String, String> form = form(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         try {
+            if (form.containsKey("client_secret")) {
+                boolean secretOk = "s3cret".equals(form.get("client_secret")) && !form.containsKey("client_assertion");
+                String verifier = form.get("code_verifier");
+                if (!secretOk || verifier == null || !s256(verifier).equals(challenges.get(form.get("code")))) {
+                    json(exchange, 400, "{\"error\":\"invalid_client\"}");
+                    return;
+                }
+                lastAssertionAudience = "client_secret_post";
+                SignedJWT idToken = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("issuer").build(),
+                        new JWTClaimsSet.Builder().issuer(issuer).audience(CLIENT_ID).subject("fas-sub")
+                                .expirationTime(new Date(System.currentTimeMillis() + 60_000)).issueTime(new Date())
+                                .claim("nonce", "nonce-1").claim("egovNRN", NRN).claim("loa", "substantial").build());
+                idToken.sign(new RSASSASigner(idTokenSigner));
+                json(exchange, 200, "{\"id_token\":\"" + idToken.serialize() + "\"}");
+                return;
+            }
             SignedJWT assertion = SignedJWT.parse(form.get("client_assertion"));
             boolean signedByInstance = assertion.verify(new RSASSAVerifier(instanceSigningKey.toPublicJWK()));
             JWTClaimsSet claims = assertion.getJWTClaimsSet();
@@ -246,6 +262,26 @@ class OidcPortalIdentityProviderAdapterTest {
         challenges.put("code-2", query(again.authorizationUri()).get("code_challenge"));
         assertThatThrownBy(() -> withoutKey.complete("fas", "code-2", again.pkceVerifier(), "nonce-1"))
                 .isInstanceOf(IdentityProviderException.class);
+    }
+
+    /** FAS peut n'émettre qu'un secret : client_secret_post, sans assertion. */
+    @Test
+    void aProviderWithAClientSecretUsesClientSecretPost() throws Exception {
+        Path signing = dir.resolve("signing-secret.pem");
+        Files.writeString(signing, PemKeys.toPkcs8Pem(instanceSigningKey));
+        Provider fas = new Provider(null, issuer, CLIENT_ID, null, null, new Claims("egovNRN", null, null, "loa"),
+                Map.of(IdentityAssuranceLevel.SUBSTANTIAL, List.of("substantial")), "s3cret");
+        var properties = new PortalStrongAuthProperties(true, null, new Keys(signing.toString(), null, null, null, null, null),
+                null, Map.of("fas", fas));
+        adapter = new OidcPortalIdentityProviderAdapter(properties, REDIRECT, PortalIdentityKeys.load(properties.keys()),
+                Clock.systemUTC());
+        AuthorizationRequest request = beginAndAuthorize("code-secret");
+
+        VerifiedIdentity identity = adapter.complete("fas", "code-secret", request.pkceVerifier(), "nonce-1");
+
+        assertThat(identity.level()).isEqualTo(IdentityAssuranceLevel.SUBSTANTIAL);
+        assertThat(lastAssertionAudience).isEqualTo("client_secret_post");
+        assertThat(fas.toString()).doesNotContain("s3cret");
     }
 
     @Test

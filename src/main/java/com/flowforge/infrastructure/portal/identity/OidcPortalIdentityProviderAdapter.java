@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 /**
  * TODO §103 (issue #210, D-BEAUTH-PORTAL-CLIENT) — l'instance, cliente OIDC directe de FAS et d'itsme pour le portail :
  * code d'autorisation avec PKCE (S256), authentification du client par {@code private_key_jwt} (clé de l'instance,
- * T11), ID token éventuellement chiffré (itsme) puis vérifié sur la JWKS du fournisseur : signature, émetteur de la
+ * T11) ou, si le fournisseur a émis un secret, par {@code client_secret_post}, ID token éventuellement chiffré (itsme) puis vérifié sur la JWKS du fournisseur : signature, émetteur de la
  * découverte, audience, expiration, {@code nonce}. Sans session ni {@code oauth2Login} : le portail reste sans état
  * (D-PORTAL-CSRF-SESSION). Aucune donnée d'identité n'est journalisée.
  *
@@ -120,8 +120,12 @@ public final class OidcPortalIdentityProviderAdapter implements PortalIdentityPr
         form.put("redirect_uri", redirectUri);
         form.put("code_verifier", pkceVerifier);
         form.put("client_id", configuration.clientId());
-        form.put("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
-        form.put("client_assertion", clientAssertion(configuration.clientId(), endpoints.tokenEndpoint()));
+        if (configuration.usesClientSecret()) {
+            form.put("client_secret", configuration.clientSecret());
+        } else {
+            form.put("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
+            form.put("client_assertion", clientAssertion(configuration.clientId(), endpoints.tokenEndpoint()));
+        }
         String idToken = idToken(post(endpoints.tokenEndpoint(), form));
         JWTClaimsSet claims = verify(signedIdToken(idToken), endpoints, configuration, nonce);
         var names = configuration.claims();

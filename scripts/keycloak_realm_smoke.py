@@ -99,8 +99,12 @@ def totp(secret, at=None):
 
 
 def login(kc, realm, client_id, secret, username, password, idp=None, otp_secret=None, new_password=None,
-          redirect=APP + "/login/oauth2/code/oidc"):
-    """Connexion navigateur au client BFF, directe ou par un fournisseur ; renvoie (résultat, détail, secret OTP)."""
+          redirect=APP + "/login/oauth2/code/oidc", link_password=None, link_user=None):
+    """Connexion navigateur au client BFF, directe ou par un fournisseur ; renvoie (résultat, détail, secret OTP).
+
+    {@code link_user} et {@code link_password} : compte Keycloak existant auquel relier le fournisseur (A3) ; sans eux,
+    la proposition de rattachement est refusée.
+    """
     browser = Browser()
     enrolled = None
     query = {"client_id": client_id, "redirect_uri": redirect, "response_type": "code", "scope": "openid",
@@ -108,7 +112,7 @@ def login(kc, realm, client_id, secret, username, password, idp=None, otp_secret
     if idp:
         query["kc_idp_hint"] = idp
     kind, url, page = browser.get(f"{kc}/realms/{realm}/protocol/openid-connect/auth?" + urllib.parse.urlencode(query))
-    for _ in range(8):
+    for _ in range(10):
         if kind == "arrived":
             code = urllib.parse.parse_qs(urllib.parse.urlparse(url).query).get("code", [None])[0]
             if not code:
@@ -122,7 +126,16 @@ def login(kc, realm, client_id, secret, username, password, idp=None, otp_secret
         action, fields = form(page)
         if action is None:
             return "refused", page, enrolled
-        if 'name="password-new"' in page:
+        at_provider = "/realms/fas-simulateur/" in action
+        if 'value="linkAccount"' in page:
+            if link_password is None:
+                return "link-proposed", page, enrolled
+            fields.update(submitAction="linkAccount")
+        elif link_password is not None and not at_provider and 'name="password"' in page:
+            fields.update(password=link_password)
+            if 'name="username"' in page and link_user:
+                fields.update(username=link_user)
+        elif 'name="password-new"' in page:
             if new_password is None:
                 return "password-change-required", page, enrolled
             fields.update({"password-new": new_password, "password-confirm": new_password})
@@ -156,7 +169,8 @@ def main(argv):
     result, detail, enrolled = login(kc, options["realm"], options.get("client", "mon-app"), options["secret"],
                                      options["user"], options["password"], options.get("idp"),
                                      options.get("otp_secret"), options.get("new_password"),
-                                     options.get("redirect", APP + "/login/oauth2/code/oidc"))
+                                     options.get("redirect", APP + "/login/oauth2/code/oidc"),
+                                     options.get("link_password"), options.get("link_user"))
     print(json.dumps({"scenario": scenario, "result": result,
                       "claims": detail if isinstance(detail, dict) else None,
                       "page": None if isinstance(detail, dict) else _summary(detail),

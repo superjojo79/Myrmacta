@@ -1,5 +1,7 @@
 package be.myrmacta.infrastructure.web.dossier;
 
+import be.myrmacta.domain.dossier.AttachmentPieceTypes;
+import be.myrmacta.domain.dossier.port.in.ClassifyDossierAttachmentUseCase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,6 +66,12 @@ class DossierElementUploadControllerTest {
     @Mock
     Authentication authentication;
 
+    @Mock
+    AttachmentPieceTypes pieceTypes;
+
+    @Mock
+    ClassifyDossierAttachmentUseCase classifyUseCase;
+
     DossierElementUploadController controller;
 
     @BeforeEach
@@ -75,7 +83,9 @@ class DossierElementUploadControllerTest {
                 accessContextFactory,
                 new AttachmentUploadProperties(List.of("application/pdf")),
                 accessGuard,
-                attachmentScanPort);
+                attachmentScanPort,
+                pieceTypes,
+                classifyUseCase);
     }
 
     @Test
@@ -86,7 +96,7 @@ class DossierElementUploadControllerTest {
         doThrow(new AccessDeniedException("denied")).when(accessGuard).requireEditable(dossierId, actor);
         MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[] {1, 2, 3});
 
-        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", authentication))
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", null, authentication))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(documentStoragePort, never()).store(anyString(), anyString(), any());
@@ -101,7 +111,7 @@ class DossierElementUploadControllerTest {
         when(accessGuard.requireEditable(dossierId, actor)).thenReturn(closedDossier(dossierId));
         MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", new byte[] {1, 2, 3});
 
-        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", authentication))
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", null, authentication))
                 .isInstanceOf(DossierConflictException.class);
 
         verify(documentStoragePort, never()).store(anyString(), anyString(), any());
@@ -118,7 +128,7 @@ class DossierElementUploadControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "doc.pdf", "application/pdf", "not a real pdf".getBytes(StandardCharsets.UTF_8));
 
-        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", authentication))
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", null, authentication))
                 .isInstanceOf(InvalidDossierElementException.class);
 
         verify(documentStoragePort, never()).store(anyString(), anyString(), any());
@@ -137,7 +147,7 @@ class DossierElementUploadControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "doc.pdf", "application/pdf", "%PDF-content".getBytes(StandardCharsets.UTF_8));
 
-        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", authentication))
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", null, authentication))
                 .isInstanceOf(InvalidDossierElementException.class)
                 .hasMessageContaining("eicar-test-signature");
 
@@ -169,7 +179,7 @@ class DossierElementUploadControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "doc.pdf", "application/pdf", "%PDF-content".getBytes(StandardCharsets.UTF_8));
 
-        controller.upload(dossierId, file, "label", authentication);
+        controller.upload(dossierId, file, "label", null, authentication);
 
         verify(documentStoragePort).store(eq("tenant1"), eq("application/pdf"), any());
     }
@@ -214,5 +224,25 @@ class DossierElementUploadControllerTest {
                 "creator",
                 now,
                 null);
+    }
+
+    /** TODO §105 (D-PIECE-CLASSIFY) — un type de pièce inconnu est refusé avant toute écriture dans le stockage. */
+    @Test
+    void upload_unknownPieceKey_neverWritesToStorage() {
+        UUID dossierId = UUID.randomUUID();
+        AccessContext.User actor = AccessContext.user("u1", java.util.Set.of("DOSSIER_MANAGER"));
+        when(accessContextFactory.user(authentication)).thenReturn(actor);
+        Dossier dossier = new Dossier(dossierId, "tenant1", "R", "T", "L", be.myrmacta.domain.dossier.model.DossierStatus.OUVERT,
+                java.util.Map.of(), null, 0, "u1", Instant.now(), null, null, null, null, null);
+        when(accessGuard.requireEditable(dossierId, actor)).thenReturn(dossier);
+        doThrow(new InvalidDossierElementException("unknown pieceKey")).when(pieceTypes).require(dossier, "inconnu");
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "doc.pdf", "application/pdf", "%PDF-content".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> controller.upload(dossierId, file, "label", "inconnu", authentication))
+                .isInstanceOf(InvalidDossierElementException.class);
+
+        verify(documentStoragePort, never()).store(anyString(), anyString(), any());
+        verify(addDossierElementUseCase, never()).add(any(), any());
     }
 }

@@ -3,6 +3,7 @@ package be.myrmacta.domain.dossier.model;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -20,6 +21,7 @@ public record DossierType(
         boolean retentionNever,
         Integer slaTargetHours,
         List<String> documentTemplateKeys,
+        List<PieceType> pieceTypes,
         String createdBy,
         String updatedBy
 ) {
@@ -46,9 +48,31 @@ public record DossierType(
         }
         fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
         documentTemplateKeys = documentTemplateKeys == null ? List.of() : List.copyOf(documentTemplateKeys);
+        pieceTypes = pieceTypes == null ? List.of() : List.copyOf(pieceTypes);
         requireUniqueFieldNames(fieldDefinitions);
+        PieceType.requireValid(pieceTypes);
         validateRetention(retentionDays, retentionNever);
         validateSlaTargetHours(slaTargetHours);
+    }
+
+    /** Convenience for callers built before {@code pieceTypes} existed (TODO §105) — no piece type declared. */
+    public DossierType(
+            UUID id,
+            String tenantId,
+            String code,
+            String label,
+            String workflowKey,
+            boolean active,
+            boolean allowUnknownFields,
+            List<FieldDefinition> fieldDefinitions,
+            Integer retentionDays,
+            boolean retentionNever,
+            Integer slaTargetHours,
+            List<String> documentTemplateKeys,
+            String createdBy,
+            String updatedBy) {
+        this(id, tenantId, code, label, workflowKey, active, allowUnknownFields, fieldDefinitions,
+                retentionDays, retentionNever, slaTargetHours, documentTemplateKeys, List.of(), createdBy, updatedBy);
     }
 
     /**
@@ -138,6 +162,7 @@ public record DossierType(
                 "system");
     }
 
+    /** Update that keeps the declared piece types (callers built before TODO §105). */
     public DossierType withUpdate(
             String label,
             String workflowKey,
@@ -148,6 +173,22 @@ public record DossierType(
             boolean retentionNever,
             Integer slaTargetHours,
             List<String> documentTemplateKeys,
+            String updatedBy) {
+        return withUpdate(label, workflowKey, active, allowUnknownFields, fieldDefinitions, retentionDays,
+                retentionNever, slaTargetHours, documentTemplateKeys, pieceTypes, updatedBy);
+    }
+
+    public DossierType withUpdate(
+            String label,
+            String workflowKey,
+            boolean active,
+            boolean allowUnknownFields,
+            List<FieldDefinition> fieldDefinitions,
+            Integer retentionDays,
+            boolean retentionNever,
+            Integer slaTargetHours,
+            List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes,
             String updatedBy) {
         return new DossierType(
                 id,
@@ -162,8 +203,14 @@ public record DossierType(
                 retentionNever,
                 slaTargetHours,
                 documentTemplateKeys,
+                pieceTypes,
                 createdBy,
                 updatedBy);
+    }
+
+    /** TODO §105 — type de pièce déclaré pour cette clé, ou vide (clé inconnue ou retirée : pièce non classée). */
+    public Optional<PieceType> pieceType(String key) {
+        return pieceTypes.stream().filter(type -> type.key().equals(key)).findFirst();
     }
 
     /** Metadata only — true if any field is marked sensitive (no redaction yet). */

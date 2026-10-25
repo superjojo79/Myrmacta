@@ -383,6 +383,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         String recipientRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_RECIPIENT_ATTRIBUTE);
         String ttlRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_TTL_ATTRIBUTE);
         String identityRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_IDENTITY_ATTRIBUTE);
+        String pieceTypesRaw = userTask.getAttributeValue(FLOWABLE_NAMESPACE, PORTAL_PIECE_TYPES_ATTRIBUTE);
         if (recipientRaw == null) {
             if (ttlRaw != null) {
                 throw new InvalidBpmnException(owner + ": portalLinkTtlDays requires portalRecipient");
@@ -390,7 +391,17 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
             if (identityRaw != null) {
                 throw new InvalidBpmnException(owner + ": portalIdentityField requires portalRecipient");
             }
+            if (pieceTypesRaw != null) {
+                throw new InvalidBpmnException(owner + ": portalPieceTypes requires portalRecipient");
+            }
             return Optional.empty();
+        }
+        // TODO §105 (D-PIECE-PORTAL) — types de pièces proposés au tiers lors d'un dépôt.
+        List<String> pieceTypeKeys;
+        try {
+            pieceTypeKeys = pieceTypesRaw == null ? List.of() : PortalTaskDefinition.parsePieceTypeKeys(pieceTypesRaw);
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidBpmnException(owner + ": " + ex.getMessage(), ex);
         }
         // TODO §104 (T2) — dossierField: seulement : le NRN vit dans le dossier, jamais dans une variable (N2).
         PortalIdentityField identityField = identityRaw == null ? null : PortalIdentityField.parse(identityRaw)
@@ -420,13 +431,15 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
                 || !safeList(userTask.getCandidateGroups()).isEmpty()) {
             throw new InvalidBpmnException(owner + ": an external task must not be assigned internally");
         }
-        return Optional.of(new PortalTaskDefinition(userTask.getId(), schemaKey, source, ttlDays, identityField));
+        return Optional.of(new PortalTaskDefinition(
+                userTask.getId(), schemaKey, source, ttlDays, identityField, pieceTypeKeys));
     }
 
     private static final String FLOWABLE_NAMESPACE = "http://flowable.org/bpmn";
     private static final String PORTAL_RECIPIENT_ATTRIBUTE = "portalRecipient";
     private static final String PORTAL_TTL_ATTRIBUTE = "portalLinkTtlDays";
     private static final String PORTAL_IDENTITY_ATTRIBUTE = "portalIdentityField";
+    private static final String PORTAL_PIECE_TYPES_ATTRIBUTE = "portalPieceTypes";
     private static final int MAX_PORTAL_TTL_DAYS = 365;
     /** Même format que {@code TaskQuestionSchema} (clé de schéma {@code user-question}). */
     private static final Pattern SCHEMA_KEY = Pattern.compile("[A-Za-z0-9_-]+");

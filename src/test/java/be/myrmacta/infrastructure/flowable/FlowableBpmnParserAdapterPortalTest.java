@@ -78,6 +78,37 @@ class FlowableBpmnParserAdapterPortalTest {
                 .hasMessageContaining("portalIdentityField");
     }
 
+    /** TODO §105 (D-PIECE-PORTAL) — types de pièces proposés au tiers. */
+    @Test
+    void externalTaskWithPieceTypes_listsThemInOrder() {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:contactEmail\""
+                + " flowable:portalPieceTypes=\"preuveDomicile, certificat\"/>");
+
+        adapter.extractProcessDefinitionKey(xml);
+        assertThat(adapter.extractPortalTasks(xml)).singleElement()
+                .satisfies(t -> assertThat(t.pieceTypeKeys()).containsExactly("preuveDomicile", "certificat"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "Preuve", "preuve,preuve", "preuve;certificat"})
+    void invalidPieceTypes_areRejected(String value) {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:email\" flowable:portalPieceTypes=\"" + value + "\"/>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("portalPieceTypes");
+    }
+
+    @Test
+    void pieceTypesWithoutRecipient_areRejected() {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalPieceTypes=\"preuve\"/>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("portalPieceTypes requires portalRecipient");
+    }
+
     @Test
     void identityFieldWithoutRecipient_isRejected() {
         byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""

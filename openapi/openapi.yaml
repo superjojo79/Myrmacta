@@ -220,6 +220,36 @@ paths:
       responses:
         "200":
           description: OK
+  /api/dossiers/{id}/elements/{elementId}/piece-type:
+    put:
+      tags:
+      - dossier-element-upload-controller
+      operationId: classify
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: elementId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassifyAttachmentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DossierElementView"
   /api/dmn-decision-drafts/{decisionKey}:
     get:
       tags:
@@ -1107,6 +1137,11 @@ paths:
       - name: label
         in: query
         required: true
+        schema:
+          type: string
+      - name: pieceKey
+        in: query
+        required: false
         schema:
           type: string
       requestBody:
@@ -3549,6 +3584,39 @@ components:
           format: date-time
         lastCompiledSha256:
           type: string
+    ClassifyAttachmentRequest:
+      type: object
+      properties:
+        pieceKey:
+          type: string
+    DossierElementView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - PRODUCED_DOC
+          - ATTACHMENT
+          - INFORMATION
+          - NOTE
+          - LINK
+        label:
+          type: string
+        addedBy:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+        workflowStepId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: {}
+        downloadable:
+          type: boolean
     SaveDmnDraftRequest:
       type: object
       properties:
@@ -4107,34 +4175,6 @@ components:
         metadata:
           type: object
           additionalProperties: {}
-    DossierElementView:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        type:
-          type: string
-          enum:
-          - PRODUCED_DOC
-          - ATTACHMENT
-          - INFORMATION
-          - NOTE
-          - LINK
-        label:
-          type: string
-        addedBy:
-          type: string
-        addedAt:
-          type: string
-          format: date-time
-        workflowStepId:
-          type: string
-        metadata:
-          type: object
-          additionalProperties: {}
-        downloadable:
-          type: boolean
     IdentityResponse:
       type: object
       properties:
@@ -4221,6 +4261,19 @@ components:
           type: array
           items:
             type: string
+        pieceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PieceType"
+    PieceType:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        sensitive:
+          type: boolean
     DossierTypeResponse:
       type: object
       properties:
@@ -4255,6 +4308,10 @@ components:
           type: array
           items:
             type: string
+        pieceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PieceType"
     EvaluateRulesRequest:
       type: object
       properties:
@@ -4728,6 +4785,10 @@ components:
           type: array
           items:
             type: string
+        pieceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PieceType"
     SchemaIncompatibleProblem:
       type: object
       description: "409: the new schema is incompatible with existing dossiers"
@@ -5496,6 +5557,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Provider"
+    PieceTypeOption:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
     PortalTaskResponse:
       type: object
       properties:
@@ -5516,6 +5584,10 @@ components:
             $ref: "#/components/schemas/Attachment"
         identity:
           $ref: "#/components/schemas/Identity"
+        pieceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PieceTypeOption"
     Provider:
       type: object
       properties:

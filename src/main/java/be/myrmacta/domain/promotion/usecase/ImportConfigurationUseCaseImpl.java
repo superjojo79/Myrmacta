@@ -515,12 +515,12 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         if (action == PlanAction.CREATE) {
             createType.create(new CreateDossierTypeUseCase.CreateDossierTypeCommand(tenantId, d.code(), d.label(),
                     d.workflowKey(), d.active(), d.allowUnknownFields(), d.fieldDefinitions(), d.retentionDays(),
-                    d.retentionNever(), d.slaTargetHours(), d.documentTemplateKeys()), actor);
+                    d.retentionNever(), d.slaTargetHours(), d.documentTemplateKeys(), d.pieceTypes()), actor);
             return "created";
         }
         updateType.update(new UpdateDossierTypeUseCase.UpdateDossierTypeCommand(tenantId, d.code(), d.label(), d.workflowKey(),
                 d.active(), d.allowUnknownFields(), d.fieldDefinitions(), d.retentionDays(), d.retentionNever(),
-                d.slaTargetHours(), d.documentTemplateKeys()), actor);
+                d.slaTargetHours(), d.documentTemplateKeys(), d.pieceTypes()), actor);
         return "updated";
     }
 

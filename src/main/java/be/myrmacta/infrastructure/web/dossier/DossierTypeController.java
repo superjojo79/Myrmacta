@@ -80,7 +80,8 @@ public class DossierTypeController {
                         request.retentionDays(),
                         Boolean.TRUE.equals(request.retentionNever()),
                         request.slaTargetHours(),
-                        listOrEmptyStrings(request.documentTemplateKeys())),
+                        listOrEmptyStrings(request.documentTemplateKeys()),
+                        request.pieceTypes() == null ? List.of() : request.pieceTypes()),
                 actor);
         return ResponseEntity
                 .created(URI.create("/api/dossier-types/" + type.code()))
@@ -125,7 +126,8 @@ public class DossierTypeController {
                                 request.clearSlaTargetHours()),
                         request.documentTemplateKeys() == null
                                 ? existing.documentTemplateKeys()
-                                : listOrEmptyStrings(request.documentTemplateKeys())),
+                                : listOrEmptyStrings(request.documentTemplateKeys()),
+                        request.pieceTypes()), // TODO §105 : null garde les types de pièces déclarés
                 actor);
         return ResponseEntity.ok(DossierTypeResponse.from(type));
     }

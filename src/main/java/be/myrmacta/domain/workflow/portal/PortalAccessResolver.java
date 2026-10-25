@@ -14,7 +14,9 @@ import be.myrmacta.domain.workflow.portal.port.out.PortalTaskLookupPort;
 import be.myrmacta.domain.workflow.portal.port.out.PortalTokenPort;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * TODO §68 — jeton → lien {@code ACTIVE}, non expiré (contrôle paresseux, indépendant du job
@@ -111,7 +113,10 @@ public final class PortalAccessResolver {
         if (!repository.transition(link, accessed)) {
             throw new PortalAccessDeniedException("link " + link.id() + " changed concurrently");
         }
-        return new ResolvedAccess(accessed, task, dossier, identityFieldOf(link), found.identity());
+        Optional<PortalTaskDefinition> definition = taskLookup.findExternalTaskDefinition(link.taskId());
+        return new ResolvedAccess(accessed, task, dossier,
+                definition.map(PortalTaskDefinition::identityField).orElse(null), found.identity(),
+                definition.map(PortalTaskDefinition::pieceTypeKeys).orElse(List.of()));
     }
 
     private record Credentialed(PortalLink link, PortalLinkIdentity identity) {}
@@ -139,12 +144,6 @@ public final class PortalAccessResolver {
                 .orElseThrow(() -> new PortalAccessDeniedException("unknown, expired or used identity proof"));
     }
 
-    private PortalIdentityField identityFieldOf(PortalLink link) {
-        return taskLookup.findExternalTaskDefinition(link.taskId())
-                .map(PortalTaskDefinition::identityField)
-                .orElse(null);
-    }
-
     private PortalLink usableLink(String token, Instant now) {
         if (token == null || token.isBlank() || token.length() > MAX_TOKEN_LENGTH) {
             throw new PortalAccessDeniedException("missing or malformed token");
@@ -159,14 +158,24 @@ public final class PortalAccessResolver {
 
     /**
      * {@code identityField} : champ d'identité de la tâche, nul sans authentification forte. {@code identity} : identité
-     * vérifiée présentée par la preuve, nulle sur un accès par le jeton.
+     * vérifiée présentée par la preuve, nulle sur un accès par le jeton. {@code pieceTypeKeys} : types de pièces que la
+     * tâche propose au tiers (TODO §105), vide sans {@code flowable:portalPieceTypes}.
      */
     public record ResolvedAccess(
             PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier, PortalIdentityField identityField,
-            PortalLinkIdentity identity) {
+            PortalLinkIdentity identity, List<String> pieceTypeKeys) {
+
+        public ResolvedAccess {
+            pieceTypeKeys = pieceTypeKeys == null ? List.of() : List.copyOf(pieceTypeKeys);
+        }
 
         public ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier) {
-            this(link, task, dossier, null, null);
+            this(link, task, dossier, null, null, List.of());
+        }
+
+        public ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier,
+                PortalIdentityField identityField, PortalLinkIdentity identity) {
+            this(link, task, dossier, identityField, identity, List.of());
         }
 
         public boolean identityRequired() {

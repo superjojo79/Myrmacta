@@ -72,9 +72,10 @@ class PortalController {
             @RequestHeader(name = TOKEN_HEADER, required = false) String token,
             @RequestHeader(name = IDENTITY_HEADER, required = false) String proof,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(name = "label", required = false) String label) {
+            @RequestParam(name = "label", required = false) String label,
+            @RequestParam(name = "pieceKey", required = false) String pieceKey) {
         var element = attachmentUseCase.add(PortalCredential.of(token, proof), new AddPortalAttachmentUseCase.AttachmentUpload(
-                label, file.getOriginalFilename(), file.getContentType(), bytes(file)));
+                label, file.getOriginalFilename(), file.getContentType(), bytes(file), pieceKey));
         return ResponseEntity.status(HttpStatus.CREATED).body(PortalTaskResponse.Attachment.from(element));
     }
 

@@ -45,6 +45,7 @@ public final class CreateDossierTypeUseCaseImpl implements CreateDossierTypeUseC
                 command.retentionNever(),
                 command.slaTargetHours(),
                 command.documentTemplateKeys(),
+                command.pieceTypes(),
                 actor.userId(),
                 actor.userId());
         fieldRules.validateDefinitions(type.fieldDefinitions()); // TODO §80 : règles (calcul, visibilité, obligation)

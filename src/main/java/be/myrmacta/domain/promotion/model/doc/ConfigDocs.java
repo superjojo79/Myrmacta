@@ -2,6 +2,7 @@ package be.myrmacta.domain.promotion.model.doc;
 
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.PieceType;
 import be.myrmacta.domain.workflow.model.WorkflowStatusDefinition;
 import java.util.List;
 import java.util.Map;
@@ -24,11 +25,21 @@ public final class ConfigDocs {
             Integer retentionDays,
             boolean retentionNever,
             Integer slaTargetHours,
-            List<String> documentTemplateKeys) {
+            List<String> documentTemplateKeys,
+            List<PieceType> pieceTypes) {
 
         public DossierTypeDoc {
             fieldDefinitions = fieldDefinitions == null ? List.of() : List.copyOf(fieldDefinitions);
             documentTemplateKeys = documentTemplateKeys == null ? List.of() : List.copyOf(documentTemplateKeys);
+            // TODO §105 — un bundle antérieur aux types de pièces n'en déclare aucun (même règle que documentTemplateKeys).
+            pieceTypes = pieceTypes == null ? List.of() : List.copyOf(pieceTypes);
+        }
+
+        public DossierTypeDoc(String code, String label, String workflowKey, boolean active, boolean allowUnknownFields,
+                List<FieldDefinition> fieldDefinitions, Integer retentionDays, boolean retentionNever,
+                Integer slaTargetHours, List<String> documentTemplateKeys) {
+            this(code, label, workflowKey, active, allowUnknownFields, fieldDefinitions, retentionDays, retentionNever,
+                    slaTargetHours, documentTemplateKeys, List.of());
         }
     }
 

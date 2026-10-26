@@ -15,8 +15,8 @@ tant que les lots A à D ne sont pas livrés.
 - [x] Phase 3 : conception validée (C1 à C8, HC1 à HC12) ; ordre P, A, B, C, D
 - [x] Lot P fusionné : types de pièces (PR #231)
 - [x] Lot A fusionné : fournisseur et extraction (PR #233)
-- [ ] Lot B fusionné : moteur, brique, REST, MCP (PR en cours)
-- [ ] Lot C fusionné : panneau sur la fiche
+- [x] Lot B fusionné : moteur, brique, REST, MCP (PR #234)
+- [ ] Lot C fusionné : panneau sur la fiche (PR en cours)
 - [ ] Lot D fusionné : docs, exemple, évaluation, revue adversariale ; `docs/ai` de la feature vidé ; #211 close
 
 ## Task Breakdown
@@ -50,8 +50,8 @@ tant que les lots A à D ne sont pas livrés.
 
 ### Lot C — Panneau
 
-- [ ] C1 : `PrecheckPanel.vue`, marquage IA, accepter / écarter, relancer, i18n fr/en
-- [ ] C2 : Vitest et Playwright
+- [x] C1 : `PrecheckPanel.vue`, marquage IA, accepter / écarter, relancer, i18n fr/en
+- [x] C2 : Vitest et Playwright
 
 ### Lot D — Docs et évaluation
 

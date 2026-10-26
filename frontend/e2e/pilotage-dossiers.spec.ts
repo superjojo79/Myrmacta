@@ -555,3 +555,113 @@ test('E2E-BASE-2 logout from a nested route posts to /api/auth/logout', async ({
   await page.getByRole('button', { name: 'Déconnexion' }).click()
   expect(new URL((await logout).url()).pathname).toBe('/api/auth/logout')
 })
+
+// TODO §106 (issue #211, lot C) — panneau « Pré-vérification » : constats sourcés, marquage IA, décisions, relance.
+function precheckRun(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    trigger: 'WORKFLOW',
+    requestedBy: 'system',
+    status: 'SUCCEEDED',
+    failure: null,
+    provider: 'openai-compatible',
+    model: 'mistral-small',
+    promptVersion: 'v1',
+    summary: 'Preuve de domicile à Namur ; téléphone absent.',
+    tokensIn: 120,
+    tokensOut: 30,
+    discarded: 0,
+    createdAt: '2026-10-26T09:00:00Z',
+    finishedAt: '2026-10-26T09:00:05Z',
+    findings: [
+      { id: 'f1', kind: 'MISSING', origin: 'DETERMINISTIC', sourceType: 'FIELD', sourceRef: 'telephone',
+        message: 'Champ obligatoire manquant : Téléphone.', confidence: null, decision: null, decidedBy: null, decidedAt: null },
+      { id: 'f2', kind: 'INCONSISTENT', origin: 'MODEL', sourceType: 'QUESTION', sourceRef: 'adresse',
+        message: 'La rue de la preuve diffère de celle du formulaire.', confidence: 0.8, decision: null, decidedBy: null, decidedAt: null },
+      { id: 'f3', kind: 'TO_CHECK', origin: 'MODEL', sourceType: 'PIECE', sourceRef: 'preuveDomicile',
+        message: 'La date de la facture est peu lisible.', confidence: 0.4, decision: null, decidedBy: null, decidedAt: null },
+    ],
+    ...overrides,
+  }
+}
+
+test('E2E-PRECHECK-1 an agent reads the AI-marked findings, accepts two, dismisses one, then reruns', async ({ page }) => {
+  await mockSession(page)
+  let runs: Array<ReturnType<typeof precheckRun>> = [precheckRun('r1')]
+  const decisions: unknown[] = []
+  let polls = 0
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/prechecks`, async (route) => {
+    if (route.request().method() === 'POST') {
+      const pending = precheckRun('r2', { trigger: 'MANUAL', requestedBy: 'user-1', status: 'PENDING', summary: null,
+        findings: [], finishedAt: null, createdAt: '2026-10-26T10:00:00Z' })
+      runs = [pending, ...runs]
+      return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify(pending) })
+    }
+    if (runs[0]!.status === 'PENDING' && ++polls > 1) {
+      runs[0] = precheckRun('r2', { trigger: 'MANUAL', requestedBy: 'user-1', createdAt: '2026-10-26T10:00:00Z' })
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(runs) })
+  })
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/prechecks/r1/findings/*/decision`, async (route) => {
+    const findingId = route.request().url().split('/findings/')[1]!.split('/')[0]!
+    const { decision } = route.request().postDataJSON() as { decision: string | null }
+    decisions.push({ findingId, decision })
+    const finding = runs.find((r) => r.id === 'r1')!.findings.find((f) => f.id === findingId)!
+    Object.assign(finding, { decision, decidedBy: 'user-1', decidedAt: '2026-10-26T09:30:00Z' })
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(finding) })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const panel = page.getByRole('region', { name: 'Pré-vérification' })
+  await expect(panel).toContainText("Constats indicatifs : l'agent vérifie et décide.")
+  await expect(panel.getByTestId('precheck-summary')).toContainText('IA')
+  const findings = panel.getByTestId('precheck-finding')
+  await expect(findings).toHaveCount(3)
+  await expect(findings.nth(0)).toContainText('Contrôle')
+  await expect(findings.nth(0)).not.toContainText('IA')
+  await expect(findings.nth(1)).toContainText('IA')
+  await expect(findings.nth(1)).toContainText('confiance 80 %')
+
+  await panel.getByRole('button', { name: 'Accepter le constat : Champ obligatoire manquant : Téléphone.' }).click()
+  await expect(findings.nth(0)).toHaveAttribute('data-decision', 'ACCEPTED')
+  await panel.getByRole('button', { name: 'Accepter le constat : La rue de la preuve diffère de celle du formulaire.' }).click()
+  await expect(findings.nth(1)).toHaveAttribute('data-decision', 'ACCEPTED')
+  await panel.getByRole('button', { name: 'Écarter le constat : La date de la facture est peu lisible.' }).click()
+  await expect(findings.nth(2)).toHaveAttribute('data-decision', 'DISMISSED')
+  await expect(findings.nth(2).getByTestId('precheck-decision')).toContainText('Écarté par user-1')
+  expect(decisions).toEqual([
+    { findingId: 'f1', decision: 'ACCEPTED' },
+    { findingId: 'f2', decision: 'ACCEPTED' },
+    { findingId: 'f3', decision: 'DISMISSED' },
+  ])
+
+  await panel.getByRole('button', { name: 'Relancer' }).click()
+  await expect(panel.getByTestId('precheck-status')).toContainText('En attente')
+  await expect(panel.getByRole('button', { name: 'Relancer' })).toBeDisabled()
+  await expect(panel.getByTestId('precheck-status')).toContainText('Terminée', { timeout: 15_000 })
+  // L'exécution précédente reste consultable, avec ses décisions.
+  await panel.getByTestId('precheck-run-select').selectOption('r1')
+  await expect(findings.nth(2)).toHaveAttribute('data-decision', 'DISMISSED')
+})
+
+test('E2E-PRECHECK-2 a viewer reads the pre-check without any action, and the panel stays away when the feature is off', async ({ page }) => {
+  await mockSession(page, { roles: ['DOSSIER_VIEWER'] })
+  let enabled = true
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/prechecks`, (route) =>
+    enabled
+      ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([precheckRun('r1')]) })
+      : route.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Pre-check not found' }) }),
+  )
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const panel = page.getByRole('region', { name: 'Pré-vérification' })
+  await expect(panel.getByTestId('precheck-finding')).toHaveCount(3)
+  await expect(panel.getByRole('button')).toHaveCount(0)
+
+  enabled = false
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Éléments' })).toBeVisible()
+  await expect(page.getByTestId('precheck-panel')).toHaveCount(0)
+})

@@ -3,8 +3,8 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] en cours (issue [#211](https://github.com/superjojo79/FlowForge/issues/211)), livré par lots : **P** (types de pièces)
-[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur, brique, REST, MCP) [x] livré ; **C** (panneau),
-**D** (documentation et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
+[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur, brique, REST, MCP) [x] livré ; **C** (panneau)
+[x] livré ; **D** (documentation et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
 
 **Constat.** Une brique de workflow doit pré-vérifier un dossier avant son instruction (complétude, règles, synthèse
 avec constats sourcés), l'agent gardant la décision. Or une pièce jointe n'était qu'un élément `ATTACHMENT` à libellé
@@ -89,10 +89,21 @@ ni l'exclusion des pièces sensibles n'étaient possibles. Le lot P comble ce ma
   les variables courantes du process. MCP `get_dossier_precheck` lit les 3 dernières ; les deux outils sont du mode
   opération, absents de l'assistant de conception (D-ASSIST-TOOLS).
 
-**Décisions des lots suivants (tranchées, non encore livrées).** Panneau « Pré-vérification » sur la fiche (lot C) :
-marquage IA, accepter ou écarter, relancer ; la palette pose `flowable:async="true"` sur la brique. Lot D : spec, guides
-(fournisseurs, RGPD, AI Act), exemple riverain et jeu d'évaluation ; détail : `docs/ai/` de la feature
-`preverification-ia`, versé ici au lot D.
+**Lot C — panneau sur la fiche (livré ; fonction toujours désactivée par défaut).**
+
+- **D-PRECHECK-PANEL** — panneau « Pré-vérification » (région nommée) après les pièces de la fiche, masqué tant que la
+  fonction est désactivée (404) ou qu'aucune exécution n'existe. Il affiche l'exécution la plus récente (les
+  précédentes restent consultables), son statut, ses comptes, la synthèse et chaque constat avec son type, sa source et
+  son origine : « IA » (et la confiance) pour ce que propose le modèle, « Contrôle » pour le déterministe, avec la
+  mention que les constats sont indicatifs et que l'agent décide (transparence, AI Act). Avec EDIT et dossier non clos :
+  accepter, écarter, annuler une décision (boutons nommés d'après le constat) et « Relancer » ; le panneau se rafraîchit
+  toutes les 5 s, au plus 5 minutes, tant que l'exécution est en file ou en cours. Une exécution en échec affiche un
+  motif traduit, jamais un message du fournisseur. `TENANT_ADMIN` : export JSON du journal de l'exécution affichée.
+- La palette crée la brique avec `flowable:async="true"` (drapeau `async` du marqueur, catalogue v5) : déposée telle
+  quelle, elle n'est plus refusée au déploiement.
+
+**Décisions du lot suivant (tranchées, non encore livrées).** Lot D : spec, guides (fournisseurs, RGPD, AI Act), exemple
+riverain et jeu d'évaluation ; détail : `docs/ai/` de la feature `preverification-ia`, versé ici au lot D.
 
 **Revue adversariale du lot P (2026-10-25).**
 

@@ -45,6 +45,13 @@ class BuildingBlockCatalogTest {
         assertThat(covered).containsExactlyInAnyOrderElementsOf(AllowedBpmnDelegates.NAMES);
     }
 
+    /** TODO §106 (D-PRECHECK-BLOCK) — la palette crée la pré-vérification asynchrone, seule brique dans ce cas. */
+    @Test
+    void onlyTheAiPrecheckIsCreatedAsynchronous() {
+        assertThat(blocks.stream().filter(b -> b.marker().async()).map(BuildingBlock::id))
+                .containsExactly("ai-precheck");
+    }
+
     @Test
     void parametersAreWellFormed() {
         for (BuildingBlock block : blocks) {

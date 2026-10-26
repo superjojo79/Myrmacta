@@ -50,6 +50,16 @@ describe('blockPaletteProvider (S-UI-1)', () => {
     expect(recognizeBlock(shape.businessObject as never, TEST_BLOCKS)?.id).toBe(id)
   })
 
+  it('crée asynchrone une brique dont le marqueur l\'exige, et elle seule (TODO §106)', () => {
+    const precheck = {
+      ...TEST_BLOCKS[0]!,
+      id: 'ai-precheck',
+      marker: { delegate: 'aiPrecheckTask', serviceTaskType: null, formKeyPrefix: null, portalRecipient: false, async: true },
+    }
+    expect(createBlockShape(precheck, fakeFactory()).businessObject.get('flowable:async')).toBe('true')
+    expect(createBlockShape(TEST_BLOCKS[0]!, fakeFactory()).businessObject.get('flowable:async')).toBeUndefined()
+  })
+
   it('déclare xmlns:flowable avant de créer une brique (I3)', () => {
     const attrs: Record<string, unknown> = {}
     const definitions = { $type: 'bpmn:Definitions', $attrs: attrs, get: () => undefined }

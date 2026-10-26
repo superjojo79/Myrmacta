@@ -63,10 +63,13 @@ class DossierPrecheckToolsTest {
 
         List<Map<String, Object>> prechecks = (List<Map<String, Object>>) result.get("prechecks");
         assertThat(prechecks).hasSize(3);
-        assertThat(prechecks.getFirst()).containsEntry("status", "SUCCEEDED").containsEntry("summary", "Synthèse");
+        assertThat(prechecks.getFirst()).containsEntry("status", "SUCCEEDED").containsEntry("summary", "Synthèse")
+                .containsEntry("summaryUntrusted", true);
         assertThat((List<Map<String, Object>>) prechecks.getFirst().get("findings")).singleElement()
                 .satisfies(f -> assertThat(f).containsEntry("origin", "MODEL").containsEntry("confidence", 0.4)
-                        .containsEntry("decision", null));
+                        .containsEntry("decision", null).containsEntry("untrusted", true));
+        // F7 : le texte du modèle est signalé comme donnée non fiable pour un client MCP (injection indirecte).
+        assertThat(result).containsEntry("notice", DossierPrecheckTools.UNTRUSTED_NOTICE);
     }
 
     @Test

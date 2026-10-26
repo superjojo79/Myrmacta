@@ -23,6 +23,9 @@ public interface ManageDossierPrechecksUseCase {
     PrecheckRun export(UUID dossierId, UUID runId, AccessContext.User actor);
 
     /** @param decision {@code null} annule la décision précédente */
-    PrecheckFinding decide(UUID dossierId, UUID runId, UUID findingId, PrecheckFinding.Decision decision,
+    Decided decide(UUID dossierId, UUID runId, UUID findingId, PrecheckFinding.Decision decision,
             AccessContext.User actor);
+
+    /** Constat après la décision, et la décision qu'il portait avant (pour la trace, F5). */
+    record Decided(PrecheckFinding finding, PrecheckFinding.Decision previous) {}
 }

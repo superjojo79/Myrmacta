@@ -913,7 +913,9 @@ votre instruction ; **il ne décide rien**.
 - **Décider** (droit de modification, dossier non clos) : **Accepter** ou **Écarter** chaque constat ; **Annuler la
   décision** revient en arrière. Votre nom et l'heure sont enregistrés. Un lecteur voit le panneau sans boutons.
 - **Relancer** après l'ajout d'une pièce : la pré-vérification repart en tâche de fond avec les mêmes contrôles ; le
-  panneau se met à jour seul. L'exécution précédente reste consultable dans la liste en tête du panneau.
+  panneau se met à jour seul. L'exécution précédente reste consultable dans la liste en tête du panneau. Au plus 5
+  relances par dossier sur 24 heures ; quand le plafond du jour est presque atteint, les relances sont suspendues
+  pour laisser le reste aux workflows (le panneau affiche le motif).
 - **Échec** : le panneau l'indique (plafond journalier atteint, fournisseur indisponible…) et garde les contrôles
   déterministes. Dans le workflow, l'échec apparaît aussi comme un **incident** rejouable par un administrateur.
 - **Ce qui part chez le fournisseur** : seuls les champs et types de pièces listés dans la brique, jamais un champ ni une

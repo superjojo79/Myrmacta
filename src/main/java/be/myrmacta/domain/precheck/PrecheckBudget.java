@@ -26,6 +26,17 @@ public final class PrecheckBudget {
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
+    /**
+     * TODO §106 (revue adversariale de #211, F3) — part du plafond ouverte aux relances (bouton, MCP) : au-delà, les
+     * relances sont refusées et le reste du plafond est gardé aux briques des workflows.
+     */
+    public static final double RERUN_SHARE = 0.8;
+
+    /** Vrai tant que la consommation du jour laisse la réserve des workflows intacte. */
+    public boolean rerunAllowed() {
+        return usage.tokensSince(startOfDay()) < (long) (maxTokensPerDay * RERUN_SHARE);
+    }
+
     public void requireAvailable() {
         long used = usage.tokensSince(startOfDay());
         if (used >= maxTokensPerDay) {

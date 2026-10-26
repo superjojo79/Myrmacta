@@ -122,13 +122,28 @@ class JdbcPrecheckRunRepositoryIT {
         assertThat(retaken.id()).isEqualTo(queued.id());
         assertThat(retaken.attempts()).isEqualTo(2);
 
-        runs.complete(retaken.completed(outcome(5), now.plusSeconds(302)));
+        // F4 : la première tentative, dépassée, ne peut plus ranger son résultat ; la seconde, si.
+        assertThat(runs.complete(taken.completed(outcome(9), now.plusSeconds(302)))).isFalse();
+        assertThat(runs.findById(queued.id()).orElseThrow().status()).isEqualTo(PrecheckRun.Status.RUNNING);
+        assertThat(runs.complete(retaken.completed(outcome(5), now.plusSeconds(302)))).isTrue();
+        assertThat(runs.complete(retaken.completed(outcome(5), now.plusSeconds(303)))).isFalse(); // déjà terminée
         assertThat(runs.lockNext(now.plusSeconds(10_000), now.plusSeconds(10_300))).isEmpty();
         PrecheckRun done = runs.findById(queued.id()).orElseThrow();
         assertThat(done.status()).isEqualTo(PrecheckRun.Status.SUCCEEDED);
         assertThat(done.findings()).hasSize(2);
         // Exécution terminée : une nouvelle relance redevient possible.
         assertThat(runs.insert(manual(now.plusSeconds(400)))).isTrue();
+    }
+
+    /** Revue adversariale de #211, F3 — les relances se comptent par dossier ; les exécutions du workflow n'entrent pas. */
+    @Test
+    void rerunsAreCountedPerDossierWithoutWorkflowRuns() {
+        runs.insert(manual(now.minusSeconds(3600)).completed(outcome(1), now.minusSeconds(3500)));
+        runs.insert(manual(now.minusSeconds(200_000)).completed(outcome(1), now.minusSeconds(199_000)));
+        runs.insert(PrecheckRun.pending(dossier.id(), PrecheckRun.Trigger.WORKFLOW, "system", null, SPEC, now)
+                .completed(outcome(1), now));
+        assertThat(runs.countRequestsSince(dossier.id(), now.minusSeconds(86_400))).isEqualTo(1);
+        assertThat(runs.countRequestsSince(UUID.randomUUID(), now.minusSeconds(86_400))).isZero();
     }
 
     @Test

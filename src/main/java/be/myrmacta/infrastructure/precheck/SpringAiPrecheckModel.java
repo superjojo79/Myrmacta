@@ -3,9 +3,13 @@ package be.myrmacta.infrastructure.precheck;
 import be.myrmacta.domain.precheck.model.ModelExchange;
 import be.myrmacta.domain.precheck.model.PrecheckExceptions.PrecheckModelUnavailableException;
 import be.myrmacta.domain.precheck.port.out.PrecheckModelPort;
+import com.anthropic.errors.AnthropicServiceException;
+import com.openai.errors.OpenAIServiceException;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.metadata.Usage;
@@ -21,6 +25,8 @@ import org.springframework.ai.chat.prompt.Prompt;
  * ou la clé) : seul un message générique remonte, la cause reste en {@code cause} pour le journal technique.
  */
 final class SpringAiPrecheckModel implements PrecheckModelPort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SpringAiPrecheckModel.class);
 
     private final ChatModel chatModel;
     private final String provider;
@@ -46,6 +52,9 @@ final class SpringAiPrecheckModel implements PrecheckModelPort {
         try {
             response = chatModel.call(prompt);
         } catch (RuntimeException ex) {
+            // F8 (revue adversariale de #211) : de quoi distinguer une clé refusée d'une panne, sans le message du
+            // fournisseur (il peut recopier la requête, donc des données du dossier).
+            LOG.warn("AI pre-check provider call failed: {}", describe(ex));
             throw new PrecheckModelUnavailableException(
                     "the language model provider is unavailable or refused the request", ex);
         }
@@ -53,9 +62,34 @@ final class SpringAiPrecheckModel implements PrecheckModelPort {
             throw new PrecheckModelUnavailableException("the language model provider returned no answer");
         }
         Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
-        return new ModelExchange.Reply(response.getResult().getOutput().getText(),
-                usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens(),
-                usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens(),
-                provider, model);
+        String text = response.getResult().getOutput().getText();
+        long tokensIn = usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
+        long tokensOut = usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens();
+        if (tokensIn <= 0) {
+            // F9 (revue adversariale de #211) : sans jetons déclarés, le plafond du jour ne protégerait plus rien ;
+            // estimation prudente, un jeton pour quatre caractères.
+            tokensIn = estimate(system.apply(request)) + estimate(request.user());
+            tokensOut = Math.max(tokensOut, estimate(text));
+        }
+        return new ModelExchange.Reply(text, tokensIn, tokensOut, provider, model);
+    }
+
+    static long estimate(String text) {
+        return text == null ? 0 : (text.length() + 3) / 4;
+    }
+
+    /** Types d'erreur de la chaîne des causes et statut HTTP du fournisseur ; jamais un message. */
+    static String describe(Throwable error) {
+        StringBuilder out = new StringBuilder();
+        Throwable current = error;
+        for (int depth = 0; current != null && depth < 6; depth++, current = current.getCause()) {
+            out.append(depth == 0 ? "" : " <- ").append(current.getClass().getSimpleName());
+            if (current instanceof OpenAIServiceException service) {
+                out.append(" (HTTP ").append(service.statusCode()).append(')');
+            } else if (current instanceof AnthropicServiceException service) {
+                out.append(" (HTTP ").append(service.statusCode()).append(')');
+            }
+        }
+        return out.toString();
     }
 }

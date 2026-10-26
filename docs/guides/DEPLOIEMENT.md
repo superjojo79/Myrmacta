@@ -698,12 +698,19 @@ n'existent pas ([spec 48](../specs/48-preverification-ia.md)). Configuration dis
 | `APP_PRECHECK_MAX_TOKENS_PER_DAY` | plafond de jetons par jour UTC et par instance (1 000 000) ; atteint, la brique tombe en incident rejouable |
 | `APP_PRECHECK_MAX_OUTPUT_TOKENS`, `…_MAX_PIECES_READ`, `…_MAX_PAGES_PER_PIECE`, `…_MAX_CHARS_PER_PIECE`, `…_MAX_CHARS_TOTAL`, `…_MAX_QUESTIONS` | bornes d'un appel (2 000 jetons de sortie ; 10 pièces, 30 pages, 30 000 caractères par pièce, 100 000 au total ; 20 questions) |
 | `APP_PRECHECK_QUEUE_POLL_DELAY` | intervalle du relais des relances (5 s) |
+| `APP_PRECHECK_MAX_RERUNS_PER_DOSSIER_PER_DAY` | relances (bouton, MCP) par dossier sur 24 h (5) ; au-delà de 80 % du plafond du jour, les relances sont refusées pour garder le reste aux workflows |
 
 **Choisir le fournisseur.** Les champs et pièces désignés par la brique partent chez lui : préférez un fournisseur
 hébergé dans l'UE (Mistral, Azure OpenAI en région UE) ou un modèle auto-hébergé (vLLM, Ollama) sur le réseau de
 l'instance. Le pare-feu sortant doit autoriser le seul hôte de `APP_PRECHECK_BASE_URL`. Les redirections ne sont
-jamais suivies et aucun appel n'est relancé par le client HTTP ; une panne devient un incident rejouable (Flowable
-retente le job 3 fois, chaque tentative est comptée dans le plafond).
+jamais suivies et aucun appel n'est relancé par le client HTTP ; le délai couvre la réponse entière ; une panne devient
+un incident rejouable (Flowable retente le job 3 fois, chaque tentative est comptée dans le plafond) et sa cause est
+journalisée (type d'erreur, statut HTTP). Une pièce dont la lecture dépasse 20 s est déclarée « trop complexe » : les
+pièces déposées par des tiers (portail) sont analysées côté serveur ; activer le scan antivirus (§8) reste conseillé.
+
+**Traces.** Relances, décisions sur les constats et exports du journal émettent `event=precheck_rerun_requested`,
+`event=precheck_finding_decided` (décision précédente comprise) et `event=precheck_log_exported` dans le journal de
+sécurité, avec des identifiants seulement.
 
 **RGPD.** Le fournisseur est un **sous-traitant** (art. 28) : contrat et registre des traitements à jour. Seuls partent
 les champs listés dans `precheckFields` et le texte des pièces marquées `lire` ; jamais un champ ni un type de pièce

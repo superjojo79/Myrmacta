@@ -14,7 +14,9 @@ public record PieceText(Status status, String text, int pagesRead, boolean trunc
         NO_TEXT,
         ENCRYPTED,
         UNREADABLE,
-        UNSUPPORTED
+        UNSUPPORTED,
+        /** Lecture interrompue : trop complexe pour être lue dans le délai (revue adversariale de #211, F2). */
+        TOO_COMPLEX
     }
 
     public PieceText {

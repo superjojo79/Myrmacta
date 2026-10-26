@@ -11,7 +11,9 @@ import be.myrmacta.domain.precheck.model.PrecheckRun;
 import be.myrmacta.domain.precheck.model.PrecheckSpec;
 import be.myrmacta.domain.precheck.port.in.RunDossierPrecheckUseCase;
 import be.myrmacta.domain.precheck.port.out.PrecheckRunRepository;
+import be.myrmacta.infrastructure.config.PrecheckProperties;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -26,7 +28,8 @@ class PrecheckRunRelayTest {
 
     private final PrecheckRunRepository repository = mock(PrecheckRunRepository.class);
     private final RunDossierPrecheckUseCase useCase = mock(RunDossierPrecheckUseCase.class);
-    private final PrecheckRunRelay relay = new PrecheckRunRelay(repository, useCase, Clock.fixed(NOW, ZoneOffset.UTC));
+    private final PrecheckRunRelay relay = new PrecheckRunRelay(repository, useCase, Duration.ofMinutes(5),
+            Clock.fixed(NOW, ZoneOffset.UTC));
     private final PrecheckRun run = PrecheckRun.pending(UUID.randomUUID(), PrecheckRun.Trigger.MANUAL, "agent", null,
             PrecheckSpec.parse(Map.of(PrecheckSpec.QUESTIONS, "q = Question ?"), "check"), NOW);
 
@@ -43,6 +46,20 @@ class PrecheckRunRelayTest {
         when(useCase.runQueued(run)).thenReturn(run);
         assertThat(relay.relayOne()).contains(run);
         verify(useCase).runQueued(run);
+    }
+
+    /** Revue adversariale de #211, F4 — le bail couvre le pire cas : lecture des pièces, appel au modèle, marge. */
+    @Test
+    void theLeaseCoversTheWorstCaseOfARun() {
+        PrecheckProperties defaults = new PrecheckProperties(false, null, null, null, null, false, 120, 1_000_000, 2_000,
+                10, 30, 30_000, 100_000, 20, "2023-06-01");
+        assertThat(PrecheckRunRelay.lease(defaults)).isEqualTo(Duration.ofSeconds(10 * 20 + 120 + 60));
+        PrecheckProperties slowest = new PrecheckProperties(false, null, null, null, null, false, 600, 1_000_000, 2_000,
+                10, 30, 30_000, 100_000, 20, "2023-06-01");
+        assertThat(PrecheckRunRelay.lease(slowest)).isEqualTo(Duration.ofSeconds(10 * 20 + 600 + 60));
+        PrecheckProperties quick = new PrecheckProperties(false, null, null, null, null, false, 5, 1_000_000, 2_000,
+                1, 30, 30_000, 100_000, 20, "2023-06-01");
+        assertThat(PrecheckRunRelay.lease(quick)).isEqualTo(PrecheckRunRelay.MIN_LEASE);
     }
 
     @Test

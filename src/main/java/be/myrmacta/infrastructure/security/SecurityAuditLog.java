@@ -165,4 +165,26 @@ public final class SecurityAuditLog {
                 previousPieceKey == null ? "-" : previousPieceKey,
                 pieceKey == null ? "-" : pieceKey);
     }
+
+    /**
+     * TODO §106 (revue adversariale de #211, F5) — pré-vérification IA : relance, décision sur un constat (avec la décision
+     * précédente, une annulation restant tracée), export du journal. Identifiants seulement, jamais un texte de constat.
+     *
+     * @param channel {@code rest} ou {@code mcp}
+     */
+    public static void precheckRerunRequested(String channel, String principal, UUID dossierId, UUID runId) {
+        LOGGER.info("event=precheck_rerun_requested channel={} principal={} dossierId={} runId={}", channel, principal,
+                dossierId, runId);
+    }
+
+    public static void precheckFindingDecided(String principal, UUID dossierId, UUID runId, UUID findingId,
+            String previousDecision, String decision) {
+        LOGGER.info("event=precheck_finding_decided principal={} dossierId={} runId={} findingId={} from={} to={}",
+                principal, dossierId, runId, findingId, previousDecision == null ? "-" : previousDecision,
+                decision == null ? "-" : decision);
+    }
+
+    public static void precheckLogExported(String principal, UUID dossierId, UUID runId) {
+        LOGGER.info("event=precheck_log_exported principal={} dossierId={} runId={}", principal, dossierId, runId);
+    }
 }

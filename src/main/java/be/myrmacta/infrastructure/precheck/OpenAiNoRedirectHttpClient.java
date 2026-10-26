@@ -1,24 +1,23 @@
 package be.myrmacta.infrastructure.precheck;
 
+import be.myrmacta.infrastructure.assistant.BoundedResponseBody;
 import com.openai.core.RequestOptions;
 import com.openai.core.http.Headers;
 import com.openai.core.http.HttpClient;
 import com.openai.core.http.HttpRequest;
 import com.openai.core.http.HttpRequestBody;
 import com.openai.core.http.HttpResponse;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * TODO §106 (lot A, HC1) — transport du SDK OpenAI sur {@code java.net.http}, redirections <b>jamais</b> suivies : le
@@ -68,14 +67,12 @@ final class OpenAiNoRedirectHttpClient implements HttpClient {
             }
         }
         http.method(request.method().name(), body == null ? BodyPublishers.noBody() : BodyPublishers.ofByteArray(payload));
-        java.net.http.HttpResponse<InputStream> response;
+        java.net.http.HttpResponse<byte[]> response;
         try {
-            // Délai global : celui de java.net.http ne couvre que l'attente des en-têtes (une passerelle pourrait distiller le corps).
-            response = client.sendAsync(http.build(), BodyHandlers.ofInputStream())
-                    .orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                    .join();
-        } catch (CompletionException ex) {
-            throw new UncheckedIOException(new IOException("the provider call failed", ex.getCause()));
+            // TODO §106 (F1) : le délai couvre l'échange entier, corps compris (une passerelle ne peut plus le distiller).
+            response = BoundedResponseBody.send(client, http.build(), timeout, MAX_RESPONSE_BYTES);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
         }
         Headers.Builder headers = Headers.builder();
         response.headers().map().forEach(headers::put);
@@ -93,16 +90,12 @@ final class OpenAiNoRedirectHttpClient implements HttpClient {
 
             @Override
             public InputStream body() {
-                return new BoundedInputStream(response.body(), MAX_RESPONSE_BYTES);
+                return new ByteArrayInputStream(response.body());
             }
 
             @Override
             public void close() {
-                try {
-                    response.body().close();
-                } catch (IOException ignored) {
-                    // rien à rattraper : la connexion est abandonnée
-                }
+                // corps déjà lu en entier : rien à libérer
             }
         };
     }
@@ -115,40 +108,5 @@ final class OpenAiNoRedirectHttpClient implements HttpClient {
     @Override
     public void close() {
         // le client java.net.http n'a pas de ressource à libérer explicitement
-    }
-
-    /** Échoue au-delà de {@code limit} octets lus plutôt que de laisser le SDK tout mettre en mémoire. */
-    private static final class BoundedInputStream extends InputStream {
-        private final InputStream in;
-        private long remaining;
-
-        BoundedInputStream(InputStream in, long limit) {
-            this.in = in;
-            this.remaining = limit;
-        }
-
-        @Override
-        public int read() throws IOException {
-            byte[] one = new byte[1];
-            int n = read(one, 0, 1);
-            return n < 0 ? -1 : one[0] & 0xff;
-        }
-
-        @Override
-        public int read(byte[] b, int off, int len) throws IOException {
-            int n = in.read(b, off, (int) Math.min(len, remaining + 1));
-            if (n > 0) {
-                remaining -= n;
-                if (remaining < 0) {
-                    throw new IOException("the provider answer is too large");
-                }
-            }
-            return n;
-        }
-
-        @Override
-        public void close() throws IOException {
-            in.close();
-        }
     }
 }

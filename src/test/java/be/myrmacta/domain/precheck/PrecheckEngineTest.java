@@ -240,6 +240,21 @@ class PrecheckEngineTest {
                 .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
 
+    /** Revue adversariale de #211, F6 — l'empreinte se recalcule : même entrée, même empreinte malgré le nonce. */
+    @Test
+    void theFingerprintOfTheInputIsReproducible() {
+        DossierType type = type(List.of(field("commune", false, false)), List.of());
+        PrecheckSpec spec = spec(PrecheckSpec.FIELDS, "commune", PrecheckSpec.QUESTIONS, "q = Question ?");
+
+        String first = engine().compute(dossier(Map.of("commune", "Namur")), type, List.of(), spec, Map.of()).inputSha256();
+        String again = engine().compute(dossier(Map.of("commune", "Namur")), type, List.of(), spec, Map.of()).inputSha256();
+        String other = engine().compute(dossier(Map.of("commune", "Mons")), type, List.of(), spec, Map.of()).inputSha256();
+
+        assertThat(requests.get(0).user()).isNotEqualTo(requests.get(1).user()); // nonces différents à l'envoi
+        assertThat(first).hasSize(64).isEqualTo(again).isNotEqualTo(other);
+        assertThat(requests).allSatisfy(r -> assertThat(r.user()).doesNotContain(PrecheckEngine.CANONICAL_NONCE));
+    }
+
     @Test
     void modelFindingsAreValidatedBeforeReachingTheAgent() {
         DossierType type = type(List.of(field("commune", false, false)), List.of(new PieceType("preuve", "Preuve", false)));

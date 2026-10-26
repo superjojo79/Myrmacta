@@ -63,11 +63,13 @@ class PrecheckUseCasesTest {
     private final PrecheckVariablesPort variables = mock(PrecheckVariablesPort.class);
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private boolean enabled = true;
+    private long tokensToday = 0;
 
     private final RunDossierPrecheckUseCaseImpl runner = new RunDossierPrecheckUseCaseImpl(TENANT, dossierRepository,
             typeRepository, elementRepository, engine, runs, variables, clock);
     private final ManageDossierPrechecksUseCaseImpl manage = new ManageDossierPrechecksUseCaseImpl(TENANT,
-            dossierRepository, accessPolicy, runs, () -> enabled, clock);
+            dossierRepository, accessPolicy, runs, () -> enabled,
+            new be.myrmacta.domain.precheck.PrecheckBudget(1_000, since -> tokensToday, clock), 2, clock);
     private final AccessContext.User agent = AccessContext.user("agent", Set.of("DOSSIER_EDITOR"));
 
     private Dossier dossier;
@@ -87,6 +89,7 @@ class PrecheckUseCasesTest {
                                 SourceType.FIELD, "b", "Le modèle croit que b manque.", 0.7, null, null, null)));
         when(engine.compute(any(), any(), any(), any(), anyMap())).thenAnswer(call -> outcome);
         when(runs.insert(any())).thenReturn(true);
+        when(runs.complete(any())).thenReturn(true);
     }
 
     private Dossier dossier(DossierStatus status) {
@@ -162,6 +165,17 @@ class PrecheckUseCasesTest {
         verify(engine).compute(eq(dossier), any(), any(), eq(SPEC), eq(Map.of("doublons", 0)));
     }
 
+    /** Revue adversariale de #211, F4 — une tentative dépassée (bail expiré) ne range pas son résultat. */
+    @Test
+    void aSupersededAttemptDropsItsResult() {
+        when(variables.currentVariables(dossier.id())).thenReturn(Map.of());
+        when(runs.complete(any())).thenReturn(false);
+        PrecheckRun queued = queued(1);
+        PrecheckRun result = runner.runQueued(queued);
+        assertThat(result).isSameAs(queued);
+        assertThat(result.finished()).isFalse();
+    }
+
     @Test
     void unreadableVariablesLeaveRulesUnevaluated() {
         when(variables.currentVariables(dossier.id())).thenThrow(new IllegalStateException("no process"));
@@ -225,6 +239,27 @@ class PrecheckUseCasesTest {
                 .isInstanceOf(PrecheckDisabledException.class);
     }
 
+    /** Revue adversariale de #211, F3 — les relances ne peuvent pas épuiser le plafond de l'instance. */
+    @Test
+    void rerunsAreLimitedPerDossierAndKeepAReserveForTheWorkflows() {
+        when(runs.listByDossier(dossier.id(), 1)).thenReturn(List.of(finishedRun()));
+        when(runs.countRequestsSince(dossier.id(), NOW.minusSeconds(86_400))).thenReturn(2);
+        assertThatThrownBy(() -> manage.request(dossier.id(), agent, PrecheckRun.Trigger.MANUAL))
+                .isInstanceOf(be.myrmacta.domain.precheck.model.PrecheckRateLimitedException.class)
+                .hasMessageContaining("at most 2 pre-check reruns per dossier in 24 hours");
+
+        when(runs.countRequestsSince(dossier.id(), NOW.minusSeconds(86_400))).thenReturn(1);
+        tokensToday = 800; // 80 % du plafond : la réserve des workflows est atteinte
+        assertThatThrownBy(() -> manage.request(dossier.id(), agent, PrecheckRun.Trigger.MCP))
+                .isInstanceOf(be.myrmacta.domain.precheck.model.PrecheckRateLimitedException.class)
+                .hasMessageContaining("reruns are suspended");
+
+        tokensToday = 799;
+        assertThat(manage.request(dossier.id(), agent, PrecheckRun.Trigger.MANUAL).status())
+                .isEqualTo(PrecheckRun.Status.PENDING);
+        verify(runs).insert(any());
+    }
+
     @Test
     void aClosedDossierIsNotRerunNorDecided() {
         Dossier closed = dossier(DossierStatus.CLOTURE);
@@ -270,9 +305,10 @@ class PrecheckUseCasesTest {
         when(runs.findById(run.id())).thenReturn(Optional.of(run), Optional.of(decided));
         when(runs.decide(run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED, "agent", NOW)).thenReturn(true);
 
-        PrecheckFinding result = manage.decide(dossier.id(), run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED,
-                agent);
+        var decision = manage.decide(dossier.id(), run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED, agent);
+        PrecheckFinding result = decision.finding();
 
+        assertThat(decision.previous()).isNull(); // F5 : la décision précédente est rendue pour la trace
         assertThat(result.decision()).isEqualTo(PrecheckFinding.Decision.DISMISSED);
         assertThat(result.decidedBy()).isEqualTo("agent");
         assertThat(result.decidedAt()).isEqualTo(NOW);

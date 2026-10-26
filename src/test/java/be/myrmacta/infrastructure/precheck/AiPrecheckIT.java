@@ -271,6 +271,14 @@ class AiPrecheckIT {
             mockMvc.perform(post("/api/dossiers/{id}/prechecks", dossier.id()).with(user("agent-" + type)).with(csrf()))
                     .andExpect(status().isConflict());
 
+            // F5 : relance, décisions et export tracés dans le journal de sécurité, identifiants seulement.
+            assertThat(logs.list).extracting(ILoggingEvent::getFormattedMessage)
+                    .anyMatch(m -> m.startsWith("event=precheck_finding_decided") && m.contains("findingId=" + modelFinding)
+                            && m.contains("from=- to=ACCEPTED"))
+                    .anyMatch(m -> m.startsWith("event=precheck_log_exported") && m.contains("runId=" + runId))
+                    .anyMatch(m -> m.startsWith("event=precheck_rerun_requested channel=rest"))
+                    .noneMatch(m -> m.startsWith("event=precheck") && m.contains("Adresse"));
+
             PrecheckRun rerun = relay.relayOne().orElseThrow();
             assertThat(rerun.attempts()).isEqualTo(1);
             assertThat(relay.relayOne()).isEmpty();

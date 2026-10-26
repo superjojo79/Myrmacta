@@ -5,6 +5,7 @@ import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.precheck.model.PrecheckConflictException;
 import be.myrmacta.domain.precheck.model.PrecheckExceptions.PrecheckDisabledException;
 import be.myrmacta.domain.precheck.model.PrecheckNotFoundException;
+import be.myrmacta.domain.precheck.model.PrecheckRateLimitedException;
 import be.myrmacta.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,11 @@ class PrecheckExceptionHandler {
     @ExceptionHandler(PrecheckConflictException.class)
     ProblemDetail handleConflict(PrecheckConflictException ex) {
         return problem(HttpStatus.CONFLICT, "Pre-check conflict", ex.getMessage());
+    }
+
+    @ExceptionHandler(PrecheckRateLimitedException.class)
+    ProblemDetail handleRateLimited(PrecheckRateLimitedException ex) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "Pre-check rerun refused", ex.getMessage());
     }
 
     @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})

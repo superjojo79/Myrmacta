@@ -6,15 +6,19 @@ import be.myrmacta.domain.dossier.model.AccessDeniedException;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
+import be.myrmacta.domain.precheck.PrecheckBudget;
 import be.myrmacta.domain.precheck.model.PrecheckConflictException;
 import be.myrmacta.domain.precheck.model.PrecheckExceptions.PrecheckDisabledException;
 import be.myrmacta.domain.precheck.model.PrecheckFinding;
 import be.myrmacta.domain.precheck.model.PrecheckNotFoundException;
+import be.myrmacta.domain.precheck.model.PrecheckRateLimitedException;
 import be.myrmacta.domain.precheck.model.PrecheckRun;
 import be.myrmacta.domain.precheck.port.in.ManageDossierPrechecksUseCase;
 import be.myrmacta.domain.precheck.port.out.PrecheckAvailabilityPort;
 import be.myrmacta.domain.precheck.port.out.PrecheckRunRepository;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,16 +31,23 @@ public final class ManageDossierPrechecksUseCaseImpl implements ManageDossierPre
     private final DossierAccessPolicy accessPolicy;
     private final PrecheckRunRepository runRepository;
     private final PrecheckAvailabilityPort availability;
+    private final PrecheckBudget budget;
+    private final int maxRerunsPerDossierPerDay;
     private final Clock clock;
 
     public ManageDossierPrechecksUseCaseImpl(String tenantId, DossierRepository dossierRepository,
             DossierAccessPolicy accessPolicy, PrecheckRunRepository runRepository, PrecheckAvailabilityPort availability,
-            Clock clock) {
+            PrecheckBudget budget, int maxRerunsPerDossierPerDay, Clock clock) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
         this.runRepository = Objects.requireNonNull(runRepository, "runRepository");
         this.availability = Objects.requireNonNull(availability, "availability");
+        this.budget = Objects.requireNonNull(budget, "budget");
+        if (maxRerunsPerDossierPerDay < 1) {
+            throw new IllegalArgumentException("maxRerunsPerDossierPerDay must be positive");
+        }
+        this.maxRerunsPerDossierPerDay = maxRerunsPerDossierPerDay;
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -53,7 +64,17 @@ public final class ManageDossierPrechecksUseCaseImpl implements ManageDossierPre
         PrecheckRun last = runRepository.listByDossier(dossier.id(), 1).stream().findFirst()
                 .orElseThrow(() -> new PrecheckConflictException(
                         "no previous pre-check to rerun on this dossier (the workflow brick runs the first one)"));
-        PrecheckRun run = PrecheckRun.pending(dossier.id(), trigger, actor.userId(), null, last.spec(), clock.instant());
+        // F3 — un agent ou un client MCP ne doit pas pouvoir épuiser le plafond de l'instance par des relances en boucle.
+        Instant now = clock.instant();
+        if (runRepository.countRequestsSince(dossier.id(), now.minus(Duration.ofDays(1))) >= maxRerunsPerDossierPerDay) {
+            throw new PrecheckRateLimitedException("at most " + maxRerunsPerDossierPerDay
+                    + " pre-check reruns per dossier in 24 hours");
+        }
+        if (!budget.rerunAllowed()) {
+            throw new PrecheckRateLimitedException("today's AI pre-check budget is nearly used: reruns are suspended, "
+                    + "the rest is kept for the workflows");
+        }
+        PrecheckRun run = PrecheckRun.pending(dossier.id(), trigger, actor.userId(), null, last.spec(), now);
         if (!runRepository.insert(run)) {
             throw new PrecheckConflictException("a pre-check is already queued or running on this dossier");
         }

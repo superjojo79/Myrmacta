@@ -20,6 +20,7 @@ import be.myrmacta.domain.precheck.usecase.ManageDossierPrechecksUseCaseImpl;
 import be.myrmacta.domain.precheck.usecase.RunDossierPrecheckUseCaseImpl;
 import be.myrmacta.infrastructure.precheck.PrecheckInfrastructure;
 import java.time.Clock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -54,11 +55,16 @@ public class PrecheckConfig {
     }
 
     @Bean
+    PrecheckBudget precheckBudget(PrecheckProperties properties, PrecheckRunRepository runRepository) {
+        return new PrecheckBudget(properties.maxTokensPerDay(), runRepository, Clock.systemUTC());
+    }
+
+    @Bean
     PrecheckEngine precheckEngine(TenantProperties tenantProperties, PrecheckProperties properties,
             DossierFieldRules fieldRules, DocumentStoragePort storage, PieceTextExtractorPort extractor,
-            PrecheckModelPort model, ModelOutputReaderPort outputReader, PrecheckRunRepository runRepository) {
-        return new PrecheckEngine(tenantProperties.id(), fieldRules, storage, extractor, model, outputReader,
-                new PrecheckBudget(properties.maxTokensPerDay(), runRepository, Clock.systemUTC()), properties.limits());
+            PrecheckModelPort model, ModelOutputReaderPort outputReader, PrecheckBudget budget) {
+        return new PrecheckEngine(tenantProperties.id(), fieldRules, storage, extractor, model, outputReader, budget,
+                properties.limits());
     }
 
     @Bean
@@ -73,8 +79,9 @@ public class PrecheckConfig {
     @Bean
     ManageDossierPrechecksUseCase manageDossierPrechecksUseCase(TenantProperties tenantProperties,
             DossierRepository dossierRepository, DossierAccessPolicy accessPolicy, PrecheckRunRepository runRepository,
-            PrecheckAvailabilityPort availability) {
+            PrecheckAvailabilityPort availability, PrecheckBudget budget,
+            @Value("${app.precheck.max-reruns-per-dossier-per-day:5}") int maxRerunsPerDossierPerDay) {
         return new ManageDossierPrechecksUseCaseImpl(tenantProperties.id(), dossierRepository, accessPolicy,
-                runRepository, availability, Clock.systemUTC());
+                runRepository, availability, budget, maxRerunsPerDossierPerDay, Clock.systemUTC());
     }
 }

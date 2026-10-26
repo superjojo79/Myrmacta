@@ -328,6 +328,7 @@ public final class PrecheckEngine {
             case NO_TEXT -> "scan ou image, sans texte";
             case ENCRYPTED -> "protégée par un mot de passe";
             case UNSUPPORTED -> "format non pris en charge";
+            case TOO_COMPLEX -> "trop complexe pour être lue dans le délai";
             default -> "fichier illisible";
         };
     }

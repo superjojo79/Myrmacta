@@ -194,6 +194,8 @@ app:
     max-questions: ${APP_PRECHECK_MAX_QUESTIONS:20}
     # Relances (bouton, MCP) : intervalle du relais de la file ; une exécution par passage et par réplique.
     queue-poll-delay: ${APP_PRECHECK_QUEUE_POLL_DELAY:5s}
+    # Relances par dossier sur 24 h ; au-delà de 80 % du plafond du jour, les relances sont refusées (réserve des workflows).
+    max-reruns-per-dossier-per-day: ${APP_PRECHECK_MAX_RERUNS_PER_DOSSIER_PER_DAY:5}
   inbound:
     # Connecteurs d'entrée par interrogation (e-mail IMAP, Azure Service Bus) : bornes communes.
     max-messages-per-poll: ${APP_INBOUND_MAX_MESSAGES_PER_POLL:20}

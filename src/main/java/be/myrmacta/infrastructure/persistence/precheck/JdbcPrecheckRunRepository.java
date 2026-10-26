@@ -80,17 +80,21 @@ class JdbcPrecheckRunRepository implements PrecheckRunRepository {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void complete(PrecheckRun run) {
-        jdbc.update("""
+    public boolean complete(PrecheckRun run) {
+        int updated = jdbc.update("""
                 update precheck_run set status = ?, failure = ?, provider = ?, model = ?, prompt_version = ?,
                     input_sha256 = ?, summary = ?, tokens_in = ?, tokens_out = ?, discarded = ?, finished_at = ?,
                     lease_until = null
-                where id = ?
+                where id = ? and status = 'RUNNING' and attempts = ?
                 """, run.status().name(), run.failure(), run.provider(), run.model(), run.promptVersion(),
                 run.inputSha256(), run.summary(), run.tokensIn(), run.tokensOut(), run.discarded(), ts(run.finishedAt()),
-                run.id());
+                run.id(), run.attempts());
+        if (updated == 0) {
+            return false; // F4 : une tentative plus récente détient l'exécution
+        }
         jdbc.update("delete from precheck_finding where run_id = ?", run.id());
         insertFindings(run.id(), run.findings());
+        return true;
     }
 
     @Override
@@ -122,6 +126,13 @@ class JdbcPrecheckRunRepository implements PrecheckRunRepository {
         return jdbc.update("update precheck_finding set decision = ?, decided_by = ?, decided_at = ? where id = ? and run_id = ?",
                 decision == null ? null : decision.name(), decision == null ? null : by,
                 decision == null ? null : ts(at), findingId, runId) == 1;
+    }
+
+    @Override
+    public int countRequestsSince(UUID dossierId, Instant since) {
+        Integer count = jdbc.queryForObject("select count(*) from precheck_run where dossier_id = ? and tenant_id = ? "
+                + "and trigger_kind <> 'WORKFLOW' and created_at >= ?", Integer.class, dossierId, tenantId, ts(since));
+        return count == null ? 0 : count;
     }
 
     @Override

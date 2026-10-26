@@ -16,8 +16,13 @@ public interface PrecheckRunRepository extends PrecheckUsagePort {
     /** @return {@code false} si une exécution de la file est déjà en cours pour ce dossier (index unique partiel). */
     boolean insert(PrecheckRun run);
 
-    /** Range le résultat (statut, journal, constats) d'une exécution déjà insérée. */
-    void complete(PrecheckRun run);
+    /**
+     * Range le résultat (statut, journal, constats) d'une exécution de la file, <b>si elle est toujours détenue</b> par
+     * cette tentative (revue adversariale de #211, F4 : un bail expiré a pu la confier à une autre réplique).
+     *
+     * @return {@code false} si une tentative plus récente la détient : le résultat est abandonné
+     */
+    boolean complete(PrecheckRun run);
 
     Optional<PrecheckRun> findById(UUID runId);
 
@@ -29,6 +34,9 @@ public interface PrecheckRunRepository extends PrecheckUsagePort {
      * jusqu'à {@code leaseUntil}, en {@code SKIP LOCKED} ; incrémente les tentatives.
      */
     Optional<PrecheckRun> lockNext(Instant now, Instant leaseUntil);
+
+    /** F3 — relances (bouton, MCP) demandées pour ce dossier depuis {@code since}, quel que soit leur statut. */
+    int countRequestsSince(UUID dossierId, Instant since);
 
     /** Décision de l'agent sur un constat ; {@code false} si le constat n'appartient pas à l'exécution. */
     boolean decide(UUID runId, UUID findingId, PrecheckFinding.Decision decision, String by, Instant at);

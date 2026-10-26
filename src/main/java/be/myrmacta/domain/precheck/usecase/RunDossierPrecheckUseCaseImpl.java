@@ -86,8 +86,8 @@ public final class RunDossierPrecheckUseCaseImpl implements RunDossierPrecheckUs
             outcome = compute(dossier.get(), run.spec(), variables);
         }
         PrecheckRun completed = run.completed(outcome, clock.instant());
-        runRepository.complete(completed);
-        return completed;
+        // F4 — rangé seulement si cette tentative détient encore l'exécution ; sinon elle reste à l'autre tentative.
+        return runRepository.complete(completed) ? completed : run;
     }
 
     private PrecheckOutcome compute(Dossier dossier, PrecheckSpec spec, Map<String, Object> variables) {

@@ -14,7 +14,12 @@ public interface RunDossierPrecheckUseCase {
     /** @param variables variables du process, pour les règles ({@code precheckRules}) */
     WorkflowResult runInWorkflow(UUID dossierId, UUID workflowLinkId, PrecheckSpec spec, Map<String, Object> variables);
 
-    /** Exécution de la file, déjà prise avec un bail ; abandonnée après {@value #MAX_QUEUE_ATTEMPTS} tentatives. */
+    /**
+     * Exécution de la file, déjà prise avec un bail ; abandonnée après {@value #MAX_QUEUE_ATTEMPTS} tentatives.
+     *
+     * @return l'exécution terminée, ou {@code run} inchangée (toujours {@code RUNNING}) si une tentative plus récente la
+     *     détient désormais (bail expiré) : son résultat n'est pas rangé
+     */
     PrecheckRun runQueued(PrecheckRun run);
 
     int MAX_QUEUE_ATTEMPTS = 2;

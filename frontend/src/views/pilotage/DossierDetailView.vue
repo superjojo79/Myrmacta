@@ -22,6 +22,7 @@ import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
 import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestButton.vue'
 import PortalLinksPanel from '@/components/dossier/PortalLinksPanel.vue'
 import SignatureRequestsPanel from '@/components/dossier/SignatureRequestsPanel.vue'
+import PrecheckPanel from '@/components/dossier/PrecheckPanel.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -297,6 +298,13 @@ async function confirmReassign() {
         <button v-if="canEditDossier" type="button" @click="addElementOpen = true">{{ t('dossierDetail.add') }}</button>
       </template>
     </ElementsList>
+    <!-- TODO §106 — après les pièces : l'agent lit la pré-vérification avant d'instruire. -->
+    <PrecheckPanel
+      :key="`precheck-${dossier.id}-${tasks.length}`"
+      :dossier-id="dossier.id"
+      :can-edit="canEditDossier && !fieldsLocked"
+      :can-export="isTenantAdmin"
+    />
     <WorkflowLinksList
       :workflows="workflows"
       :page="workflowsPage"

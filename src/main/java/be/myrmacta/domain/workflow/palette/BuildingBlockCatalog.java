@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 4;
+    public static final int VERSION = 5;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
@@ -121,8 +121,8 @@ public final class BuildingBlockCatalog {
             block("ai-precheck", "Pré-vérification IA",
                     "Contrôle la complétude du dossier, tire des constats de variables posées avant et pose des questions "
                             + "fermées à un modèle de langage sur les champs et pièces désignés ; l'agent accepte ou écarte "
-                            + "chaque constat. Cocher « asynchrone ».",
-                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("aiPrecheckTask"),
+                            + "chaque constat. Toujours asynchrone.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.asyncDelegate("aiPrecheckTask"),
                     text("precheckPieces", "Pièces", 2000,
                             "Une ligne par type de pièce : clé : obligatoire, lire. Ex. preuveDomicile : obligatoire, lire. "
                                     + "« lire » envoie le texte au modèle (10 types au plus, jamais un type sensible)."),

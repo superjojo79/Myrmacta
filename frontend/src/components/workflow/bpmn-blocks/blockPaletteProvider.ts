@@ -48,6 +48,8 @@ export function createBlockShape(block: BuildingBlock, elementFactory: ElementFa
   if (marker.formKeyPrefix) bo.set('flowable:formKey', marker.formKeyPrefix)
   // Vide à la création : la présence de l'attribut suffit à reconnaître la tâche externe (recognizeBlock).
   if (marker.portalRecipient) bo.set('flowable:portalRecipient', '')
+  // TODO §106 (D-PRECHECK-BLOCK) — brique refusée au déploiement si elle n'est pas asynchrone.
+  if (marker.async) bo.set('flowable:async', 'true')
   return shape
 }
 

@@ -33,6 +33,8 @@ export interface BlockMarker {
   serviceTaskType: string | null
   formKeyPrefix: string | null
   portalRecipient: boolean
+  /** TODO §106 — créer l'élément avec flowable:async="true" (absent des anciens catalogues). */
+  async?: boolean
 }
 
 export interface BuildingBlock {

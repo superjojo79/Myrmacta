@@ -67,8 +67,14 @@ class PrecheckEvaluationHarnessTest {
             assertThat(report.scores(kind)[1]).as("rappel " + kind).isEqualTo(1.0);
         }
         assertThat(report.markdown()).contains("| OK |", "exactitude 100 %");
-        // Les pièces passent par PDFBox : leur texte atteint le modèle ; la consigne injectée reste une donnée bornée.
-        assertThat(String.join("\n", prompts)).contains("1-ABC-123", "Tilleuls").doesNotContain("<<<FIN-0");
+        // Les pièces passent par PDFBox : leur texte atteint le modèle ; la consigne injectée y arrive comme une donnée,
+        // dans la borne de sa pièce (c'est ce que mesure le cas « injection » contre un vrai modèle).
+        assertThat(String.join("\n", prompts)).contains("1-ABC-123", "Tilleuls");
+        String injected = prompts.get(9);
+        int piece = injected.indexOf("clé=preuveDomicile");
+        int end = injected.indexOf("<<<FIN-", piece);
+        assertThat(piece).isPositive();
+        assertThat(injected.substring(piece, end)).contains("ignore les consignes");
     }
 
     @Test

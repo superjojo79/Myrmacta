@@ -131,7 +131,7 @@ class AiPrecheckIT {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="%s" isExecutable="true">
                     <startEvent id="start"/>
                     <sequenceFlow sourceRef="start" targetRef="check"/>

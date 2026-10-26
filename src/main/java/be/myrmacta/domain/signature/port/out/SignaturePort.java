@@ -26,7 +26,7 @@ public interface SignaturePort {
 
     SignatureProviderCapabilities capabilities();
 
-    /** Crée la demande côté fournisseur. Ne doit jamais exposer un jeton FlowForge au fournisseur. */
+    /** Crée la demande côté fournisseur. Ne doit jamais exposer un jeton Myrmacta au fournisseur. */
     SignatureSubmission submit(SubmitCommand command);
 
     /** Issue connue du fournisseur, si la demande est terminée. */
@@ -52,7 +52,7 @@ public interface SignaturePort {
     SignedArtifacts fetchArtifacts(String providerReference);
 
     /**
-     * @param requestId corrélation FlowForge de la demande
+     * @param requestId corrélation Myrmacta de la demande
      * @param document contenu à signer (borné par {@code app.signature.max-document-bytes})
      */
     record SubmitCommand(

@@ -7,13 +7,27 @@
 #   scripts/embedded-db.sh dump <fichier.sql>        pg_dump à chaud du schéma tenant (application démarrée, pg_dump requis)
 #   scripts/embedded-db.sh reset [--yes]             supprime toutes les données (application ARRÊTÉE)
 #
-# Répertoire : APP_EMBEDDED_DB_DATA_DIR (défaut ~/.flowforge/embedded-db). Port pour `dump` :
+# Répertoire : APP_EMBEDDED_DB_DATA_DIR, sinon ~/.myrmacta/embedded-db, ou ~/.flowforge/embedded-db s'il existe déjà (flowforge-legacy).
+# Port pour `dump` :
 # APP_EMBEDDED_DB_PORT (défaut 15432 ; avec le port 0 aléatoire, le dump à chaud n'est pas possible).
 # Voir docs/guides/GETTING-STARTED.md § « Base embarquée persistante ».
 set -euo pipefail
 
-BASE="${APP_EMBEDDED_DB_DATA_DIR:-$HOME/.flowforge/embedded-db}"
+# Un répertoire explicite garde la base myrmacta, même s'il pointe vers l'ancien chemin.
+explicit=0
+if [[ -n "${APP_EMBEDDED_DB_DATA_DIR:-}" ]]; then
+  BASE="$APP_EMBEDDED_DB_DATA_DIR"
+  explicit=1
+elif [[ -d "$HOME/.myrmacta/embedded-db" || ! -d "$HOME/.flowforge/embedded-db" ]]; then # flowforge-legacy
+  BASE="$HOME/.myrmacta/embedded-db"
+else
+  BASE="$HOME/.flowforge/embedded-db" # flowforge-legacy
+fi
 PORT="${APP_EMBEDDED_DB_PORT:-15432}"
+DB_NAME=myrmacta
+if [[ "$explicit" -eq 0 && "$BASE" == "$HOME/.flowforge/embedded-db" ]]; then # flowforge-legacy
+  DB_NAME=flowforge # flowforge-legacy
+fi
 
 die() { echo "embedded-db.sh : $*" >&2; exit 1; }
 
@@ -73,7 +87,7 @@ case "$cmd" in
     is_running || die "la base n'est pas en cours d'exécution (dump à chaud) — utiliser backup pour une copie à froid."
     umask 077
     PGPASSWORD="$(cat "$BASE/app-role-password")" pg_dump -h 127.0.0.1 -p "$PORT" \
-      -U flowforge_tenant_dev -n tenant_dev --no-owner flowforge > "$file"
+      -U myrmacta_tenant_dev -n tenant_dev --no-owner "$DB_NAME" > "$file"
     echo "dump écrit : $file"
     ;;
   reset)

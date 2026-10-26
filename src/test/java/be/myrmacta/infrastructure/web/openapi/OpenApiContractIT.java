@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 // TODO §68 : portail activé pour que l'API publique /api/portal/** (conditionnelle) figure au contrat.
 @SpringBootTest(properties = {"app.openapi.enabled=true", "springdoc.api-docs.enabled=true", "springdoc.swagger-ui.enabled=true",
-        "app.portal.enabled=true", "app.portal.public-base-url=https://flowforge.example.org/tenant",
+        "app.portal.enabled=true", "app.portal.public-base-url=https://myrmacta.example.org/tenant",
         "app.signature.provider=stub"})
 // TODO §72 : provider stub (profil test) pour que les routes de signature figurent au contrat.
 @ActiveProfiles("test")

@@ -1,6 +1,6 @@
 # Project-local skills
 
-Skills spécifiques à Myrmacta, hors registres AI DevKit. Le dossier du skill reste `flowforge-conventions` (nom de code).
+Skills spécifiques à Myrmacta, hors registres AI DevKit. Le skill de conventions s'appelle `myrmacta-conventions`.
 
 - Source de vérité : ce répertoire (`.project-skills/<name>/SKILL.md`)
 - Distribution : `./scripts/vendor-ai-devkit-skills.sh` les copie vers `.cursor/skills/` et `.claude/skills/`

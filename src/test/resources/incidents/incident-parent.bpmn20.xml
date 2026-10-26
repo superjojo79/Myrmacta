@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- TODO §94 (revue M2) : l'échec d'un sous-process appelé doit se voir sur l'étape d'appel du process parent. -->
   <process id="incidentParent" name="Incident Parent" isExecutable="true">

@@ -18,7 +18,7 @@ class ZonkyEmbeddedDbLauncherTest {
     private final ZonkyEmbeddedDbLauncher launcher = new ZonkyEmbeddedDbLauncher();
 
     private static EmbeddedDbSettings settings(Path baseDir) {
-        return new EmbeddedDbSettings(baseDir, 0, "flowforge", "tenant_dev");
+        return new EmbeddedDbSettings(baseDir, 0, "myrmacta", "tenant_dev");
     }
 
     private static Connection open(EmbeddedDbLauncher.RunningDb db) throws SQLException {
@@ -50,7 +50,7 @@ class ZonkyEmbeddedDbLauncherTest {
             second.handle().close();
         }
         assertThat(second.password()).as("secret persistant, jamais le mot de passe de démo").isEqualTo(password)
-                .isNotEqualTo("flowforge").hasSize(32);
+                .isNotEqualTo("myrmacta").hasSize(32);
     }
 
     @Test

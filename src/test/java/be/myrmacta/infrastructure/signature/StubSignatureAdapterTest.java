@@ -66,7 +66,7 @@ class StubSignatureAdapterTest extends SignaturePortContract {
 
     @Override
     protected void onSubmitted(UUID requestId, SignaturePort.SignatureSubmission submission) {
-        // le stub relit la demande FlowForge, insérée PENDING avant l'appel au port (RequestSignatureUseCase)
+        // le stub relit la demande Myrmacta, insérée PENDING avant l'appel au port (RequestSignatureUseCase)
         requests.put(requestId, SignatureFixtures.request(requestId, SignatureMode.PARALLEL, "proc-1", DIGEST));
     }
 

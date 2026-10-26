@@ -29,7 +29,7 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
         PortalController.class, SignaturePortalController.class, PortalIdentityController.class})
 class PortalExceptionHandler {
 
-    static final String DENIED_METRIC = "flowforge.portal.access.denied";
+    static final String DENIED_METRIC = "myrmacta.portal.access.denied";
     private static final Logger log = LoggerFactory.getLogger(PortalExceptionHandler.class);
 
     private final MeterRegistry meterRegistry;

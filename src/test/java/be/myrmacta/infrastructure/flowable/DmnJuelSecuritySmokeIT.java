@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Import;
  * applicatif pour un identifiant non quoté, exactement la vulnérabilité H1-bis (TODO §57/§58).
  *
  * <p>Déploiement <b>direct</b> via {@link DmnRepositoryService}, en contournant délibérément
- * {@link FlowableDmnParserAdapter} — ce test ne prouve pas que FlowForge est vulnérable (l'adaptateur
+ * {@link FlowableDmnParserAdapter} — ce test ne prouve pas que Myrmacta est vulnérable (l'adaptateur
  * rejette déjà ces deux tables, voir {@link FlowableDmnParserAdapterTest}), il prouve que le risque
  * que l'adaptateur neutralise est réel sur le moteur réel, pas hypothétique.
  */
@@ -100,7 +100,7 @@ class DmnJuelSecuritySmokeIT {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def_%1$s" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="%1$s" name="Gap">
                     <decisionTable id="dt" hitPolicy="UNIQUE">
                       <input>

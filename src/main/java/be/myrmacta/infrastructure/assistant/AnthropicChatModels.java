@@ -20,7 +20,7 @@ public final class AnthropicChatModels {
 
     public static AnthropicChatModel create(AssistantProperties properties) {
         return create(properties.baseUrl(), properties.apiKey(), properties.model(), properties.anthropicVersion(),
-                properties.timeoutSeconds(), properties.maxOutputTokens(), "flowforge-assistant");
+                properties.timeoutSeconds(), properties.maxOutputTokens(), "myrmacta-assistant");
     }
 
     /** TODO §106 (lot A) — même construction pour la pré-vérification IA, avec ses propres réglages. */

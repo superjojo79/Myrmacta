@@ -85,7 +85,7 @@ class McpEndpointApiTest {
                 {
                   "protocolVersion": "2025-06-18",
                   "capabilities": {},
-                  "clientInfo": {"name": "flowforge-test", "version": "0.1.0"}
+                  "clientInfo": {"name": "myrmacta-test", "version": "0.1.0"}
                 }
                 """);
 
@@ -198,7 +198,7 @@ class McpEndpointApiTest {
                 {
                   "protocolVersion": "2025-06-18",
                   "capabilities": {},
-                  "clientInfo": {"name": "flowforge-test", "version": "0.1.0"}
+                  "clientInfo": {"name": "myrmacta-test", "version": "0.1.0"}
                 }
                 """);
         return init.getResponse().getHeader("Mcp-Session-Id");

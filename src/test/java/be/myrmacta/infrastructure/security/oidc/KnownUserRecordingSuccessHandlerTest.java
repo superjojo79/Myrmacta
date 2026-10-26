@@ -41,11 +41,11 @@ class KnownUserRecordingSuccessHandlerTest {
 
     @Test
     void recordsOidcUserWithMappedRolesThenDelegates() throws Exception {
-        var authentication = oidcAuthentication(Map.of("name", "Demo User", "email", "demo@flowforge.local"));
+        var authentication = oidcAuthentication(Map.of("name", "Demo User", "email", "demo@myrmacta.local"));
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        verify(recordUserLogin).record("sub-1", "Demo User", "demo@flowforge.local", Set.of("TENANT_ADMIN"));
+        verify(recordUserLogin).record("sub-1", "Demo User", "demo@myrmacta.local", Set.of("TENANT_ADMIN"));
         verify(delegate).onAuthenticationSuccess(request, response, authentication);
     }
 

@@ -7,7 +7,7 @@
   "resetPasswordAllowed": false,
   "clients": [
     {
-      "clientId": "keycloak-flowforge",
+      "clientId": "keycloak-myrmacta",
       "name": "Realm Myrmacta (agents, dev)",
       "enabled": true,
       "protocol": "openid-connect",
@@ -19,11 +19,11 @@
       "implicitFlowEnabled": false,
       "fullScopeAllowed": false,
       "redirectUris": [
-        "http://localhost:${KEYCLOAK_PORT:8081}/realms/flowforge/broker/fas/endpoint"
+        "http://localhost:${KEYCLOAK_PORT:8081}/realms/myrmacta/broker/fas/endpoint"
       ],
       "attributes": {
         "use.jwks.url": "true",
-        "jwks.url": "http://localhost:${KEYCLOAK_PORT:8081}/realms/flowforge/protocol/openid-connect/certs",
+        "jwks.url": "http://localhost:${KEYCLOAK_PORT:8081}/realms/myrmacta/protocol/openid-connect/certs",
         "token.endpoint.auth.signing.alg": "RS256",
         "pkce.code.challenge.method": "S256"
       },
@@ -110,11 +110,11 @@
       "implicitFlowEnabled": false,
       "fullScopeAllowed": false,
       "redirectUris": [
-        "${FLOWFORGE_BASE_URL:http://localhost:8080}/api/portal/identity/callback"
+        "${MYRMACTA_BASE_URL:http://localhost:8080}/api/portal/identity/callback"
       ],
       "attributes": {
         "use.jwks.url": "true",
-        "jwks.url": "${FLOWFORGE_PORTAL_JWKS_URL:http://host.docker.internal:8080/api/portal/identity/jwks}",
+        "jwks.url": "${MYRMACTA_PORTAL_JWKS_URL:http://host.docker.internal:8080/api/portal/identity/jwks}",
         "token.endpoint.auth.signing.alg": "RS256",
         "pkce.code.challenge.method": "S256"
       },

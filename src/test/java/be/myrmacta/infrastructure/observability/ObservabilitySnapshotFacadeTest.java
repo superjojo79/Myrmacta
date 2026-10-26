@@ -52,6 +52,6 @@ class ObservabilitySnapshotFacadeTest {
         assertThat(snapshot.severity().flowableExceptionJobs()).isEqualTo("warn");
         assertThat(snapshot.severity().webhookDead()).isEqualTo("warn");
         assertThat(snapshot.severity().pdfRender()).isEqualTo("ok");
-        assertThat(FlyingSaucerPdfAdapter.PDF_RENDER_TIMER).isEqualTo("flowforge.pdf.render");
+        assertThat(FlyingSaucerPdfAdapter.PDF_RENDER_TIMER).isEqualTo("myrmacta.pdf.render");
     }
 }

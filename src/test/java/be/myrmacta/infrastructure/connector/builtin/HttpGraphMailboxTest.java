@@ -82,7 +82,7 @@ class HttpGraphMailboxTest {
                 ex.sendResponseHeaders(307, -1);
                 ex.close();
             } else if (path.endsWith("/mailFolders") && ex.getRequestMethod().equals("GET")) {
-                boolean known = query.contains("FlowForge-processed");
+                boolean known = query.contains("Myrmacta-processed");
                 reply(ex, 200, known ? "{\"value\":[{\"id\":\"F-PROCESSED\"}]}" : "{\"value\":[]}");
             } else if (path.endsWith("/mailFolders") && ex.getRequestMethod().equals("POST")) {
                 reply(ex, 201, "{\"id\":\"F-REJECTED\"}");
@@ -111,7 +111,7 @@ class HttpGraphMailboxTest {
         });
         server.start();
         return new GraphMailbox.Settings("http://127.0.0.1:" + server.getAddress().getPort() + "/v1.0", "dossiers@example.com", TOKEN,
-                "Inbox", "FlowForge-processed", "FlowForge-rejected", 5000);
+                "Inbox", "Myrmacta-processed", "Myrmacta-rejected", 5000);
     }
 
     private static class Collector implements ImapMailbox.Handler {
@@ -161,7 +161,7 @@ class HttpGraphMailboxTest {
         assertThat(mail.authenticationResults()).startsWith("spf.protection.outlook.com"); // le PREMIER en-tête, jamais le suivant
         assertThat(auth).containsOnly("Bearer " + TOKEN);
         assertThat(calls).anyMatch(c -> c.startsWith("GET /v1.0/users/dossiers@example.com/mailFolders/inbox/messages?"));
-        assertThat(calls).anyMatch(c -> c.startsWith("POST /v1.0/users/dossiers@example.com/mailFolders {\"displayName\":\"FlowForge-rejected\"}"));
+        assertThat(calls).anyMatch(c -> c.startsWith("POST /v1.0/users/dossiers@example.com/mailFolders {\"displayName\":\"Myrmacta-rejected\"}"));
         assertThat(calls).anyMatch(c -> c.contains("PATCH") && c.contains(HttpGraphMailbox.DELIVERED)); // marqué AVANT le rangement
         assertThat(calls.getLast()).isEqualTo("POST /v1.0/users/dossiers@example.com/messages/M1/move {\"destinationId\":\"F-PROCESSED\"}");
         assertThat(calls.indexOf(calls.stream().filter(c -> c.startsWith("PATCH")).findFirst().orElseThrow()))
@@ -287,7 +287,7 @@ class HttpGraphMailboxTest {
     @Test
     void aMissingFolderToReadIsAnErrorNotACreation() throws Exception {
         var started = start();
-        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Absent", "FlowForge-processed", "FlowForge-rejected", 5000);
+        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Absent", "Myrmacta-processed", "Myrmacta-rejected", 5000);
         assertThatThrownBy(() -> new HttpGraphMailbox(mapper).process(settings, 10, LIMITS, new Collector()))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("not found");
         assertThat(calls).noneMatch(c -> c.startsWith("POST"));
@@ -296,7 +296,7 @@ class HttpGraphMailboxTest {
     @Test
     void folderNamesWithQuotesAreEscapedInTheFilter() throws Exception {
         var started = start();
-        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Inbox", "L'archive", "FlowForge-rejected", 5000);
+        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Inbox", "L'archive", "Myrmacta-rejected", 5000);
         new HttpGraphMailbox(mapper).process(settings, 10, LIMITS, new Collector());
         assertThat(calls).anyMatch(c -> c.contains("displayName eq 'L''archive'"));
     }
@@ -392,7 +392,7 @@ class HttpGraphMailboxTest {
     void aBodyThatNeverEndsIsCutOffByTheOverallTimeout() throws Exception {
         stall = true;
         var started = start();
-        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Inbox", "FlowForge-processed", "FlowForge-rejected", 500);
+        var settings = new GraphMailbox.Settings(started.baseUrl(), started.mailbox(), TOKEN, "Inbox", "Myrmacta-processed", "Myrmacta-rejected", 500);
         long begin = System.nanoTime();
         assertThatThrownBy(() -> new HttpGraphMailbox(mapper).process(settings, 10, LIMITS, new Collector()))
                 .isInstanceOf(HttpGraphMailbox.GraphTransportException.class);

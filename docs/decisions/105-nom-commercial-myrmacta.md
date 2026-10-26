@@ -2,6 +2,13 @@
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 
+> **Actualisation (2026-10-25).** Les identifiants techniques que cette décision laissait au nom
+> de code (artifactId, jar, serveur MCP, realm et clients Keycloak, `targetNamespace` BPMN/DMN,
+> en-tête de signature, dossiers et drapeau de courrier, clé de langue, job Prometheus,
+> utilisateur et tag d'image) ont été renommés par la PR identifiants. Le dépôt GitHub, les
+> permaliens, les changeSets Liquibase et les noms de beans Flowable ne l'ont pas été. L'énoncé
+> daté n'est pas réécrit. Compatibilité et reliquats : [RENAMING.md](../RENAMING.md).
+
 **Énoncé.** Le logiciel s'affichait sous son nom de code FlowForge (interface, documentation
 vivante, contrat OpenAPI, image Docker). Le nom commercial retenu est **Myrmacta** (myrmex + acta) :
 l'intelligence collective au service des dossiers et des décisions. Le dépôt GitHub n'est pas

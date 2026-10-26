@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 
 public final class FlowableJobMetricsBinder implements MeterBinder {
 
-    static final String DEAD_LETTER = "flowforge.flowable.jobs.dead.letter";
-    static final String EXCEPTION = "flowforge.flowable.jobs.exception";
+    static final String DEAD_LETTER = "myrmacta.flowable.jobs.dead.letter";
+    static final String EXCEPTION = "myrmacta.flowable.jobs.exception";
 
     private static final Logger log = LoggerFactory.getLogger(FlowableJobMetricsBinder.class);
 

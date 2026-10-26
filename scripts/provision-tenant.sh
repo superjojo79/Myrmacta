@@ -17,7 +17,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
 
   <tenant_id>       Identifiant de tenant (schéma + rôle PostgreSQL). Doit matcher
                      ^[a-z][a-z0-9_]{2,52}$ (3 à 53 caractères) — le rôle généré
-                     ("flowforge_<tenant_id>") reste ainsi <= 63 octets, la limite
+                     ("myrmacta_<tenant_id>") reste ainsi <= 63 octets, la limite
                      NAMEDATALEN des identifiants PostgreSQL non cités.
 
   -o <fichier.sql>  Écrit le SQL généré dans <fichier.sql> au lieu de stdout.
@@ -45,7 +45,7 @@ Usage: scripts/provision-tenant.sh <tenant_id> [-o <fichier.sql>] [--apply]
   --port <port>     Port local (127.0.0.1) de l'instance. Requis avec --instance-dir.
 
   --realm-per-tenant
-                    Avec --instance-dir : realm Keycloak propre au tenant (flowforge-<tenant_id>,
+                    Avec --instance-dir : realm Keycloak propre au tenant (myrmacta-<tenant_id>,
                      TODO §104, recommandé en production ; sans l'option, realm partagé). Écrit aussi
                      <tenant_id>.realm.json (déclaratif, sans secret), que <tenant_id>.keycloak.sh
                      applique avant de créer le client machine-to-machine. Requiert jq.
@@ -63,8 +63,8 @@ Variables d'environnement :
                        Variables psql standard, utilisées uniquement avec --apply, pour se
                        connecter en tant que superuser de provisioning.
   Avec --instance-dir, valeurs reprises si elles sont définies (sinon à compléter) :
-  TENANT_DB_URL, OIDC_ISSUER_URI, OIDC_CLIENT_ID, FLOWFORGE_IMAGE (défaut flowforge:latest),
-  KEYCLOAK_REALM (défaut flowforge).
+  TENANT_DB_URL, OIDC_ISSUER_URI, OIDC_CLIENT_ID, MYRMACTA_IMAGE (défaut myrmacta:latest),
+  KEYCLOAK_REALM (défaut myrmacta).
   Avec --realm-per-tenant (requis) : KEYCLOAK_URL (ex. https://auth.example.be) et PUBLIC_BASE_URL
   (URL publique des instances, sans le préfixe du tenant). Facultatif : FAS_CLAIM_GIVEN_NAME,
   FAS_CLAIM_FAMILY_NAME, FAS_CLAIM_EMAIL, ITSME_CLAIM_GIVEN_NAME, ITSME_CLAIM_FAMILY_NAME,
@@ -78,8 +78,8 @@ Exemples :
   TENANT_DB_PASSWORD='...' scripts/provision-tenant.sh tenant_b -o tenant_b.sql
 
   # Application directe contre PostgreSQL
-  TENANT_DB_PASSWORD='...' PGHOST=localhost PGPORT=5432 PGDATABASE=flowforge \
-    PGUSER=flowforge PGPASSWORD='...' \
+  TENANT_DB_PASSWORD='...' PGHOST=localhost PGPORT=5432 PGDATABASE=myrmacta \
+    PGUSER=myrmacta PGPASSWORD='...' \
     scripts/provision-tenant.sh tenant_b --apply
 
   # Schéma et rôle appliqués, plus la configuration de l'instance dans ./tenants
@@ -161,15 +161,15 @@ fi
 # Identifiant PostgreSQL non cité, borné à 53 caractères — validé avant toute génération
 # SQL pour ne jamais interpoler une entrée non maîtrisée dans le SQL produit (tenant_id est
 # la seule entrée utilisateur injectée ci-dessous, hors mot de passe). La borne n'est pas
-# 63 (NAMEDATALEN) mais 53 : le rôle généré préfixe "flowforge_" (10 caractères) au
-# tenant_id, et le nom de rôle résultant doit lui aussi rester <= 63 octets.
+# 63 (NAMEDATALEN) mais 53 : le rôle généré préfixe "myrmacta_" (9 caractères) au
+# tenant_id, et le nom de rôle résultant doit lui aussi rester <= 63 octets (53 + 9 = 62).
 if ! [[ "$tenant_id" =~ ^[a-z][a-z0-9_]{2,52}$ ]]; then
   echo "Identifiant de tenant invalide : '$tenant_id'" >&2
   echo "Attendu : minuscules/chiffres/underscore, commence par une lettre, 3 à 53 caractères." >&2
   exit 1
 fi
 
-role_name="flowforge_${tenant_id}"
+role_name="myrmacta_${tenant_id}"
 
 if [[ -n "$instance_dir" ]]; then
   if ! [[ "$port" =~ ^[0-9]+$ ]] || (( port < 1024 || port > 65535 )); then
@@ -200,7 +200,7 @@ else
   : "${PUBLIC_BASE_URL:?PUBLIC_BASE_URL doit être défini avec --realm-per-tenant (URL publique des instances)}"
   KEYCLOAK_URL="${KEYCLOAK_URL%/}"
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
-  KEYCLOAK_REALM="flowforge-${tenant_id}"
+  KEYCLOAK_REALM="myrmacta-${tenant_id}"
   OIDC_ISSUER_URI="${OIDC_ISSUER_URI:-${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}}"
   OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-mon-app}"
 fi
@@ -353,7 +353,7 @@ generate_instance_files() {
       exit 1
     fi
   done
-  local m2m_client="flowforge-m2m-${tenant_id}"
+  local m2m_client="myrmacta-m2m-${tenant_id}"
 
   (umask 077 && cat > "$env_file" <<ENV
 # Instance Myrmacta du tenant '${tenant_id}' — généré par scripts/provision-tenant.sh (TODO §95).
@@ -391,13 +391,15 @@ MANAGEMENT_ADDRESS=127.0.0.1
 ENV
   )
 
+  # Résolu avant le heredoc non quoté (set -u) : l'ancien nom d'image reste lu.
+  image="${MYRMACTA_IMAGE:-${FLOWFORGE_IMAGE:-myrmacta:latest}}" # flowforge-legacy
   cat > "$compose_env" <<ENV
 # Paramètres de docker/tenant/compose.tenant.yml pour le tenant '${tenant_id}' (TODO §95).
-#   docker compose -p flowforge-${tenant_id} --env-file ${compose_env} -f docker/tenant/compose.tenant.yml up -d
+#   docker compose -p myrmacta-${tenant_id} --env-file ${compose_env} -f docker/tenant/compose.tenant.yml up -d
 TENANT_ID=${tenant_id}
 TENANT_PORT=${port}
 TENANT_ENV_FILE=${env_file}
-FLOWFORGE_IMAGE=${FLOWFORGE_IMAGE:-flowforge:latest}
+MYRMACTA_IMAGE=${image}
 ENV
 
   if [[ ! -e "$headers" ]]; then
@@ -435,7 +437,7 @@ APACHE
 #   kcadm.sh config credentials --server https://keycloak.example --realm master --user <admin>
 set -euo pipefail
 KCADM="\${KCADM:-kcadm.sh}"
-REALM="\${KEYCLOAK_REALM:-${KEYCLOAK_REALM:-flowforge}}"
+REALM="\${KEYCLOAK_REALM:-${KEYCLOAK_REALM:-myrmacta}}"
 CLIENT="${m2m_client}"
 TENANT="${tenant_id}"
 KEYCLOAK

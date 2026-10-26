@@ -28,6 +28,9 @@
 | Angle | (1) décisions d'architecture vs implémentation ; (2) dérive documentaire ; (3) sécurité réelle, pas de finding écarté sans preuve d'inexploitabilité |
 | Hors scope | pentest dynamique, scan CVE des dépendances, durcissement Keycloak / TLS du reverse-proxy, fuzz du parser BPMN Flowable |
 
+> **Actualisation (2026-10-25), ancienne ligne 27.** La racine citée dans la ligne Code était
+> `com.flowforge`. Elle est `be.myrmacta`. La phrase datée n'est pas réécrite.
+
 Les numéros de ligne cités correspondent à l'état du dépôt à cette revue.
 
 ---
@@ -87,6 +90,10 @@ Voir point **45** pour le suivi. Synthèse :
 
 1. **`README.md` § Multi-tenant** — « Le tenant est résolu depuis le token OIDC à chaque requête » : **faux**. Le même README décrit plus bas l'instance dédiée (décision 13). Le code suit `02-multi-tenant.md`.
 2. **`docs/specs/01-architecture-hexagonale.md`** — `com.monapp` **clos** (PR #72, 2026-08-25) : 3 occurrences → `com.flowforge`. Ne plus replanifier (TODO §45).
+
+> **Actualisation (2026-10-25), ancienne ligne 89.** La cible `com.flowforge` de cette phrase
+> est devenue `be.myrmacta`. Le passage `com.monapp` → `com.flowforge` décrit l'état de la revue
+> et n'est pas réécrit.
 3. **`docs/specs/12-autorisation-conformite.md`** — `WORKFLOW_ADMIN` a « accès au cockpit Flowable » : **hors V1** (`05-workflow-engine.md`, `DEFERRED-FEATURES` §1.5). L'éditeur `/admin/bpmn-editor` couvre le besoin métier.
 4. **jsoup** — analyse/README `1.22.x`, `pom.xml` `1.23.1`.
 5. **`application.yml` L1–3** — commentaire « disable infra autoconfig until real adapters land » : **périmé**.

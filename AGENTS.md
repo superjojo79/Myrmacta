@@ -1,9 +1,9 @@
 # Myrmacta — consignes pour les agents
 
 Moteur de dossiers métier piloté par des workflows BPMN/DMN : Java 25, Spring Boot 4, Flowable 8, PostgreSQL
-(un schéma par tenant), Vue 3 embarqué. Nom commercial : **Myrmacta**. Le nom de code
-(dépôt, `artifactId` `flowforge`) : [docs/RENAMING.md](docs/RENAMING.md). Paquet Java et `groupId` : `be.myrmacta`.
-Règles détaillées : skill `flowforge-conventions` (`.project-skills/`).
+(un schéma par tenant), Vue 3 embarqué. Nom commercial : **Myrmacta**. `artifactId` Maven :
+`myrmacta`. Le dépôt GitHub n'est pas renommé ([docs/RENAMING.md](docs/RENAMING.md)). Paquet Java
+et `groupId` : `be.myrmacta`. Règles détaillées : skill `myrmacta-conventions` (`.project-skills/`).
 
 ## Où lire
 

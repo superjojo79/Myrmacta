@@ -12,7 +12,7 @@ class FlowableBpmnParserAdapterTest {
     private static final String VALID_BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                         targetNamespace="http://flowforge/test">
+                         targetNamespace="http://myrmacta/test">
               <process id="testProcess" isExecutable="true">
                 <startEvent id="start"/>
                 <endEvent id="end"/>
@@ -61,7 +61,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <scriptTask id="evil" scriptFormat="juel">
@@ -214,7 +214,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <serviceTask id="svc" flowable:delegateExpression="${connectorServiceTask}">
@@ -241,7 +241,7 @@ class FlowableBpmnParserAdapterTest {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <businessRuleTask id="dmn"/>
@@ -261,7 +261,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <userTask id="wait" %s/>
@@ -277,7 +277,7 @@ class FlowableBpmnParserAdapterTest {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <exclusiveGateway id="gw"/>
@@ -301,7 +301,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <serviceTask id="svc" %s/>
@@ -346,7 +346,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <subProcess id="sub">
@@ -434,7 +434,7 @@ class FlowableBpmnParserAdapterTest {
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
                              xmlns:flowable="http://flowable.org/bpmn"
-                             targetNamespace="http://flowforge/test">
+                             targetNamespace="http://myrmacta/test">
                   <process id="testProcess" isExecutable="true">
                     <startEvent id="start"/>
                     <serviceTask id="svc" flowable:type="dmn">

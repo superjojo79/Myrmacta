@@ -87,10 +87,13 @@ class WebhookRestAdapterTest {
         assertThat(envelope.get("payload").get("k").asText()).isEqualTo("v");
 
         String expectedSig = "sha256=" + hmacHex("super-secret", post.body());
-        assertThat(post.headers()).containsEntry("X-FlowForge-Signature", expectedSig);
+        assertThat(post.headers()).containsEntry("X-Myrmacta-Signature", expectedSig);
+        assertThat(post.headers()).containsEntry("X-FlowForge-Signature", expectedSig); // flowforge-legacy
+        assertThat(WebhookRestAdapter.acceptsSignatureHeader("X-Myrmacta-Signature")).isTrue();
+        assertThat(WebhookRestAdapter.acceptsSignatureHeader("x-flowforge-signature")).isTrue(); // flowforge-legacy
         assertThat(MessageDigest.isEqual(
                         expectedSig.getBytes(StandardCharsets.UTF_8),
-                        post.headers().get("X-FlowForge-Signature").getBytes(StandardCharsets.UTF_8)))
+                        post.headers().get("X-Myrmacta-Signature").getBytes(StandardCharsets.UTF_8)))
                 .isTrue();
     }
 
@@ -106,7 +109,8 @@ class WebhookRestAdapterTest {
         adapter.send(command);
 
         assertThat(posts).hasSize(1);
-        assertThat(posts.getFirst().headers()).doesNotContainKey("X-FlowForge-Signature");
+        assertThat(posts.getFirst().headers()).doesNotContainKey("X-Myrmacta-Signature");
+        assertThat(posts.getFirst().headers()).doesNotContainKey("X-FlowForge-Signature"); // flowforge-legacy
     }
 
     @Test

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- TODO §104 (issue #210) : tâche externe à authentification forte — le tiers s'identifie par FAS ou itsme ; son NRN
        est comparé au champ nrnDemandeur du dossier, ou y est écrit s'il est vide. -->

@@ -72,7 +72,7 @@ class KafkaEndToEndIT {
                 Map.of(
                         "bootstrapServers", "localhost:9092",
                         "topic", "claims.events",
-                        "groupId", "flowforge",
+                        "groupId", "myrmacta",
                         "securityProtocol", "PLAINTEXT",
                         "processKey", "importProcess",
                         "dossierTypeCode", "IMPORT",

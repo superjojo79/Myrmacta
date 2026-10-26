@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>be.myrmacta</groupId>
-    <artifactId>flowforge</artifactId>
+    <artifactId>myrmacta</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>Myrmacta</name>
     <description>Myrmacta — L'intelligence collective au service de vos dossiers et décisions</description>

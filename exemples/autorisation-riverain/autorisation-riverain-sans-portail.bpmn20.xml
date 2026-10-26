@@ -5,7 +5,7 @@
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
              xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
-             targetNamespace="http://flowforge/exemples">
+             targetNamespace="http://myrmacta/exemples">
   <!-- Variante sans portail. Généré par generer-bpmn.py : modifier le script plutôt que ce fichier. -->
   <process id="autorisationRiverain" name="Autorisation riverain (véhicule)" isExecutable="true">
     <startEvent id="debut" name="Demande introduite"/>

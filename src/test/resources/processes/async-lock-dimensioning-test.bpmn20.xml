@@ -2,7 +2,7 @@
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             targetNamespace="http://flowforge/processes/test">
+             targetNamespace="http://myrmacta/processes/test">
   <!--
     Process de test dédié à FlowableLockDimensioningTest (fiabilisation-tests-plateforme,
     D-FLOWABLE-LOCK-TEST) : la seule tâche est asynchrone (flowable:async="true"), ce qui

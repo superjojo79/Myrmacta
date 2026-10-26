@@ -1,4 +1,4 @@
-# Realm Keycloak d'un tenant FlowForge (TODO §104, D-BEAUTH-REALM, D-BEAUTH-PROVISION) — appelé par
+# Realm Keycloak d'un tenant Myrmacta (TODO §104, D-BEAUTH-REALM, D-BEAUTH-PROVISION) — appelé par
 # scripts/provision-tenant.sh --realm-per-tenant. Déclaratif et sans secret : le script <tenant>.keycloak.sh généré
 # l'applique, puis pose les identifiants des fournisseurs depuis son environnement.
 #
@@ -20,7 +20,7 @@ def profile:
      attribute("firstName"; "${firstName}"; ["admin", "user"]; ["admin", "user"]),
      attribute("lastName"; "${lastName}"; ["admin", "user"]; ["admin", "user"]),
      # Réservé à l'admin : sinon un utilisateur changerait de tenant depuis sa console de compte (DEPLOIEMENT.md §5).
-     attribute("tenant_id"; "Tenant FlowForge"; ["admin"]; ["admin"])],
+     attribute("tenant_id"; "Tenant Myrmacta"; ["admin"]; ["admin"])],
    groups: [{name: "user-metadata", displayHeader: "User metadata",
              displayDescription: "Attributes, which refer to user metadata"}]};
 
@@ -30,7 +30,7 @@ def mapper($name; $mapper; $config):
              "userinfo.token.claim": "true"} + $config)};
 
 def bff:
-  {clientId: "mon-app", name: "FlowForge BFF", enabled: true, protocol: "openid-connect", publicClient: false,
+  {clientId: "mon-app", name: "Myrmacta BFF", enabled: true, protocol: "openid-connect", publicClient: false,
    clientAuthenticatorType: "client-secret", standardFlowEnabled: true, directAccessGrantsEnabled: false,
    serviceAccountsEnabled: false, implicitFlowEnabled: false,
    redirectUris: ["\($base)/\($tenant)/*"], webOrigins: [$base],
@@ -69,7 +69,7 @@ def flow($alias; $description; $executions):
 
 # D-BEAUTH-IDP-ONLY : les fournisseurs pour tous ; le mot de passe et l'OTP pour les seuls comptes « secours ».
 def idpOnlyFlows:
-  [flow("browser-fournisseurs"; "FlowForge : fournisseurs d'identité, mot de passe réservé aux comptes de secours"; [
+  [flow("browser-fournisseurs"; "Myrmacta : fournisseurs d'identité, mot de passe réservé aux comptes de secours"; [
      execution("auth-cookie"; "ALTERNATIVE"; 10),
      execution("identity-provider-redirector"; "ALTERNATIVE"; 20),
      subflow("browser-fournisseurs formulaire"; "ALTERNATIVE"; 30)]) + {id: $flowId, topLevel: true},
@@ -86,8 +86,8 @@ def idpOnlyFlows:
      execution("auth-otp-form"; "REQUIRED"; 30)])];
 
 {
-  realm: "flowforge-\($tenant)",
-  displayName: "FlowForge — \($tenant)",
+  realm: "myrmacta-\($tenant)",
+  displayName: "Myrmacta — \($tenant)",
   enabled: true,
   sslRequired: "external",
   registrationAllowed: false,

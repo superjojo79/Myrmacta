@@ -82,7 +82,7 @@ class ConfigurationPromotionApiTest {
     private static String bpmn(String key) {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
-                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://flowforge/test">
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" targetNamespace="http://myrmacta/test">
                   <process id="%s" isExecutable="true">
                     <startEvent id="start"/><userTask id="wait" name="Wait"/><endEvent id="end"/>
                     <sequenceFlow id="f1" sourceRef="start" targetRef="wait"/><sequenceFlow id="f2" sourceRef="wait" targetRef="end"/>
@@ -94,7 +94,7 @@ class ConfigurationPromotionApiTest {
     private static String dmn(String key) {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
-                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def" namespace="http://flowforge/test">
+                <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def" namespace="http://myrmacta/test">
                   <decision id="%s" name="Def">
                     <decisionTable id="dt" hitPolicy="UNIQUE">
                       <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>

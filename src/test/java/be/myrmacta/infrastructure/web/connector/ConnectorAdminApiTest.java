@@ -452,7 +452,7 @@ class ConnectorAdminApiTest {
                   "config": {
                     "bootstrapServers": "localhost:9092",
                     "topic": "claims.events",
-                    "groupId": "flowforge-quota-test",
+                    "groupId": "myrmacta-quota-test",
                     "securityProtocol": "PLAINTEXT",
                     "processKey": "smokeProcess",
                     "dossierTypeCode": "CLAIM"

@@ -84,7 +84,7 @@ description: Issue #211 — scénarios dérivés des critères de succès (broui
 
 ## Test Reporting & Coverage
 
-- `./mvnw verify` (avec `FLOWFORGE_TEST_PG_*` en session), `cd frontend && npm run lint && npm run test:all`,
+- `./mvnw verify` (avec `MYRMACTA_TEST_PG_*` en session), `cd frontend && npm run lint && npm run test:all`,
   `scripts/check-docs.sh`.
 - Jeu d'évaluation : commande dédiée, rapport par type de constat ; non exécuté en CI.
 

@@ -30,13 +30,13 @@ Implémenter le plan de remédiation `docs/analyses/plan-remediation-2026-10-23.
 
   Ces identifiants sont le lien entre le code et ses justifications.
 - **Liens :** 12 liens Markdown relatifs cassés sur 1 016, dont 10 dans `TODO.md` vers `docs/ai/`.
-- **Skills :** `scripts/vendor-ai-devkit-skills.sh` génère `.claude/skills` et `.cursor/skills` à partir de `.ai-devkit.json` (registre, via `npx ai-devkit@latest`, donc avec accès réseau), de `.project-skills/` et de `.agents/skills/`. `.claude/skills/flowforge-conventions/SKILL.md` a été modifié à la main et diffère de la source.
+- **Skills :** `scripts/vendor-ai-devkit-skills.sh` génère `.claude/skills` et `.cursor/skills` à partir de `.ai-devkit.json` (registre, via `npx ai-devkit@latest`, donc avec accès réseau), de `.project-skills/` et de `.agents/skills/`. `.claude/skills/myrmacta-conventions/SKILL.md` a été modifié à la main et diffère de la source.
 - **Mode dev :** `.env.example` fixe `SPRING_PROFILES_ACTIVE=local`, `APP_ENVIRONMENT=local` et `APP_DOSSIER_ATTACHMENT_SCAN_TYPE=noop`. `SecretsEnvironmentPostProcessor` et `SecurityHeadersEnvironmentPostProcessor` se relâchent sur le profil `local`, alors que la gouvernance MCP dépend d'`APP_ENVIRONMENT` (défaut `production`).
 - **Tests :** tests sur PostgreSQL embarqué zonky (non-root requis, sinon `TEST_PG_URL` ; voir `GETTING-STARTED.md`). Docker n'est pas utilisable dans le bac à sable.
 
 ### Contraintes non négociables
 
-- **Conventions :** respecter le skill `flowforge-conventions` (hexagonal, ArchUnit vert). Tout changement de code Java ou TypeScript se fait en TDD. Lancer `verify` avant toute affirmation de succès.
+- **Conventions :** respecter le skill `myrmacta-conventions` (hexagonal, ArchUnit vert). Tout changement de code Java ou TypeScript se fait en TDD. Lancer `verify` avant toute affirmation de succès.
 - **Identifiants :** ne jamais renuméroter, fusionner ni supprimer un identifiant cité par le code ou la doc (`TODO §N`, `D-XXX`, « décision n° N », points 1 à 46 des revues). Avant P6, inventorier **tous** les schémas d'identifiants en usage ; s'il en existe un autre, il reçoit le même traitement.
 - **Déplacements :** tout déplacement se fait par `git mv`, pour garder l'historique. Les liens sont réécrits par script, jamais à la main, et `scripts/check-docs.sh` doit être vert à la fin de chaque phase à partir de P3.
 - **Suppressions :** aucune suppression de documentation de `HEAD` avant que le tag `archive/docs-pre-remediation-2026-10` soit posé sur le commit qui la précède et poussé (`git push origin <tag>`). Les liens vers un contenu supprimé deviennent des permaliens `https://github.com/superjojo79/FlowForge/blob/archive/docs-pre-remediation-2026-10/<chemin>`, ou pointent vers la section de spec qui le remplace.
@@ -63,7 +63,7 @@ Implémenter le plan de remédiation `docs/analyses/plan-remediation-2026-10-23.
 **P2, D0.**
 - Réparer les 12 liens cassés.
 - Retirer du README les versions de patch, en renvoyant au `pom.xml`.
-- Reporter dans `.project-skills/flowforge-conventions/SKILL.md` la modification faite à la main dans `.claude/skills`, puis propager.
+- Reporter dans `.project-skills/myrmacta-conventions/SKILL.md` la modification faite à la main dans `.claude/skills`, puis propager.
 
 **P3, D1 : `scripts/check-docs.sh` et un job `docs` dans `.github/workflows/ci.yml`.**
 - Contraintes du script : rapide (moins de 30 s), hors ligne, en bash (python3 lancé avec `-I` autorisé), avec la même sortie en local et en CI.
@@ -83,7 +83,7 @@ Implémenter le plan de remédiation `docs/analyses/plan-remediation-2026-10-23.
 - Poser et pousser le tag d'archive.
 - Établir une table de correspondance entre chaque fonctionnalité de `docs/ai/` et sa spec `docs/specs/NN-*.md`. Pour une fonctionnalité livrée sans spec qui la couvre, ajouter une section « Implémentation » courte (30 lignes au plus, une synthèse et non une copie) dans la spec la plus proche.
 - Supprimer de `HEAD` les fichiers `docs/ai/` des fonctionnalités livrées. Garder l'arborescence (README par phase) si `dev-lifecycle` ou `check-status.sh` en a besoin.
-- Inscrire la règle de fin de cycle dans `.project-skills/flowforge-conventions/SKILL.md` : la PR de livraison remonte l'essentiel dans la spec et les décisions dans le registre, puis supprime ses fichiers `docs/ai/`.
+- Inscrire la règle de fin de cycle dans `.project-skills/myrmacta-conventions/SKILL.md` : la PR de livraison remonte l'essentiel dans la spec et les décisions dans le registre, puis supprime ses fichiers `docs/ai/`.
 
 **P6, D4.**
 - Éclater `TODO.md` en un fichier par section numérotée, `docs/decisions/NNN-<slug>.md`, avec le statut en en-tête (`ouvert` / `clos` / `remplacé par §N`).
@@ -107,12 +107,12 @@ Implémenter le plan de remédiation `docs/analyses/plan-remediation-2026-10-23.
   - ajouter une configuration git-cliff (`cliff.toml`) qui produit le format actuel du CHANGELOG ;
   - garder intactes les entrées existantes ;
   - documenter la commande de release ;
-  - retirer l'obligation d'une entrée manuelle par PR de `flowforge-conventions` et de tout autre endroit qui l'impose.
+  - retirer l'obligation d'une entrée manuelle par PR de `myrmacta-conventions` et de tout autre endroit qui l'impose.
 
 **P8, D6.**
 - Écrire `AGENTS.md` (40 lignes au plus) : carte de la documentation (où lire, où écrire), règles « jamais » (copie de skill générée, nouveau fichier de suivi, renumérotation d'un identifiant), commandes de vérification.
 - `CLAUDE.md` contient `@AGENTS.md`.
-- Mettre `flowforge-conventions` à jour selon la nouvelle structure (source puis propagation).
+- Mettre `myrmacta-conventions` à jour selon la nouvelle structure (source puis propagation).
 - Inventorier les 28 skills (utilité en session cloud ou locale, recouvrements). Selon le paramètre Skills, reporter une recommandation dans le Suivi, ou supprimer.
 
 **P9, risque 4.**

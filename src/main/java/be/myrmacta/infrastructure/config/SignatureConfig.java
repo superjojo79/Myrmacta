@@ -51,7 +51,7 @@ public class SignatureConfig {
         } else {
             LOG.info("Signature stub active (profile local/test): signatures are SIMULATED.");
         }
-        Gauge.builder("flowforge.signature.stub.active", () -> 1)
+        Gauge.builder("myrmacta.signature.stub.active", () -> 1)
                 .tag("outside_local", String.valueOf(outsideLocal))
                 .description("1 when the simulated signature provider is active")
                 .register(meterRegistry);

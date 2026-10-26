@@ -59,7 +59,7 @@ class OidcPortalIdentityProviderAdapterTest {
 
     private static final String CLIENT_ID = "portail-tenant_b";
     private static final String NRN = "85073003328";
-    private static final String REDIRECT = "https://flowforge.example.be/tenant_b/api/portal/identity/callback";
+    private static final String REDIRECT = "https://myrmacta.example.be/tenant_b/api/portal/identity/callback";
 
     @TempDir
     Path dir;

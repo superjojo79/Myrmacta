@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class ObservabilityMeterConfig {
 
-    static final String SSE_ACTIVE = "flowforge.sse.emitters.active";
+    static final String SSE_ACTIVE = "myrmacta.sse.emitters.active";
 
     @Bean
     OutboxAgeMeterBinder outboxAgeMeterBinder(

@@ -16,7 +16,7 @@ class SecretsEnvironmentPostProcessorTest {
     void testProfile_allowsDemoSecretsAndHmac() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("test");
-        environment.setProperty("spring.datasource.password", "flowforge");
+        environment.setProperty("spring.datasource.password", "myrmacta");
         environment.setProperty("app.security.m2m.jwt-secret", "test-hmac");
         assertThatCode(() -> processor.postProcessEnvironment(environment, application))
                 .doesNotThrowAnyException();
@@ -26,7 +26,7 @@ class SecretsEnvironmentPostProcessorTest {
     void localProfile_allowsDemoSecrets() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("local");
-        environment.setProperty("spring.datasource.password", "flowforge");
+        environment.setProperty("spring.datasource.password", "myrmacta");
         assertThatCode(() -> processor.postProcessEnvironment(environment, application))
                 .doesNotThrowAnyException();
     }
@@ -35,7 +35,7 @@ class SecretsEnvironmentPostProcessorTest {
     void prodProfile_isNotRelaxedAndRejectsDefaultDbPassword() {
         MockEnvironment environment = prodLike();
         environment.setActiveProfiles("prod");
-        environment.setProperty("spring.datasource.password", "flowforge");
+        environment.setProperty("spring.datasource.password", "myrmacta");
         assertThatThrownBy(() -> processor.postProcessEnvironment(environment, application))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DB_PASSWORD");
@@ -44,7 +44,7 @@ class SecretsEnvironmentPostProcessorTest {
     @Test
     void noProfile_rejectsDefaultDbPassword() {
         MockEnvironment environment = prodLike();
-        environment.setProperty("spring.datasource.password", "flowforge");
+        environment.setProperty("spring.datasource.password", "myrmacta");
         assertThatThrownBy(() -> processor.postProcessEnvironment(environment, application))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DB_PASSWORD");
@@ -78,7 +78,7 @@ class SecretsEnvironmentPostProcessorTest {
     @Test
     void noProfile_rejectsDeniedPasswordIgnoringCaseAndWhitespace() {
         MockEnvironment environment = prodLike();
-        environment.setProperty("spring.datasource.password", " FlowForge ");
+        environment.setProperty("spring.datasource.password", " Myrmacta ");
         assertThatThrownBy(() -> processor.postProcessEnvironment(environment, application))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DB_PASSWORD");
@@ -86,7 +86,7 @@ class SecretsEnvironmentPostProcessorTest {
 
     @Test
     void noProfile_rejectsDeniedAliases() {
-        for (String denied : new String[] {"postgres", "Admin", "PASSWORD"}) {
+        for (String denied : new String[] {"postgres", "Admin", "PASSWORD", "flowforge"}) { // flowforge-legacy
             MockEnvironment environment = prodLike();
             environment.setProperty("spring.datasource.password", denied);
             assertThatThrownBy(() -> processor.postProcessEnvironment(environment, application))

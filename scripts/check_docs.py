@@ -256,7 +256,7 @@ code et la documentation, désignent le fichier `NNN-*.md`**. Un point se clôt 
 jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numéro suivant.
 
 - Les points **ouverts** sont des décisions encore à trancher : ne pas en choisir une option en
-  silence (`flowforge-conventions`).
+  silence (`myrmacta-conventions`).
 - Les identifiants fins (`D-…`, `DD-…`) cités par le code sont indexés dans
   [identifiants.md](identifiants.md).
 - Le journal du mandat « roadmap complète » (2026, figé) est dans [roadmap-2026/](roadmap-2026/DECISIONS.md).

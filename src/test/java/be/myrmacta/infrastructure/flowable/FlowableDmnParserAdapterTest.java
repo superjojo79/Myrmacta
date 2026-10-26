@@ -140,7 +140,7 @@ class FlowableDmnParserAdapterTest {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="d1" name="D1">
                     <decisionTable id="dt1" hitPolicy="UNIQUE">
                       <input><inputExpression id="ie1" typeRef="string"><text>customerCat</text></inputExpression></input>
@@ -178,7 +178,7 @@ class FlowableDmnParserAdapterTest {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision name="Eligibilite">
                     <decisionTable id="dt" hitPolicy="UNIQUE">
                       <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>
@@ -204,7 +204,7 @@ class FlowableDmnParserAdapterTest {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="eligibilite" name="Eligibilite">
                     <literalExpression id="le"><text>1</text></literalExpression>
                   </decision>
@@ -222,7 +222,7 @@ class FlowableDmnParserAdapterTest {
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="eligibilite" name="Eligibilite">
                     <decisionTable id="dt" hitPolicy="UNIQUE">
                       <input><inputExpression id="ie" typeRef="string"><text>customerCat</text></inputExpression></input>
@@ -295,7 +295,7 @@ class FlowableDmnParserAdapterTest {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="eligibilite" name="Eligibilite">
                     <decisionTable id="dt" hitPolicy="UNIQUE">
                       <input><inputExpression id="ie" typeRef="string"><text>%s</text></inputExpression></input>
@@ -325,7 +325,7 @@ class FlowableDmnParserAdapterTest {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="Def"
-                             namespace="http://flowforge/test">
+                             namespace="http://myrmacta/test">
                   <decision id="eligibilite" name="Eligibilite">
                     <decisionTable id="dt" hitPolicy="%s">
                       <input>

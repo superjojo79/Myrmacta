@@ -9,7 +9,7 @@
 L'utilisateur délègue à l'agent les **décisions ouvertes** des lots de la roadmap (`ROADMAP.md`
 Catégorie 7, [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) § *File d'attente — Vague D*). Cette délégation vaut pour les décisions
 **ouvertes** uniquement, et elle est **tracée** (§4) : elle n'autorise jamais une décision silencieuse
-(`flowforge-conventions` § Workflow, point 5). Elle vaut aussi approbation explicite de chaque phase
+(`myrmacta-conventions` § Workflow, point 5). Elle vaut aussi approbation explicite de chaque phase
 (`dev-lifecycle` § *Plan Before Execution*) : ne pas s'arrêter pour demander un feu vert de phase.
 
 ## 2. Périmètre et ordre

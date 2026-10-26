@@ -141,7 +141,7 @@ class KafkaConnectorTest {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("bootstrapServers", "localhost:9092");
         config.put("topic", "claims.events");
-        config.put("groupId", "flowforge-batch");
+        config.put("groupId", "myrmacta-batch");
         config.put("securityProtocol", "PLAINTEXT");
         config.put("processKey", "importProcess");
         config.put("dossierTypeCode", "IMPORT");

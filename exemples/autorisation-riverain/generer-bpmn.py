@@ -275,7 +275,7 @@ def render(m, variante):
            '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"',
            '             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"',
            '             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"',
-           '             targetNamespace="http://flowforge/exemples">',
+           '             targetNamespace="http://myrmacta/exemples">',
            f'  <!-- Variante {variante}. Généré par generer-bpmn.py : modifier le script plutôt que ce fichier. -->',
            f'  <process id="{PROCESS_ID}" name={quoteattr(PROCESS_NAME)} isExecutable="true">']
     for n in m.nodes:

@@ -546,7 +546,7 @@ public final class ParcoursCompiler {
                     .append("             xmlns:bpmndi=\"http://www.omg.org/spec/BPMN/20100524/DI\"\n")
                     .append("             xmlns:dc=\"http://www.omg.org/spec/DD/20100524/DC\"\n")
                     .append("             xmlns:di=\"http://www.omg.org/spec/DD/20100524/DI\"\n")
-                    .append("             targetNamespace=\"http://flowforge/parcours\">\n");
+                    .append("             targetNamespace=\"http://myrmacta/parcours\">\n");
             xml.append("  <process id=\"").append(esc(key)).append("\" name=\"").append(esc(label)).append("\" isExecutable=\"true\">\n");
             xml.append("    <startEvent id=\"start\" name=\"Début\"/>\n");
             // Les éléments, avec le flux par défaut des passerelles.

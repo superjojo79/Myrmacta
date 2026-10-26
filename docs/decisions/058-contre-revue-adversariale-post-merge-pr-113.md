@@ -16,7 +16,7 @@ l'intérêt de la démarche.
 **Faux positifs (vérifiés empiriquement, pas seulement écartés à la lecture) :**
 
 - **SSRF IPv4-mapped IPv6** — hypothèse initiale : une adresse IPv6 IPv4-mapped (`::ffff:x.x.x.x`) résolue par DNS échapperait aux plages privées d'`OutboundUrlGuard` (le check octets ne s'appliquant qu'aux vraies `Inet4Address`). **Infirmé par test réel** : `InetAddress.getByAddress`/`getByName` du JDK convertit *toute* adresse IPv4-mapped en `Inet4Address` dès la construction, quelle que soit la source (littéral ou résolveur) — vérifié avec un tableau d'octets brut simulant une réponse DNS. Test de régression permanent ajouté (`OutboundUrlGuardTest.hostnameResolvingToIpv4MappedIpv6Address_isRejected`), aucun correctif de code nécessaire.
-- **`allowRestrictedHeaders` global** — le `System.setProperty` JVM-wide dans `HttpRestConnector` semblait un effet de bord non maîtrisé ; en fait déjà posé au tout début de `FlowForgeApplication.main()` (décision documentée **D-44**), et `HttpRestConnector`/`WebhookRestAdapter` sont les 2 seules classes du dépôt à utiliser `HttpURLConnection` (grep vérifié) — aucun autre composant ne peut être affecté.
+- **`allowRestrictedHeaders` global** — le `System.setProperty` JVM-wide dans `HttpRestConnector` semblait un effet de bord non maîtrisé ; en fait déjà posé au tout début de `MyrmactaApplication.main()` (décision documentée **D-44**), et `HttpRestConnector`/`WebhookRestAdapter` sont les 2 seules classes du dépôt à utiliser `HttpURLConnection` (grep vérifié) — aucun autre composant ne peut être affecté.
 
 **Limitation connue, non corrigée (décision architecture à trancher, pas tranchée ici) :**
 `WebhookRequestRateLimiter`, `WebhookPreAuthRateLimiter` et le cache anti-rejeu de

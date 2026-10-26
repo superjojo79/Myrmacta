@@ -24,4 +24,4 @@ que la ligne du compteur existe ; masqué par H2) ; les 34 `*IT` n'étaient jama
 migration des données existantes — à décider avant toute évolution du modèle de templates.
 
 **Impacte :** `docs/guides/GETTING-STARTED.md` (§17, §18), `docs/guides/DEPLOIEMENT.md` (§18), `.env.example` (`APP_EMBEDDED_DB_*`, `FLOWFORGE_TEST_PG_*`),
-`CHANGELOG.md`, `Dockerfile`, `.github/workflows/ci.yml`, skill `flowforge-conventions`.
+`CHANGELOG.md`, `Dockerfile`, `.github/workflows/ci.yml`, skill `myrmacta-conventions`.

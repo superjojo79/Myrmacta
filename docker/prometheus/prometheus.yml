@@ -12,7 +12,7 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: flowforge
+  - job_name: myrmacta
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ["localhost:8090"]

@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 
 public final class OutboxAgeMeterBinder implements MeterBinder {
 
-    static final String TRIGGER_AGE = "flowforge.outbox.trigger.oldest.pending.age";
-    static final String NOTIFICATION_AGE = "flowforge.outbox.notification.oldest.pending.age";
-    static final String PURGE_AGE = "flowforge.outbox.purge.oldest.unfinished.age";
+    static final String TRIGGER_AGE = "myrmacta.outbox.trigger.oldest.pending.age";
+    static final String NOTIFICATION_AGE = "myrmacta.outbox.notification.oldest.pending.age";
+    static final String PURGE_AGE = "myrmacta.outbox.purge.oldest.unfinished.age";
 
     private static final Logger log = LoggerFactory.getLogger(OutboxAgeMeterBinder.class);
 

@@ -36,7 +36,13 @@ import org.springframework.stereotype.Component;
 class AngusImapMailbox implements ImapMailbox {
 
     /** Mot-clé IMAP posé sur un message déjà remis au runtime (idempotence d'un rangement qui échoue). */
-    static final Flags DELIVERED = new Flags("FlowForgeDelivered");
+    static final Flags DELIVERED = new Flags("MyrmactaDelivered");
+    /** Ancien mot-clé, encore reconnu : un message déjà remis n'est pas retraité. */
+    static final Flags LEGACY_DELIVERED = new Flags("FlowForgeDelivered"); // flowforge-legacy
+
+    static boolean alreadyDelivered(Flags flags) {
+        return flags != null && (flags.contains(DELIVERED) || flags.contains(LEGACY_DELIVERED));
+    }
     static final int MAX_MIME_DEPTH = 10;
     static final int MAX_MIME_PARTS = 200;
 
@@ -63,7 +69,7 @@ class AngusImapMailbox implements ImapMailbox {
                 for (int index = 0; index < count; index++) {
                     MimeMessage message = (MimeMessage) live[index];
                     Outcome outcome;
-                    if (canFlag && message.getFlags().contains(DELIVERED)) {
+                    if (canFlag && alreadyDelivered(message.getFlags())) {
                         // Déjà remis lors d'un tour dont le rangement a échoué : on réessaie seulement le rangement (jamais de 2e dossier).
                         outcome = Outcome.PROCESSED;
                     } else try {

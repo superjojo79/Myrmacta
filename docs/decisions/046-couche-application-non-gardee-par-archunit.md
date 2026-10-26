@@ -2,6 +2,9 @@
 
 > **Statut :** clos · **Section :** [Points ouverts › Alignement post-implémentation et sécurité (2026-08-25)](section-points-alignement-post-implementation-et-securite.md) · ancien `TODO.md` §46 · [registre](README.md)
 
+> **Actualisation (2026-10-25).** Le paquet cité dans l'énoncé daté était `com.flowforge`.
+> Il s'appelle `be.myrmacta` depuis la PR paquets. L'énoncé n'est pas réécrit.
+
 **Énoncé :** `ManualStartOrchestrator` (`com.flowforge.application`) importe
 `infrastructure.workflow.WorkflowStartConfirmer`. ArchUnit ne contraint que
 `domain` (pas `application`). Contraint aux conventions

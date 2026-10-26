@@ -121,6 +121,9 @@ Spring Boot laisse ces entrées à la racine du jar. L'image les contient sous
 `/usr/share/doc/flowforge/`. `scripts/check-license-notice-in-jar.sh` échoue si l'un des deux
 manque ou diffère des fichiers de la racine du dépôt.
 
+> **Actualisation (2026-10-25).** Le chemin d'image cité est désormais
+> `/usr/share/doc/myrmacta/`. L'énoncé daté n'est pas réécrit.
+
 **Impacte.** `LICENSE`, `LICENSING.md`, `COMMERCIAL-LICENSE.md`, `CLA.md`, `CONTRIBUTING.md`,
 `TRADEMARKS.md`, `README.md`, `pom.xml` (`<licenses>`, `liquibase.version`, copie de `LICENSE`
 et `NOTICE` dans le jar), `frontend/package.json` (`license`),

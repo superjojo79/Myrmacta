@@ -29,7 +29,7 @@ src/
   app/ api/ stores/ views/ components/ styles/
 ```
 
-Maquette UX : `docs/specs/FlowForge - Maquettes UI.html`.
+Maquette UX : `docs/specs/Myrmacta - Maquettes UI.html`.
 
 ## Tester contre un vrai backend en HMR
 

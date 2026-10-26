@@ -77,7 +77,7 @@ class DocumentStorageCrossDossierIT {
         String bpmn = """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                             xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://flowforge/test">
+                             xmlns:flowable="http://flowable.org/bpmn" targetNamespace="http://myrmacta/test">
                   <process id="storageCrossDossier" isExecutable="true">
                     <startEvent id="start"/>
                     <userTask id="prepare" flowable:assignee="actor-1"/>

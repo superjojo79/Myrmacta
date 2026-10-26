@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:flowable="http://flowable.org/bpmn"
-             targetNamespace="http://flowforge/test">
+             targetNamespace="http://myrmacta/test">
 
   <!-- TODO §93 : destinataire de « Notifier » lu dans le dossier, après une tâche humaine pour prouver la lecture à jour. -->
   <process id="notifierDossierField" name="Notifier Dossier Field" isExecutable="true">

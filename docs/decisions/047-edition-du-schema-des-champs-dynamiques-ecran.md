@@ -32,7 +32,7 @@ mappe pas non plus `DossierTypeSchemaIncompatibleException` vers un statut HTTP.
 3. **`allowUnknownFields`** — à confirmer dans le périmètre de cette feature (proposé) plutôt
    qu'un lot séparé ; absent de l'écran actuel malgré son exposition API complète.
 4. **Alignement maquette** — [11-frontend.md](../specs/11-frontend.md) impose
-   `FlowForge - Maquettes UI.html` comme référence ; aucun écran de ce fichier ne couvre
+   `Myrmacta - Maquettes UI.html` comme référence ; aucun écran de ce fichier ne couvre
    aujourd'hui l'édition du schéma de champs — à vérifier en phase design.
 
 **À produire :** décisions ci-dessus, puis écran admin (création + édition), avec mise à jour de

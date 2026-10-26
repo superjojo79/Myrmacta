@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeLocale, resolveLocale } from './locales'
+import { LEGACY_LOCALE_STORAGE_KEY, LOCALE_STORAGE_KEY, normalizeLocale, readStoredLocale, resolveLocale } from './locales'
 
 describe('normalizeLocale (D7)', () => {
   it('reduces a BCP 47 tag to a supported language, whatever the case or separator', () => {
@@ -27,6 +27,21 @@ describe('resolveLocale (D7-DETECT order)', () => {
     expect(resolveLocale({ navigatorLanguages: ['de-DE', 'en-GB'] })).toBe('en')
     expect(resolveLocale({ navigatorLanguages: ['de-DE'] })).toBe('fr')
     expect(resolveLocale({})).toBe('fr')
+  })
+
+  it('copies the previous storage key once, then drops it', () => {
+    const values = new Map<string, string>([[LEGACY_LOCALE_STORAGE_KEY, 'en']])
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    }
+    expect(readStoredLocale(storage)).toBe('en')
+    expect(values.get(LOCALE_STORAGE_KEY)).toBe('en')
+    expect(values.has(LEGACY_LOCALE_STORAGE_KEY)).toBe(false)
+    values.set(LEGACY_LOCALE_STORAGE_KEY, 'fr')
+    expect(readStoredLocale(storage)).toBe('en')
+    expect(values.get(LEGACY_LOCALE_STORAGE_KEY)).toBe('fr')
   })
 
   it('ignores an unsupported value instead of failing (a stale or hostile ?lang= never breaks the page)', () => {

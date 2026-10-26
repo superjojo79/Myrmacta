@@ -5,7 +5,24 @@
 export const SUPPORTED_LOCALES = ['fr', 'en'] as const
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: AppLocale = 'fr'
-export const LOCALE_STORAGE_KEY = 'flowforge.locale'
+export const LOCALE_STORAGE_KEY = 'myrmacta.locale'
+/** Ancienne clé, lue une fois puis recopiée. */
+export const LEGACY_LOCALE_STORAGE_KEY = 'flowforge.locale' // flowforge-legacy
+
+/** Lit le choix stocké. Si seule l'ancienne clé est présente, la recopie et la retire. */
+export function readStoredLocale(storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>): string | null {
+  try {
+    const current = storage.getItem(LOCALE_STORAGE_KEY)
+    if (current) return current
+    const legacy = storage.getItem(LEGACY_LOCALE_STORAGE_KEY)
+    if (!legacy) return null
+    storage.setItem(LOCALE_STORAGE_KEY, legacy)
+    storage.removeItem(LEGACY_LOCALE_STORAGE_KEY)
+    return legacy
+  } catch {
+    return null
+  }
+}
 
 /** BCP 47 utilisé pour les formats de dates et de nombres. */
 export const FORMAT_TAGS: Record<AppLocale, string> = { fr: 'fr-FR', en: 'en-GB' }

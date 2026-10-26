@@ -1,4 +1,4 @@
-"""Recette d'un realm FlowForge sur un vrai Keycloak (TODO §104, D-BEAUTH-KC-SMOKE).
+"""Recette d'un realm Myrmacta sur un vrai Keycloak (TODO §104, D-BEAUTH-KC-SMOKE).
 
 Appelé par scripts/keycloak-realm-smoke.sh, qui démarre Keycloak et y applique les realms. Ce module joue le
 navigateur (formulaires HTML, redirections, cookies) avec la seule bibliothèque standard, puis échange le code

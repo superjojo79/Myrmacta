@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Adaptateur de simulation (TODO §72, D-SIGNATURE-STUB-BEHAVIOR) : aucun fournisseur. Les décisions
- * des signataires sont prises par FlowForge (portail, « Mes signatures ») et persistées ; le stub
+ * des signataires sont prises par Myrmacta (portail, « Mes signatures ») et persistées ; le stub
  * relit cet état (référence {@code stub:<requestId>}) pour produire, à la demande, le document
  * « signé » filigrané et le PDF de preuve. Sans état propre, donc sûr au redémarrage.
  *
@@ -68,7 +68,7 @@ public final class StubSignatureAdapter implements SignaturePort {
 
     @Override
     public void cancel(String providerReference) {
-        // Rien à annuler côté « fournisseur » : l'état est celui de FlowForge.
+        // Rien à annuler côté « fournisseur » : l'état est celui de Myrmacta.
     }
 
     @Override

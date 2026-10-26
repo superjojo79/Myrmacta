@@ -200,7 +200,7 @@ class KafkaConsumerReconcilerTest {
                 Map.of(
                         "bootstrapServers", "localhost:9092",
                         "topic", "claims.events",
-                        "groupId", "flowforge",
+                        "groupId", "myrmacta",
                         "securityProtocol", "PLAINTEXT",
                         "processKey", "p",
                         "dossierTypeCode", "T"));

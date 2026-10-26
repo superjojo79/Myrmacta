@@ -32,21 +32,21 @@ class RecordUserLoginUseCaseImplTest {
 
     @Test
     void record_upsertsUserForInstanceTenantWithLoginTimestamp() {
-        useCase.record("sub-1", "Demo User", "demo@flowforge.local", Set.of("TENANT_ADMIN"));
+        useCase.record("sub-1", "Demo User", "demo@myrmacta.local", Set.of("TENANT_ADMIN"));
 
         KnownUser saved = captureUpsert();
         assertThat(saved.tenantId()).isEqualTo(TENANT);
         assertThat(saved.userId()).isEqualTo("sub-1");
         assertThat(saved.displayName()).isEqualTo("Demo User");
-        assertThat(saved.email()).isEqualTo("demo@flowforge.local");
+        assertThat(saved.email()).isEqualTo("demo@myrmacta.local");
         assertThat(saved.roles()).containsExactly("TENANT_ADMIN");
         assertThat(saved.lastLoginAt()).isEqualTo(NOW);
     }
 
     @Test
     void record_fallsBackToEmailThenUserIdWhenNameIsBlank() {
-        useCase.record("sub-1", " ", "demo@flowforge.local", Set.of());
-        assertThat(captureUpsert().displayName()).isEqualTo("demo@flowforge.local");
+        useCase.record("sub-1", " ", "demo@myrmacta.local", Set.of());
+        assertThat(captureUpsert().displayName()).isEqualTo("demo@myrmacta.local");
     }
 
     @Test

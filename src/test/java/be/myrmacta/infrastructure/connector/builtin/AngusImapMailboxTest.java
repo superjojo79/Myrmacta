@@ -39,7 +39,7 @@ class AngusImapMailboxTest {
 
     private ImapMailbox.Settings settings(String password) {
         return new ImapMailbox.Settings("127.0.0.1", ServerSetupTest.IMAP.getPort(), ImapMailbox.Security.PLAIN_FOR_TESTS, "claims",
-                password, false, "INBOX", "FlowForge-processed", "FlowForge-rejected", 10_000);
+                password, false, "INBOX", "Myrmacta-processed", "Myrmacta-rejected", 10_000);
     }
 
     private MimeMessage newMessage() throws Exception {
@@ -113,8 +113,8 @@ class AngusImapMailboxTest {
         assertThat(mail.body()).isEqualTo("Bonjour, voici ma demande.");
         assertThat(mail.automatic()).isFalse();
         assertThat(count("INBOX")).isZero();
-        assertThat(count("FlowForge-processed")).isEqualTo(1);
-        assertThat(count("FlowForge-rejected")).isZero();
+        assertThat(count("Myrmacta-processed")).isEqualTo(1);
+        assertThat(count("Myrmacta-rejected")).isZero();
     }
 
     @Test
@@ -174,8 +174,8 @@ class AngusImapMailboxTest {
         var collector = new Collector();
         mailbox.process(settings("s3cret"), 10, LIMITS, collector);
         assertThat(collector.mails.getFirst().automatic()).isTrue();
-        assertThat(count("FlowForge-rejected")).isEqualTo(1);
-        assertThat(count("FlowForge-processed")).isLessThanOrEqualTo(0);
+        assertThat(count("Myrmacta-rejected")).isEqualTo(1);
+        assertThat(count("Myrmacta-processed")).isLessThanOrEqualTo(0);
     }
 
     @Test
@@ -189,7 +189,7 @@ class AngusImapMailboxTest {
         mailbox.process(settings("s3cret"), 10, new ImapMailbox.Limits(1_000, 500, 10_000, 2), collector);
         assertThat(collector.mails).isEmpty();
         assertThat(collector.oversize).hasSize(1);
-        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+        assertThat(count("Myrmacta-rejected")).isEqualTo(1);
     }
 
     @Test
@@ -266,8 +266,8 @@ class AngusImapMailboxTest {
         assertThat(collector.mails).extracting(ImapMailbox.Mail::subject).containsExactly("m1", "m3");
         assertThat(collector.unreadable).hasSize(1);
         assertThat(count("INBOX")).isZero();
-        assertThat(count("FlowForge-processed")).isEqualTo(2);
-        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+        assertThat(count("Myrmacta-processed")).isEqualTo(2);
+        assertThat(count("Myrmacta-rejected")).isEqualTo(1);
     }
 
     @Test
@@ -292,7 +292,7 @@ class AngusImapMailboxTest {
         mailbox.process(settings("s3cret"), 10, LIMITS, collector);
         assertThat(collector.mails).isEmpty();
         assertThat(collector.unreadable).hasSize(1);
-        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+        assertThat(count("Myrmacta-rejected")).isEqualTo(1);
     }
 
     @Test
@@ -316,7 +316,7 @@ class AngusImapMailboxTest {
         mailbox.process(settings("s3cret"), 10, LIMITS, collector);
         assertThat(collector.mails).extracting(ImapMailbox.Mail::subject).containsExactly("b");
         assertThat(count("INBOX")).isZero();
-        assertThat(count("FlowForge-rejected")).isEqualTo(1);
+        assertThat(count("Myrmacta-rejected")).isEqualTo(1);
     }
 
     @Test
@@ -384,7 +384,7 @@ class AngusImapMailboxTest {
         // une fois le dossier corrigé, le message est rangé sans nouvelle remise
         failing.process(settings("s3cret"), 10, LIMITS, collector);
         assertThat(collector.mails).hasSize(1);
-        assertThat(count("FlowForge-processed")).isEqualTo(1);
+        assertThat(count("Myrmacta-processed")).isEqualTo(1);
         assertThat(count("INBOX")).isZero();
     }
 

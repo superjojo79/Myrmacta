@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import be.myrmacta.FlowForgeApplication;
+import be.myrmacta.MyrmactaApplication;
 import be.myrmacta.support.EmbeddedPostgresSupport;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.io.IOException;
@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 /**
- * TODO §95 (P10, risque 3 de la revue du 22 octobre) : deux instances FlowForge réelles (tenants A et B) partagent
+ * TODO §95 (P10, risque 3 de la revue du 22 octobre) : deux instances Myrmacta réelles (tenants A et B) partagent
  * une même base PostgreSQL, provisionnée par {@code scripts/provision-tenant.sh} — le SQL de production, pas une
  * copie. Complète {@link TenantRoleIsolationIT} (rôles créés à la main) et {@link TenantSchemaIsolationIT} (un seul
  * contexte) : ici chaque instance migre son propre schéma avec son propre rôle, et ni la base ni l'API ne laissent
@@ -72,8 +72,8 @@ class TenantInstancesIsolationIT {
         try (Connection admin = adminConnection(); Statement statement = admin.createStatement()) {
             for (String tenant : List.of(TENANT_A, TENANT_B)) {
                 statement.execute("DROP SCHEMA IF EXISTS " + tenant + " CASCADE");
-                statement.execute("DROP OWNED BY flowforge_" + tenant);
-                statement.execute("DROP ROLE IF EXISTS flowforge_" + tenant);
+                statement.execute("DROP OWNED BY myrmacta_" + tenant);
+                statement.execute("DROP ROLE IF EXISTS myrmacta_" + tenant);
             }
         } catch (SQLException ignored) {
             // nettoyage au mieux : la base est propre à ce test
@@ -85,7 +85,7 @@ class TenantInstancesIsolationIT {
         Map.of(TENANT_A, instanceA, TENANT_B, instanceB).forEach((tenant, instance) -> {
             JdbcTemplate jdbc = instance.getBean(JdbcTemplate.class);
 
-            assertThat(jdbc.queryForObject("SELECT current_user", String.class)).isEqualTo("flowforge_" + tenant);
+            assertThat(jdbc.queryForObject("SELECT current_user", String.class)).isEqualTo("myrmacta_" + tenant);
             assertThat(jdbc.queryForObject("SELECT current_schema()", String.class)).isEqualTo(tenant);
             assertThat(jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = 'dossier'",
@@ -96,7 +96,7 @@ class TenantInstancesIsolationIT {
 
     @Test
     void theRoleOfTenantA_cannotReadTheSchemaOfTenantB() throws SQLException {
-        try (Connection asA = DriverManager.getConnection(databaseUrl, "flowforge_" + TENANT_A, PASSWORD);
+        try (Connection asA = DriverManager.getConnection(databaseUrl, "myrmacta_" + TENANT_A, PASSWORD);
                 Statement statement = asA.createStatement()) {
             assertThatThrownBy(() -> statement.executeQuery("SELECT COUNT(*) FROM " + TENANT_B + ".dossier"))
                     .isInstanceOf(PSQLException.class)
@@ -143,11 +143,11 @@ class TenantInstancesIsolationIT {
     }
 
     private static ConfigurableApplicationContext start(String tenant) {
-        SpringApplication application = new SpringApplication(FlowForgeApplication.class, OidcClientTestConfiguration.class);
+        SpringApplication application = new SpringApplication(MyrmactaApplication.class, OidcClientTestConfiguration.class);
         return application.run(
                 "--test.embedded-postgres.enabled=false",
                 "--spring.datasource.url=" + databaseUrl,
-                "--spring.datasource.username=flowforge_" + tenant,
+                "--spring.datasource.username=myrmacta_" + tenant,
                 "--spring.datasource.password=" + PASSWORD,
                 "--app.tenant.id=" + tenant,
                 "--server.port=0");

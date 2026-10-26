@@ -371,7 +371,7 @@ class PortalApiTest extends AbstractPortalEngineTest {
         // Phase 7 : une erreur non prévue (panne de stockage) ne doit ni rediriger vers Keycloak
         // (révélant l'application interne) ni exposer de détail technique au tiers.
         when(documentStoragePort.store(anyString(), anyString(), any()))
-                .thenThrow(new IllegalStateException("disk /var/lib/flowforge full at node-7"));
+                .thenThrow(new IllegalStateException("disk /var/lib/myrmacta full at node-7"));
 
         MvcResult result = mockMvc.perform(multipart("/api/portal/task/attachments")
                         .file(new MockMultipartFile("file", "devis.pdf", "application/pdf", PDF))

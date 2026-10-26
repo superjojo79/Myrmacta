@@ -8,11 +8,11 @@ import java.util.Objects;
 /** Compteurs Micrometer du lot signature (TODO §72). Libellés bornés, sans donnée personnelle. */
 public final class MicrometerSignatureMetrics implements SignatureMetricsPort {
 
-    static final String REQUESTS = "flowforge.signature.requests";
-    static final String OUTCOMES = "flowforge.signature.outcomes";
-    static final String DISPATCH_RETRIES = "flowforge.signature.dispatch.retries";
-    static final String DISPATCH_GAVE_UP = "flowforge.signature.dispatch.gave_up";
-    static final String CALLBACKS_REJECTED = "flowforge.signature.callbacks.rejected";
+    static final String REQUESTS = "myrmacta.signature.requests";
+    static final String OUTCOMES = "myrmacta.signature.outcomes";
+    static final String DISPATCH_RETRIES = "myrmacta.signature.dispatch.retries";
+    static final String DISPATCH_GAVE_UP = "myrmacta.signature.dispatch.gave_up";
+    static final String CALLBACKS_REJECTED = "myrmacta.signature.callbacks.rejected";
 
     private final MeterRegistry registry;
 

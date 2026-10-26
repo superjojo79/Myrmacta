@@ -98,20 +98,26 @@ public final class ManageDossierPrechecksUseCaseImpl implements ManageDossierPre
     }
 
     @Override
-    public PrecheckFinding decide(UUID dossierId, UUID runId, UUID findingId, PrecheckFinding.Decision decision,
+    public Decided decide(UUID dossierId, UUID runId, UUID findingId, PrecheckFinding.Decision decision,
             AccessContext.User actor) {
         Dossier dossier = editable(dossierId, actor);
         PrecheckRun run = runOf(dossier, runId);
         if (!run.finished()) {
             throw new PrecheckConflictException("the pre-check is still running");
         }
+        PrecheckFinding.Decision previous = run.findings().stream()
+                .filter(f -> f.id().equals(findingId))
+                .findFirst()
+                .map(PrecheckFinding::decision)
+                .orElse(null);
         if (!runRepository.decide(run.id(), findingId, decision, actor.userId(), clock.instant())) {
             throw new PrecheckNotFoundException("finding not found: " + findingId);
         }
-        return runOf(dossier, runId).findings().stream()
+        PrecheckFinding decided = runOf(dossier, runId).findings().stream()
                 .filter(f -> f.id().equals(findingId))
                 .findFirst()
                 .orElseThrow(() -> new PrecheckNotFoundException("finding not found: " + findingId));
+        return new Decided(decided, previous);
     }
 
     private Dossier editable(UUID dossierId, AccessContext.User actor) {

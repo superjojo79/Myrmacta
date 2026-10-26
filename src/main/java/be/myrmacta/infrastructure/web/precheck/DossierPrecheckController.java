@@ -4,6 +4,7 @@ import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.precheck.model.PrecheckFinding;
 import be.myrmacta.domain.precheck.model.PrecheckRun;
 import be.myrmacta.domain.precheck.port.in.ManageDossierPrechecksUseCase;
+import be.myrmacta.infrastructure.security.SecurityAuditLog;
 import be.myrmacta.infrastructure.web.dossier.AccessContextFactory;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +46,7 @@ class DossierPrecheckController {
     @PostMapping
     ResponseEntity<PrecheckRunResponse> rerun(@PathVariable UUID id, Authentication authentication) {
         PrecheckRun run = useCase.request(id, accessContextFactory.user(authentication), PrecheckRun.Trigger.MANUAL);
+        SecurityAuditLog.precheckRerunRequested("rest", authentication.getName(), id, run.id());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(PrecheckRunResponse.from(run));
     }
 
@@ -55,12 +57,18 @@ class DossierPrecheckController {
         PrecheckFinding.Decision decision = request == null || request.decision() == null || request.decision().isBlank()
                 ? null
                 : PrecheckFinding.Decision.valueOf(request.decision().strip());
-        return PrecheckRunResponse.Finding.from(useCase.decide(id, runId, findingId, decision, actor));
+        ManageDossierPrechecksUseCase.Decided decided = useCase.decide(id, runId, findingId, decision, actor);
+        SecurityAuditLog.precheckFindingDecided(authentication.getName(), id, runId, findingId,
+                decided.previous() == null ? null : decided.previous().name(), decision == null ? null : decision.name());
+        return PrecheckRunResponse.Finding.from(decided.finding());
     }
 
     @GetMapping("/{runId}/export")
     PrecheckExportResponse export(@PathVariable UUID id, @PathVariable UUID runId, Authentication authentication) {
-        return PrecheckExportResponse.from(useCase.export(id, runId, accessContextFactory.user(authentication)));
+        PrecheckExportResponse export = PrecheckExportResponse.from(
+                useCase.export(id, runId, accessContextFactory.user(authentication)));
+        SecurityAuditLog.precheckLogExported(authentication.getName(), id, runId);
+        return export;
     }
 
     record DecisionRequest(String decision) {}

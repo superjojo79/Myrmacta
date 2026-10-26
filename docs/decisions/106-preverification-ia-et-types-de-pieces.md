@@ -180,6 +180,47 @@ donnée de dossier, et les outils MCP de la pré-vérification sont du mode opé
 - *Non fait ici* — l'évaluation contre un vrai modèle : aucune clé de fournisseur dans l'environnement de développement ;
   la commande est documentée (`DEPLOIEMENT.md` §20) et à jouer avant la mise en service.
 
+**Revue adversariale complète (2026-10-26, après livraison des lots P à D).** Les revues précédentes, faites lot par
+lot, n'avaient pas couvert le lot A ni le lot C, et aucune n'avait été menée avec la méthode `security-review` sur
+l'ensemble. Acteurs considérés : tiers externe sans compte (dépôt de pièces par le portail), agent avec EDIT, client MCP
+(éventuellement un agent IA), concepteur de processus, fournisseur et réseau non fiables.
+
+- *Corrigé, moyenne (F1)* — le délai d'un appel s'arrêtait aux en-têtes : une passerelle qui distillait le corps
+  retenait sans fin un thread du pool de jobs Flowable, partagé par tous les traitements asynchrones (prouvé : délai de
+  2 s, appel de 8,5 s). Le client de l'assistant de conception avait le même défaut. Désormais l'échange n'aboutit
+  qu'avec le corps reçu, borné à 4 Mo, et il est annulé au-delà du délai (`BoundedResponseBody`, deux clients).
+- *Corrigé, moyenne (F2)* — les PDF déposés, y compris par un tiers, sont désormais analysés côté serveur : sans borne de
+  temps, un PDF piégé retenait le thread à chaque exécution. Lecture interrompue au-delà de 20 s par pièce, délai vérifié
+  à chaque opérateur (un formulaire imbriqué ne l'avale plus) ; statut « trop complexe » ; texte brut décodé seulement
+  jusqu'à ce qui est gardé.
+- *Corrigé, moyenne (F3)* — un agent avec EDIT ou un client MCP pouvait épuiser le plafond **de l'instance** par des
+  relances en boucle, mettant toutes les briques en incident. Au plus 5 relances par dossier sur 24 h (réglable) ;
+  au-delà de 80 % du plafond du jour, relances refusées (429), le reste gardé aux workflows.
+- *Enchaînement* — F2 (ou F1) et les relances, réunis, pouvaient arrêter tout le traitement asynchrone de l'instance à
+  partir d'une seule pièce de tiers : gravité élevée pour la disponibilité, levée par F1 à F3.
+- *Corrigé, faible (F4)* — bail de 5 minutes plus court qu'une exécution possible (jusqu'à 600 s d'appel, plus la
+  lecture) et écriture finale sans contrôle : deux répliques pouvaient appeler le modèle deux fois. Bail calculé sur le
+  pire cas ; résultat rangé seulement par la tentative qui détient l'exécution.
+- *Corrigé, faible (F5)* — relances, décisions et exports n'étaient pas tracés, et annuler une décision effaçait la
+  précédente. Trois événements du journal de sécurité, décision précédente comprise. Remplace le point « Accepté » de la
+  revue du lot D sur l'export.
+- *Corrigé, faible (F6)* — l'empreinte SHA-256 incluait le nonce de l'exécution, jamais stocké : elle ne pouvait pas
+  être recalculée et ne prouvait rien. Elle porte désormais sur la forme canonique (repère fixe à la place du nonce).
+- *Corrigé, faible (F7)* — `get_dossier_precheck` rendait à un client MCP, peut-être un agent doté d'outils d'écriture,
+  du texte produit à partir de pièces de tiers sans le signaler : marqué `untrusted`, avec une mise en garde.
+- *Corrigé, faible (F8, F9)* — la cause d'une panne du fournisseur n'était pas journalisée (désormais : type d'erreur et
+  statut HTTP, jamais le message) ; sans jetons déclarés par le fournisseur, le plafond ne comptait rien (désormais :
+  estimation, un jeton pour quatre caractères).
+- *Écarté, preuve à l'appui* — injection SQL (constantes seules, tout paramétré) ; relances cachées du SDK (une seule
+  requête sur une erreur 500, testé) ; contournement des contrôles au déploiement (brouillons, publication et
+  promotion passent par `validate`, et l'exécution revérifie la sensibilité) ; injection HTML dans le panneau
+  (interpolations seulement) ; sortie des bornes du prompt (nonce inconnu, chevrons neutralisés) ; accès à une
+  exécution ou un constat d'un autre dossier (filtré, testé) ; clé d'API (masquée dans `toString`, jamais
+  journalisée).
+- *Résiduel* — vulnérabilités futures de PDFBox (garder la dépendance à jour, activer l'antivirus) ; qualité réelle du
+  modèle (évaluation à jouer) ; une injection peut encore tromper l'agent sur le fond d'un constat, marqué « IA » et
+  laissé à sa décision ; un appel au modèle peut dépasser le plafond du jour d'une réponse (pas de réservation).
+
 **Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/specs/15-serveur-mcp.md`,
 `docs/specs/26-portail-externe.md`, `docs/specs/48-preverification-ia.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
 `docs/guides/GUIDE-CONCEPTION-BPMN.md`, `docs/guides/DEPLOIEMENT.md`, `exemples/autorisation-riverain/`,

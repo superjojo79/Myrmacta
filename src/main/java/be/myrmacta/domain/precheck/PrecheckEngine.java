@@ -57,6 +57,8 @@ import java.util.UUID;
 public final class PrecheckEngine {
 
     public static final int MAX_MODEL_FINDINGS = 30;
+    /** Repère des bornes dans la forme canonique hachée ; jamais envoyé au modèle. */
+    static final String CANONICAL_NONCE = "canonique";
     static final int MAX_FIELD_VALUE_CHARS = 500;
 
     private final String tenantId;
@@ -100,7 +102,9 @@ public final class PrecheckEngine {
         String nonce = HexFormat.of().formatHex(randomBytes());
         String system = PrecheckPrompt.system(nonce);
         String user = input.render(nonce);
-        String hash = sha256(system + "\n" + user);
+        // F6 (revue adversariale de #211) : empreinte de la forme canonique (repère fixe à la place du nonce), pour
+        // qu'elle se recalcule à l'identique à partir des mêmes consignes et de la même entrée.
+        String hash = sha256(PrecheckPrompt.system(CANONICAL_NONCE) + "\n" + input.render(CANONICAL_NONCE));
         ModelExchange.Reply reply;
         try {
             budget.requireAvailable();

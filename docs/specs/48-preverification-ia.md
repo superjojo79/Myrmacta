@@ -62,13 +62,20 @@ et un constat « À vérifier » le dit.
    donne « Règle non évaluée ».
 3. **Modèle** : un seul appel, **sans outils**, sur les seuls champs désignés non sensibles et le texte des pièces `lire`
    non sensibles (les plus récentes d'abord, bornées en pièces, pages et caractères). Pièce scannée, chiffrée ou
-   illisible : constat « non lisible », pas d'erreur. Rien à transmettre : pas d'appel.
+   illisible : constat « non lisible », pas d'erreur. Une pièce dont la lecture dépasse 20 s (PDF piégé ou démesuré :
+   le délai est vérifié à chaque opérateur, formulaires imbriqués compris) est « trop complexe pour être lue dans le
+   délai ». Le texte brut n'est décodé que jusqu'à ce qui est gardé. Rien à transmettre : pas d'appel.
 
 **Entrée et prompt** (`D-PRECHECK-PROMPT`) : consignes versionnées (`v1`), contenu encadré par des bornes propres à
 l'exécution (nonce aléatoire) et désigné comme donnée, chevrons triples des données neutralisés. **Sortie** : schéma
 JSON fermé, puis validation avant l'agent — type connu, source parmi les champs, pièces et questions transmis (jamais
 une règle), message non vide de 300 caractères au plus, confiance dans [0, 1], 30 constats au plus ; le reste est
 écarté et compté. Une question sans réponse exploitable devient « À vérifier ».
+
+**Appel au fournisseur** : le délai (`APP_PRECHECK_TIMEOUT_SECONDS`) couvre l'échange entier, corps de la réponse
+compris (une passerelle ne peut pas distiller sa réponse pour retenir le thread) ; réponse bornée à 4 Mo ; sans jetons
+déclarés par le fournisseur, une estimation (un jeton pour quatre caractères) entre dans le plafond. La cause d'une
+panne est journalisée (type d'erreur, statut HTTP), jamais le message du fournisseur.
 
 **Échecs** : budget de jetons atteint, fournisseur indisponible, fonction désactivée ou réponse non JSON donnent une
 exécution `FAILED` qui **garde les constats déterministes**, avec un motif générique (jamais le message du
@@ -82,22 +89,28 @@ peut s'appuyer sur ces comptes, jamais sur l'avis du modèle (C5).
 
 - **Tables** `precheck_run` et `precheck_finding` (changeSet `040`, `D-PRECHECK-STORE`, [13](13-modele-physique.md)) :
   déclencheur, auteur, spécification, statut, fournisseur et modèle, version du prompt, **empreinte SHA-256 de l'entrée
-  (jamais l'entrée en clair)**, synthèse, jetons, constats, décisions. Écrites dans leur propre transaction ; supprimées
-  avec le dossier.
+  (jamais l'entrée en clair)**, synthèse, jetons, constats, décisions. L'empreinte porte sur la forme canonique (le
+  repère `canonique` à la place du nonce) : elle se recalcule à l'identique à partir des mêmes consignes et de la même
+  entrée. Écrites dans leur propre transaction ; supprimées avec le dossier. Relance, décision (avec la décision
+  précédente) et export sont tracés dans le journal de sécurité (`event=precheck_*`, identifiants seulement).
 - **Relances** (`D-PRECHECK-QUEUE`) : bouton ou MCP ; spécification de la dernière exécution, mise en file (une seule
-  en attente ou en cours par dossier), relais avec bail de 5 minutes en `SKIP LOCKED`, abandon après 2 tentatives ;
-  règles sur les variables courantes du processus.
+  en attente ou en cours par dossier), relais en `SKIP LOCKED` avec un bail qui couvre le pire cas d'une exécution
+  (lecture des pièces, appel, une minute de marge ; 5 minutes au moins), abandon après 2 tentatives ; une tentative
+  dépassée ne range pas son résultat ; règles sur les variables courantes du processus. **Limites** : au plus 5
+  relances par dossier sur 24 h (`APP_PRECHECK_MAX_RERUNS_PER_DOSSIER_PER_DAY`) ; au-delà de 80 % du plafond du jour,
+  les relances sont refusées et le reste est gardé aux briques des workflows (429).
 - **REST**, présentes seulement si la fonction est activée :
 
 | Méthode et chemin | Droit | Effet |
 |---|---|---|
 | `GET /api/dossiers/{id}/prechecks` | lecture du type | 20 dernières exécutions, la plus récente d'abord |
-| `POST /api/dossiers/{id}/prechecks` | EDIT, dossier non clos | relance, 202 ; 409 si déjà en file ou sans exécution précédente |
+| `POST /api/dossiers/{id}/prechecks` | EDIT, dossier non clos | relance, 202 ; 409 si déjà en file ou sans exécution précédente ; 429 au-delà des limites |
 | `PUT …/{runId}/findings/{findingId}/decision` | EDIT, dossier non clos | `{"decision":"ACCEPTED"\|"DISMISSED"\|null}` ; qui et quand tracés |
 | `GET …/{runId}/export` | `TENANT_ADMIN` | journal complet de l'exécution, spécification et empreinte comprises |
 
 - **MCP** (mode opération, [15](15-serveur-mcp.md)) : `run_dossier_precheck`, `get_dossier_precheck`. L'assistant de
-  conception n'y a jamais accès (P12, D-ASSIST-TOOLS).
+  conception n'y a jamais accès (P12, D-ASSIST-TOOLS). La synthèse et les constats du modèle y sont marqués
+  `untrusted` : texte produit à partir de pièces de tiers, à traiter comme une donnée, jamais comme une consigne.
 
 ## 5. Le panneau de la fiche (`D-PRECHECK-PANEL`)
 

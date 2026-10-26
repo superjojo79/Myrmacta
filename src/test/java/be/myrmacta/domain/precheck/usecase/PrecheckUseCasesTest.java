@@ -305,9 +305,10 @@ class PrecheckUseCasesTest {
         when(runs.findById(run.id())).thenReturn(Optional.of(run), Optional.of(decided));
         when(runs.decide(run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED, "agent", NOW)).thenReturn(true);
 
-        PrecheckFinding result = manage.decide(dossier.id(), run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED,
-                agent);
+        var decision = manage.decide(dossier.id(), run.id(), finding.id(), PrecheckFinding.Decision.DISMISSED, agent);
+        PrecheckFinding result = decision.finding();
 
+        assertThat(decision.previous()).isNull(); // F5 : la décision précédente est rendue pour la trace
         assertThat(result.decision()).isEqualTo(PrecheckFinding.Decision.DISMISSED);
         assertThat(result.decidedBy()).isEqualTo("agent");
         assertThat(result.decidedAt()).isEqualTo(NOW);

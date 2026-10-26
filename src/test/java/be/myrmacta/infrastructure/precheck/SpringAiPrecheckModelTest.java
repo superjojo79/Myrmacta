@@ -91,11 +91,37 @@ class SpringAiPrecheckModelTest {
         PrecheckModelPort model = openAi("secret-key");
         provider.fail(500, "{\"error\":{\"message\":\"échec sur commune = Schaerbeek\"}}");
 
-        assertThatThrownBy(() -> model.complete(REQUEST))
-                .isInstanceOf(PrecheckModelUnavailableException.class)
-                .hasMessageNotContaining("Schaerbeek")
-                .hasMessageContaining("unavailable");
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SpringAiPrecheckModel.class);
+        var logs = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        logs.start();
+        logger.addAppender(logs);
+        try {
+            assertThatThrownBy(() -> model.complete(REQUEST))
+                    .isInstanceOf(PrecheckModelUnavailableException.class)
+                    .hasMessageNotContaining("Schaerbeek")
+                    .hasMessageContaining("unavailable");
+        } finally {
+            logger.detachAppender(logs);
+        }
         assertThat(provider.received()).hasSize(1);
+        // F8 : la cause est journalisée (type, statut HTTP), jamais le message du fournisseur.
+        assertThat(logs.list).singleElement().satisfies(event -> {
+            assertThat(event.getFormattedMessage()).contains("HTTP 500").doesNotContain("Schaerbeek");
+            assertThat(event.getThrowableProxy()).isNull();
+        });
+    }
+
+    /** F9 — sans jetons déclarés par le fournisseur, une estimation garde le plafond du jour efficace. */
+    @Test
+    void missingUsageIsEstimatedSoTheDailyBudgetStillCounts() {
+        PrecheckModelPort model = openAi("secret-key");
+        provider.respond("{\"summary\":\"Dossier complet\"}").usage(0, 0);
+
+        ModelExchange.Reply reply = model.complete(REQUEST);
+
+        assertThat(reply.tokensIn()).isPositive();
+        assertThat(reply.tokensOut()).isPositive();
     }
 
     @Test

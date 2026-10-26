@@ -256,6 +256,13 @@ ce projet ; jusque-là, la répartition tenant/`platform` se résume à
   `portal_link_id`) garde le hash de la preuve remise au navigateur et le NRN chiffré jusqu'à la soumission, qui les
   efface : il ne reste que la trace (fournisseur, niveau, nom, résultat). Les deux tables sont en `ON DELETE CASCADE`
   depuis `portal_link`, donc purgées avec le dossier.
+- **`precheck_run`, `precheck_finding`** (TODO §106, changeSet `040`,
+  [registre §106](../decisions/106-preverification-ia-et-types-de-pieces.md)) — pré-vérifications IA d'un dossier et
+  leurs constats. L'exécution garde la spécification (JSON), le statut, le fournisseur et le modèle, la version du
+  prompt, l'empreinte SHA-256 de l'entrée (jamais l'entrée en clair), la synthèse et les jetons ; elle sert aussi de
+  file aux relances (bail `lease_until`, `attempts`), un index unique partiel n'admettant qu'une relance en attente ou
+  en cours par dossier. Les constats portent leur origine (déterministe ou modèle), leur source et la décision de
+  l'agent. `ON DELETE CASCADE` depuis `dossier`, puis depuis l'exécution.
 
 ---
 

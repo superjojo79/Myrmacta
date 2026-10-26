@@ -3,8 +3,8 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] en cours (issue [#211](https://github.com/superjojo79/FlowForge/issues/211)), livré par lots : **P** (types de pièces)
-[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur et brique), **C** (panneau), **D** (documentation
-et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
+[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur, brique, REST, MCP) [x] livré ; **C** (panneau),
+**D** (documentation et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
 
 **Constat.** Une brique de workflow doit pré-vérifier un dossier avant son instruction (complétude, règles, synthèse
 avec constats sourcés), l'agent gardant la décision. Or une pièce jointe n'était qu'un élément `ATTACHMENT` à libellé
@@ -48,13 +48,50 @@ ni l'exclusion des pièces sensibles n'étaient possibles. Le lot P comble ce ma
   mémoire bornée (64 Mo, aucun fichier temporaire) ; image, scan, PDF chiffré, illisible ou format non pris en charge
   donnent un statut, jamais une erreur.
 
-**Décisions des lots suivants (tranchées, non encore livrées).** Fournisseur par API compatible OpenAI
-(`spring-ai-openai`) et Anthropic ; configuration `app.precheck.*` désactivée par défaut ; brique asynchrone
-`aiPrecheckTask` (incident rejouable) et bouton « Relancer » (file persistée avec bail) ; texte des pièces par PDFBox sans
-OCR ; seules les pièces et champs désignés partent au modèle, jamais un élément sensible ; un appel sans outils, sortie
-JSON validée par un schéma fermé ; variable de résultat déterministe seulement ; constats acceptés ou écartés par un
-agent avec EDIT, journalisés. Ouverture des données de dossier à l'IA limitée à la pré-vérification : l'assistant de
-conception reste sans aucune donnée de dossier (D-MCP-LC-MODES, D-ASSIST-TOOLS). Détail : `docs/ai/` de la feature
+**Lot B — moteur, brique, REST et MCP (livré ; fonction toujours désactivée par défaut, sans panneau).**
+
+- **D-PRECHECK-SPEC** — la brique « Pré-vérification IA » (`aiPrecheckTask`, catalogue v4) ne lit que des attributs
+  littéraux : `precheckPieces` (une ligne `clé : obligatoire, lire` ; 30 types, 10 à lire), `precheckFields` (30 champs
+  séparés par des virgules), `precheckQuestions` (une ligne `clé = question` ; 20 questions de 300 caractères),
+  `precheckRules` (une ligne `variable:<nom> <condition> => MANQUANT|INCOHERENCE|A_VERIFIER : message` ; 10 règles ;
+  conditions `est vrai`, `est faux`, `est vide`, `n'est pas vide`, `> N`, `< N`, `= N`, `= "texte"`, une valeur d'un
+  autre type ne satisfaisant jamais une comparaison) et `precheckResult` ; au moins une pièce, question ou règle.
+- **D-PRECHECK-BLOCK** — brique toujours `flowable:async="true"` (l'appel ne tient pas dans la transaction d'une
+  complétion ; son échec devient un incident rejouable). Au déploiement : refus tant que `APP_PRECHECK_ENABLED` est
+  faux ; contrôle contre chaque type de dossier lié au processus (`workflowKey`) : champ transmis connu et non sensible,
+  type de pièce connu et jamais lu s'il est sensible (`obligatoire` seul accepté). Un type modifié après le
+  déploiement est rattrapé à l'exécution : élément devenu sensible ou inconnu non transmis, constat « À vérifier ».
+- **D-PRECHECK-PASSES** — trois passes, du plus fiable au moins fiable : complétude déterministe (champs obligatoires du
+  type, y compris par règle et sensibles en présence seulement ; pièces `obligatoire` sans élément de ce type) ; règles
+  sur des variables posées avant (variable absente : « règle non évaluée ») ; un seul appel au modèle, sans outils, sur
+  les seuls champs et pièces désignés non sensibles (pièces les plus récentes d'abord, bornes C7, pièce illisible ou
+  tronquée signalée). Pas d'appel s'il n'y a rien à transmettre. Le calcul ne lève jamais : budget atteint, fournisseur
+  indisponible, fonction désactivée ou réponse non JSON donnent une exécution `FAILED` qui garde les constats
+  déterministes ; la brique lève alors (incident), la relance par la file non.
+- **D-PRECHECK-PROMPT** — consignes versionnées (`v1`, rangée dans le journal), contenu encadré par des bornes propres à
+  l'exécution (nonce aléatoire), triples chevrons des données neutralisés ; schéma de sortie fermé
+  (`additionalProperties: false`). Sortie validée avant l'agent : type et source connus (champ ou pièce transmis,
+  question posée ; jamais une règle), message non vide de 300 caractères au plus, confiance dans [0, 1], 30 constats au
+  plus ; le reste est écarté et compté (`discarded`). Une question sans réponse exploitable devient « À vérifier ». La
+  variable de résultat ne porte que les comptes déterministes (`status`, `missing`, `inconsistent`, `runId`) : un
+  routage ne dépend jamais du modèle.
+- **D-PRECHECK-STORE** — tables `precheck_run` et `precheck_finding` (changeSet `040`, supprimées avec le dossier) :
+  déclencheur, auteur, spécification, statut, fournisseur et modèle, version du prompt, empreinte SHA-256 de l'entrée
+  (jamais l'entrée en clair), synthèse de 800 caractères, jetons, constats et décisions. Écritures dans leur propre
+  transaction : une exécution en échec reste rangée même si le job du workflow est annulé (HC5). Lecture : droit de
+  lecture du type ; décision (accepter, écarter, annuler) : EDIT, dossier non clos, exécution terminée, qui et quand
+  tracés ; export du journal : `TENANT_ADMIN`. REST `GET|POST /api/dossiers/{id}/prechecks`,
+  `PUT …/{runId}/findings/{findingId}/decision`, `GET …/{runId}/export`, présents seulement si la fonction est activée.
+- **D-PRECHECK-QUEUE** — « Relancer » (REST, MCP `run_dossier_precheck`) reprend la spécification de la dernière
+  exécution (la brique lance la première) et met une exécution en file : une seule en attente ou en cours par dossier
+  (index unique partiel, 409 sinon), prise par le relais avec un bail de 5 minutes en `SKIP LOCKED`
+  (`APP_PRECHECK_QUEUE_POLL_DELAY`, 5 s), reprise si le bail expire, abandonnée après 2 tentatives ; règles évaluées sur
+  les variables courantes du process. MCP `get_dossier_precheck` lit les 3 dernières ; les deux outils sont du mode
+  opération, absents de l'assistant de conception (D-ASSIST-TOOLS).
+
+**Décisions des lots suivants (tranchées, non encore livrées).** Panneau « Pré-vérification » sur la fiche (lot C) :
+marquage IA, accepter ou écarter, relancer ; la palette pose `flowable:async="true"` sur la brique. Lot D : spec, guides
+(fournisseurs, RGPD, AI Act), exemple riverain et jeu d'évaluation ; détail : `docs/ai/` de la feature
 `preverification-ia`, versé ici au lot D.
 
 **Revue adversariale du lot P (2026-10-25).**
@@ -70,6 +107,23 @@ conception reste sans aucune donnée de dossier (D-MCP-LC-MODES, D-ASSIST-TOOLS)
   de sécurité ; indicateur `sensitive` absent de la vue du portail.
 - *Accepté* — un bundle de promotion antérieur au lot P ne déclare aucun type de pièce : l'importer vide la liste du
   type cible (même règle que `documentTemplateKeys`).
+
+**Revue adversariale du lot B (2026-10-26).**
+
+- *Corrigé* — `Condition` « < N » était vraie pour une valeur non numérique : une valeur d'un autre type (texte, NaN,
+  infini) ne satisfait plus aucune comparaison.
+- *Corrigé* — le relais de la file avait deux constructeurs sans `@Autowired` : le contexte ne démarrait pas dès que la
+  fonction était activée (trouvé par le test de bout en bout).
+- *Vérifié* — « sensible nulle part » : ni la valeur d'un champ sensible, ni le texte ou l'intitulé d'une pièce sensible
+  dans la requête au fournisseur ni dans les journaux (test de bout en bout avec le faux fournisseur) ; un sous-champ de
+  groupe ne peut pas être sensible (le groupe l'est entier) ; une injection dans une pièce ne peut pas fermer la borne
+  (nonce, chevrons neutralisés) et sa sortie reste contrainte (sources connues, longueurs) ; message du fournisseur
+  jamais relayé (motif générique) ; lectures filtrées par tenant ; décision sur un constat d'une autre exécution ou d'un
+  autre dossier : 404.
+- *Accepté* — un échec du fournisseur est retenté par Flowable (3 tentatives par défaut) : chaque tentative est une
+  exécution `FAILED` rangée et un appel compté dans le budget. Un constat du modèle peut contenir un texte trompeur
+  dicté par une pièce (injection) : il est marqué « modèle », sourcé, et l'agent décide. Un champ masqué par
+  `visibleWhen` mais désigné dans `precheckFields` est transmis (choix explicite du concepteur).
 
 **Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/specs/15-serveur-mcp.md`,
 `docs/specs/26-portail-externe.md`, `docs/guides/GUIDE-UTILISATEUR.md`, `docs/guides/GUIDE-CONCEPTION-BPMN.md`,

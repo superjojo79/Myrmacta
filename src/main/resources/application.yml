@@ -190,6 +190,8 @@ app:
     max-chars-per-piece: ${APP_PRECHECK_MAX_CHARS_PER_PIECE:30000}
     max-chars-total: ${APP_PRECHECK_MAX_CHARS_TOTAL:100000}
     max-questions: ${APP_PRECHECK_MAX_QUESTIONS:20}
+    # Relances (bouton, MCP) : intervalle du relais de la file ; une exécution par passage et par réplique.
+    queue-poll-delay: ${APP_PRECHECK_QUEUE_POLL_DELAY:5s}
   inbound:
     # Connecteurs d'entrée par interrogation (e-mail IMAP, Azure Service Bus) : bornes communes.
     max-messages-per-poll: ${APP_INBOUND_MAX_MESSAGES_PER_POLL:20}

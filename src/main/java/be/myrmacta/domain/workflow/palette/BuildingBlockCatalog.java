@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",

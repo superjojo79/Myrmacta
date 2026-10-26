@@ -1,10 +1,11 @@
 # §106 — Pré-vérification IA des dossiers et types de pièces justificatives
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] en cours (issue [#211](https://github.com/superjojo79/FlowForge/issues/211)), livré par lots : **P** (types de pièces)
-[x] livré ; **A** (fournisseur et extraction) [x] livré ; **B** (moteur, brique, REST, MCP) [x] livré ; **C** (panneau)
-[x] livré ; **D** (documentation et évaluation) à venir. Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
+[x] clos (issue [#211](https://github.com/superjojo79/FlowForge/issues/211)), livré par lots : **P** (types de pièces,
+PR #231), **A** (fournisseur et extraction, PR #233), **B** (moteur, brique, REST, MCP, PR #234), **C** (panneau, PR
+#235) et **D** (spec, guides, exemple, évaluation). Spécification : [48-preverification-ia.md](../specs/48-preverification-ia.md).
+La fonction reste désactivée par défaut (`APP_PRECHECK_ENABLED`). Cadrage : [`docs/analyses/fiche-preverification-ia.md`](../analyses/fiche-preverification-ia.md).
 
 **Constat.** Une brique de workflow doit pré-vérifier un dossier avant son instruction (complétude, règles, synthèse
 avec constats sourcés), l'agent gardant la décision. Or une pièce jointe n'était qu'un élément `ATTACHMENT` à libellé
@@ -102,8 +103,36 @@ ni l'exclusion des pièces sensibles n'étaient possibles. Le lot P comble ce ma
 - La palette crée la brique avec `flowable:async="true"` (drapeau `async` du marqueur, catalogue v5) : déposée telle
   quelle, elle n'est plus refusée au déploiement.
 
-**Décisions du lot suivant (tranchées, non encore livrées).** Lot D : spec, guides (fournisseurs, RGPD, AI Act), exemple
-riverain et jeu d'évaluation ; détail : `docs/ai/` de la feature `preverification-ia`, versé ici au lot D.
+**Lot D — documentation, exemple et évaluation (livré).** Spec `48-preverification-ia.md` ; guides de déploiement
+(§20 : fournisseurs, `allow-plain-http`, RGPD, AI Act, évaluation), de conception BPMN (§3nonies) et utilisateur (§16).
+L'exemple `exemples/autorisation-riverain` déclare trois types de pièces et une variante
+`autorisation-riverain-preverification.bpmn20.xml` (contrôle code postal et commune par expression, puis la brique) ;
+le scénario de la fiche est rejoué sur ces fichiers par `RiverainPrecheckExampleIT`. Le constat « doublon de plaque » de
+la fiche est remplacé par l'unicité (§102) : la seconde demande est refusée à la création. Jeu d'évaluation :
+`evaluation/cas.json` (10 cas, dont une consigne injectée), rejoué contre un vrai modèle par `PrecheckEvaluation` (hors
+`verify`, rapport de précision et de rappel par type de constat) ; le harnais est vérifié dans `verify` avec des
+modèles simulés.
+
+**Rupture (P12).** Jusqu'ici, aucune fonction d'IA ne lisait de donnée de dossier (D-MCP-LC-MODES, D-ASSIST-TOOLS). La
+pré-vérification ouvre cette porte, **et elle seule** : seuls les champs et pièces désignés par la brique, jamais un
+élément sensible, partent vers le fournisseur configuré par l'instance ; l'assistant de conception reste sans aucune
+donnée de dossier, et les outils MCP de la pré-vérification sont du mode opération.
+
+**Cadrage (phases 1 à 3, versé depuis `docs/ai/` de la feature).**
+
+- *Produit* (P1 à P13) : fournisseur compatible OpenAI ou Anthropic, choisi par instance ; pièces comprises ; brique
+  asynchrone et bouton « Relancer » ; constats acceptés ou écartés, journalisés ; contrôles déclarés sur la brique ;
+  PDFBox sans OCR ; sensibles toujours exclus de l'envoi ; configuration dédiée, désactivée par défaut, brique refusée
+  au déploiement si désactivée ; tables dédiées et panneau ; faux fournisseur, exemple et jeu d'évaluation ; MCP lancer
+  et lire ; une PR par lot.
+- *Pièces* (R1 à R7) : type choisi au dépôt ; seules les pièces listées partent ; règles sur des variables posées
+  avant ; échec d'une relance visible dans le panneau ; obligation déclarée dans la brique ; pièce sans type « non
+  classée », reclassable ; types demandés sur la tâche externe.
+- *Conception* (C1 à C8, HC1 à HC12) : `spring-ai-openai` 2.0.1 ; file persistée avec bail ; élément devenu sensible
+  exclu et signalé ; attributs ligne par ligne ; variable de résultat déterministe ; complétude sur tous les champs du
+  type ; plafonds prudents ; ordre P, A, B, C, D. *Écart* : le prompt `v1` vit dans `PrecheckPrompt` (texte versionné
+  dans le code) plutôt que dans une ressource `precheck/prompt-v1.md` (HC2) ; même règle : un changement de texte crée
+  une nouvelle version.
 
 **Revue adversariale du lot P (2026-10-25).**
 
@@ -136,6 +165,22 @@ riverain et jeu d'évaluation ; détail : `docs/ai/` de la feature `preverificat
   dicté par une pièce (injection) : il est marqué « modèle », sourcé, et l'agent décide. Un champ masqué par
   `visibleWhen` mais désigné dans `precheckFields` est transmis (choix explicite du concepteur).
 
+**Revue adversariale finale (lot D, 2026-10-26).**
+
+- *Vérifié* — le scénario de bout en bout sur les fichiers de l'exemple : déploiement de la variante (contrôles de la
+  brique passés), pièce d'identité sensible absente de la requête au fournisseur, constats attendus, décisions et journal
+  exporté (modèle configuré, version du prompt). Après un retour du demandeur, le flux repasse par la brique (par
+  construction du BPMN ; ce chemin n'est pas rejoué par le test).
+- *Vérifié* — aucune donnée de dossier pour l'assistant de conception (test des modes MCP) ; routes et outils absents
+  quand la fonction est désactivée ; panneau masqué.
+- *Accepté* — dans l'exemple, les anciens champs `FILE` coexistent avec les types de pièces : la pré-vérification ne lit
+  que les pièces jointes classées (documenté). La table code postal → commune est une démonstration.
+- *Accepté* — l'export du journal (`TENANT_ADMIN`) n'est pas tracé dans le journal de sécurité : il ne contient que ce
+  que le panneau montre, plus la spécification et l'empreinte de l'entrée.
+- *Non fait ici* — l'évaluation contre un vrai modèle : aucune clé de fournisseur dans l'environnement de développement ;
+  la commande est documentée (`DEPLOIEMENT.md` §20) et à jouer avant la mise en service.
+
 **Impacte :** `docs/specs/04-dossiers.md`, `docs/specs/13-modele-physique.md`, `docs/specs/15-serveur-mcp.md`,
-`docs/specs/26-portail-externe.md`, `docs/guides/GUIDE-UTILISATEUR.md`, `docs/guides/GUIDE-CONCEPTION-BPMN.md`,
+`docs/specs/26-portail-externe.md`, `docs/specs/48-preverification-ia.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
+`docs/guides/GUIDE-CONCEPTION-BPMN.md`, `docs/guides/DEPLOIEMENT.md`, `exemples/autorisation-riverain/`,
 `openapi/openapi.yaml`.

@@ -2,6 +2,10 @@
 
 *Annexe technique destinée aux intégrateurs et aux dossiers de marchés publics (pouvoirs locaux et régionaux en Belgique francophone). Version du 22/10/2026, établie à partir du code de la branche `main`. Les éléments **existants** sont référencés par leur chemin dans le dépôt ; tout le reste est une **proposition** et est signalé comme tel.*
 
+> **Réalisé (2026-10-26, issue #211).** La fonction est livrée ; ce qui fait foi est la
+> [spec 48](../specs/48-preverification-ia.md) et le [registre §106](../decisions/106-preverification-ia-et-types-de-pieces.md).
+> Cette fiche, datée, n'est pas réécrite.
+
 ---
 
 ## 1. Le besoin et la promesse

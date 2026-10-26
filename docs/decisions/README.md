@@ -124,7 +124,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 103 | [Double licence AGPL-3.0-only et licence commerciale](103-double-licence-agpl-et-licence-commerciale.md) | ouvert | — |
 | 104 | [Authentification belge (FAS, itsme) des agents et des tiers du portail](104-authentification-belge-fas-et-itsme.md) | clos | — |
 | 105 | [Nom commercial Myrmacta](105-nom-commercial-myrmacta.md) | clos | — |
-| 106 | [Pré-vérification IA des dossiers et types de pièces justificatives](106-preverification-ia-et-types-de-pieces.md) | ouvert | — |
+| 106 | [Pré-vérification IA des dossiers et types de pièces justificatives](106-preverification-ia-et-types-de-pieces.md) | clos | — |
 
 ## Sections de l'ancien registre
 

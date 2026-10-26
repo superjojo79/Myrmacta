@@ -133,7 +133,12 @@ class ArchitectureRulesTest {
             "be.myrmacta.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl",
             // TODO §104 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
             // comparer au NRN vérifié par FAS ou itsme ; la valeur n'est jamais renvoyée au tiers ni journalisée.
-            "be.myrmacta.domain.workflow.portal.PortalIdentityFieldValue");
+            "be.myrmacta.domain.workflow.portal.PortalIdentityFieldValue",
+            // TODO §106 (issue #211, lot B) : la pré-vérification IA lit la présence des valeurs (complétude, sensibles
+            // compris sans valeur) et la valeur des seuls champs désignés par la brique et non sensibles (P7, C3), qu'elle
+            // envoie au modèle ; aucune valeur n'est renvoyée à un navigateur ni journalisée (seule une empreinte SHA-256
+            // des entrées est rangée).
+            "be.myrmacta.domain.precheck.PrecheckEngine");
 
     /** Same rationale as {@link #DOSSIER_FIELDS_READ_ALLOWLIST}, for {@code FieldDefinition.defaultValue()}. */
     private static final Set<String> FIELD_DEFINITION_DEFAULT_VALUE_READ_ALLOWLIST = Set.of(

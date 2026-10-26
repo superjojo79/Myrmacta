@@ -71,7 +71,10 @@ public final class McpToolModes {
             Map.entry("query_sla_summary", Mode.OPERATION),
             Map.entry("list_signature_requests", Mode.OPERATION),
             Map.entry("get_signature_request", Mode.OPERATION),
-            Map.entry("cancel_signature_request", Mode.OPERATION));
+            Map.entry("cancel_signature_request", Mode.OPERATION),
+            // TODO §106 (issue #211) : pré-vérification IA (données de dossier) — jamais en conception.
+            Map.entry("run_dossier_precheck", Mode.OPERATION),
+            Map.entry("get_dossier_precheck", Mode.OPERATION));
 
     private McpToolModes() {}
 

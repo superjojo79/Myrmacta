@@ -77,3 +77,5 @@ databaseChangeLog:
       file: db/changelog/changes/038-portal-identity.yaml
   - include:
       file: db/changelog/changes/039-dossier-type-piece-types.yaml
+  - include:
+      file: db/changelog/changes/040-dossier-precheck.yaml

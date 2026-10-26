@@ -101,6 +101,10 @@ Outil envisagé : `define_dossier_type` — création ou mise à jour (par
 (TODO §106 : types de pièces justificatives, absent = inchangé à la mise à jour), et `add_dossier_element` accepte la
 métadonnée `pieceKey` d'une pièce jointe, contrôlée contre le type du dossier
 ([04-dossiers.md](04-dossiers.md#types-de-pièces-justificatives-todo-106-issue-211-lot-p)).
+Quand la pré-vérification IA est activée (`APP_PRECHECK_ENABLED`, TODO §106), `run_dossier_precheck` relance la
+pré-vérification d'un dossier (EDIT, mise en file) et `get_dossier_precheck` lit ses trois dernières exécutions
+(constats et décisions) ; mode opération seulement, jamais exposés à l'assistant de conception
+([registre §106](../decisions/106-preverification-ia-et-types-de-pieces.md)).
 
 **Point de vigilance :** modifier le schéma d'un `DossierType` déjà utilisé
 par des dossiers existants peut casser la validation (`DossierFieldValidator`,

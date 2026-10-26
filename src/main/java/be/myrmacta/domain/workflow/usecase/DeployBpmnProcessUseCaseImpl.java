@@ -1,5 +1,6 @@
 package be.myrmacta.domain.workflow.usecase;
 
+import be.myrmacta.domain.precheck.PrecheckDeploymentRules;
 import be.myrmacta.domain.workflow.model.InvalidBpmnException;
 import be.myrmacta.domain.workflow.portal.model.PortalTaskDefinition;
 import be.myrmacta.domain.signature.model.SignatureBlockDefinition;
@@ -32,6 +33,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
     private final DmnDeploymentPort dmnDeploymentPort;
     private final PortalAvailabilityPort portalAvailability;
     private final SignatureAvailabilityPort signatureAvailability;
+    private final PrecheckDeploymentRules precheckRules;
     private final BlockReferenceVerifier blockReferenceVerifier;
 
     public DeployBpmnProcessUseCaseImpl(
@@ -43,7 +45,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
             DmnDeploymentPort dmnDeploymentPort,
             PortalAvailabilityPort portalAvailability,
             SignatureAvailabilityPort signatureAvailability,
-            BlockReferenceVerifier blockReferenceVerifier) {
+            BlockReferenceVerifier blockReferenceVerifier,
+            PrecheckDeploymentRules precheckRules) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.deploymentPort = Objects.requireNonNull(deploymentPort, "deploymentPort");
         this.configRepository = Objects.requireNonNull(configRepository, "configRepository");
@@ -53,6 +56,7 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         this.portalAvailability = Objects.requireNonNull(portalAvailability, "portalAvailability");
         this.signatureAvailability = Objects.requireNonNull(signatureAvailability, "signatureAvailability");
         this.blockReferenceVerifier = Objects.requireNonNull(blockReferenceVerifier, "blockReferenceVerifier");
+        this.precheckRules = Objects.requireNonNull(precheckRules, "precheckRules");
     }
 
     @Override
@@ -93,6 +97,8 @@ public final class DeployBpmnProcessUseCaseImpl implements DeployBpmnProcessUseC
         }
         assertPortalTasksDeployable(bpmnParserPort.extractPortalTasks(bpmnXml));
         assertSignatureBlocksDeployable(bpmnParserPort.extractSignatureBlocks(bpmnXml));
+        // TODO §106 (D-PRECHECK-BLOCK) : fonction activée, champs et pièces désignés contrôlés contre les types liés.
+        precheckRules.verify(processDefinitionKey, bpmnParserPort.extractPrecheckBlocks(bpmnXml));
         // TODO §73 D-PALETTE-DEPLOY-REFERENCES : existence des ressources référencées par les attributs de brique.
         return blockReferenceVerifier.verify(
                 processDefinitionKey, effectiveConfig, bpmnParserPort.extractBlockReferences(bpmnXml), mode);

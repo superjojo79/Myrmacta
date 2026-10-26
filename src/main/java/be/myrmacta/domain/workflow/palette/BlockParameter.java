@@ -23,7 +23,8 @@ public record BlockParameter(
         boolean multiline) {
 
     /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression) — publié dans le catalogue pour l'éditeur. */
-    public static final java.util.Set<String> MULTILINE_NAMES = java.util.Set.of("notificationBody", "formula", "fieldMapping", "searchCriteria");
+    public static final java.util.Set<String> MULTILINE_NAMES = java.util.Set.of("notificationBody", "formula", "fieldMapping", "searchCriteria",
+            "precheckPieces", "precheckQuestions", "precheckRules");
 
     public BlockParameter(
             String name,

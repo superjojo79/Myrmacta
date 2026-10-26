@@ -173,7 +173,8 @@ class BlockAttributeRulesTest {
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
                 "notificationWebhookConfigId", "notificationAttachment", "notificationAttachmentName", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
                 "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping",
-                "searchCriteria", "searchCountResult", "searchFirstReferenceResult");
+                "searchCriteria", "searchCountResult", "searchFirstReferenceResult", "precheckPieces", "precheckFields",
+                "precheckQuestions", "precheckRules", "precheckResult");
     }
 
     /** TODO §102 (lot B, R1, R4, R5) — brique « Rechercher des dossiers » : forme validée au déploiement. */

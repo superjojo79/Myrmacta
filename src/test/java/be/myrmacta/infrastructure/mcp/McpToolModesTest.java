@@ -44,7 +44,8 @@ class McpToolModesTest {
         Set<String> design = McpToolModes.toolsFor(McpToolModes.Mode.DESIGN);
         assertThat(design).doesNotContain("get_dossier", "search_dossiers", "create_dossier", "add_dossier_element",
                 "start_workflow", "generate_document", "evaluate_decision", "query_sla_summary",
-                "list_signature_requests", "get_signature_request", "cancel_signature_request");
+                "list_signature_requests", "get_signature_request", "cancel_signature_request",
+                "run_dossier_precheck", "get_dossier_precheck"); // TODO §106 (D-ASSIST-TOOLS)
         assertThat(design).contains("deploy_workflow", "deploy_decision_table", "list_pending_drafts", "list_dossier_types");
     }
 

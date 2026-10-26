@@ -209,7 +209,8 @@ test('E2E-PIECE-1 an attachment is classified at upload, then reclassified from 
   await expect(select).toHaveValue('identite')
   await select.selectOption({ label: 'Non classée' })
   await expect(select).toHaveValue('')
-  expect(classified).toEqual([{ pieceKey: 'identite' }, { pieceKey: null }])
+  // La valeur locale change avant que la requête parte : attendre la requête, pas seulement l'affichage.
+  await expect.poll(() => classified).toEqual([{ pieceKey: 'identite' }, { pieceKey: null }])
 })
 
 test('E2E-19 oversized attachment upload shows an error, no crash', async ({ page }) => {

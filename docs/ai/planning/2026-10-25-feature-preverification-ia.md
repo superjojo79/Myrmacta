@@ -14,8 +14,8 @@ tant que les lots A à D ne sont pas livrés.
 - [x] Phase 2 : revue des exigences, O1, O2, O4 tranchées (R1 à R7), O3 renvoyée en phase 3
 - [x] Phase 3 : conception validée (C1 à C8, HC1 à HC12) ; ordre P, A, B, C, D
 - [x] Lot P fusionné : types de pièces (PR #231)
-- [ ] Lot A fusionné : fournisseur et extraction
-- [ ] Lot B fusionné : moteur, brique, REST, MCP
+- [x] Lot A fusionné : fournisseur et extraction (PR #233)
+- [ ] Lot B fusionné : moteur, brique, REST, MCP (PR en cours)
 - [ ] Lot C fusionné : panneau sur la fiche
 - [ ] Lot D fusionné : docs, exemple, évaluation, revue adversariale ; `docs/ai` de la feature vidé ; #211 close
 
@@ -40,13 +40,13 @@ tant que les lots A à D ne sont pas livrés.
 
 ### Lot B — Moteur et brique
 
-- [ ] B1 : spécification de la brique et validation (déploiement et exécution)
-- [ ] B2 : passe 1 complétude
-- [ ] B3 : entrée masquée, prompt versionné, validation de la sortie
-- [ ] B4 : changeSet 040, dépôt, relais de la file avec bail (C2)
-- [ ] B5 : délégué `aiPrecheckTask`, catalogue, liste blanche, refus au déploiement (async, désactivée)
-- [ ] B6 : REST (relancer, lire, décider, export) et MCP (lancer, lire)
-- [ ] B7 : test « sensible nulle part », injection simulée, revue adversariale du lot
+- [x] B1 : spécification de la brique et validation (déploiement et exécution)
+- [x] B2 : passe 1 complétude
+- [x] B3 : entrée masquée, prompt versionné, validation de la sortie
+- [x] B4 : changeSet 040, dépôt, relais de la file avec bail (C2)
+- [x] B5 : délégué `aiPrecheckTask`, catalogue, liste blanche, refus au déploiement (async, désactivée)
+- [x] B6 : REST (relancer, lire, décider, export) et MCP (lancer, lire)
+- [x] B7 : test « sensible nulle part », injection simulée, revue adversariale du lot
 
 ### Lot C — Panneau
 

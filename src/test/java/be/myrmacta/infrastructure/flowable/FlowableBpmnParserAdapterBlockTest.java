@@ -41,6 +41,9 @@ class FlowableBpmnParserAdapterBlockTest {
         if (type != null) {
             attributes.append(" flowable:type=\"").append(type).append("\"");
         }
+        if ("aiPrecheckTask".equals(delegate)) {
+            attributes.append(" flowable:async=\"true\""); // TODO §106 (D-PRECHECK-BLOCK) : toujours asynchrone
+        }
         for (BlockParameter p : block.parameters()) {
             String value = sampleValue(p);
             switch (p.binding()) {
@@ -74,7 +77,12 @@ class FlowableBpmnParserAdapterBlockTest {
                     : "fieldMapping".equals(p.name()) ? "score = connectorResult.json.score"
                     : "searchCriteria".equals(p.name()) ? "email = dossierField:email"
                     : "searchCountResult".equals(p.name()) ? "nbTrouves"
-                    : "searchFirstReferenceResult".equals(p.name()) ? "premierTrouve" : "texte";
+                    : "searchFirstReferenceResult".equals(p.name()) ? "premierTrouve"
+                    : "precheckPieces".equals(p.name()) ? "preuve : obligatoire, lire"
+                    : "precheckFields".equals(p.name()) ? "commune"
+                    : "precheckQuestions".equals(p.name()) ? "q = Question ?"
+                    : "precheckRules".equals(p.name()) ? "variable:doublons &gt; 0 =&gt; INCOHERENCE : Doublon."
+                    : "precheckResult".equals(p.name()) ? "precheck" : "texte";
         };
     }
 

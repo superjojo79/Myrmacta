@@ -25,7 +25,9 @@ public final class AllowedBpmnDelegates {
             // TODO §78 (D3b) : bloc « Enregistrer des valeurs dans le dossier » (expressions LC2 → champs, chemin métier).
             "fieldMappingTask",
             // TODO §102 (issue #184, lot B) : bloc « Rechercher des dossiers » (dossiers ouverts du même type).
-            "dossierSearchTask");
+            "dossierSearchTask",
+            // TODO §106 (issue #211, lot B) : bloc « Pré-vérification IA » (asynchrone, sans outils, constats sourcés).
+            "aiPrecheckTask");
 
     private AllowedBpmnDelegates() {}
 

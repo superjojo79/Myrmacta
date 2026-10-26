@@ -47,7 +47,9 @@ class DeployBpmnProcessUseCaseImplTest {
     private final DeployBpmnProcessUseCaseImpl useCase = new DeployBpmnProcessUseCaseImpl(
             TENANT, deploymentPort, configRepository, bpmnParserPort, draftRepository, dmnDeploymentPort,
             portalAvailability, signatureAvailability,
-            new be.myrmacta.domain.workflow.palette.BlockReferenceVerifier(TENANT, lookup));
+            new be.myrmacta.domain.workflow.palette.BlockReferenceVerifier(TENANT, lookup),
+            new be.myrmacta.domain.precheck.PrecheckDeploymentRules(TENANT, () -> false,
+                    org.mockito.Mockito.mock(be.myrmacta.domain.dossier.port.out.DossierTypeRepository.class)));
 
     @Test
     void deploy_validBpmnWithKnownKey_delegatesToDeploymentPort() {

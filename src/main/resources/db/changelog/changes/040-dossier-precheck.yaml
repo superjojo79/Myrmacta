@@ -1,0 +1,99 @@
+databaseChangeLog:
+  - changeSet:
+      id: 040-dossier-precheck
+      author: flowforge
+      comment: >-
+        TODO §106 (issue #211, lot B, HC9, D-PRECHECK-STORE) — pré-vérification IA. precheck_run : une exécution (brique
+        du workflow ou relance en file avec bail), son journal (modèle, version du prompt, empreinte SHA-256 des entrées,
+        jamais les entrées en clair), sa synthèse et ses jetons. precheck_finding : ses constats et la décision de
+        l'agent. Supprimés avec le dossier (purge).
+      changes:
+        - createTable:
+            tableName: precheck_run
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_precheck_run, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_precheck_run_dossier
+                    references: dossier(id)
+                    deleteCascade: true
+              - column: {name: trigger_kind, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: requested_by, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: workflow_link_id, type: uuid}
+              - column: {name: spec_json, type: text, constraints: {nullable: false}}
+              - column: {name: status, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: attempts, type: int, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: lease_until, type: timestamp with time zone}
+              - column: {name: failure, type: varchar(300)}
+              - column: {name: provider, type: varchar(32)}
+              - column: {name: model, type: varchar(128)}
+              - column: {name: prompt_version, type: varchar(16)}
+              - column: {name: input_sha256, type: varchar(64)}
+              - column: {name: summary, type: varchar(1000)}
+              - column: {name: tokens_in, type: bigint, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: tokens_out, type: bigint, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: discarded, type: int, defaultValueNumeric: 0, constraints: {nullable: false}}
+              - column: {name: created_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: finished_at, type: timestamp with time zone}
+        - createIndex:
+            tableName: precheck_run
+            indexName: idx_precheck_run_dossier_created
+            columns:
+              - column: {name: dossier_id}
+              - column: {name: created_at}
+        - createIndex:
+            tableName: precheck_run
+            indexName: idx_precheck_run_status
+            columns:
+              - column: {name: status}
+        - createIndex:
+            tableName: precheck_run
+            indexName: idx_precheck_run_finished
+            columns:
+              - column: {name: finished_at}
+        - createTable:
+            tableName: precheck_finding
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_precheck_finding, nullable: false}}
+              - column:
+                  name: run_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_precheck_finding_run
+                    references: precheck_run(id)
+                    deleteCascade: true
+              - column: {name: ordinal, type: int, constraints: {nullable: false}}
+              - column: {name: kind, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: origin, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: source_type, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: source_ref, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: message, type: varchar(400), constraints: {nullable: false}}
+              - column: {name: confidence, type: double precision}
+              - column: {name: decision, type: varchar(16)}
+              - column: {name: decided_by, type: varchar(128)}
+              - column: {name: decided_at, type: timestamp with time zone}
+        - createIndex:
+            tableName: precheck_finding
+            indexName: idx_precheck_finding_run
+            columns:
+              - column: {name: run_id}
+  - changeSet:
+      id: 040-dossier-precheck-active-index
+      author: flowforge
+      dbms: postgresql
+      comment: >-
+        TODO §106 (C2) — au plus une relance (bouton, MCP) en file ou en cours par dossier, même sous écritures
+        concurrentes ; la brique du workflow n'y est pas soumise.
+      changes:
+        - sql:
+            sql: >-
+              CREATE UNIQUE INDEX uq_precheck_run_active ON precheck_run (dossier_id)
+              WHERE status IN ('PENDING', 'RUNNING') AND trigger_kind <> 'WORKFLOW'
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS uq_precheck_run_active

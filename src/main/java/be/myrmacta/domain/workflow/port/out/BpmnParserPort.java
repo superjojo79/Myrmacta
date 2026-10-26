@@ -43,4 +43,9 @@ public interface BpmnParserPort {
      * L'existence est vérifiée par le use case de déploiement. Vide si aucune.
      */
     java.util.List<be.myrmacta.domain.workflow.palette.BlockParameterUsage> extractBlockReferences(byte[] bpmnXml);
+
+    /** TODO §106 (issue #211, lot B) — briques « Pré-vérification IA » du BPMN (forme déjà validée par le parseur). */
+    default java.util.List<be.myrmacta.domain.precheck.model.PrecheckBlock> extractPrecheckBlocks(byte[] bpmnXml) {
+        return java.util.List.of();
+    }
 }

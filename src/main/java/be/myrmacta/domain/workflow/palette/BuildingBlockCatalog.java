@@ -117,6 +117,26 @@ public final class BuildingBlockCatalog {
                     text("searchFirstReferenceResult", "Variable de la référence", 60,
                             "Nom de la variable qui reçoit la référence du plus ancien dossier trouvé (vide si aucun).",
                             true)),
+            // TODO §106 (issue #211, lot B) — pré-vérification IA avant l'instruction ; toujours asynchrone.
+            block("ai-precheck", "Pré-vérification IA",
+                    "Contrôle la complétude du dossier, tire des constats de variables posées avant et pose des questions "
+                            + "fermées à un modèle de langage sur les champs et pièces désignés ; l'agent accepte ou écarte "
+                            + "chaque constat. Cocher « asynchrone ».",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("aiPrecheckTask"),
+                    text("precheckPieces", "Pièces", 2000,
+                            "Une ligne par type de pièce : clé : obligatoire, lire. Ex. preuveDomicile : obligatoire, lire. "
+                                    + "« lire » envoie le texte au modèle (10 types au plus, jamais un type sensible)."),
+                    text("precheckFields", "Champs transmis", 1000,
+                            "Champs envoyés au modèle, séparés par des virgules (30 au plus, jamais un champ sensible). Ex. "
+                                    + "nom, prenom, commune."),
+                    text("precheckQuestions", "Questions fermées", 8000,
+                            "Une ligne par question : clé = question. Ex. domicileAuNom = La preuve de domicile est-elle au "
+                                    + "nom du demandeur ? (20 au plus)."),
+                    text("precheckRules", "Règles", 4000,
+                            "Une ligne par règle : variable:<nom> <condition> => MANQUANT|INCOHERENCE|A_VERIFIER : message. "
+                                    + "Conditions : est vrai, est faux, est vide, n'est pas vide, > N, < N, = N, = \"texte\"."),
+                    text("precheckResult", "Variable de résultat", 60,
+                            "Facultatif : variable qui reçoit les comptes déterministes (status, missing, inconsistent).")),
             block("user-question", "Question utilisateur",
                     "Tâche humaine qui pose un choix indépendant du dossier.",
                     BlockCategory.HUMAN, BlockElement.USER_TASK, BlockMarker.userQuestion(),

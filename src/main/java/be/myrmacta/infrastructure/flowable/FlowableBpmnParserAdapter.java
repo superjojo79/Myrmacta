@@ -1,5 +1,7 @@
 package be.myrmacta.infrastructure.flowable;
 
+import be.myrmacta.domain.precheck.model.PrecheckSpec;
+import be.myrmacta.domain.precheck.model.PrecheckBlock;
 import be.myrmacta.domain.signature.model.SignatureBlockDefinition;
 import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignerKind;
@@ -159,6 +161,54 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         } catch (InvalidExpressionException e) {
             throw new InvalidBpmnException(
                     "BPMN attribute flowable:formula on " + element.getId() + " is invalid: " + e.getMessage());
+        }
+    }
+
+    /**
+     * TODO §106 (issue #211, lot B, D-PRECHECK-BLOCK) — la brique « Pré-vérification IA » est <b>asynchrone</b>
+     * ({@code flowable:async="true"}) : l'appel au modèle ne tient jamais dans la transaction d'une complétion de tâche, et
+     * son échec devient un incident rejouable. Sa spécification doit être complète (au moins une pièce, question ou règle).
+     */
+    private static Optional<PrecheckBlock> precheckBlock(FlowElement element) {
+        if (!"aiPrecheckTask".equals(blockDelegate(element))) {
+            return Optional.empty();
+        }
+        if (!(element instanceof ServiceTask serviceTask) || !serviceTask.isAsynchronous()) {
+            throw new InvalidBpmnException("BPMN activity " + element.getId()
+                    + ": the AI pre-check block must be asynchronous (flowable:async=\"true\")");
+        }
+        try {
+            return Optional.of(new PrecheckBlock(element.getId(),
+                    PrecheckSpec.parse(flowableAttributes(element), element.getId())));
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidBpmnException(ex.getMessage(), ex);
+        }
+    }
+
+    @Override
+    public List<PrecheckBlock> extractPrecheckBlocks(byte[] bpmnXml) {
+        BpmnModel model;
+        try {
+            model = new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+        List<PrecheckBlock> blocks = new ArrayList<>();
+        for (org.flowable.bpmn.model.Process process : model.getProcesses()) {
+            collectPrecheckBlocks(process.getFlowElements(), blocks);
+        }
+        return List.copyOf(blocks);
+    }
+
+    private static void collectPrecheckBlocks(Collection<FlowElement> elements, List<PrecheckBlock> blocks) {
+        if (elements == null) {
+            return;
+        }
+        for (FlowElement element : elements) {
+            precheckBlock(element).ifPresent(blocks::add);
+            if (element instanceof SubProcess subProcess) {
+                collectPrecheckBlocks(subProcess.getFlowElements(), blocks);
+            }
         }
     }
 
@@ -488,6 +538,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         BlockAttributeRules.validate(element.getId(), blockDelegate(element), flowableAttributes(element));
         assertBusinessExpression(element);
         assertFieldMapping(element);
+        precheckBlock(element);
         if (element instanceof HasExecutionListeners hasListeners) {
             assertSafeListeners(element.getId(), hasListeners.getExecutionListeners());
         }

@@ -1,5 +1,6 @@
 package be.myrmacta.domain.workflow.palette;
 
+import be.myrmacta.domain.precheck.model.PrecheckSpec;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.model.InvalidBpmnException;
 import be.myrmacta.domain.workflow.portal.model.PortalRecipientSource;
@@ -32,11 +33,11 @@ public final class BlockAttributeRules {
      * exécutable. Tous leurs paramètres obligatoires doivent donc figurer dans le BPMN.
      */
     private static final Set<String> LITERAL_ONLY_DELEGATES =
-            Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask");
+            Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask", "aiPrecheckTask");
 
     /** TODO §102 (lot B, R4) — noms de variables écrites par la brique « Rechercher des dossiers ». */
     private static final Set<String> RESULT_VARIABLE_PARAMETERS =
-            Set.of("formulaResult", "searchCountResult", "searchFirstReferenceResult");
+            Set.of("formulaResult", "searchCountResult", "searchFirstReferenceResult", "precheckResult");
 
     /**
      * Le nom d'attribut est {@code formulaResult} et non {@code resultVariable} : ce dernier est un attribut natif de
@@ -250,6 +251,7 @@ public final class BlockAttributeRules {
                 if ("fieldMapping".equals(parameter.name())) {
                     FieldMappingSpec.parse(value, owner);
                 }
+                checkPrecheck(owner, parameter.name(), value);
                 if ("notificationTo".equals(parameter.name())) {
                     checkRecipient(owner, value);
                 }
@@ -263,6 +265,27 @@ public final class BlockAttributeRules {
                 }
             }
             default -> { }
+        }
+    }
+
+    /** TODO §106 (D-PRECHECK-SPEC) — grammaire de chaque attribut de la brique « Pré-vérification IA ». */
+    private static void checkPrecheck(String owner, String name, String value) {
+        try {
+            switch (name) {
+                case PrecheckSpec.PIECES -> PrecheckSpec.parsePieces(value, owner);
+                case PrecheckSpec.FIELDS -> PrecheckSpec.parseFields(value, owner);
+                case PrecheckSpec.QUESTIONS -> PrecheckSpec.parseQuestions(value, owner);
+                case PrecheckSpec.RULES -> {
+                    for (PrecheckSpec.Rule rule : PrecheckSpec.parseRules(value, owner)) {
+                        if (RESERVED_VARIABLES.contains(rule.variable())) {
+                            throw new InvalidBpmnException(owner + ": variable " + rule.variable() + " is reserved");
+                        }
+                    }
+                }
+                default -> { }
+            }
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidBpmnException(ex.getMessage());
         }
     }
 

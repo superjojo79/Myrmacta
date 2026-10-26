@@ -232,7 +232,9 @@ public class WorkflowConfig {
             DmnDeploymentPort dmnDeploymentPort,
             be.myrmacta.domain.workflow.portal.port.out.PortalAvailabilityPort portalAvailabilityPort,
             be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort signatureAvailabilityPort,
-            be.myrmacta.domain.workflow.palette.BlockReferenceVerifier blockReferenceVerifier) {
+            be.myrmacta.domain.workflow.palette.BlockReferenceVerifier blockReferenceVerifier,
+            be.myrmacta.domain.precheck.port.out.PrecheckAvailabilityPort precheckAvailability,
+            be.myrmacta.domain.dossier.port.out.DossierTypeRepository dossierTypeRepository) {
         return new DeployBpmnProcessUseCaseImpl(
                 tenantProperties.id(),
                 deploymentPort,
@@ -242,7 +244,9 @@ public class WorkflowConfig {
                 dmnDeploymentPort,
                 portalAvailabilityPort,
                 signatureAvailabilityPort,
-                blockReferenceVerifier);
+                blockReferenceVerifier,
+                new be.myrmacta.domain.precheck.PrecheckDeploymentRules(
+                        tenantProperties.id(), precheckAvailability, dossierTypeRepository));
     }
 
     @Bean

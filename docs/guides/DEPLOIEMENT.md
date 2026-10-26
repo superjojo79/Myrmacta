@@ -679,3 +679,49 @@ réponse : les terminer ou les réassigner avant.
   dans l'ID token, rattachement d'un compte existant, mot de passe direct en `both`, refus en `idp-only`, compte de
   secours avec OTP.
 
+
+## 20. Pré-vérification IA des dossiers (TODO §106)
+
+La brique « Pré-vérification IA » et le panneau de la fiche sont **désactivés par défaut** : sans configuration, aucune
+requête ne sort de l'instance, un BPMN qui contient la brique est refusé au déploiement et l'API comme les outils MCP
+n'existent pas ([spec 48](../specs/48-preverification-ia.md)). Configuration distincte de l'assistant de conception (§15).
+
+| Variable | Rôle |
+|---|---|
+| `APP_PRECHECK_ENABLED` | `true` pour l'activer (démarrage refusé si la configuration est incohérente) |
+| `APP_PRECHECK_PROVIDER` | `openai-compatible` (défaut) ou `anthropic` |
+| `APP_PRECHECK_BASE_URL` | point d'accès, par exemple `https://api.mistral.ai/v1`, `http://localhost:11434/v1` (Ollama), un vLLM interne ou le point d'accès compatible OpenAI d'une ressource Azure OpenAI ; **https obligatoire** hors boucle locale |
+| `APP_PRECHECK_API_KEY` | clé du fournisseur — **secret serveur** ; facultative pour un serveur local |
+| `APP_PRECHECK_MODEL` | modèle, par exemple `mistral-small-latest` ; il doit accepter une réponse au format JSON contraint (`json_schema`) |
+| `APP_PRECHECK_ALLOW_PLAIN_HTTP` | `true` pour un serveur interne en HTTP : **les données du dossier circulent alors en clair** sur le réseau ; à réserver à un segment isolé |
+| `APP_PRECHECK_TIMEOUT_SECONDS` | délai d'un appel (120) |
+| `APP_PRECHECK_MAX_TOKENS_PER_DAY` | plafond de jetons par jour UTC et par instance (1 000 000) ; atteint, la brique tombe en incident rejouable |
+| `APP_PRECHECK_MAX_OUTPUT_TOKENS`, `…_MAX_PIECES_READ`, `…_MAX_PAGES_PER_PIECE`, `…_MAX_CHARS_PER_PIECE`, `…_MAX_CHARS_TOTAL`, `…_MAX_QUESTIONS` | bornes d'un appel (2 000 jetons de sortie ; 10 pièces, 30 pages, 30 000 caractères par pièce, 100 000 au total ; 20 questions) |
+| `APP_PRECHECK_QUEUE_POLL_DELAY` | intervalle du relais des relances (5 s) |
+
+**Choisir le fournisseur.** Les champs et pièces désignés par la brique partent chez lui : préférez un fournisseur
+hébergé dans l'UE (Mistral, Azure OpenAI en région UE) ou un modèle auto-hébergé (vLLM, Ollama) sur le réseau de
+l'instance. Le pare-feu sortant doit autoriser le seul hôte de `APP_PRECHECK_BASE_URL`. Les redirections ne sont
+jamais suivies et aucun appel n'est relancé par le client HTTP ; une panne devient un incident rejouable (Flowable
+retente le job 3 fois, chaque tentative est comptée dans le plafond).
+
+**RGPD.** Le fournisseur est un **sous-traitant** (art. 28) : contrat et registre des traitements à jour. Seuls partent
+les champs listés dans `precheckFields` et le texte des pièces marquées `lire` ; jamais un champ ni un type de pièce
+sensible (refusé au déploiement, rattrapé à l'exécution). Le journal garde une empreinte SHA-256 de l'entrée, jamais
+l'entrée elle-même. Une **analyse d'impact (AIPD)** est recommandée avant la mise en service. Aucune décision n'est
+automatisée (art. 22) : l'agent accepte ou écarte chaque constat, et un routage ne s'appuie que sur les contrôles
+déterministes.
+
+**AI Act.** Tâche préparatoire sous supervision humaine : les constats du modèle sont marqués « IA » sur la fiche,
+sourcés et journalisés (modèle, version du prompt, décisions). Pour un usage qui touche à l'**éligibilité à une aide ou
+à un subside** (annexe III, 5 a), analysez la classification au cas par cas avant de l'activer.
+
+**Évaluer un modèle avant la mise en service.** Le jeu d'évaluation de l'exemple riverain se rejoue contre le modèle
+choisi (coûte des jetons ; hors CI) :
+
+```bash
+MYRMACTA_EVAL_BASE_URL=https://api.mistral.ai/v1 MYRMACTA_EVAL_API_KEY=… MYRMACTA_EVAL_MODEL=mistral-small-latest \
+  ./mvnw test -Dtest=PrecheckEvaluation -Dsurefire.failIfNoSpecifiedTests=false -Dskip.frontend=true
+```
+
+Le rapport `target/precheck-evaluation.md` donne la précision et le rappel par type de constat.

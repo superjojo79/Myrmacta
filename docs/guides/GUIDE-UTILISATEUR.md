@@ -898,6 +898,32 @@ administrateur technique doit le configurer (`docs/guides/DEPLOIEMENT.md` §15).
 Le sélecteur de langue (français / anglais) est en haut de page, y compris sur la page publique des tiers. Votre choix est conservé dans ce navigateur et prime sur la langue par défaut de votre organisation.
 Les dates, nombres et montants suivent la langue. Les libellés saisis par votre organisation (types de dossier, champs, statuts) ne sont pas traduits, ni le détail des erreurs renvoyées par le serveur.
 
+## 16. Pré-vérification IA d'un dossier (TODO §106)
+
+Quand votre organisation l'a activée (`docs/guides/DEPLOIEMENT.md` §20) et qu'un processus contient la brique
+**« Pré-vérification IA »**, la fiche du dossier affiche un panneau **Pré-vérification** après les éléments. Il prépare
+votre instruction ; **il ne décide rien**.
+
+- **Ce que vous voyez** : le statut de l'exécution, les comptes (manquants, incohérences, à vérifier), une **synthèse**
+  et la liste des **constats**. Chaque constat donne son type (*Manquant*, *Incohérence*, *À vérifier*, *Conforme*), sa
+  source (champ, pièce, règle ou question) et son origine :
+  - **Contrôle** : vérification déterministe (champ obligatoire vide, pièce obligatoire absente, règle du processus) ;
+  - **IA** : proposé par un modèle de langage à partir des champs et pièces désignés, avec sa confiance. **À vérifier
+    vous-même** : le modèle peut se tromper ou être trompé par le contenu d'une pièce.
+- **Décider** (droit de modification, dossier non clos) : **Accepter** ou **Écarter** chaque constat ; **Annuler la
+  décision** revient en arrière. Votre nom et l'heure sont enregistrés. Un lecteur voit le panneau sans boutons.
+- **Relancer** après l'ajout d'une pièce : la pré-vérification repart en tâche de fond avec les mêmes contrôles ; le
+  panneau se met à jour seul. L'exécution précédente reste consultable dans la liste en tête du panneau.
+- **Échec** : le panneau l'indique (plafond journalier atteint, fournisseur indisponible…) et garde les contrôles
+  déterministes. Dans le workflow, l'échec apparaît aussi comme un **incident** rejouable par un administrateur.
+- **Ce qui part chez le fournisseur** : seuls les champs et types de pièces listés dans la brique, jamais un champ ni une
+  pièce **sensible**. Une pièce scannée (sans texte) n'est pas lue : elle est signalée « non lisible ».
+- **Administrateur du tenant** : **Exporter le journal** télécharge le détail d'une exécution (modèle, version des
+  consignes, empreinte de l'entrée, constats et décisions).
+
+Pour placer la brique dans un processus, voir `docs/guides/GUIDE-CONCEPTION-BPMN.md` §3nonies ; pour l'outil MCP,
+`run_dossier_precheck` (relancer) et `get_dossier_precheck` (lire).
+
 ## Pour aller plus loin
 
 - Mise en place de l'environnement : [docs/guides/GETTING-STARTED.md](GETTING-STARTED.md)

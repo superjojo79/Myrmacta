@@ -23,9 +23,11 @@ jointe dans les e-mails est levée (issue #183).
 | `config/modele-document.json` + `template-decision.html` | Modèle du document de décision |
 | `autorisation-riverain-sans-portail.bpmn20.xml` | Processus déployable sur une instance **sans** portail |
 | `autorisation-riverain.bpmn20.xml` | Processus cible, avec complément par le **portail** externe |
-| `generer-bpmn.py` | Génère les deux BPMN (sémantique et mise en page) ; à modifier plutôt que les XML |
+| `autorisation-riverain-preverification.bpmn20.xml` | Variante sans portail précédée d'une **pré-vérification IA** (exige `APP_PRECHECK_ENABLED=true`) |
+| `generer-bpmn.py` | Génère les trois BPMN (sémantique et mise en page) ; à modifier plutôt que les XML |
 | `config/connecteur-portail.exemple.json` | Connecteur webhook pour un portail de dépôt externe (**non créé**) |
 | `config/exemple-dossier.json` | Jeu de données de recette |
+| `evaluation/cas.json` | Jeu d'évaluation de la pré-vérification IA contre un vrai modèle |
 
 ## Déroulé
 
@@ -114,6 +116,51 @@ R1 bis (rejoué après correction) est conforme. Les PDF générés avant le cor
 
 **Étape manquante dans la mise en service.** Un gestionnaire (`DOSSIER_MANAGER`) ne peut ni ouvrir ni faire avancer un dossier
 sans droit **EDIT** sur le type : l'accorder dans Admin → Types de dossier → ACL (ajoutée ci-dessous, étape 4).
+
+## Pré-vérification IA (TODO §106, issue #211)
+
+La variante `autorisation-riverain-preverification.bpmn20.xml` ajoute deux étapes avant « Instruire la demande », et les
+rejoue à chaque retour du demandeur :
+
+1. **Contrôle : code postal et commune** (expression) : `codePostalIncoherent` est vrai si le code postal figure dans
+   une petite table de démonstration et n'y correspond pas à la commune déclarée. En production, une table de décision
+   DMN ou un référentiel postal tient ce rôle ; un code absent de la table n'est pas jugé.
+2. **Pré-vérification IA** (asynchrone) : pièces `preuveDomicile` et `certificatImmatriculation` obligatoires et lues,
+   `pieceIdentite` obligatoire mais **sensible**, donc jamais lue ; champs d'identité, d'adresse et de plaque transmis ;
+   trois questions fermées (preuve au nom du demandeur, même adresse, même plaque) ; la règle du code postal ; comptes
+   déterministes dans la variable `preverification`.
+
+Le type de dossier déclare pour cela trois **types de pièces** (`pieceTypes`). Les pièces se déposent comme pièces
+jointes classées (fiche, portail) ; les anciens champs `FILE` (`certificatImmatriculation`, `preuveDomicile`) restent
+pour le document de décision, mais la pré-vérification ne les lit pas.
+
+**Scénario de la fiche** (rejoué par `RiverainPrecheckExampleIT` sur ces fichiers, avec le faux fournisseur) :
+
+1. créer la demande de `config/exemple-dossier.json` avec le code postal `5000` (Namur) et la commune Bruxelles, sans
+   preuve de domicile ; joindre le certificat d'immatriculation et la carte d'identité ;
+2. la pré-vérification s'exécute avant l'instruction ; la fiche montre « Pièce manquante : Preuve de domicile. »
+   (contrôle), « Code postal incohérent avec la commune déclarée. » (règle), les réponses du modèle aux trois questions
+   (marquées « IA ») et une synthèse ;
+3. l'agent accepte les deux premiers constats, en écarte un, puis peut « Demander des informations » ;
+4. le journal exporté (`TENANT_ADMIN`) montre le modèle, la version du prompt, les constats et les décisions.
+
+Le constat « une demande existe déjà pour cette plaque » de la fiche n'a plus lieu d'être : depuis l'issue #184, une
+seconde demande ouverte pour la même plaque est **refusée à la création**.
+
+**Mise en service** : activer la fonction (`docs/guides/DEPLOIEMENT.md` §20), puis publier cette variante à la place de
+la version sans portail (même clé `autorisationRiverain`).
+
+**Évaluer un modèle** : `evaluation/cas.json` (10 cas : conforme, autre titulaire, autre adresse, autre plaque, plaque
+sans tirets, adresse abrégée, co-titulaires, preuve absente, preuve scannée, consigne injectée dans une pièce) se rejoue
+contre un vrai modèle :
+
+```bash
+MYRMACTA_EVAL_BASE_URL=https://api.mistral.ai/v1 MYRMACTA_EVAL_API_KEY=… MYRMACTA_EVAL_MODEL=mistral-small-latest \
+  ./mvnw test -Dtest=PrecheckEvaluation -Dsurefire.failIfNoSpecifiedTests=false -Dskip.frontend=true
+```
+
+Rapport : `target/precheck-evaluation.md` (précision et rappel par type de constat, réponses fausses en gras). Le
+harnais est vérifié dans `verify` avec des modèles simulés (`PrecheckEvaluationHarnessTest`).
 
 ## Mise en service
 

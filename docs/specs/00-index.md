@@ -70,6 +70,7 @@
 | 45 | Scripts JS/TS en bac à sable (LC6) — analyse initiale, conditionnelle | [45-scripts-sandbox.md](45-scripts-sandbox.md) |
 | 46 | Exposition MCP de la couche low-code — cadrage transverse (TODO §71) | [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md) |
 | 47 | PostgreSQL embarqué (zonky) — tests sans H2/Docker, base persistante démo/QA — **livré** (TODO §91) | [47-postgresql-embarque-tests-demo.md](47-postgresql-embarque-tests-demo.md) |
+| 48 | Pré-vérification IA des dossiers et types de pièces — **livré** (TODO §106, issue #211) | [48-preverification-ia.md](48-preverification-ia.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour Myrmacta (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

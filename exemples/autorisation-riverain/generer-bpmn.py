@@ -5,11 +5,13 @@ poser un minuteur en bordure d'une tâche (délai de 30 jours qui court pendant 
 Le script calcule aussi la mise en page, pour que le diagramme s'affiche lisiblement dans
 l'éditeur BPMN de Myrmacta.
 
-Deux variantes sont produites :
+Trois variantes sont produites :
 - autorisation-riverain.bpmn20.xml : conception cible, le demandeur complète sa demande sur le
   portail externe (exige APP_PORTAL_ENABLED=true sur l'instance) ;
 - autorisation-riverain-sans-portail.bpmn20.xml : le demandeur est prévenu par e-mail et l'agent
-  encode les compléments reçus (déployable sur une instance sans portail).
+  encode les compléments reçus (déployable sur une instance sans portail) ;
+- autorisation-riverain-preverification.bpmn20.xml : la variante sans portail, précédée d'une
+  pré-vérification IA du dossier (TODO §106 ; exige APP_PRECHECK_ENABLED=true sur l'instance).
 
 Usage : python generer-bpmn.py   (écrit les deux fichiers à côté du script)
 """
@@ -30,6 +32,28 @@ SIGNATURE = "\n\nCordialement,\nLe service des autorisations riverains"
 MAIL_FIN = ("\n\nVous trouverez en pièce jointe le document de décision, qui reprend l'ensemble des "
             "informations de votre demande." + SIGNATURE)
 PIECE_JOINTE = "decision-autorisation-riverain.pdf"
+
+# TODO §106 — pré-vérification IA (variante « preverification »). Table de démonstration code postal -> commune : en
+# production, une table de décision DMN ou un référentiel tient ce rôle ; un code absent de la table n'est pas jugé.
+COMMUNES = {"1000": "bruxelles", "1020": "bruxelles", "1030": "schaerbeek", "1040": "etterbeek", "1050": "ixelles",
+            "1060": "saint-gilles", "1070": "anderlecht", "1080": "molenbeek-saint-jean", "1180": "uccle",
+            "4000": "liège", "5000": "namur", "6000": "charleroi", "7000": "mons", "9000": "gand"}
+CONTROLE_CODE_POSTAL = (
+    "($c := $lookup({" + ", ".join(f'"{k}": "{v}"' for k, v in COMMUNES.items()) + "}, "
+    "$trim($string(dossier.fields.codePostal))); "
+    "$exists($c) and $c != $lowercase($trim($string(dossier.fields.commune))))")
+PRECHECK = {
+    "precheckPieces": "preuveDomicile : obligatoire, lire\n"
+                      "certificatImmatriculation : obligatoire, lire\n"
+                      "pieceIdentite : obligatoire",
+    "precheckFields": "nom, prenom, adresseRue, adresseNumero, codePostal, commune, paysImmatriculation, plaque",
+    "precheckQuestions": "domicileAuNom = La preuve de domicile est-elle au nom du demandeur ?\n"
+                         "adresseConforme = L'adresse de la preuve de domicile est-elle celle du formulaire ?\n"
+                         "plaqueConforme = La plaque du certificat d'immatriculation est-elle celle du formulaire ?",
+    "precheckRules": "variable:codePostalIncoherent est vrai => INCOHERENCE : "
+                     "Code postal incohérent avec la commune déclarée.",
+    "precheckResult": "preverification",
+}
 
 
 class Model:
@@ -79,31 +103,41 @@ class Model:
                                condition=condition, low=low))
 
 
-def build(portail):
+def build(portail, preverification=False):
     m = Model()
+    o = 2 if preverification else 0  # colonnes des deux étapes de pré-vérification, avant l'instruction
 
     # ------------------------------------------------------------ 1. Instruction
     m.node("debut", "startEvent", "Demande introduite", 1, "main")
     m.wf_status("statutEnInstruction", "Statut : en instruction", 2, "main", "EN_INSTRUCTION")
-    m.node("instruction", "userTask", "Instruire la demande", 3, "main",
+    if preverification:
+        m.expression("controleCodePostal", "Contrôle : code postal et commune", 3, "main",
+                     CONTROLE_CODE_POSTAL, "codePostalIncoherent")
+        # Asynchrone (exigé au déploiement) : l'appel au modèle ne tient pas dans une transaction ; une panne du
+        # fournisseur devient un incident rejouable.
+        m.service("preverification", "Pré-vérification IA", 4, "main", "aiPrecheckTask",
+                  **{"async": "true"}, **PRECHECK)
+    m.node("instruction", "userTask", "Instruire la demande", 3 + o, "main",
            {"flowable:formKey": "user-question:instruction-autorisation-riverain"},
-           body="<documentation>Vérifier la demande, puis autoriser, refuser ou demander des "
+           body="<documentation>" + ("Commencer par le panneau « Pré-vérification » de la fiche : accepter "
+                "ou écarter chaque constat (ceux marqués « IA » sont indicatifs). " if preverification else "")
+                + "Vérifier la demande, puis autoriser, refuser ou demander des "
                 "informations complémentaires. Une seconde demande pour le même véhicule est "
                 "refusée à la création (clé d'unicité). Sans décision dans les 30 jours, l'autorisation est "
                 "accordée automatiquement.</documentation>")
     m.timer("delaiInstruction", "30 jours écoulés", "instruction", top=True)
-    m.node("aiguillageDecision", "exclusiveGateway", "Décision ?", 4, "main",
+    m.node("aiguillageDecision", "exclusiveGateway", "Décision ?", 4 + o, "main",
            {"default": "flow_aiguillageDecision_statutEnAttente"})
-    m.expression("issueTacite", "Issue : autorisée tacitement", 5, "tacite",
+    m.expression("issueTacite", "Issue : autorisée tacitement", 5 + o, "tacite",
                  '"AUTORISEE_TACITEMENT"', "issueDecision")
-    m.expression("issueAutorisee", "Issue : autorisée", 5, "autorisee", '"AUTORISEE"', "issueDecision")
-    m.expression("issueRefusee", "Issue : refusée", 5, "refusee", '"REFUSEE"', "issueDecision")
+    m.expression("issueAutorisee", "Issue : autorisée", 5 + o, "autorisee", '"AUTORISEE"', "issueDecision")
+    m.expression("issueRefusee", "Issue : refusée", 5 + o, "refusee", '"REFUSEE"', "issueDecision")
 
     # ------------------------------------------------------------ 2. Demande de compléments
-    m.wf_status("statutEnAttente", "Statut : en attente d'informations", 5, "infos", "EN_ATTENTE_INFOS")
-    m.dossier_status("dossierSuspendu", "Dossier suspendu", 6, "infos", "SUSPENDU")
+    m.wf_status("statutEnAttente", "Statut : en attente d'informations", 5 + o, "infos", "EN_ATTENTE_INFOS")
+    m.dossier_status("dossierSuspendu", "Dossier suspendu", 6 + o, "infos", "SUSPENDU")
     if portail:
-        c = 7
+        c = 7 + o
         m.node("complement", "userTask", "Compléments du demandeur (portail)", c, "infos",
                {"flowable:formKey": "user-question:complement-autorisation-riverain",
                 "flowable:portalRecipient": "dossierField:email",
@@ -114,12 +148,12 @@ def build(portail):
                     "demande sera refusée.</documentation>")
         m.flow("dossierSuspendu", "complement")
     else:
-        m.email("mailDemandeInfos", "E-mail : informations demandées", 7, "infos",
+        m.email("mailDemandeInfos", "E-mail : informations demandées", 7 + o, "infos",
                 "Votre demande d'autorisation riverain : informations complémentaires",
                 "Bonjour,\n\nPour instruire votre demande d'autorisation riverain, nos services ont besoin "
                 "d'informations complémentaires. Un gestionnaire vous précisera les éléments attendus. "
                 "Sans réponse de votre part dans les 30 jours, la demande sera refusée." + SIGNATURE)
-        c = 8
+        c = 8 + o
         m.node("complement", "userTask", "Encoder les compléments reçus", c, "infos",
                {"flowable:formKey": "user-question:complement-recu-autorisation-riverain"},
                body="<documentation>Contacter le demandeur pour lui préciser les informations attendues "
@@ -184,7 +218,9 @@ def build(portail):
     m.node("fin", "endEvent", "Demande traitée", k + 17, "main")
 
     # ------------------------------------------------------------ Flux
-    for a, b in [("debut", "statutEnInstruction"), ("statutEnInstruction", "instruction"), ("instruction", "aiguillageDecision"),
+    entree = ["statutEnInstruction", "controleCodePostal", "preverification", "instruction"] if preverification \
+        else ["statutEnInstruction", "instruction"]
+    for a, b in [("debut", "statutEnInstruction"), *zip(entree, entree[1:]), ("instruction", "aiguillageDecision"),
                  ("delaiInstruction", "issueTacite")]:
         m.flow(a, b)
     m.flow("aiguillageDecision", "issueAutorisee", "${decisionAgent == 'AUTORISER'}")
@@ -305,8 +341,10 @@ def render(m, variante):
 
 if __name__ == "__main__":
     here = Path(__file__).parent
-    for portail, fichier, variante in [(True, "autorisation-riverain.bpmn20.xml", "avec portail"),
-                                       (False, "autorisation-riverain-sans-portail.bpmn20.xml", "sans portail")]:
-        model = build(portail)
+    for portail, preverification, fichier, variante in [
+            (True, False, "autorisation-riverain.bpmn20.xml", "avec portail"),
+            (False, False, "autorisation-riverain-sans-portail.bpmn20.xml", "sans portail"),
+            (False, True, "autorisation-riverain-preverification.bpmn20.xml", "sans portail, avec pré-vérification IA")]:
+        model = build(portail, preverification)
         (here / fichier).write_text(render(model, variante), encoding="utf-8", newline="\n")
         print(f"{fichier} : {len(model.nodes)} elements, {len(model.flows)} flux")

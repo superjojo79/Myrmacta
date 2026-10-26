@@ -185,5 +185,22 @@
       "required": false,
       "group": "Décision (renseignée par le workflow)"
     }
+  ],
+  "pieceTypes": [
+    {
+      "key": "preuveDomicile",
+      "label": "Preuve de domicile",
+      "sensitive": false
+    },
+    {
+      "key": "certificatImmatriculation",
+      "label": "Certificat d'immatriculation",
+      "sensitive": false
+    },
+    {
+      "key": "pieceIdentite",
+      "label": "Pièce d'identité",
+      "sensitive": true
+    }
   ]
 }

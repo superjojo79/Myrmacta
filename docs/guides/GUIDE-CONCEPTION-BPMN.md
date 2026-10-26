@@ -405,8 +405,9 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Treize briques, chacune = **un seul
-élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies) :
+palette, le panneau, la validation au déploiement et les agents. Quinze briques, chacune = **un seul
+élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
+quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -419,7 +420,9 @@ palette, le panneau, la validation au déploiement et les agents. Treize briques
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
 | Évaluer une expression | `serviceTask` | `${businessExpressionTask}` |
+| Enregistrer des valeurs dans le dossier | `serviceTask` | `${fieldMappingTask}` |
 | Rechercher des dossiers | `serviceTask` | `${dossierSearchTask}` |
+| Pré-vérification IA | `serviceTask` (asynchrone) | `${aiPrecheckTask}` |
 | Demander une signature | `serviceTask` | `${signatureRequestTask}` |
 | Question utilisateur | `userTask` | `flowable:formKey="user-question:<clé>"` |
 | Tâche externe (portail) | `userTask` | `formKey` `user-question:` + `flowable:portalRecipient` |
@@ -621,6 +624,47 @@ ancien. Une passerelle route ensuite sur le nombre :
   la seconde demande ouverte est refusée à la création, et l'agent n'a plus à déclarer qu'il a cherché le doublon.
 - La référence trouvée appartient à un autre dossier : ne l'envoyez pas à un tiers externe (notification, portail) sans
   l'avoir voulu.
+
+## 3nonies. Pré-vérification IA d'un dossier (TODO §106, issue #211)
+
+La brique **« Pré-vérification IA »** (`${aiPrecheckTask}`) se place **avant** la tâche d'instruction. Elle contrôle la
+complétude du dossier, tire des constats de variables posées avant et pose des questions fermées à un modèle de langage
+sur les champs et pièces désignés. L'agent lit et décide sur le panneau de la fiche ; la brique **ne route jamais sur
+l'avis du modèle**. Spécification : [spec 48](../specs/48-preverification-ia.md). Elle n'est déployable que si
+`APP_PRECHECK_ENABLED=true` (`DEPLOIEMENT.md` §20).
+
+```xml
+<serviceTask id="controleCodePostal" name="Contrôle : code postal et commune"
+             flowable:delegateExpression="${businessExpressionTask}"
+             flowable:formula="…" flowable:formulaResult="codePostalIncoherent"/>
+<serviceTask id="preverification" name="Pré-vérification IA"
+             flowable:delegateExpression="${aiPrecheckTask}" flowable:async="true"
+             flowable:precheckPieces="preuveDomicile : obligatoire, lire&#10;pieceIdentite : obligatoire"
+             flowable:precheckFields="nom, prenom, adresseRue, codePostal, commune"
+             flowable:precheckQuestions="domicileAuNom = La preuve de domicile est-elle au nom du demandeur ?"
+             flowable:precheckRules="variable:codePostalIncoherent est vrai =&gt; INCOHERENCE : Code postal incohérent avec la commune."
+             flowable:precheckResult="preverification"/>
+```
+
+- **Toujours asynchrone** (`flowable:async="true"`, posé par la palette) : l'appel au modèle prend du temps, et une panne
+  du fournisseur devient un **incident rejouable** au lieu de bloquer l'étape précédente.
+- **Pièces** (`precheckPieces`) : une ligne par **type de pièce** déclaré sur le type de dossier ; `obligatoire` contrôle
+  la présence (constat *Manquant*), `lire` envoie le texte au modèle. Un type **sensible** peut être `obligatoire`, jamais
+  `lire` (refus au déploiement). Seules les pièces jointes **classées** comptent : demandez le type au dépôt (fiche,
+  portail avec `flowable:portalPieceTypes`).
+- **Champs** (`precheckFields`) : ceux que le modèle peut lire, jamais un champ sensible. Les champs obligatoires du type
+  sont contrôlés **sans** être listés.
+- **Questions** (`precheckQuestions`) : fermées (réponse oui, non ou « impossible de conclure »), une par ligne
+  `clé = question`. Le modèle rend pour chacune *Conforme*, *Incohérence* ou *À vérifier*.
+- **Règles** (`precheckRules`) : un constat **déterministe** tiré d'une variable posée avant (expression, DMN,
+  « Rechercher des dossiers »). Conditions : `est vrai`, `est faux`, `est vide`, `n'est pas vide`, `> N`, `< N`, `= N`,
+  `= "texte"`.
+- **Résultat** (`precheckResult`, facultatif) : `{status, missing, inconsistent, runId}`, comptes **déterministes**
+  seulement. Une passerelle peut router sur `${preverification.missing > 0}`, jamais sur un constat du modèle.
+- **Placement** : si la tâche d'instruction est reprise après des compléments, faites repasser le flux par la brique
+  (l'exemple riverain le fait) ; l'agent peut aussi **Relancer** depuis la fiche.
+- Exemple complet : `exemples/autorisation-riverain/autorisation-riverain-preverification.bpmn20.xml` (généré par
+  `generer-bpmn.py`).
 
 ## 4. Instancier / appeler un service externe
 
@@ -880,6 +924,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
+| `${aiPrecheckTask}` | pré-vérification IA du dossier, **asynchrone** (§3nonies) | attributs littéraux `precheckPieces`, `precheckFields`, `precheckQuestions`, `precheckRules`, `precheckResult` ; `dossierId` (réservée), variables posées avant (règles) | la variable nommée par `precheckResult` (comptes déterministes) ; exécution et constats dans `precheck_run` |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/be/myrmacta/infrastructure/flowable/` — en cas

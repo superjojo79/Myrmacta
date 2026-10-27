@@ -469,7 +469,7 @@
             </build>
         </profile>
         <!-- ./mvnw -Pmutation test-compile pitest:mutationCoverage — tests de mutation PIT (TODO §107).
-             Hors `verify` : environ 15 min sur 4 cœurs. Workflow .github/workflows/mutation.yml : run complet
+             Hors `verify` : environ 25 min sur 4 cœurs. Workflow .github/workflows/mutation.yml : run complet
              chaque nuit (seuil bloquant), classes modifiées sur les PR (informatif).
              Rapport : target/pit-reports/index.html. -->
         <profile>
@@ -477,16 +477,19 @@
             <properties>
                 <skip.frontend>true</skip.frontend>
                 <jacoco.skip>true</jacoco.skip>
-                <!-- Périmètre : domaine et adaptateurs testés sans contexte Spring. Une classe @Configuration
-                     ne s'y prête pas : le contexte de test mis en cache n'exécute pas ses méthodes @Bean mutées.
-                     Une PR restreint la cible avec -Dpit.targetClasses (scripts/mutation-targets.sh lit ce périmètre). -->
-                <pit.targetClasses>be.myrmacta.domain.*,be.myrmacta.infrastructure.expression.*</pit.targetClasses>
-                <!-- Les tests du domaine et ceux des adaptateurs du périmètre : ExpressionLimits n'est tué que par les
-                     tests de infrastructure.expression. -->
-                <pit.targetTests>be.myrmacta.domain.*,be.myrmacta.infrastructure.expression.*</pit.targetTests>
-                <!-- Cliquet : score mesuré (77,6 % le 2026-10-27) moins 2 points, arrondi par défaut ; à remonter quand le
-                     score progresse. -->
-                <pit.mutationThreshold>75</pit.mutationThreshold>
+                <!-- Périmètre : domaine et adaptateurs testés sans contexte Spring (issue #244). Hors périmètre : web,
+                     persistence, flowable, config et signature, testés surtout sous contexte Spring. Une classe
+                     @Configuration ne s'y prête pas : le contexte de test mis en cache n'exécute pas ses méthodes @Bean
+                     mutées. Une PR restreint la cible avec -Dpit.targetClasses (scripts/mutation-targets.sh lit ce
+                     périmètre). -->
+                <pit.targetClasses>be.myrmacta.domain.*,be.myrmacta.infrastructure.expression.*,be.myrmacta.infrastructure.connector.*,be.myrmacta.infrastructure.mcp.*,be.myrmacta.infrastructure.security.*,be.myrmacta.infrastructure.notification.*,be.myrmacta.infrastructure.document.*,be.myrmacta.infrastructure.pdf.*,be.myrmacta.infrastructure.storage.*,be.myrmacta.infrastructure.precheck.*,be.myrmacta.infrastructure.assistant.*</pit.targetClasses>
+                <!-- Les tests de tout le périmètre : une classe peut n'être tuée que depuis une autre couche
+                     (ExpressionLimits, du domaine, par les tests de infrastructure.expression). Même liste que
+                     pit.targetClasses, écrite en entier : une PR surcharge les classes, jamais les tests. -->
+                <pit.targetTests>be.myrmacta.domain.*,be.myrmacta.infrastructure.expression.*,be.myrmacta.infrastructure.connector.*,be.myrmacta.infrastructure.mcp.*,be.myrmacta.infrastructure.security.*,be.myrmacta.infrastructure.notification.*,be.myrmacta.infrastructure.document.*,be.myrmacta.infrastructure.pdf.*,be.myrmacta.infrastructure.storage.*,be.myrmacta.infrastructure.precheck.*,be.myrmacta.infrastructure.assistant.*</pit.targetTests>
+                <!-- Cliquet : score mesuré (79,0 % le 2026-10-27, issue #244) moins 2 points, arrondi par défaut ;
+                     à remonter quand le score progresse. -->
+                <pit.mutationThreshold>76</pit.mutationThreshold>
                 <pit.threads>4</pit.threads>
             </properties>
             <build>
@@ -505,10 +508,12 @@
                         <configuration>
                             <targetClasses>${pit.targetClasses}</targetClasses>
                             <targetTests>${pit.targetTests}</targetTests>
-                            <!-- Méthodes @Bean jamais réexécutées sous un contexte de test en cache : faux survivants. -->
+                            <!-- Méthodes @Bean jamais réexécutées sous un contexte de test en cache (faux survivants), ou
+                                 classe testée seulement sous contexte Spring (AssistantIntegrationTest). -->
                             <excludedClasses>
                                 <param>be.myrmacta.infrastructure.security.SecurityConfig*</param>
                                 <param>be.myrmacta.infrastructure.security.PortalSecurityConfig*</param>
+                                <param>be.myrmacta.infrastructure.assistant.McpDesignToolCatalog*</param>
                             </excludedClasses>
                             <!-- Contexte Spring, base embarquée ou navigateur : lents, et sans effet sur les classes
                                  mutées une fois le contexte en cache. -->
@@ -523,10 +528,6 @@
                                 <param>be.myrmacta.infrastructure.security.BffSecurityTest</param>
                                 <param>be.myrmacta.infrastructure.security.*ApiTest</param>
                                 <param>be.myrmacta.infrastructure.security.WebhookAndCallbackRoutesSecurityTest</param>
-                                <param>be.myrmacta.infrastructure.signature.*ApiTest</param>
-                                <param>be.myrmacta.infrastructure.signature.*EngineTest</param>
-                                <param>be.myrmacta.infrastructure.signature.SignaturePortalRealServerTest</param>
-                                <param>be.myrmacta.infrastructure.signature.SignatureBrowserE2eTest</param>
                                 <param>be.myrmacta.infrastructure.precheck.AiPrecheckIT</param>
                                 <param>be.myrmacta.infrastructure.assistant.AssistantIntegrationTest</param>
                             </excludedTestClasses>

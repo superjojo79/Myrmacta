@@ -79,6 +79,15 @@ self_test() {
     printf 'self-test KO : aucune modification, obtenu %s\n' "$out" >&2
     exit 1
   fi
+  # Le pom du dépôt écrit deux fois le périmètre (une PR surcharge les classes, jamais les tests) : mêmes listes.
+  local classes tests
+  classes="$(sed -n 's:.*<pit.targetClasses>\(.*\)</pit.targetClasses>.*:\1:p' "$root/pom.xml")"
+  tests="$(sed -n 's:.*<pit.targetTests>\(.*\)</pit.targetTests>.*:\1:p' "$root/pom.xml")"
+  if [[ -z "$classes" || "$classes" != "$tests" ]]; then
+    printf 'self-test KO : pit.targetTests diffère de pit.targetClasses dans pom.xml\n  classes : %s\n  tests   : %s\n' \
+      "$classes" "$tests" >&2
+    exit 1
+  fi
   echo "self-test OK"
 }
 

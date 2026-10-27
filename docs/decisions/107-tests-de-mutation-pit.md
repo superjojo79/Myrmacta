@@ -28,25 +28,44 @@ Sur la couche Spring, le coût par mutant est environ six fois plus élevé (`in
   -Dpit.targetClasses='be.myrmacta.domain.parcours.*' -Dpit.mutationThreshold=0   # ciblé, sans seuil
 ```
 
-- **Périmètre** (`pit.targetClasses`) : `be.myrmacta.domain.*` et `be.myrmacta.infrastructure.expression.*` ; tests
-  du domaine et de `infrastructure.expression` (`ExpressionLimits` n'est tué que par ceux-ci), hors les deux tests
-  `@SpringBootTest` du domaine. Une classe `@Configuration` n'entre pas dans le périmètre (faux survivants).
-- **Seuil** (`pit.mutationThreshold`) : cliquet à 75 %. Sur ce périmètre, sous JDK 25 : 4 557 mutants, score
-  77,6 %, force des tests 86 %, 15 min sur 4 cœurs ; le seuil est ce score moins 2 points, arrondi par défaut. On le
+- **Périmètre** (`pit.targetClasses`) : le domaine et les adaptateurs testés sans contexte Spring
+  (`infrastructure.expression`, `connector`, `mcp`, `security`, `notification`, `document`, `pdf`, `storage`,
+  `precheck`, `assistant`). Les tests sont ceux de tout le périmètre (`pit.targetTests`, même liste écrite en entier :
+  une PR surcharge les classes, jamais les tests ; `ExpressionLimits` n'est tué que depuis `infrastructure.expression`),
+  hors les tests à contexte Spring, base embarquée ou navigateur. Restent exclues les classes `@Configuration`
+  (`SecurityConfig`, `PortalSecurityConfig` : faux survivants) et `McpDesignToolCatalog` (testée seulement sous Spring).
+- **Seuil** (`pit.mutationThreshold`) : cliquet à 76 %. Sur ce périmètre, sous JDK 25 : 7 023 mutants, score
+  79,0 %, force des tests 87 %, 23 min sur 4 cœurs ; le seuil est ce score moins 2 points, arrondi par défaut. On le
   remonte quand le score progresse, on ne le baisse pas pour faire passer une PR.
 - **CI** ([`mutation.yml`](../../.github/workflows/mutation.yml)) : chaque nuit et à la demande, tout le périmètre
   avec le seuil ; sur une PR, seulement les classes du périmètre modifiées ou dont le test l'est
   (`scripts/mutation-targets.sh`), sans seuil. Rapport HTML en artefact, mutants non tués dans le résumé du job
   (`scripts/mutation-summary.py`).
 
-**Écarté.** PIT dans `verify` (environ 15 min de plus à chaque build) ; toute l'infrastructure (au moins 3 h estimées
-sur 4 cœurs, faux survivants des classes Spring) ; seuil bloquant sur les PR (une PR qui touche une classe faible
-échouerait sans l'avoir dégradée) ; analyse incrémentale `withHistory` (retirée de PIT libre, réservée à Arcmutate,
-commercial).
+**Extension aux adaptateurs (issue #244, 2026-10-27).** Mesure par package, tests Spring exclus :
+
+| Package | Mutants | Score | Force des tests | Durée |
+|---|---|---|---|---|
+| `connector` | 1 071 | 79 % | 87 % | 8 min 37 |
+| `mcp` | 366 | 87 % | 91 % | 2 min 26 |
+| `security` (sans `@Configuration`) | 169 | 89 % | 96 % | 1 min 11 |
+| `notification` | 294 | 71 % | 84 % | 1 min 05 |
+| `document`, `pdf`, `storage` | 379 | 71 % | 81 % | 1 min 26 |
+| `precheck`, `assistant` (sans `McpDesignToolCatalog`) | 187 | 75 % | 82 % | 1 min 42 |
+| `signature` — écarté | 99 | 61 % | 71 % | 45 s |
+
+`signature` reste hors périmètre : 9 de ses 17 tests sont à contexte Spring, ses classes non couvertes
+(`AfterCommitSignatureOutcomeListener`, tâches planifiées) ne le sont que par eux. `web`, `persistence`, `flowable` et
+`config` aussi, faute de tests sans Spring.
+
+**Écarté.** PIT dans `verify` (environ 25 min de plus à chaque build) ; l'infrastructure testée sous Spring (au moins
+3 h estimées sur 4 cœurs, faux survivants des classes Spring) ; seuil bloquant sur les PR (une PR qui touche une classe
+faible échouerait sans l'avoir dégradée) ; analyse incrémentale `withHistory` (retirée de PIT libre, réservée à
+Arcmutate, commercial).
 
 **Suites.** Tuer les mutants des trois manques ci-dessus : issues
 [#241](https://github.com/superjojo79/FlowForge/issues/241) (bornes JSONata),
 [#242](https://github.com/superjojo79/FlowForge/issues/242) (liste blanche du compilateur de parcours) et
 [#243](https://github.com/superjojo79/FlowForge/issues/243) (`PrecheckLimits`). Étendre le périmètre aux adaptateurs
-testés sans Spring : [#244](https://github.com/superjojo79/FlowForge/issues/244). StrykerJS pour le frontend :
+testés sans Spring : [#244](https://github.com/superjojo79/FlowForge/issues/244), fait. StrykerJS pour le frontend :
 [#245](https://github.com/superjojo79/FlowForge/issues/245).

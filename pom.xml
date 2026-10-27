@@ -468,6 +468,62 @@
                 </plugins>
             </build>
         </profile>
+        <!-- ./mvnw -Pmutation test-compile pitest:mutationCoverage — tests de mutation PIT (TODO §107).
+             Hors `verify` : environ 15 min sur 4 cœurs. Workflow .github/workflows/mutation.yml : run complet
+             chaque nuit (seuil bloquant), classes modifiées sur les PR (informatif).
+             Rapport : target/pit-reports/index.html. -->
+        <profile>
+            <id>mutation</id>
+            <properties>
+                <skip.frontend>true</skip.frontend>
+                <jacoco.skip>true</jacoco.skip>
+                <!-- Périmètre : domaine et adaptateurs testés sans contexte Spring. Une classe @Configuration
+                     ne s'y prête pas : le contexte de test mis en cache n'exécute pas ses méthodes @Bean mutées.
+                     Une PR restreint la cible avec -Dpit.targetClasses (scripts/mutation-targets.sh lit ce périmètre). -->
+                <pit.targetClasses>be.myrmacta.domain.*,be.myrmacta.infrastructure.expression.*</pit.targetClasses>
+                <!-- Cliquet : score mesuré (77,6 % le 2026-10-27) moins 2 points, arrondi par défaut ; à remonter quand le
+                     score progresse. -->
+                <pit.mutationThreshold>75</pit.mutationThreshold>
+                <pit.threads>4</pit.threads>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.30.1</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.3</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <targetClasses>${pit.targetClasses}</targetClasses>
+                            <!-- Les tests du domaine et ceux des adaptateurs du périmètre : ExpressionLimits n'est
+                                 tué que par les tests de infrastructure.expression. -->
+                            <targetTests>
+                                <param>be.myrmacta.domain.*</param>
+                                <param>be.myrmacta.infrastructure.expression.*</param>
+                            </targetTests>
+                            <!-- Contexte Spring et base embarquée (lents, et threads réels pour le premier). -->
+                            <excludedTestClasses>
+                                <param>be.myrmacta.domain.dossier.usecase.ConcurrentWorkflowReservationTest</param>
+                                <param>be.myrmacta.domain.document.usecase.ResolveDocumentTemplateUseCaseImplTest</param>
+                            </excludedTestClasses>
+                            <threads>${pit.threads}</threads>
+                            <mutationThreshold>${pit.mutationThreshold}</mutationThreshold>
+                            <timestampedReports>false</timestampedReports>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
     <build>

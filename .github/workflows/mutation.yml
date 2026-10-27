@@ -1,0 +1,112 @@
+name: Mutation
+
+# TODO §107 : tests de mutation PIT (profil Maven `mutation`, hors `verify`).
+# - Chaque nuit et à la demande : tout le périmètre, seuil bloquant (pit.mutationThreshold du pom).
+# - Sur une PR : seulement les classes du périmètre modifiées (ou dont le test l'est), sans seuil — informatif.
+# Rapport HTML en artefact, mutants non tués dans le résumé du job.
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/main/java/**"
+      - "src/test/java/**"
+      - "pom.xml"
+      - ".github/workflows/mutation.yml"
+      - "scripts/mutation-*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changed-classes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Classes to mutate
+        id: targets
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          scripts/mutation-targets.sh --self-test
+          targets="$(scripts/mutation-targets.sh "origin/$BASE_REF")"
+          echo "classes=$targets" >> "$GITHUB_OUTPUT"
+          if [[ -z "$targets" ]]; then
+            echo "Aucune classe du périmètre de mutation modifiée : rien à muter." >> "$GITHUB_STEP_SUMMARY"
+          else
+            tr ',' '\n' <<< "$targets"
+          fi
+
+      - name: Mutation testing (changed classes, report only)
+        if: steps.targets.outputs.classes != ''
+        env:
+          TARGETS: ${{ steps.targets.outputs.classes }}
+        run: >
+          ./mvnw -B -Pmutation test-compile pitest:mutationCoverage
+          "-Dpit.targetClasses=$TARGETS" -Dpit.mutationThreshold=0
+
+      - name: Summary
+        if: always() && steps.targets.outputs.classes != ''
+        run: scripts/mutation-summary.py >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always() && steps.targets.outputs.classes != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-report
+          path: target/pit-reports/
+          if-no-files-found: ignore
+
+  full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Mutation testing (full scope, threshold enforced)
+        run: ./mvnw -B -Pmutation test-compile pitest:mutationCoverage
+
+      - name: Summary
+        if: always()
+        run: scripts/mutation-summary.py >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-report
+          path: target/pit-reports/
+          if-no-files-found: ignore

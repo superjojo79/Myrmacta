@@ -27,8 +27,7 @@ Toute implémentation Vue / OpenVue (layouts, pages, composants métier, hiérar
 Pour faciliter la création de l'interface, s'appuyer sur les **skills spécialisés** du dépôt (à charger avant d'écrire le code UI) :
 
 - [`myrmacta-conventions`](../../.claude/skills/myrmacta-conventions/SKILL.md) — conventions projet (stack FE, packaging, priorités)
-- [`vue-best-practices`](../../.claude/skills/vue-best-practices/SKILL.md) — Composition API, structure des composants, patterns Vue
-- [`vue`](../../.claude/skills/vue/SKILL.md) — SFC, réactivité, macros `<script setup>`
+- [`vue-best-practices`](../../.claude/skills/vue-best-practices/SKILL.md) — Composition API, SFC, réactivité, macros `<script setup>`, structure des composants
 - [`pinia`](../../.claude/skills/pinia/SKILL.md) — stores et état applicatif
 - [`vite`](../../.claude/skills/vite/SKILL.md) — bundler / config de build
 - [`vue-testing-best-practices`](../../.claude/skills/vue-testing-best-practices/SKILL.md), [`vitest`](../../.claude/skills/vitest/SKILL.md), [`playwright-best-practices`](../../.claude/skills/playwright-best-practices/SKILL.md) — tests composants et e2e

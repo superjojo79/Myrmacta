@@ -12,6 +12,8 @@ et `groupId` : `be.myrmacta`. Règles détaillées : skill `myrmacta-conventions
 | Comment marche un domaine | `docs/specs/NN-*.md` (index : `docs/specs/00-index.md`) |
 | Pourquoi c'est ainsi, points ouverts | `docs/decisions/` — « TODO §N » = `docs/decisions/NNN-*.md` ; identifiants `D-…` : `docs/decisions/identifiants.md` |
 | Quoi faire ensuite | issues GitHub (libellés `priorite-*`, `type-*`, `vague-*`) ; vision : `ROADMAP.md` |
+| Mener une feature | skill `myrmacta-feature` (cadrer, concevoir, livrer par lots, clore), même cycle pour Claude Code et Cursor |
+| Erreurs déjà payées | `myrmacta-conventions` § Précédents |
 | Lancer, déployer, utiliser | `docs/guides/` (GETTING-STARTED, DEPLOIEMENT, GUIDE-UTILISATEUR, GUIDE-CONCEPTION-BPMN) |
 
 ## Où écrire
@@ -19,7 +21,10 @@ et `groupId` : `be.myrmacta`. Règles détaillées : skill `myrmacta-conventions
 - Comportement livré : la spec du domaine (`docs/specs/`). Décision : un point du registre (`docs/decisions/`, numéro
   suivant), puis `scripts/check-docs.sh --write-decisions-index`. Identifiant `D-…` cité dans le code : sa ligne dans
   `docs/decisions/identifiants.md`.
-- `docs/ai/` : mémoire de travail de la feature **en cours** uniquement, vidée dans la PR qui la livre.
+- `docs/ai/` : un document de travail par feature **en cours** (gabarit `docs/ai/README.md`), supprimé dans la PR
+  qui la livre.
+- Erreur qui a coûté un cycle et qu'aucun test ne peut empêcher : une ligne dans `myrmacta-conventions` § Précédents.
+  Pas d'autre mémoire projet (registre §107).
 - Pas d'entrée `CHANGELOG.md` à la main : le titre de la PR (Conventional Commits) devient l'entrée à la release.
 
 ## Jamais

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Résumé Markdown d'un rapport PIT (TODO §107) : score, puis mutants non tués par classe.
+"""Résumé Markdown d'un rapport PIT (TODO §108) : score, puis mutants non tués par classe.
 
 Usage : scripts/mutation-summary.py [target/pit-reports/mutations.xml] [--max N]
 Écrit sur la sortie standard (le workflow l'ajoute au résumé du job, $GITHUB_STEP_SUMMARY).

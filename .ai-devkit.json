@@ -4,102 +4,10 @@
     "cursor",
     "claude"
   ],
-  "phases": [
-    "requirements",
-    "design",
-    "planning",
-    "implementation",
-    "testing",
-    "deployment",
-    "monitoring"
-  ],
+  "phases": [],
   "createdAt": "2026-04-07T18:14:56.348Z",
-  "updatedAt": "2026-04-07T18:14:56.408Z",
+  "updatedAt": "2026-10-27T00:00:00.000Z",
   "skills": [
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "agent-communication"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "agent-management"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-commit"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-lifecycle"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-worktree"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-requirements"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-design"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-planning"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-implementation"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-testing"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-review"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "dev-pr"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "structured-debug"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "document-code"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "memory"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "task"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "simplify-implementation"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "verify"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "tdd"
-    },
-    {
-      "registry": "codeaholicguy/ai-devkit",
-      "name": "security-review"
-    },
-    {
-      "registry": "antfu/skills",
-      "name": "vue"
-    },
     {
       "registry": "antfu/skills",
       "name": "vue-best-practices"

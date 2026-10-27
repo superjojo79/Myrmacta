@@ -1,6 +1,6 @@
 name: Mutation
 
-# TODO §107 : tests de mutation PIT (profil Maven `mutation`, hors `verify`).
+# TODO §108 : tests de mutation PIT (profil Maven `mutation`, hors `verify`).
 # - Chaque nuit et à la demande : tout le périmètre, seuil bloquant (pit.mutationThreshold du pom).
 # - Sur une PR : seulement les classes du périmètre modifiées (ou dont le test l'est), sans seuil — informatif.
 # Rapport HTML en artefact, mutants non tués dans le résumé du job.

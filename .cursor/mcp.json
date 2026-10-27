@@ -1,10 +1,5 @@
 {
   "mcpServers": {
-    "memory": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@ai-devkit/memory"]
-    },
     "Serena": {
       "type": "stdio",
       "command": "serena",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests de mutation sur une PR (TODO §107) : classes à muter, déduites des fichiers modifiés depuis la base.
+# Tests de mutation sur une PR (TODO §108) : classes à muter, déduites des fichiers modifiés depuis la base.
 # Une classe de production modifiée est ciblée ; un test modifié cible la classe qu'il porte (FooTest → Foo).
 # Seules les classes du périmètre du profil Maven `mutation` (propriété pit.targetClasses du pom) sont gardées.
 # Sortie : motifs PIT séparés par des virgules (Foo et Foo$*), vide si rien n'est à muter.

@@ -213,7 +213,7 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
      * Bornes dynamiques. À l'entrée d'un nœud : la profondeur d'évaluations imbriquées, qui arrête une récursion non
      * terminale avant le débordement de pile (un appel terminal est déroulé en boucle par la bibliothèque : seul le délai
      * l'arrête). À la sortie, juste après le travail natif du nœud : délai, mémoire, valeur produite, travail cumulé et
-     * poids déplié. Contrôler aussi délai et mémoire à l'entrée ne gagnerait au plus que le travail d'un nœud (TODO §107 :
+     * poids déplié. Contrôler aussi délai et mémoire à l'entrée ne gagnerait au plus que le travail d'un nœud (TODO §108 :
      * mutant sans effet observable, retiré).
      */
     private void bindGuards(Jsonata.Frame bindings) {

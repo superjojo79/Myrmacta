@@ -1,64 +1,41 @@
 ---
 name: structured-debug
-description: AI DevKit · Guide structured debugging before code changes by clarifying expected behavior, reproducing issues, identifying likely root causes, and agreeing on a fix plan with validation steps. Use when users ask to debug bugs, investigate regressions, triage incidents, diagnose failing behavior, handle failing tests, analyze production incidents, investigate error spikes, or run root cause analysis (RCA).
+description: Myrmacta · Débogage structuré avant toute modification — comportement attendu, reproduction, hypothèses testées, plan de correction validé. À utiliser pour un bug, une régression, un test qui échoue, un incident ou une analyse de cause.
 ---
 
-# Local Debugging Assistant
+# Débogage structuré
 
-Debug with an evidence-first workflow before changing code.
+Des preuves d'abord, le correctif ensuite.
 
-## Hard Rule
-- Do not modify code until the user approves a selected fix plan.
+> Adapté de `structured-debug` d'AI DevKit (codeaholicguy/ai-devkit, Apache-2.0), modifié pour Myrmacta : sources
+> de précédents du projet à la place de la base mémoire.
 
-## Workflow
+## Règle
 
-1. Clarify
-- Restate observed vs expected behavior in one concise diff.
-- Confirm scope and measurable success criteria.
-- Before investigating, search for similar past incidents: `npx ai-devkit@latest memory search --query "<observed behavior>" --tags "debug,root-cause"`
+Ne pas modifier le code avant que l'utilisateur ait choisi un plan de correction (sauf mandat qui délègue ce
+choix).
 
-2. Reproduce
-- Capture minimal reproduction steps.
-- Capture environment fingerprint: runtime, versions, config flags, data sample, and platform.
+## Démarche
 
-3. Hypothesize and Test
-For each hypothesis, include:
-- Predicted evidence if true.
-- Disconfirming evidence if false.
-- Exact test command or check.
-- Prefer one-variable-at-a-time tests.
-
-4. Plan
-- Present fix options with risks and verification steps.
-- Recommend one option and request approval.
+1. **Clarifier**
+   - Écrire en une phrase l'écart entre observé et attendu.
+   - Fixer le périmètre et un critère de succès mesurable.
+   - Chercher si c'est déjà arrivé : section « Précédents » de `myrmacta-conventions`, `git log --grep` et
+     `git log -S` sur les symboles en cause, issues GitHub, points du registre liés.
+2. **Reproduire**
+   - Étapes minimales de reproduction, idéalement un test qui échoue.
+   - Empreinte d'environnement : versions (JDK, Node), profil Spring, variables, tenant, données, plateforme
+     (Windows et Podman ou Linux).
+3. **Formuler et tester des hypothèses**
+   - Pour chacune : ce qu'on observerait si elle est vraie, ce qui la réfuterait, la commande ou le contrôle exact.
+   - Une variable à la fois.
+4. **Proposer**
+   - Options de correction, avec risques et vérification ; en recommander une et demander l'accord.
 
 ## Validation
-- Confirm a pre-fix failing signal exists.
-- Confirm post-fix success using the `verify` skill — including regression verification for bug fixes.
-- Summarize remaining risks and follow-ups.
-- Store root cause and fix for future sessions: `npx ai-devkit@latest memory store --title "<root cause>" --content "<diagnosis and fix>" --tags "debug,root-cause"`
 
-## Task Tracing
-
-If task tracing is usable, choose a short kebab-case debug task name when no
-task name exists, then use `task` optionally: record repro/final results as
-`evidence`, the current hypothesis as `next`, and blockers only when they
-materially affect progress. Never block debugging because task tracing is
-unavailable.
-
-## Red Flags and Rationalizations
-
-| Rationalization | Why It's Wrong | Do Instead |
-|---|---|---|
-| "I already know the cause" | Assumptions skip evidence | Reproduce and prove it first |
-| "This is urgent, just fix it" | A wrong fix wastes more time | 10 minutes of diagnosis saves hours |
-| "The fix is obvious from the stack trace" | Stack traces show symptoms, not causes | Trace backward to the root cause |
-
-## Output Template
-Use this response structure:
-- Observed vs Expected
-- Repro and Environment
-- Hypotheses and Tests
-- Options and Recommendation
-- Validation Plan and Results
-- Open Questions
+- Un signal d'échec existe avant le correctif.
+- Après : `verify`, vérification de régression comprise (le test échoue sans le correctif).
+- Résumer les risques restants et les suites.
+- Si la cause a coûté un cycle et qu'aucun test ne peut l'empêcher, proposer une ligne dans « Précédents » de
+  `myrmacta-conventions`.

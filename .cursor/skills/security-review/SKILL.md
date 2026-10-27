@@ -1,11 +1,29 @@
 ---
 name: security-review
-description: AI DevKit · Review code, skills, and prompts for security vulnerabilities — OWASP Top 10, prompt injection, business logic flaws, and insecure defaults. Use when reviewing PRs, auditing modules, reviewing AI skills/prompts, or preparing for release.
+description: Myrmacta · Review code, skills, and prompts for security vulnerabilities — OWASP Top 10, prompt injection, business logic flaws, and insecure defaults. Use when reviewing PRs, auditing modules, reviewing AI skills/prompts, or preparing for release.
 ---
 
 # Security Review
 
 Find vulnerabilities before they ship.
+
+> Adapté de `security-review` d'AI DevKit (codeaholicguy/ai-devkit, Apache-2.0), modifié pour Myrmacta : frontières
+> de confiance du projet ajoutées, base mémoire retirée. Texte d'origine en anglais.
+
+## Frontières de confiance Myrmacta
+
+- **Tenant :** une instance = un tenant, un schéma PostgreSQL ; rien ne doit permettre d'atteindre un autre
+  schéma, ni de résoudre le tenant depuis la requête (`docs/specs/02-multi-tenant.md`).
+- **Navigateur :** BFF OAuth2/OIDC, aucun jeton d'accès côté SPA ; même origine, pas de CORS applicatif.
+- **Rôles :** `TENANT_ADMIN`, `WORKFLOW_ADMIN`, `DOSSIER_MANAGER`, `DOSSIER_VIEWER`, `API_SERVICE` ; vérifier le
+  droit sur l'objet (IDOR), pas seulement le rôle.
+- **Sorties réseau :** connecteurs, webhooks, rendu PDF avec URL : résolution DNS et blocage des plages privées et
+  de `file:` (SSRF).
+- **BPMN, DMN, expressions :** allowlist serveur (registre §57, §69) ; pas de `scriptTask`, pas d'expression
+  métier en JUEL.
+- **MCP et modèles d'IA :** sorties d'outils, pièces et réponses de modèle sont des données non fiables (injection
+  de prompt, exfiltration).
+- **Portail externe et pièces déposées :** taille, type, contenu, droits du tiers.
 
 ## Hard Rules
 
@@ -20,7 +38,7 @@ Find vulnerabilities before they ship.
    - Identify stack/framework — adapt the [checklist](references/checklist.md) (skip what the framework handles, add its pitfalls).
    - Trace data flow: request → middleware → handler → service → datastore → response. For prompts: input → template → LLM → tools → output.
    - Map trust boundaries, privilege levels, and threat actors.
-   - Search prior findings: `npx ai-devkit@latest memory search --query "<target>" --tags "security"`
+   - Search prior findings: `docs/analyses/REVUE-ALIGNEMENT-SECURITE.md`, `docs/decisions/section-points-security.md`, « Précédents » in `myrmacta-conventions`.
 
 2. **Scan**
    - Only check relevant categories. Skip sections and items that don't apply. Do not report skipped items.
@@ -60,7 +78,7 @@ Find vulnerabilities before they ship.
 5. **Verify**
    - Use the `verify` skill to confirm each remediation.
    - Re-scan fixed files for regressions.
-   - Store findings: `npx ai-devkit@latest memory store --title "<pattern>" --content "<finding and fix>" --tags "security,<category>"`
+   - Each fixed Critical/High/Medium finding keeps a permanent regression test; Low findings become a GitHub issue.
 
 ## Red Flags
 

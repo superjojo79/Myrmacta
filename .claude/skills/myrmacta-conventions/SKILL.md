@@ -70,21 +70,22 @@ Référence : `docs/specs/02-multi-tenant.md`.
 
 Référence : `docs/specs/11-frontend.md`.
 
-## Workflow de feature (AI DevKit)
+## Workflow de feature
 
 1. Partir de l'issue GitHub de la feature (backlog : issues ouvertes, libellés `priorite-*`, `type-*`,
    `vague-*` ; la prochaine feature est l'issue ouverte de plus haute priorité, sauf consigne contraire), de la
    spec du domaine (`docs/specs/`) et des points ouverts liés (`docs/decisions/`). Deux agents en parallèle ne
    démarrent pas deux lots qui écrivent dans les mêmes fichiers ; une issue `type-arbitrage` se tranche avant
    d'être implémentée. La PR qui livre la feature ferme son issue (`Closes #N`).
-2. Suivre `dev-lifecycle` (requirements → design → planning → implementation → testing → review → PR).
+2. Suivre `myrmacta-feature` (cadrer → concevoir → livrer par lots → clore avec une revue indépendante), le même
+   pour Claude Code et Cursor (registre §107).
 3. Implémentation en **TDD** (`tdd` + `verify`) : test qui échoue → code → `./mvnw verify` (ou scope de tests ciblé puis verify avant claim).
 4. Pour le FE : **Vitest et Playwright sont tous les deux obligatoires** dès qu’une
    feature touche le SPA ou un contrat API consommé par le SPA.
    - `cd frontend && npm run test` (unitaires)
    - `cd frontend && npm run test:e2e` (ou `npm run test:all`)
    - Mettre à jour les mocks/assertions `frontend/e2e/**` quand les shapes API changent.
-   - **Interdit** de déclarer Playwright « hors scope » pour contourner Phase 8/9.
+   - **Interdit** de déclarer Playwright « hors scope » pour clore un lot.
 5. Points ouverts : registre `docs/decisions/` (statut `ouvert`, index `docs/decisions/README.md`) — ne pas « trancher »
    silencieusement une décision ouverte. Un nouveau point est un fichier `NNN-<titre>.md` au numéro suivant ; un point
    se clôt en changeant son statut, jamais en le supprimant ni en le renumérotant (« TODO §N » = `docs/decisions/NNN-*.md`),
@@ -114,8 +115,8 @@ Référence : `docs/specs/11-frontend.md`.
      « Implémentation », quelques lignes : comportement, garde-fous, tests de référence) ;
    - chaque identifiant de décision (`D-…`, `DD-…`) cité par le code reçoit sa ligne dans
      `docs/decisions/identifiants.md`, et les décisions structurantes vont dans le registre ;
-   - les fichiers `docs/ai/*/AAAA-MM-JJ-feature-<lot>.md` de la feature sont supprimés (l'historique git
-     les garde) ; seuls les `README.md` de phase (modèles ai-devkit) restent ;
+   - le document de travail `docs/ai/AAAA-MM-JJ-<feature>.md` est supprimé (l'historique git le garde) ;
+     seul le gabarit `docs/ai/README.md` reste ;
    - `scripts/check-docs.sh` doit être vert (liens, identifiants, skills).
 
 ## Commandes utiles
@@ -127,8 +128,8 @@ cd frontend && npm run test                  # Vitest
 cd frontend && npm run test:e2e              # Playwright (aligné job CI frontend)
 cd frontend && npm run test:all              # Vitest + Playwright
 npx playwright install --with-deps chromium  # navigateurs Playwright si manquants
-npx ai-devkit@latest skill list              # skills installés
-./scripts/vendor-ai-devkit-skills.sh         # recopier les skills en fichiers portables
+./scripts/vendor-ai-devkit-skills.sh         # recopier les skills dans .claude/ et .cursor/
+./scripts/vendor-ai-devkit-skills.sh --local # idem sans réseau (skills du registre laissés tels quels)
 scripts/check-docs.sh                        # cohérence de la doc (job CI « docs »)
 scripts/check-docs.sh --write-decisions-index  # régénérer docs/decisions/README.md
 scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas encore publiées
@@ -149,7 +150,8 @@ scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas enc
 | Backlog, prochaine feature, sujets hors V1 | issues GitHub (libellés `priorite-*`, `type-*`, `vague-*`) |
 | Architecture détaillée | `docs/specs/*.md` |
 | Identifiants de décision cités par le code | `docs/decisions/identifiants.md` |
-| Artefacts lifecycle de la feature **en cours** (vidés à la livraison) | `docs/ai/{requirements,design,planning,implementation,testing,...}/` |
+| Document de travail de la feature **en cours** (supprimé à la livraison) | `docs/ai/AAAA-MM-JJ-<feature>.md`, gabarit `docs/ai/README.md` |
+| Erreurs déjà payées, à ne pas refaire | § « Précédents » ci-dessous |
 | Historique synthétique par PR | `CHANGELOG.md` (généré à chaque release, `cliff.toml`) |
 
 ## Anti-patterns à refuser
@@ -160,7 +162,7 @@ scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas enc
 - Servir le frontend depuis un serveur Node distinct en prod (contredit décision n° 27).
 - Ajouter des dépendances framework dans `domain`.
 - Claim « c’est bon » sans sortie fraîche de `./mvnw verify` / tests FE (skill `verify`).
-- Claim Phase 8/9 FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
+- Clore un lot FE sans preuve Playwright (`npm run test:e2e` / `test:all`) alors
   que le SPA ou ses mocks E2E sont impactés.
 - Livrer un écran admin ou une variable d'environnement sans mettre à jour
   `docs/guides/GUIDE-UTILISATEUR.md` / `docs/guides/GETTING-STARTED.md` / `.env.local.example` en conséquence (voir §
@@ -170,3 +172,19 @@ scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas enc
 - Écrire une entrée `CHANGELOG.md` à la main dans une PR, ou donner à une PR un titre hors Conventional
   Commits ou illisible sans contexte : c'est lui qui devient l'entrée (voir § « Workflow de feature » point 7).
 - Créer un nouveau fichier de suivi (file d'attente, backlog) : le backlog vit dans les issues GitHub.
+
+## Précédents
+
+Erreurs qui ont déjà coûté un cycle de correction et qu'aucun test ni contrôle ne peut empêcher seul (registre
+§107). Une ligne par précédent, avec sa source ; quinze lignes au plus. Un précédent qu'un test ou un contrôle peut
+désormais empêcher devient ce test et sort de la liste.
+
+- **Une API supposée n'existait pas** (`RuntimeService.createMessageCorrelation`, conception du callback) : vérifier
+  chaque fait de conception contre le code et les sources de la bibliothèque (TODO §51).
+- **1 533 tests verts, feature inatteignable** (endpoint de callback) : tout nouvel endpoint ou outil MCP a au
+  moins un test qui traverse la vraie chaîne HTTP et sécurité (TODO §51).
+- **Délai réseau qui ne couvrait que la connexion** (pré-vérification IA) : un délai d'appel sortant borne aussi la
+  lecture du corps ; une lecture de pièce, une relance, un bail se bornent dans le temps et en nombre
+  (commit `e79fafd`, TODO §106).
+- **Auto-revue de fin de cycle qui laisse passer délais, relances et bail** (#211) : la revue de clôture se fait
+  dans un contexte qui n'a pas écrit le code (`myrmacta-feature`, étape 4).

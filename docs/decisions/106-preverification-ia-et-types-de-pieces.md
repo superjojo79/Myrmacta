@@ -42,7 +42,11 @@ ni l'exclusion des pièces sensibles n'étaient possibles. Le lot P comble ce ma
   présent) ; `azure-identity` n'est pas tiré ; `kotlin-stdlib-common` 1.9.10 exclu comme pour Anthropic.
 - **D-PRECHECK-CONFIG** — `app.precheck.*`, désactivé par défaut et distinct de `app.assistant.*` ; HTTPS hors boucle
   locale, sauf `allow-plain-http=true` (réseau interne, données en clair : risque documenté) ; clé facultative pour un
-  serveur local (jeton factice envoyé) ; bornes validées même désactivé.
+  serveur local (jeton factice envoyé) ; bornes validées même désactivé. `reasoning-effort` (vide par défaut) est
+  transmis en `reasoning_effort` aux seuls fournisseurs compatibles OpenAI, et seulement s'il est configuré : envoyé
+  d'office, il pourrait être refusé par un fournisseur qui ne le connaît pas ; absent, un modèle qui raisonne (Qwen 3
+  sous Ollama, mesuré sur le jeu d'évaluation : 10 exécutions sur 10 en échec, 0 % → 93 % avec `none`) consomme le
+  plafond de sortie en réflexion. Refusé avec Anthropic, où la réflexion n'est pas activée par la brique.
 - **D-PRECHECK-BUDGET** — plafond de jetons par jour UTC et par instance, vérifié avant chaque appel (pas de
   réservation : un appel en cours peut dépasser d'une réponse).
 - **D-PRECHECK-EXTRACT** — PDFBox 3.0.8 : PDF à couche texte et texte brut UTF-8, pages et caractères bornés, lecture en

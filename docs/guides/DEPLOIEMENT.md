@@ -693,6 +693,7 @@ n'existent pas ([spec 48](../specs/48-preverification-ia.md)). Configuration dis
 | `APP_PRECHECK_BASE_URL` | point d'accès, par exemple `https://api.mistral.ai/v1`, `http://localhost:11434/v1` (Ollama), un vLLM interne ou le point d'accès compatible OpenAI d'une ressource Azure OpenAI ; **https obligatoire** hors boucle locale |
 | `APP_PRECHECK_API_KEY` | clé du fournisseur — **secret serveur** ; facultative pour un serveur local |
 | `APP_PRECHECK_MODEL` | modèle, par exemple `mistral-small-latest` ; il doit accepter une réponse au format JSON contraint (`json_schema`) |
+| `APP_PRECHECK_REASONING_EFFORT` | vide par défaut (rien n'est envoyé) ; `none`, `minimal`, `low`, `medium`, `high` ou `xhigh`, transmis tel quel en `reasoning_effort` (`openai-compatible` seulement). Un modèle qui raisonne avant de répondre (Qwen 3, gpt-oss sous Ollama ou vLLM) peut consommer tout `APP_PRECHECK_MAX_OUTPUT_TOKENS` en réflexion : la réponse est coupée, l'exécution échoue et le journal le signale. `none` coupe la réflexion |
 | `APP_PRECHECK_ALLOW_PLAIN_HTTP` | `true` pour un serveur interne en HTTP : **les données du dossier circulent alors en clair** sur le réseau ; à réserver à un segment isolé |
 | `APP_PRECHECK_TIMEOUT_SECONDS` | délai d'un appel (120) |
 | `APP_PRECHECK_MAX_TOKENS_PER_DAY` | plafond de jetons par jour UTC et par instance (1 000 000) ; atteint, la brique tombe en incident rejouable |

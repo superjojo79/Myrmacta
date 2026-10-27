@@ -183,6 +183,7 @@ app:
     base-url: ${APP_PRECHECK_BASE_URL:}
     api-key: ${APP_PRECHECK_API_KEY:}
     model: ${APP_PRECHECK_MODEL:}
+    reasoning-effort: ${APP_PRECHECK_REASONING_EFFORT:}
     allow-plain-http: ${APP_PRECHECK_ALLOW_PLAIN_HTTP:false}
     timeout-seconds: ${APP_PRECHECK_TIMEOUT_SECONDS:120}
     max-tokens-per-day: ${APP_PRECHECK_MAX_TOKENS_PER_DAY:1000000}

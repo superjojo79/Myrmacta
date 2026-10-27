@@ -75,7 +75,9 @@ une règle), message non vide de 300 caractères au plus, confiance dans [0, 1],
 **Appel au fournisseur** : le délai (`APP_PRECHECK_TIMEOUT_SECONDS`) couvre l'échange entier, corps de la réponse
 compris (une passerelle ne peut pas distiller sa réponse pour retenir le thread) ; réponse bornée à 4 Mo ; sans jetons
 déclarés par le fournisseur, une estimation (un jeton pour quatre caractères) entre dans le plafond. La cause d'une
-panne est journalisée (type d'erreur, statut HTTP), jamais le message du fournisseur.
+panne est journalisée (type d'erreur, statut HTTP), jamais le message du fournisseur. Une réponse coupée au plafond de
+sortie (`finish_reason` `length` ou `max_tokens`) est journalisée avec sa cause probable — un modèle qui raisonne a
+consommé le plafond en réflexion — et le réglage à toucher (`APP_PRECHECK_REASONING_EFFORT`), sans contenu.
 
 **Échecs** : budget de jetons atteint, fournisseur indisponible, fonction désactivée ou réponse non JSON donnent une
 exécution `FAILED` qui **garde les constats déterministes**, avec un motif générique (jamais le message du
@@ -124,7 +126,8 @@ si aucune exécution n'existe.
 
 `app.precheck.*` ([DEPLOIEMENT](../guides/DEPLOIEMENT.md), `D-PRECHECK-CONFIG`) : fournisseur compatible OpenAI
 (Mistral, vLLM, Ollama, Azure OpenAI) par `spring-ai-openai` en `json_schema` strict, ou Anthropic ; HTTPS hors boucle
-locale sauf `allow-plain-http` ; plafond de jetons par jour et par instance (`D-PRECHECK-BUDGET`) ; extraction PDFBox
+locale sauf `allow-plain-http` ; `reasoning-effort` facultatif (compatible OpenAI seulement, rien n'est envoyé par
+défaut) pour un modèle qui raisonne ; plafond de jetons par jour et par instance (`D-PRECHECK-BUDGET`) ; extraction PDFBox
 bornée, sans OCR (`D-PRECHECK-EXTRACT`).
 
 - **RGPD** : minimisation (seuls les champs et pièces désignés partent, jamais un élément sensible) ; le fournisseur est

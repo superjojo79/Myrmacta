@@ -52,13 +52,13 @@ class PrecheckRunRelayTest {
     @Test
     void theLeaseCoversTheWorstCaseOfARun() {
         PrecheckProperties defaults = new PrecheckProperties(false, null, null, null, null, false, 120, 1_000_000, 2_000,
-                10, 30, 30_000, 100_000, 20, "2023-06-01");
+                10, 30, 30_000, 100_000, 20, "2023-06-01", "");
         assertThat(PrecheckRunRelay.lease(defaults)).isEqualTo(Duration.ofSeconds(10 * 20 + 120 + 60));
         PrecheckProperties slowest = new PrecheckProperties(false, null, null, null, null, false, 600, 1_000_000, 2_000,
-                10, 30, 30_000, 100_000, 20, "2023-06-01");
+                10, 30, 30_000, 100_000, 20, "2023-06-01", "");
         assertThat(PrecheckRunRelay.lease(slowest)).isEqualTo(Duration.ofSeconds(10 * 20 + 600 + 60));
         PrecheckProperties quick = new PrecheckProperties(false, null, null, null, null, false, 5, 1_000_000, 2_000,
-                1, 30, 30_000, 100_000, 20, "2023-06-01");
+                1, 30, 30_000, 100_000, 20, "2023-06-01", "");
         assertThat(PrecheckRunRelay.lease(quick)).isEqualTo(PrecheckRunRelay.MIN_LEASE);
     }
 

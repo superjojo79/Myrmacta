@@ -46,8 +46,79 @@ class SpringAiPrecheckModelTest {
     }
 
     private static PrecheckProperties props(String kind, String baseUrl, String apiKey) {
+        return props(kind, baseUrl, apiKey, "");
+    }
+
+    private static PrecheckProperties props(String kind, String baseUrl, String apiKey, String reasoningEffort) {
         return new PrecheckProperties(true, kind, baseUrl, apiKey, "mistral-small", false, 30, 1_000_000, 2_000, 10, 30,
-                30_000, 100_000, 20, "2023-06-01");
+                30_000, 100_000, 20, "2023-06-01", reasoningEffort);
+    }
+
+    /** Un fournisseur qui ne connaît pas {@code reasoning_effort} pourrait refuser la requête : absent par défaut. */
+    @Test
+    void reasoningEffortIsNotSentByDefault() {
+        PrecheckModelPort model = openAi("");
+        provider.respond("{\"summary\":\"\"}");
+
+        model.complete(REQUEST);
+
+        assertThat(mapper.readTree(provider.received().getFirst().body()).has("reasoning_effort")).isFalse();
+    }
+
+    /** Un modèle qui raisonne (Qwen 3, gpt-oss…) ne réfléchit pas sur le budget de sortie si on le lui demande. */
+    @Test
+    void theConfiguredReasoningEffortIsSent() {
+        provider = new InMemoryOpenAiCompatibleProvider();
+        PrecheckModelPort model = PrecheckModels.create(
+                props(PrecheckProperties.OPENAI_COMPATIBLE, provider.baseUrl(), "", "none"));
+        provider.respond("{\"summary\":\"\"}");
+
+        model.complete(REQUEST);
+
+        assertThat(mapper.readTree(provider.received().getFirst().body()).path("reasoning_effort").asString())
+                .isEqualTo("none");
+    }
+
+    /** Réponse coupée au plafond de sortie : l'exploitant est orienté vers la cause, sans contenu du dossier. */
+    @Test
+    void anAnswerCutAtTheOutputLimitIsReportedWithItsLikelyCause() {
+        PrecheckModelPort model = openAi("");
+        provider.respond("{\"summary\":\"commune = Schaer").finishReason("length");
+
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SpringAiPrecheckModel.class);
+        var logs = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        logs.start();
+        logger.addAppender(logs);
+        ModelExchange.Reply reply;
+        try {
+            reply = model.complete(REQUEST);
+        } finally {
+            logger.detachAppender(logs);
+        }
+        // Le moteur refusera ce JSON tronqué ; l'adaptateur le rend tel quel.
+        assertThat(reply.json()).isEqualTo("{\"summary\":\"commune = Schaer");
+        assertThat(logs.list).singleElement().satisfies(event -> assertThat(event.getFormattedMessage())
+                .contains("500 tokens", "app.precheck.reasoning-effort=none")
+                .doesNotContain("Schaer"));
+    }
+
+    @Test
+    void aCompleteAnswerLogsNothing() {
+        PrecheckModelPort model = openAi("");
+        provider.respond("{\"summary\":\"\"}");
+
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SpringAiPrecheckModel.class);
+        var logs = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        logs.start();
+        logger.addAppender(logs);
+        try {
+            model.complete(REQUEST);
+        } finally {
+            logger.detachAppender(logs);
+        }
+        assertThat(logs.list).isEmpty();
     }
 
     @Test

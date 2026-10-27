@@ -13,11 +13,15 @@ import be.myrmacta.domain.parcours.model.ParcoursDefinition.Operator;
 import be.myrmacta.domain.parcours.model.ParcoursDefinition.Step;
 import be.myrmacta.domain.workflow.model.StatusOutcome;
 import be.myrmacta.domain.workflow.model.WorkflowStatusDefinition;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -176,6 +180,76 @@ class ParcoursCompilerTest {
                 .hasMessageContaining("at least one branch");
         assertThatThrownBy(() -> compile(definition(new Step("d", "d", Kind.DECISION, Map.of(), null, List.of(new Branch("v", Operator.EQ, "1", "end")), null))))
                 .hasMessageContaining("defaultNext");
+    }
+
+    /** Une étape valide de chaque type, seule dans son parcours ; le {@code switch} sans défaut suit l'ajout d'un type. */
+    private static Step validStep(Kind kind, Map<String, String> extra) {
+        Map<String, String> params = new HashMap<>(switch (kind) {
+            case QUESTION -> Map.of("schemaKey", "avis");
+            case EXTERNAL -> Map.of("schemaKey", "avis", "portalRecipient", "dossierField:email");
+            case DOCUMENT -> Map.of("documentType", "courrier");
+            case NOTIFY -> Map.of("notificationChannels", "EMAIL");
+            case CONNECTOR -> Map.of("connectorInstanceId", "123e4567-e89b-12d3-a456-426614174000");
+            case DMN -> Map.of("decisionTableReferenceKey", "grille");
+            case EXPRESSION -> Map.of("formula", "1 + 1", "formulaResult", "deux");
+            case MAP_FIELDS -> Map.of("fieldMapping", "score = connectorResult.json.score");
+            case SET_WORKFLOW_STATUS -> Map.of("targetWorkflowStatus", "VALIDE");
+            case SET_DOSSIER_STATUS -> Map.of("targetDossierStatus", "CLOTURE");
+            case WAIT -> Map.of("duration", "PT1H");
+            case DECISION -> Map.of();
+        });
+        params.putAll(extra);
+        return kind == Kind.DECISION
+                ? new Step("etape", "etape", kind, params, null, List.of(new Branch("avis", Operator.EQ, "oui", "end")), "end")
+                : step("etape", kind, params);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Kind.class)
+    void eachKindAcceptsOnlyItsOwnParameters(Kind kind) {
+        assertThat(compile(definition(validStep(kind, Map.of()))).xml()).contains("id=\"etape\"");
+        assertThatThrownBy(() -> compile(definition(validStep(kind, Map.of("extra", "y")))))
+                .isInstanceOf(InvalidParcoursException.class)
+                .hasMessage("step etape: parameter 'extra' does not apply to " + kind);
+    }
+
+    @Test
+    void keysOfExternalAndDmnStepsUseTheSchemaKeyAlphabet() {
+        assertThatThrownBy(() -> compile(definition(validStep(Kind.EXTERNAL, Map.of("schemaKey", "a.b")))))
+                .hasMessage("step etape: parameter 'schemaKey' has an invalid format");
+        assertThatThrownBy(() -> compile(definition(validStep(Kind.DMN, Map.of("decisionTableReferenceKey", "a:b")))))
+                .hasMessage("step etape: parameter 'decisionTableReferenceKey' has an invalid format");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1", "365", " 30 "})
+    void aPortalLinkLifetimeFromOneTo365DaysIsAccepted(String days) {
+        assertThat(compile(definition(validStep(Kind.EXTERNAL, Map.of("portalLinkTtlDays", days)))).xml())
+                .contains("flowable:portalLinkTtlDays=\"" + days.strip() + "\"");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "366", "-1", "sept", "7.5"})
+    void aPortalLinkLifetimeOutsideOneTo365DaysIsRefused(String days) {
+        assertThatThrownBy(() -> compile(definition(validStep(Kind.EXTERNAL, Map.of("portalLinkTtlDays", days)))))
+                .hasMessage("step etape: portalLinkTtlDays is a whole number between 1 and 365");
+    }
+
+    @Test
+    void aDecisionDefaultPathOrBranchToAnUnknownStepIsRefused() {
+        assertThatThrownBy(() -> compile(definition(new Step("d", "d", Kind.DECISION, Map.of(), null,
+                        List.of(new Branch("avis", Operator.EQ, "oui", "end")), "inconnue"))))
+                .hasMessage("step d: defaultNext points to an unknown step 'inconnue'");
+        assertThatThrownBy(() -> compile(definition(new Step("d", "d", Kind.DECISION, Map.of(), null,
+                        List.of(new Branch("avis", Operator.EQ, "oui", "inconnue")), "end"))))
+                .hasMessage("step d: a branch points to an unknown step 'inconnue'");
+    }
+
+    @Test
+    void theAttachParameterOfADocumentIsTrueOrFalse() {
+        assertThat(compile(definition(validStep(Kind.DOCUMENT, Map.of("attach", "true")))).xml()).contains("etapeAttach");
+        assertThatThrownBy(() -> compile(definition(validStep(Kind.DOCUMENT, Map.of("attach", "oui")))))
+                .hasMessage("step etape: attach is true or false");
     }
 
     @Test

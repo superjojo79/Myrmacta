@@ -47,6 +47,6 @@ commercial).
 **Suites.** Tuer les mutants des trois manques ci-dessus : issues
 [#241](https://github.com/superjojo79/FlowForge/issues/241) (bornes JSONata),
 [#242](https://github.com/superjojo79/FlowForge/issues/242) (liste blanche du compilateur de parcours) et
-[#243](https://github.com/superjojo79/FlowForge/issues/243) (`PrecheckLimits`). À ouvrir en issues : étendre le
-périmètre aux adaptateurs testés sans Spring (connecteurs, `infrastructure.security` hors `SecurityConfig`) ; StrykerJS
-pour le frontend.
+[#243](https://github.com/superjojo79/FlowForge/issues/243) (`PrecheckLimits`). Étendre le périmètre aux adaptateurs
+testés sans Spring : [#244](https://github.com/superjojo79/FlowForge/issues/244). StrykerJS pour le frontend :
+[#245](https://github.com/superjojo79/FlowForge/issues/245).

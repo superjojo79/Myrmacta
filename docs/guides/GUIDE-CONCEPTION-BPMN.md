@@ -544,7 +544,7 @@ JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
 | longueur de l'expression | 2 000 caractères |
 | nœuds / profondeur de l'arbre syntaxique | 500 / 40 |
 | durée d'une évaluation | 250 ms |
-| évaluations imbriquées (récursion) | 400 |
+| évaluations imbriquées : récursion **non terminale** (`1 + $f($n+1)`), chaque appel en consommant plusieurs ; une récursion terminale (`$f($n+1)` en dernier) tourne à profondeur constante, seule la durée l'arrête | 400 |
 | éléments d'une liste ou d'un objet **intermédiaire** (contrôlé à chaque nœud, donc `[1..9999999]` refusé) | 10 000 |
 | longueur d'un texte **intermédiaire** | 65 536 caractères |
 | poids **déplié** d'une valeur intermédiaire (chaque occurrence d'un sous-arbre *partagé* comptée : `{"a":$c,"b":$c}` imbriqué n fois pèse 2ⁿ) | 1 000 000 |

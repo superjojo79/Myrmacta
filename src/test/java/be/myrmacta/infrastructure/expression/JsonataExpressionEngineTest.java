@@ -234,9 +234,58 @@ class JsonataExpressionEngineTest {
     // ---- adversarial : bornes d'exécution ----------------------------------------------------------------------
 
     @Test
-    void unboundedRecursionIsStoppedByTheCallDepthBound() {
-        assertThatThrownBy(() -> engine.evaluate("( $f := function($n){ $f($n+1) }; $f(0) )", Map.of()))
-                .isInstanceOf(ExpressionEvaluationException.class);
+    void unboundedRecursionIsStoppedByTheEvaluationDepthBound() {
+        // Récursion non terminale : chaque appel attend le suivant, la profondeur croît (sans la borne : débordement de pile).
+        assertThatThrownBy(() -> engine.evaluate("( $f := function($n){ 1 + $f($n+1) }; $f(0) )", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("nesting exceeds 400");
+    }
+
+    @Test
+    void unboundedTailRecursionRunsAtConstantDepthSoTheTimeoutStopsIt() {
+        // Appel terminal : la bibliothèque le déroule en boucle, la profondeur ne croît pas ; seul le délai l'arrête.
+        JsonataExpressionEngine quick = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withTimeoutMillis(30), CLOCK);
+        assertThatThrownBy(() -> quick.evaluate("( $f := function($n){ $f($n+1) }; $f(0) )", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("timeout");
+    }
+
+    @Test
+    void theEvaluationDepthBoundIsExactAndCountsOnlyNestedEvaluations() {
+        // Un littéral est une évaluation ; un bloc qui le contient, deux.
+        JsonataExpressionEngine one = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxEvalDepth(1), CLOCK);
+        assertThat(one.evaluate("1", Map.of()).value()).isEqualTo(1L);
+        assertThatThrownBy(() -> one.evaluate("(1)", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("nesting exceeds 1");
+        assertThat(new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxEvalDepth(2), CLOCK)
+                        .evaluate("(1)", Map.of()).value())
+                .isEqualTo(1L);
+        // Une récursion finie de 100 niveaux tient sous la borne par défaut : la profondeur redescend à chaque retour.
+        assertThat(engine.evaluate("( $f := function($n){ $n = 0 ? 0 : 1 + $f($n-1) }; $f(100) )", Map.of()).value())
+                .isEqualTo(100L);
+    }
+
+    @Test
+    void everyIntermediateValueIsBoundedAtTheNodeThatProducesIt() {
+        // Valeurs réduites à un nombre en sortie : seule la borne intermédiaire peut les refuser.
+        JsonataExpressionEngine lists = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxCollectionSize(10), CLOCK);
+        assertThat(lists.evaluate("$count([1..10])", Map.of()).value()).isEqualTo(10L);
+        assertThatThrownBy(() -> lists.evaluate("$count([1..11])", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("an intermediate list exceeds 10 items");
+
+        JsonataExpressionEngine objects = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxCollectionSize(2), CLOCK);
+        assertThat(objects.evaluate("$count($keys({\"a\": 1, \"b\": 2}))", Map.of()).value()).isEqualTo(2L);
+        assertThatThrownBy(() -> objects.evaluate("$count($keys({\"a\": 1, \"b\": 2, \"c\": 3}))", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("an intermediate object exceeds 2 entries");
+
+        JsonataExpressionEngine texts = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxResultBytes(1_000), CLOCK);
+        assertThat(texts.evaluate("$length($pad(\"x\", 1000))", Map.of()).value()).isEqualTo(1_000L);
+        assertThatThrownBy(() -> texts.evaluate("$length($pad(\"x\", 1001))", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("an intermediate text exceeds 1000 characters");
     }
 
     @Test
@@ -498,6 +547,24 @@ class JsonataExpressionEngineTest {
         assertRefusedFast(block("$distinct([$t(22), 1])"));
         // Un arbre partagé de poids raisonnable reste permis (2^10 = 1024 feuilles).
         assertThat(engine.evaluate(block("$a := $t(10); $b := $t(10); $a = $b"), Map.of()).value()).isEqualTo(true);
+    }
+
+    @Test
+    void theExpandedWeightBoundIsTheOneThatRefusesASharedTree() {
+        // Poids déplié de $t(n) : 3 + 2 × poids de $t(n-1), soit 61 pour n = 4 et 125 pour n = 5 ; aucune autre borne
+        // n'est approchée à cette taille.
+        JsonataExpressionEngine light = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxValueWeight(100), CLOCK);
+        assertThat(light.evaluate(block("$t(4)"), Map.of()).defined()).isTrue();
+        assertThatThrownBy(() -> light.evaluate(block("$t(5)"), Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("too large once shared parts are counted each time (max 100)");
+        // Une liste aussi : l'objet {"k": texte de 1 500} pèse 96, la liste qui le cite une fois 97, deux fois 193.
+        JsonataExpressionEngine medium = new JsonataExpressionEngine(ExpressionLimits.DEFAULTS.withMaxValueWeight(150), CLOCK);
+        String object = "$m := {\"k\": $pad(\"x\", 1500)};";
+        assertThat(medium.evaluate("(" + object + " $count([$m]))", Map.of()).value()).isEqualTo(1L);
+        assertThatThrownBy(() -> medium.evaluate("(" + object + " $count([$m, $m]))", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("(max 150)");
     }
 
     @Test

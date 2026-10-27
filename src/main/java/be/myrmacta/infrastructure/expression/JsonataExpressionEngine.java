@@ -209,13 +209,27 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
         return AstInspector.neutralMessage(e);
     }
 
+    /**
+     * Bornes dynamiques. À l'entrée d'un nœud : la profondeur d'évaluations imbriquées, qui arrête une récursion non
+     * terminale avant le débordement de pile (un appel terminal est déroulé en boucle par la bibliothèque : seul le délai
+     * l'arrête). À la sortie, juste après le travail natif du nœud : délai, mémoire, valeur produite, travail cumulé et
+     * poids déplié. Contrôler aussi délai et mémoire à l'entrée ne gagnerait au plus que le travail d'un nœud (TODO §108 :
+     * mutant sans effet observable, retiré).
+     */
     private void bindGuards(Jsonata.Frame bindings) {
         long deadline = System.nanoTime() + limits.timeoutMillis() * 1_000_000L;
         long allocationStart = currentAllocated();
         int[] depth = {0};
         long[] work = {0};
         IdentityHashMap<Object, Long> weights = new IdentityHashMap<>();
-        Runnable check = () -> {
+        bindings.setEvaluateEntryCallback((expr, in, env) -> {
+            if (++depth[0] > limits.maxEvalDepth()) {
+                throw new ExpressionEvaluationException(
+                        "expression nesting exceeds " + limits.maxEvalDepth() + " (non-terminating recursion?)");
+            }
+        });
+        bindings.setEvaluateExitCallback((expr, in, env, result) -> {
+            depth[0]--;
             if (System.nanoTime() - deadline > 0) {
                 throw new ExpressionEvaluationException(
                         "expression evaluation timeout (" + limits.timeoutMillis() + " ms)");
@@ -224,17 +238,6 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
                 throw new ExpressionEvaluationException(
                         "expression exceeded its memory budget (" + limits.maxAllocatedBytes() + " bytes)");
             }
-        };
-        bindings.setEvaluateEntryCallback((expr, in, env) -> {
-            if (++depth[0] > limits.maxEvalDepth()) {
-                throw new ExpressionEvaluationException(
-                        "expression nesting exceeds " + limits.maxEvalDepth() + " (non-terminating recursion?)");
-            }
-            check.run();
-        });
-        bindings.setEvaluateExitCallback((expr, in, env, result) -> {
-            depth[0]--;
-            check.run();
             checkIntermediateValue(result);
             chargeWork(result, work);
             if (result instanceof List<?> || result instanceof Map<?, ?>) {

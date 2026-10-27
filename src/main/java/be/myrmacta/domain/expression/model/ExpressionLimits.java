@@ -60,6 +60,10 @@ public record ExpressionLimits(
         return toBuilder().timeoutMillis(value).build();
     }
 
+    public ExpressionLimits withMaxEvalDepth(int value) {
+        return toBuilder().maxEvalDepth(value).build();
+    }
+
     public ExpressionLimits withMaxInputBytes(int value) {
         return toBuilder().maxInputBytes(value).build();
     }
@@ -130,6 +134,11 @@ public record ExpressionLimits(
 
         public Builder timeoutMillis(long v) {
             this.timeoutMillis = v;
+            return this;
+        }
+
+        public Builder maxEvalDepth(int v) {
+            this.maxEvalDepth = v;
             return this;
         }
 

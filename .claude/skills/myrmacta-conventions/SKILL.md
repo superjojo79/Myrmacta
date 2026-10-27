@@ -124,6 +124,7 @@ Référence : `docs/specs/11-frontend.md`.
 ```bash
 ./mvnw verify -Dmaven.compiler.release=21   # suite backend + ArchUnit + couverture
 ./mvnw test -Dtest=NomDuTest                 # test ciblé
+./mvnw -Pmutation test-compile pitest:mutationCoverage -Dpit.targetClasses='be.myrmacta.domain.x.*'  # mutation (TODO §108)
 cd frontend && npm run test                  # Vitest
 cd frontend && npm run test:e2e              # Playwright (aligné job CI frontend)
 cd frontend && npm run test:all              # Vitest + Playwright

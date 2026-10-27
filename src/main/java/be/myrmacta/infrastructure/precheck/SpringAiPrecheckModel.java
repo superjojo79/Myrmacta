@@ -63,6 +63,15 @@ final class SpringAiPrecheckModel implements PrecheckModelPort {
         }
         Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
         String text = response.getResult().getOutput().getText();
+        String finishReason = response.getResult().getMetadata() == null
+                ? null : response.getResult().getMetadata().getFinishReason();
+        if ("length".equalsIgnoreCase(finishReason) || "max_tokens".equalsIgnoreCase(finishReason)) {
+            // Symptôme typique d'un modèle qui raisonne avant de répondre : la réflexion a consommé le plafond de
+            // sortie et la réponse JSON est absente ou tronquée (le moteur la refusera). Aucun contenu journalisé.
+            LOG.warn("AI pre-check answer cut at the output token limit ({} tokens, finish reason {}): a reasoning "
+                    + "model may spend this budget thinking; set app.precheck.reasoning-effort=none or raise "
+                    + "app.precheck.max-output-tokens", request.maxOutputTokens(), finishReason);
+        }
         long tokensIn = usage == null || usage.getPromptTokens() == null ? 0 : usage.getPromptTokens();
         long tokensOut = usage == null || usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens();
         if (tokensIn <= 0) {

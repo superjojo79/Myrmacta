@@ -31,7 +31,8 @@ public final class PrecheckModels {
 
     /**
      * Fournisseurs compatibles OpenAI : réponse contrainte par {@code response_format: json_schema} (strict) ; le
-     * domaine valide de toute façon. Sans clé (Ollama, vLLM local), un jeton factice est envoyé.
+     * domaine valide de toute façon. Sans clé (Ollama, vLLM local), un jeton factice est envoyé. {@code reasoning_effort}
+     * n'est envoyé que s'il est configuré : un fournisseur qui ne le connaît pas pourrait refuser la requête.
      */
     static PrecheckModelPort openAiCompatible(PrecheckProperties properties) {
         Duration timeout = Duration.ofSeconds(properties.timeoutSeconds());
@@ -53,6 +54,7 @@ public final class PrecheckModels {
                         .model(properties.model())
                         .maxTokens(request.maxOutputTokens())
                         .temperature(0.0)
+                        .reasoningEffort(properties.reasoningEffort().isEmpty() ? null : properties.reasoningEffort())
                         .responseFormat(OpenAiChatModel.ResponseFormat.builder()
                                 .type(OpenAiChatModel.ResponseFormat.Type.JSON_SCHEMA)
                                 .jsonSchema(request.jsonSchema())

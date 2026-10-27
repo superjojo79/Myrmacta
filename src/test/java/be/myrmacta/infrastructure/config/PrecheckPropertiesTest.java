@@ -12,7 +12,7 @@ class PrecheckPropertiesTest {
     private static PrecheckProperties props(boolean enabled, String provider, String baseUrl, String key, String model,
             boolean plainHttp) {
         return new PrecheckProperties(enabled, provider, baseUrl, key, model, plainHttp, 120, 1_000_000, 2_000, 10, 30,
-                30_000, 100_000, 20, "2023-06-01");
+                30_000, 100_000, 20, "2023-06-01", "");
     }
 
     @Test
@@ -48,9 +48,32 @@ class PrecheckPropertiesTest {
     @Test
     void absurdLimitsAreRefusedEvenWhenDisabled() {
         assertThatThrownBy(() -> new PrecheckProperties(false, "openai-compatible", "", "", "", false, 120, 0, 2_000, 10,
-                30, 30_000, 100_000, 20, "2023-06-01")).isInstanceOf(IllegalArgumentException.class);
+                30, 30_000, 100_000, 20, "2023-06-01", "")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new PrecheckProperties(false, "openai-compatible", "", "", "", false, 2, 1, 2_000, 10,
-                30, 30_000, 100_000, 20, "2023-06-01")).isInstanceOf(IllegalArgumentException.class);
+                30, 30_000, 100_000, 20, "2023-06-01", "")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void reasoningEffortIsOptionalNormalisedAndBounded() {
+        assertThat(props(true, "openai-compatible", "http://localhost:11434/v1", "", "qwen3", false).reasoningEffort())
+                .isEmpty();
+        assertThat(withReasoning(true, "openai-compatible", " None ").reasoningEffort()).isEqualTo("none");
+        // Valeur absurde refusée même désactivée, comme les bornes.
+        assertThatThrownBy(() -> withReasoning(false, "openai-compatible", "off"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reasoning-effort");
+    }
+
+    @Test
+    void reasoningEffortIsRefusedForAnthropic() {
+        assertThatThrownBy(() -> withReasoning(true, "anthropic", "none"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("openai-compatible");
+    }
+
+    private static PrecheckProperties withReasoning(boolean enabled, String provider, String reasoningEffort) {
+        return new PrecheckProperties(enabled, provider, "https://api.example/v1", "k", "m", false, 120, 1_000_000, 2_000,
+                10, 30, 30_000, 100_000, 20, "2023-06-01", reasoningEffort);
     }
 
     @Test

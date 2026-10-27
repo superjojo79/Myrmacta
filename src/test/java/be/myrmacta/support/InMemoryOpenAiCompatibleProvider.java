@@ -34,6 +34,7 @@ public final class InMemoryOpenAiCompatibleProvider implements AutoCloseable {
     private volatile String redirect;
     private volatile long promptTokens = 120;
     private volatile long completionTokens = 30;
+    private volatile String finishReason = "stop";
 
     public InMemoryOpenAiCompatibleProvider() {
         try {
@@ -79,12 +80,19 @@ public final class InMemoryOpenAiCompatibleProvider implements AutoCloseable {
         return this;
     }
 
+    /** {@code finish_reason} rendu ({@code stop} par défaut ; {@code length} : plafond de sortie atteint). */
+    public InMemoryOpenAiCompatibleProvider finishReason(String reason) {
+        this.finishReason = reason;
+        return this;
+    }
+
     public List<Received> received() {
         return List.copyOf(received);
     }
 
     public void reset() {
         received.clear();
+        finishReason = "stop";
         respond("{\"summary\":\"\",\"findings\":[]}");
     }
 
@@ -105,7 +113,8 @@ public final class InMemoryOpenAiCompatibleProvider implements AutoCloseable {
         }
         String json = "{\"id\":\"chatcmpl-test\",\"object\":\"chat.completion\",\"created\":1761400000,\"model\":\"fake\","
                 + "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":" + quote(content.apply(body))
-                + "},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":" + promptTokens + ",\"completion_tokens\":"
+                + "},\"finish_reason\":\"" + finishReason + "\"}],\"usage\":{\"prompt_tokens\":" + promptTokens
+                + ",\"completion_tokens\":"
                 + completionTokens + ",\"total_tokens\":" + (promptTokens + completionTokens) + "}}";
         send(exchange, 200, json);
     }

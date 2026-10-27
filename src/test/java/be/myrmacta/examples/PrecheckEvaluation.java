@@ -16,7 +16,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
  *   ./mvnw test -Dtest=PrecheckEvaluation -Dsurefire.failIfNoSpecifiedTests=false -Dskip.frontend=true
  * </pre>
  * {@code MYRMACTA_EVAL_PROVIDER=anthropic} pour Anthropic ; {@code MYRMACTA_EVAL_ALLOW_PLAIN_HTTP=true} pour un serveur
- * local en HTTP hors boucle locale. Rapport : {@code target/precheck-evaluation.md}.
+ * local en HTTP hors boucle locale ; {@code MYRMACTA_EVAL_REASONING_EFFORT=none} pour un modèle qui raisonne (Ollama
+ * {@code qwen3.5:9b} et {@code MYRMACTA_EVAL_BASE_URL=http://localhost:11434/v1} par exemple). Rapport :
+ * {@code target/precheck-evaluation.md}.
  */
 @EnabledIfEnvironmentVariable(named = "MYRMACTA_EVAL_BASE_URL", matches = ".+")
 class PrecheckEvaluation {
@@ -27,7 +29,7 @@ class PrecheckEvaluation {
                 env("MYRMACTA_EVAL_PROVIDER", PrecheckProperties.OPENAI_COMPATIBLE), env("MYRMACTA_EVAL_BASE_URL", ""),
                 env("MYRMACTA_EVAL_API_KEY", ""), env("MYRMACTA_EVAL_MODEL", ""),
                 Boolean.parseBoolean(env("MYRMACTA_EVAL_ALLOW_PLAIN_HTTP", "false")), 120, 1_000_000, 2_000, 10, 30,
-                30_000, 100_000, 20, "2023-06-01");
+                30_000, 100_000, 20, "2023-06-01", env("MYRMACTA_EVAL_REASONING_EFFORT", ""));
         PrecheckEvaluationHarness.Report report = PrecheckEvaluationHarness.run(properties.model(),
                 PrecheckInfrastructure.model(properties), properties.limits());
         Path written = PrecheckEvaluationHarness.write(report);

@@ -5,13 +5,15 @@ bibliothèque standard. Chaque contrôle renvoie une liste de fautes ; le script
 d'elles n'est pas vide.
 
   links       liens Markdown relatifs vers un fichier ou dossier inexistant
-  skills      copies générées de skills (.claude/skills, .cursor/skills) divergentes de leur source
+  skills      copies générées de skills (.claude/skills, .cursor/skills) divergentes de leur source,
+              ou skill du registre ai-devkit adapté au projet (l'adaptation serait perdue au vendor)
   todo-refs   « TODO §N » / « décision n° N » cité sans section correspondante dans le registre
   decision-ids identifiant de décision (D-…, DD-…) cité par le code sans définition dans la doc
   versions    version citée dans le README incohérente avec le pom.xml
 """
 
 import filecmp
+import json
 import os
 import re
 import subprocess
@@ -46,7 +48,7 @@ def files(root, predicate):
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
             for name in filenames:
-                paths.append(os.path.relpath(os.path.join(dirpath, name), root))
+                paths.append(os.path.relpath(os.path.join(dirpath, name), root).replace(os.sep, "/"))
     return sorted(p for p in paths if predicate(p) and os.path.isfile(os.path.join(root, p)))
 
 
@@ -106,12 +108,38 @@ def tree_differences(left, right):
     return differences
 
 
+PROJECT_MENTION = re.compile(r"myrmacta|mvnw|frontend/e2e", re.IGNORECASE)
+
+
+def registry_skill_names(root):
+    path = os.path.join(root, ".ai-devkit.json")
+    if not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8") as handle:
+        return [s["name"] for s in json.load(handle).get("skills", [])]
+
+
+def project_mentions(copy_root, name):
+    """Un skill du registre est recopié tel quel par le vendor : une adaptation au projet y serait perdue (TODO §107)."""
+    found = []
+    for dirpath, _, filenames in os.walk(os.path.join(copy_root, name)):
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                if PROJECT_MENTION.search(handle.read()):
+                    found.append(f"{path} : skill du registre adapté au projet, à déplacer dans .project-skills/")
+    return found
+
+
 def check_skills(root):
     faults = []
     copies = [os.path.join(root, d, "skills") for d in (".claude", ".cursor")]
     copies = [c for c in copies if os.path.isdir(c)]
     if len(copies) == 2:
         faults += tree_differences(*copies)
+    for name in registry_skill_names(root):
+        for copy_root in copies:
+            faults += project_mentions(copy_root, name)
     for source_dir in (".project-skills", ".agents/skills"):
         source_root = os.path.join(root, source_dir)
         if not os.path.isdir(source_root):
@@ -356,6 +384,9 @@ def fixture(root):
     write(root, "src/main/java/A.java", "// TODO §12, TODO §80, décision n° 12, D-ALPHA-ONE\nclass A {}\n")
     for tree in (".project-skills/demo", ".claude/skills/demo", ".cursor/skills/demo"):
         write(root, f"{tree}/SKILL.md", "# demo\n")
+    write(root, ".ai-devkit.json", '{"skills": [{"registry": "amont/skills", "name": "amont"}]}\n')
+    for tree in (".claude/skills/amont", ".cursor/skills/amont"):
+        write(root, f"{tree}/SKILL.md", "# amont\n")
     write(root, "docs/decisions/012-un-point.md", "# §12 — Un point\n\n> **Statut :** clos · point de premier niveau\n")
     write(root, "docs/decisions/095-remediation.md", "# §95 — Remédiation\n\n> **Statut :** ouvert · point de premier niveau\n")
     write(root, "docs/decisions/identifiants.md", "| `D-ALPHA-ONE` | défini |\n")
@@ -365,17 +396,23 @@ def fixture(root):
 
 def self_test():
     """Prouve que chaque contrôle passe sur un dépôt sain et détecte la faute qu'on y injecte."""
-    mutations = {
-        "links": lambda r: write(r, "docs/guide.md", "Voir [disparu](gone.md).\n"),
-        "skills": lambda r: write(r, ".claude/skills/demo/SKILL.md", "# demo modifié à la main\n"),
-        "todo-refs": lambda r: write(r, "src/main/java/B.java", "// TODO §999\n"),
-        "decision-ids": lambda r: write(r, "src/main/java/B.java", "// D-UNKNOWN-ID\n"),
-        "versions": lambda r: write(r, "README.md", "Stack : Spring Boot 3.5.x.\n"),
-        "decisions-index": lambda r: write(r, "docs/decisions/013-un-autre-point.md",
-                                           "# §13 — Un autre point\n\n> **Statut :** ouvert · point de premier niveau\n"),
-    }
+    def adapt_registry_skill(r):
+        for tree in (".claude/skills/amont", ".cursor/skills/amont"):
+            write(r, f"{tree}/SKILL.md", "# amont\nLancer ./mvnw verify.\n")
+
+    mutations = [
+        ("links", "links", lambda r: write(r, "docs/guide.md", "Voir [disparu](gone.md).\n")),
+        ("skills", "skills", lambda r: write(r, ".claude/skills/demo/SKILL.md", "# demo modifié à la main\n")),
+        ("skills (registre)", "skills", adapt_registry_skill),
+        ("todo-refs", "todo-refs", lambda r: write(r, "src/main/java/B.java", "// TODO §999\n")),
+        ("decision-ids", "decision-ids", lambda r: write(r, "src/main/java/B.java", "// D-UNKNOWN-ID\n")),
+        ("versions", "versions", lambda r: write(r, "README.md", "Stack : Spring Boot 3.5.x.\n")),
+        ("decisions-index", "decisions-index",
+         lambda r: write(r, "docs/decisions/013-un-autre-point.md",
+                         "# §13 — Un autre point\n\n> **Statut :** ouvert · point de premier niveau\n")),
+    ]
     ok = True
-    for name, mutate in mutations.items():
+    for label, name, mutate in mutations:
         with tempfile.TemporaryDirectory() as root:
             fixture(root)
             clean = CHECKS[name](root)
@@ -383,7 +420,7 @@ def self_test():
             dirty = CHECKS[name](root)
         passed = not clean and bool(dirty)
         ok &= passed
-        print(f"[self-test] {name}: {'ok' if passed else 'ÉCHEC'} (sain: {len(clean)} faute(s), muté: {len(dirty)})")
+        print(f"[self-test] {label}: {'ok' if passed else 'ÉCHEC'} (sain: {len(clean)} faute(s), muté: {len(dirty)})")
         for fault in clean:
             print(f"  inattendu : {fault}")
     return 0 if ok else 1

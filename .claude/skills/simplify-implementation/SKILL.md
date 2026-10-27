@@ -1,11 +1,15 @@
 ---
 name: simplify-implementation
-description: AI DevKit · Analyze and simplify existing implementations to reduce complexity, improve maintainability, and enhance scalability. Use when users ask to simplify code, reduce complexity, refactor for readability, clean up implementations, improve maintainability, reduce technical debt, or make code easier to understand.
+description: Myrmacta · Analyze and simplify existing implementations to reduce complexity, improve maintainability, and enhance scalability. Use when users ask to simplify code, reduce complexity, refactor for readability, clean up implementations, improve maintainability, reduce technical debt, or make code easier to understand.
 ---
 
 # Simplify Implementation Assistant
 
 Reduce complexity with an analysis-first approach before changing code.
+
+> Adapté de `simplify-implementation` d'AI DevKit (codeaholicguy/ai-devkit, Apache-2.0), modifié pour Myrmacta :
+> sources de décisions du projet à la place de la base mémoire. Texte d'origine en anglais. Sous Claude Code, la
+> commande `/simplify` fait le même travail ; ce skill sert surtout à Cursor.
 
 ## Hard Rules
 - Do not modify code until the user approves a simplification plan.
@@ -19,7 +23,7 @@ Reduce complexity with an analysis-first approach before changing code.
 
 1. Gather Context
 - Confirm targets, pain points, and constraints (compatibility, API stability, deadlines).
-- Search for past simplification decisions or known constraints: `npx ai-devkit@latest memory search --query "<target area>" --tags "simplify"`
+- Search for past decisions or known constraints: the domain spec (`docs/specs/`), related points of `docs/decisions/`, « Précédents » in `myrmacta-conventions`. Hexagonal boundaries (ArchUnit) are not simplification targets.
 
 2. Analyze Complexity
 - Identify sources (nesting, duplication, coupling, over-engineering, magic values).

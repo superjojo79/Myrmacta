@@ -1,79 +1,64 @@
 ---
 name: verify
-description: AI DevKit · Enforce evidence-based completion claims — require fresh command output before reporting success. Use when completing any task, fixing a bug, finishing a phase, running tests, building, deploying, or making any "it works" claim.
+description: Myrmacta · Preuve avant annonce — exiger une sortie de commande fraîche avant de dire qu'une tâche, un correctif, un lot ou des tests sont terminés. À utiliser avant toute affirmation « ça marche », « c'est corrigé », « les tests passent ».
 ---
 
 # Verify
 
-Prove it works before saying it works.
+Prouver que ça marche avant de dire que ça marche.
 
-## Hard Rules
+> Adapté de `verify` d'AI DevKit (codeaholicguy/ai-devkit, Apache-2.0), modifié pour Myrmacta : commandes du
+> projet, étapes mémoire et suivi de tâches retirées.
 
-- Do not claim completion without fresh terminal evidence from this session.
-- Forbidden words in completion claims: "should", "probably", "seems to", "likely", "I believe", "I think it works". These signal unverified assertions.
-- Cached, remembered, or previous-session output is not evidence. Run it again.
+## Règles
 
-## Gate Function
+- Pas d'annonce d'achèvement sans sortie de commande fraîche, produite dans cette session.
+- Mots interdits dans une annonce : « devrait », « probablement », « semble », « a priori », « je pense que ça
+  marche ». Ils signalent une affirmation non vérifiée.
+- Une sortie ancienne, mémorisée ou d'une autre session n'est pas une preuve : relancer.
 
-Every completion claim must pass all 5 steps in order:
+## Porte en cinq temps
 
-1. **Identify** — What command proves this claim? If multiple commands are needed, run the gate once per command.
-2. **Run** — Execute the full command now. No partial runs, no skipping.
-3. **Read** — Read complete output. Check exit code. Count pass/fail.
-4. **Confirm** — Does the output prove the exact claim?
-5. **Report** — State the result, cite command, exit code, and key output.
+1. **Identifier** la commande qui prouve l'affirmation (une porte par commande s'il en faut plusieurs).
+2. **Lancer** la commande complète, maintenant.
+3. **Lire** toute la sortie : code de retour, nombre de succès et d'échecs.
+4. **Confirmer** que la sortie prouve exactement ce qui est affirmé.
+5. **Rapporter** : la commande, le code de retour, les chiffres clés.
 
-If any step fails, stop. Fix the issue and restart from step 1.
+Si une étape échoue : s'arrêter, corriger, reprendre au début. Sans commande de vérification possible, le dire et
+demander comment vérifier.
 
-If no verification command exists (e.g., no test suite), tell the user and ask them how to verify before claiming done.
+## Preuves attendues dans Myrmacta
 
-## Verification Patterns
-
-| Claim | Required Evidence | Not Sufficient |
+| Affirmation | Preuve exigée | Insuffisant |
 |---|---|---|
-| Tests pass | Test output: 0 failures, exit 0 | Previous run, "should pass now" |
-| Backend tests pass | Fresh `./mvnw test` or `./mvnw verify`, 0 failures | FE tests alone |
-| Frontend unit tests pass | Fresh `cd frontend && npm run test`, 0 failures | Backend alone |
-| Frontend E2E pass | Fresh `cd frontend && npm run test:e2e` (or `test:all`), 0 failures | Vitest alone; “Playwright hors scope”; “CI will catch it” |
-| FE feature / API contract used by SPA | Vitest **and** Playwright evidence in this session; E2E mocks updated for new shapes | Component specs with axios mocks only |
-| Build succeeds | Build output: exit 0 | Linter passing, partial build |
-| Bug is fixed | Reproduce symptom → now passes | "Changed code, should be fixed" |
-| Linter clean | Linter output: 0 errors | Single file check |
-| Phase complete | Each criterion verified individually | "Tests pass, so done" |
-| Feature works | E2E test or manual walkthrough | Unit tests alone |
+| Le backend passe | `./mvnw verify` frais, 0 échec (ArchUnit et JaCoCo compris) | un test ciblé seul, les tests frontend |
+| Les tests unitaires frontend passent | `cd frontend && npm run test`, 0 échec | le backend seul |
+| Le frontend est propre | `cd frontend && npm run lint`, 0 erreur | un seul fichier vérifié |
+| Les E2E passent | `cd frontend && npm run test:e2e` (ou `test:all`), 0 échec | Vitest seul ; « Playwright hors scope » ; « la CI le verra » |
+| Feature qui touche le SPA ou un contrat qu'il consomme | Vitest **et** Playwright dans cette session ; mocks `frontend/e2e/**` alignés sur les nouvelles formes | des specs de composant avec des mocks axios |
+| La doc est cohérente | `scripts/check-docs.sh`, tous les contrôles `ok` | des liens vérifiés à la main |
+| Un bug est corrigé | le symptôme reproduit, puis la vérification de régression ci-dessous | « j'ai changé le code, ça devrait aller » |
+| Un lot est terminé | chaque critère du lot vérifié un par un | « les tests passent, donc c'est fini » |
 
-## Regression Verification
+## Vérification de régression (correctif de bug)
 
-For bug fixes, a single pass is not enough:
+1. Écrire le test qui couvre le bug.
+2. Lancer : il **passe** (avec le correctif).
+3. Retirer le correctif.
+4. Lancer : il **échoue** (le test attrape bien le bug).
+5. Remettre le correctif.
+6. Lancer : il **passe**.
 
-1. Write a test covering the bug.
-2. Run → **must pass** (fix in place).
-3. Revert the fix.
-4. Run → **must fail** (proves test catches the bug).
-5. Restore the fix.
-6. Run → **must pass**.
+Si l'étape 4 passe, le test est faux : le réécrire.
 
-If step 4 passes, the test is wrong. Rewrite it.
+## Excuses à refuser
 
-## Red Flags and Rationalizations
-
-| Rationalization | Why It's Wrong | Do Instead |
+| Excuse | Pourquoi c'est faux | À faire |
 |---|---|---|
-| "This change is trivial" | Trivial changes break things constantly | Run the check |
-| "I ran it earlier" | Code changed since then | Run it again now |
-| "The test is flaky" | Flaky ≠ ignorable | Fix the flake first |
-| "It compiles, so it works" | Compilation ≠ correctness | Run the tests |
-| "The CI will catch it" | CI is a safety net, not a substitute | Verify locally first |
-| "Playwright is out of scope / Vitest is enough" | E2E mocks diverge from unit mocks; CI runs Playwright | Run `npm run test:e2e` (or `test:all`) and update `frontend/e2e/**` |
-| "The agent said it's done" | Agent claims need verification too | Check diff and run tests |
-
-## Memory Integration
-
-After a failed verification, store the failure pattern: `npx ai-devkit@latest memory store --title "<failure pattern>" --content "<what failed and how to avoid>" --tags "verify,failure-pattern"`
-
-## Task Tracing
-
-If a task name is known and tracing is usable, record `task evidence` after
-the verification report per `task`. If tracing was not probed, run the real read
-probe first. If probe or evidence recording fails, report the failed task command
-and continue verification; never block verification on optional task logging.
+| « Le changement est trivial » | Les changements triviaux cassent souvent | Lancer la vérification |
+| « Je l'ai lancé tout à l'heure » | Le code a changé depuis | Relancer |
+| « Le test est instable » | Instable ne veut pas dire ignorable | Corriger l'instabilité ; jamais désactiver ni ignorer un test |
+| « Ça compile » | Compiler n'est pas fonctionner | Lancer les tests |
+| « La CI le verra » | La CI est un filet, pas un substitut | Vérifier en local |
+| « L'agent a dit que c'était fini » | Une affirmation d'agent se vérifie aussi | Lire le diff, lancer les tests |

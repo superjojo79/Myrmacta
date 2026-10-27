@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Bootstrap local/Cloud Agent dependencies for Myrmacta MCP servers (memory + Serena).
+# Bootstrap local/Cloud Agent dependencies for Myrmacta MCP servers (Serena).
+# The @ai-devkit/memory server was dropped (TODO §107): project memory lives in the repo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,33 +16,6 @@ fi
 echo "==> Installing serena-agent"
 uv tool install -p 3.13 serena-agent
 
-echo "==> Installing @ai-devkit/memory"
-mkdir -p "${HOME}/.local"
-npm config set prefix "${HOME}/.local"
-npm install -g @ai-devkit/memory --legacy-peer-deps
-
-# Package bin guard fails under some symlink/path resolutions; ensure direct start.
-MEMORY_INDEX="${HOME}/.local/lib/node_modules/@ai-devkit/memory/dist/index.js"
-if [[ -f "${MEMORY_INDEX}" ]]; then
-  cat > "${MEMORY_INDEX}" <<'EOF'
-#!/usr/bin/env node
-import { runServer } from './server.js';
-export * from './api.js';
-runServer().catch((error)=>{
-    console.error('Failed to start server:', error);
-    process.exit(1);
-});
-EOF
-  chmod +x "${MEMORY_INDEX}"
-fi
-
-mkdir -p "${HOME}/.local/bin"
-cat > "${HOME}/.local/bin/ai-devkit-memory" <<EOF
-#!/usr/bin/env bash
-exec node "${HOME}/.local/lib/node_modules/@ai-devkit/memory/dist/index.js" "\$@"
-EOF
-chmod +x "${HOME}/.local/bin/ai-devkit-memory"
-
 link_bin() {
   local src="$1" dest="$2"
   if [[ -w "$(dirname "${dest}")" ]]; then
@@ -53,7 +27,6 @@ link_bin() {
 
 link_bin "${HOME}/.local/bin/uvx" /usr/local/bin/uvx
 link_bin "${HOME}/.local/bin/serena" /usr/local/bin/serena
-link_bin "${HOME}/.local/bin/ai-devkit-memory" /usr/local/bin/ai-devkit-memory
 
 # Compatibility shim for a broken Cloud Agent Serena config that passes a single
 # malformed arg to `uv` instead of launching `serena start-mcp-server`.

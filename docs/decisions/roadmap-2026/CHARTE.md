@@ -44,6 +44,13 @@ traité, raison ».
 
 ## 3. Cycle par lot (obligatoire, sans saut de phase)
 
+> **Actualisation (2026-10-27, [§107](../107-allegement-des-skills-ai-devkit.md)).** `dev-lifecycle` et ses skills
+> de phase sont retirés. Le cycle suit le skill `myrmacta-feature` : phases 1–2 = cadrer, 3–4 = concevoir, 5–8 =
+> livrer par lots, 9–10 = clore par une revue indépendante (la phase 10 ci-dessous, inchangée, remplace
+> l'auto-revue de la phase 9). Un seul document de travail `docs/ai/AAAA-MM-JJ-<lot>.md` au lieu d'un par phase ;
+> la section « Revue adversariale » y devient « Revue de clôture ». Le mandat du §1 vaut toujours approbation des
+> deux pauses de `myrmacta-feature`. Le reste de la charte est inchangé.
+
 Suivre `dev-lifecycle` (Phases 1 à 9) puis **Phase 10 — revue adversariale**. Nommage des docs :
 `docs/ai/{requirements,design,planning,implementation,testing}/AAAA-MM-JJ-feature-<lot>.md`, point
 `TODO.md` numéroté (suite du §73), statuts `ROADMAP.md` / [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) mis à jour.
@@ -70,7 +77,7 @@ Suivre `dev-lifecycle` (Phases 1 à 9) puis **Phase 10 — revue adversariale**.
 9. Commit(s) sur la branche de développement désignée, **push** à la fin de chaque lot. Pas de PR, pas de
    merge, sauf demande explicite de l'utilisateur.
 
-Si `npx ai-devkit` est indisponible, poursuivre et le consigner (pas de blocage). Aucun test ne peut être
+Le cycle n'appelle plus `npx ai-devkit` (§107). Aucun test ne peut être
 désactivé, ignoré ou quarantainé pour obtenir du vert.
 
 ## 4. Règles de décision déléguées
@@ -109,7 +116,7 @@ reprise dans le point `TODO.md` du lot (format existant `D-XXX`).
 Tableau : lot · statut (`À faire` / `En cours` / `Livré` / `Bloqué` / `Non traité`) · phase atteinte ·
 SHA du dernier commit · tests (`./mvnw verify`, Vitest, Playwright : nombre, 0 échec) · revue adversariale
 (n° de passes, constats corrigés) · décisions ⚠. Mis à jour **à chaque phase**. Permet la reprise après
-interruption : relire AVANCEMENT puis `check-status.sh <feature>` et continuer au premier lot non livré.
+interruption : relire AVANCEMENT puis le document de travail du lot (`docs/ai/`) et continuer au premier lot non livré.
 
 ## 6. Définition de « terminé »
 

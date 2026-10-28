@@ -51,6 +51,7 @@ class SignatureCallbackConnectorTest {
     void validationRequiresAStrongSecretAndAKnownAuthType() {
         connector.validate(Map.of("webhookAuthType", "HMAC_SHA256", "webhookSecret", SECRET));
         connector.validate(Map.of("webhookAuthType", "SHARED_SECRET_TOKEN", "webhookSecret", SECRET));
+        connector.validate(Map.of("webhookAuthType", "YOUSIGN_HMAC", "webhookSecret", SECRET));
         assertThatThrownBy(() -> connector.validate(null)).isInstanceOf(ConnectorValidationException.class);
         assertThatThrownBy(() -> connector.validate(Map.of("webhookSecret", SECRET)))
                 .isInstanceOf(ConnectorValidationException.class);

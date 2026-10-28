@@ -59,9 +59,12 @@ public final class SignatureCallbackConnector implements ConnectorDefinition, Ca
                         ConfigFieldType.SELECT,
                         true,
                         WebhookAuthType.HMAC_SHA256.name(),
-                        List.of(WebhookAuthType.HMAC_SHA256.name(), WebhookAuthType.SHARED_SECRET_TOKEN.name()),
-                        "HMAC_SHA256 exige un en-tête X-Webhook-Timestamp (secondes epoch) et couvre timestamp + \".\" +"
-                                + " Idempotency-Key + \".\" + corps (X-Signature-256), fenêtre de 5 minutes"),
+                        List.of(
+                                WebhookAuthType.HMAC_SHA256.name(),
+                                WebhookAuthType.SHARED_SECRET_TOKEN.name(),
+                                WebhookAuthType.YOUSIGN_HMAC.name()),
+                        "HMAC_SHA256 : X-Webhook-Timestamp + Idempotency-Key + corps (X-Signature-256). "
+                                + "YOUSIGN_HMAC : corps brut (X-Yousign-Signature-256), idempotence = event_id"),
                 new ConfigField(
                         "webhookSecret",
                         "Webhook secret",

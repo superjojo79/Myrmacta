@@ -70,10 +70,12 @@ Le détail est au [§109](../decisions/109-fournisseurs-de-signature-yousign-et-
 
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | à faire | |
+| 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | en cours | #247 |
 | 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | à faire | |
 
-Prochaine action : lot 1 (Yousign), en TDD. L'issue eID reste à déposer avec le texte ci-dessous.
+Fait dans le lot 1 : mode `YOUSIGN_HMAC` (corps brut, idempotence = `event_id`, en-tête contradictoire refusé) et traduction des événements terminaux (`done`, `declined`, `expired`, `canceled`, `rejected`). Noms relus le 2026-10-28 sur la référence publique Yousign. `signer.notified` et les autres événements sans issue ne closent pas la demande.
+
+Prochaine action : client HTTP Yousign (création, ancre, activation, lien à l'ouverture), puis branchement de `YousignCallbackParser` sur l'adaptateur. L'issue eID reste à déposer avec le texte ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 
@@ -111,7 +113,7 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 
 | Date | Commande | Résultat |
 |---|---|---|
-| | | |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignCallbackParserTest,WebhookAuthenticatorTest,CallbackWebhookControllerTest,SignatureCallbackConnectorTest,ConnectorModelsTest` | vert (JDK 21 de la VM) |
 
 ## Revue de clôture
 

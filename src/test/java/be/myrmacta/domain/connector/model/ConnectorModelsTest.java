@@ -43,7 +43,8 @@ class ConnectorModelsTest {
     void webhookAuthType_supportsHmacAndSharedSecretOnly() {
         assertThat(WebhookAuthType.HMAC_SHA256.name()).isEqualTo("HMAC_SHA256");
         assertThat(WebhookAuthType.SHARED_SECRET_TOKEN.name()).isEqualTo("SHARED_SECRET_TOKEN");
-        assertThat(WebhookAuthType.values()).hasSize(2);
+        assertThat(WebhookAuthType.YOUSIGN_HMAC.name()).isEqualTo("YOUSIGN_HMAC");
+        assertThat(WebhookAuthType.values()).hasSize(3);
     }
 
     @Test

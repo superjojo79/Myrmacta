@@ -71,7 +71,7 @@ class CallbackWebhookControllerTest {
                 JsonMapper.builder().build(),
                 new WebhookRequestRateLimiter(FIXED_CLOCK),
                 new WebhookPreAuthRateLimiter(FIXED_CLOCK),
-                List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator()));
+                List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator(), new YousignWebhookAuthenticator()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ConnectorExceptionHandler())
                 .build();
@@ -113,11 +113,26 @@ class CallbackWebhookControllerTest {
 
     @Test
     void receive_missingIdempotencyKeyReturns400() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.empty());
+
         mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
                         .header("X-Webhook-Token", "secret")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void receive_missingIdempotencyKeyOnKnownConnectorReturns400() throws Exception {
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance(true)));
+
+        mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(runtime, never()).onIncomingCallback(any(), any());
     }
 
     @Test
@@ -361,6 +376,60 @@ class CallbackWebhookControllerTest {
                 .hasRootCauseInstanceOf(IllegalStateException.class);
 
         verify(idempotencyStore, never()).complete(any(), any(), anyInt());
+    }
+
+    @Test
+    void receive_yousignUsesSignedEventIdWithoutIdempotencyHeader() throws Exception {
+        String eventId = "b6c63685-c556-4a30-8fe9-b6f2b187d936";
+        String body = "{\"event_id\":\"" + eventId + "\"}";
+        ConnectorInstanceData instance = yousignInstance();
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, eventId)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-Yousign-Signature-256", "sha256=" + bodyHmac("secret", body))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isAccepted());
+
+        verify(runtime).onIncomingCallback(eq(instance), any());
+        verify(idempotencyStore).complete(INSTANCE_ID, eventId, 202);
+    }
+
+    @Test
+    void receive_yousignRejectsIdempotencyHeaderThatContradictsEventId() throws Exception {
+        String eventId = "b6c63685-c556-4a30-8fe9-b6f2b187d936";
+        String body = "{\"event_id\":\"" + eventId + "\"}";
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(yousignInstance()));
+
+        mockMvc.perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-Yousign-Signature-256", "sha256=" + bodyHmac("secret", body))
+                        .header("Idempotency-Key", "forged-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verify(idempotencyStore, never()).beginOrGetCompleted(any(), any());
+    }
+
+    private static String bodyHmac(String secret, String body) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            return java.util.HexFormat.of().formatHex(mac.doFinal(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private static ConnectorInstanceData yousignInstance() {
+        return new ConnectorInstanceData(
+                INSTANCE_ID,
+                "tenant_dev",
+                "Signature",
+                "signature",
+                true,
+                Map.of("webhookAuthType", "YOUSIGN_HMAC", "webhookSecret", "secret"));
     }
 
     private static ConnectorInstanceData instance(boolean enabled) {

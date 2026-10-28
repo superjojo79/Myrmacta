@@ -13,6 +13,7 @@ import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -79,25 +80,35 @@ class CallbackWebhookController {
             throw new WebhookPayloadTooLargeException(connectorProperties.webhook().maxBodyBytes());
         }
 
-        String idempotencyKey = headers.getFirst("Idempotency-Key");
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new IllegalArgumentException("Idempotency-Key header is required");
-        }
-
         // TODO §57 revue adversariale PR #113 : voir WebhookController -- même plafond pré-auth,
         // distinct du plafond strict post-auth (Q10).
         if (!preAuthRateLimiter.tryConsume(instanceId, connectorProperties.webhook().preAuthRateLimitPerMinute())) {
             throw new WebhookRateLimitExceededException(instanceId);
         }
 
-        ConnectorInstanceData instance = instances
+        Optional<ConnectorInstanceData> found = instances
                 .findByIdAndTenantId(instanceId, tenantProperties.id())
-                .filter(ConnectorInstanceData::enabled)
-                .orElseThrow(() -> new WebhookEndpointNotFoundException(instanceId));
-
+                .filter(ConnectorInstanceData::enabled);
+        String headerKey = headers.getFirst("Idempotency-Key");
+        boolean headerMissing = headerKey == null || headerKey.isBlank();
+        // Un appel sans Idempotency-Key reste un 400, y compris si l'instance est inconnue :
+        // répondre 404 révélerait son existence. Yousign n'envoie pas cet en-tête (TODO §109) ;
+        // seul un connecteur YOUSIGN_HMAC connu et activé peut continuer sans lui.
+        if (found.isEmpty()) {
+            if (headerMissing) {
+                throw new IllegalArgumentException("Idempotency-Key header is required");
+            }
+            throw new WebhookEndpointNotFoundException(instanceId);
+        }
+        ConnectorInstanceData instance = found.get();
         WebhookAuthType authType = authType(instance.config());
+        if (headerMissing && authType != WebhookAuthType.YOUSIGN_HMAC) {
+            throw new IllegalArgumentException("Idempotency-Key header is required");
+        }
         String secret = stringValue(instance.config().get("webhookSecret"), "webhookSecret");
-        authenticator(authType).authenticate(instance.id(), secret, body, headers);
+        WebhookAuthenticator authenticator = authenticator(authType);
+        authenticator.authenticate(instance.id(), secret, body, headers);
+        String idempotencyKey = idempotencyKey(authType, authenticator, body, headerKey);
 
         if (!rateLimiter.tryConsume(instanceId, connectorProperties.webhook().rateLimitPerMinute())) {
             throw new WebhookRateLimitExceededException(instanceId);
@@ -146,6 +157,22 @@ class CallbackWebhookController {
             return 400;
         }
         return null;
+    }
+
+    /**
+     * TODO §109 — Yousign n'envoie pas {@code Idempotency-Key}. La clé est {@code event_id}, dans le
+     * corps déjà authentifié. Un en-tête contradictoire est refusé : il n'est pas signé.
+     */
+    private static String idempotencyKey(
+            WebhookAuthType authType, WebhookAuthenticator authenticator, byte[] body, String headerKey) {
+        if (authType != WebhookAuthType.YOUSIGN_HMAC) {
+            return headerKey;
+        }
+        String eventId = ((YousignWebhookAuthenticator) authenticator).idempotencyKey(body);
+        if (headerKey != null && !headerKey.isBlank() && !headerKey.equals(eventId)) {
+            throw new IllegalArgumentException("Idempotency-Key contradicts the signed event_id");
+        }
+        return eventId;
     }
 
     private WebhookAuthenticator authenticator(WebhookAuthType authType) {

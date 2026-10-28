@@ -184,6 +184,45 @@ class WebhookAuthenticatorTest {
     }
 
     @Test
+    void yousignAuthenticator_acceptsBodyHmacAndReadsEventId() {
+        String eventId = "b6c63685-c556-4a30-8fe9-b6f2b187d936";
+        byte[] body = ("{\"event_id\":\"" + eventId + "\",\"event_name\":\"signature_request.done\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Yousign-Signature-256", "sha256=" + bodyOnlyHmacHex("webhook-secret", body));
+        headers.add("Idempotency-Key", "forged-key");
+
+        var authenticator = new YousignWebhookAuthenticator();
+
+        assertThat(authenticator.supports(WebhookAuthType.YOUSIGN_HMAC)).isTrue();
+        authenticator.authenticate(INSTANCE_ID, "webhook-secret", body, headers);
+        assertThat(authenticator.idempotencyKey(body)).isEqualTo(eventId);
+    }
+
+    @Test
+    void yousignAuthenticator_rejectsSignatureOfADifferentBody() {
+        byte[] body = "{\"event_id\":\"b6c63685-c556-4a30-8fe9-b6f2b187d936\"}".getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Yousign-Signature-256", "sha256=" + bodyOnlyHmacHex("webhook-secret", "{\"event_id\":\"other\"}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThatThrownBy(() -> new YousignWebhookAuthenticator()
+                        .authenticate(INSTANCE_ID, "webhook-secret", body, headers))
+                .isInstanceOf(WebhookAuthenticationException.class);
+    }
+
+    @Test
+    void yousignAuthenticator_rejectsBodyWithoutEventId() {
+        byte[] body = "{\"event_name\":\"signature_request.done\"}".getBytes(StandardCharsets.UTF_8);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Yousign-Signature-256", "sha256=" + bodyOnlyHmacHex("webhook-secret", body));
+        var authenticator = new YousignWebhookAuthenticator();
+        authenticator.authenticate(INSTANCE_ID, "webhook-secret", body, headers);
+
+        assertThatThrownBy(() -> authenticator.idempotencyKey(body))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void sharedSecretAuthenticator_rejectsWrongToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Webhook-Token", "wrong");

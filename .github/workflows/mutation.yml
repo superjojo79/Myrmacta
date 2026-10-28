@@ -1,13 +1,15 @@
 name: Mutation
 
-# TODO §108 : tests de mutation PIT (profil Maven `mutation`, hors `verify`).
-# - Chaque nuit et à la demande : tout le périmètre, seuil bloquant (pit.mutationThreshold du pom).
-# - Sur une PR : seulement les classes du périmètre modifiées (ou dont le test l'est), sans seuil — informatif.
+# TODO §108 : tests de mutation, hors `verify` et hors `npm run test:all`.
+# - Backend : PIT (profil Maven `mutation`). Frontend : StrykerJS (`npm run test:mutation`, frontend/stryker.config.mjs).
+# - Chaque semaine et à la demande : tout le périmètre, seuil bloquant (pit.mutationThreshold du pom, thresholds.break
+#   de la configuration Stryker).
+# - Sur une PR : seulement les classes ou fichiers du périmètre modifiés (ou dont le test l'est), sans seuil — informatif.
 # Rapport HTML en artefact, mutants non tués dans le résumé du job.
 
 on:
   schedule:
-    - cron: "23 2 * * *"
+    - cron: "23 2 * * 0"
   workflow_dispatch:
   pull_request:
     branches: [main]
@@ -15,6 +17,12 @@ on:
       - "src/main/java/**"
       - "src/test/java/**"
       - "pom.xml"
+      - "frontend/src/**"
+      - "frontend/portal/**"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "frontend/stryker.config.mjs"
+      - "frontend/vite.config.ts"
       - ".github/workflows/mutation.yml"
       - "scripts/mutation-*"
 
@@ -109,4 +117,96 @@ jobs:
         with:
           name: pit-report
           path: target/pit-reports/
+          if-no-files-found: ignore
+
+  frontend-changed-files:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Files to mutate
+        id: targets
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          scripts/mutation-targets-frontend.sh --self-test
+          targets="$(scripts/mutation-targets-frontend.sh "origin/$BASE_REF")"
+          echo "files=$targets" >> "$GITHUB_OUTPUT"
+          if [[ -z "$targets" ]]; then
+            echo "Aucun fichier frontend du périmètre de mutation modifié : rien à muter." >> "$GITHUB_STEP_SUMMARY"
+          else
+            tr ',' '\n' <<< "$targets"
+          fi
+
+      - name: Set up Node.js
+        if: steps.targets.outputs.files != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.targets.outputs.files != ''
+        working-directory: frontend
+        run: npm ci
+
+      - name: Mutation testing (changed files, report only)
+        if: steps.targets.outputs.files != ''
+        working-directory: frontend
+        env:
+          TARGETS: ${{ steps.targets.outputs.files }}
+          STRYKER_NO_BREAK: "1"
+        run: npx --no-install stryker run --mutate "$TARGETS"
+
+      - name: Summary
+        if: always() && steps.targets.outputs.files != ''
+        run: scripts/mutation-summary.py frontend/reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always() && steps.targets.outputs.files != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: frontend/reports/mutation/
+          if-no-files-found: ignore
+
+  frontend-full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Mutation testing (full scope, threshold enforced)
+        working-directory: frontend
+        run: npm run test:mutation
+
+      - name: Summary
+        if: always()
+        run: scripts/mutation-summary.py frontend/reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: frontend/reports/mutation/
           if-no-files-found: ignore

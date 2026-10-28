@@ -37,7 +37,7 @@ Sur la couche Spring, le coût par mutant est environ six fois plus élevé (`in
 - **Seuil** (`pit.mutationThreshold`) : cliquet à 76 %. Sur ce périmètre, sous JDK 25 : 7 023 mutants, score
   79,0 %, force des tests 87 %, 23 min sur 4 cœurs ; le seuil est ce score moins 2 points, arrondi par défaut. On le
   remonte quand le score progresse, on ne le baisse pas pour faire passer une PR.
-- **CI** ([`mutation.yml`](../../.github/workflows/mutation.yml)) : chaque nuit et à la demande, tout le périmètre
+- **CI** ([`mutation.yml`](../../.github/workflows/mutation.yml)) : chaque semaine (dimanche, 02:23 UTC) et à la demande, tout le périmètre
   avec le seuil ; sur une PR, seulement les classes du périmètre modifiées ou dont le test l'est
   (`scripts/mutation-targets.sh`), sans seuil. Rapport HTML en artefact, mutants non tués dans le résumé du job
   (`scripts/mutation-summary.py`).

@@ -128,6 +128,7 @@ Référence : `docs/specs/11-frontend.md`.
 cd frontend && npm run test                  # Vitest
 cd frontend && npm run test:e2e              # Playwright (aligné job CI frontend)
 cd frontend && npm run test:all              # Vitest + Playwright
+cd frontend && npm run test:mutation         # mutation StrykerJS, hebdomadaire en CI (TODO §108)
 npx playwright install --with-deps chromium  # navigateurs Playwright si manquants
 ./scripts/vendor-ai-devkit-skills.sh         # recopier les skills dans .claude/ et .cursor/
 ./scripts/vendor-ai-devkit-skills.sh --local # idem sans réseau (skills du registre laissés tels quels)

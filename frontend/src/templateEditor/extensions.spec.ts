@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { templateExtensions } from './extensions'
 import { analyzeTemplateHtml } from './htmlSubset'
+import { repoFile } from '../test/repoRoot'
 
 let editor: Editor | null = null
 
@@ -71,7 +72,7 @@ describe('template editor extensions (TODO §84, LC4b)', () => {
 
   it('reads and rewrites identically the canonical output shared with the backend allowlist test', () => {
     // même fichier que TemplateEditorOutputRenderingTest : ce que l'éditeur écrit est accepté et rendu par le vrai moteur
-    const fixture = readFileSync('../src/test/resources/template-editor/editor-output.html', 'utf8').trim()
+    const fixture = readFileSync(repoFile('src/test/resources/template-editor/editor-output.html'), 'utf8').trim()
     expect(analyzeTemplateHtml(fixture)).toEqual({ compatible: true, reasons: [] })
     expect(roundTrip(fixture)).toBe(fixture)
   })

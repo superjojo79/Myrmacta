@@ -4,6 +4,7 @@ import { Editor } from '@tiptap/core'
 import { templateExtensions } from './extensions'
 import { isVariablePath } from './variableCatalog'
 import { analyzeTemplateHtml, conditionAttributes, eachAttribute, isSafeLiteral, parseCondition, parseEach, parseVariableExpression } from './htmlSubset'
+import { repoFile } from '../test/repoRoot'
 
 let probe: Editor | null = null
 /** Ce que l'éditeur écrirait pour ce HTML (même chemin que le composant). */
@@ -126,7 +127,7 @@ describe('htmlSubset (TODO §84, LC4b)', () => {
   })
 
   it('the shared fixture is faithfully restituted by the editor itself', () => {
-    const fixture = readFileSync('../src/test/resources/template-editor/editor-output.html', 'utf-8').trim()
+    const fixture = readFileSync(repoFile('src/test/resources/template-editor/editor-output.html'), 'utf-8').trim()
     expect(analyzeTemplateHtml(fixture, viaEditor)).toEqual({ compatible: true, reasons: [] })
   })
 

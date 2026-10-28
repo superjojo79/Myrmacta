@@ -29,6 +29,8 @@ frontend/dist/
 frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
+frontend/reports/
+frontend/.stryker-tmp/
 
 # Bundles SPA générés (D-PACK) — ne pas committer
 src/main/resources/static/**

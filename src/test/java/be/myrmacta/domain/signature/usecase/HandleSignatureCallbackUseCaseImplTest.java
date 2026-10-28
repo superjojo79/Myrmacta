@@ -16,9 +16,11 @@ import static org.mockito.Mockito.when;
 
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.signature.InMemorySignatureRepository;
+import be.myrmacta.domain.signature.SignatureFixtures;
 import be.myrmacta.domain.signature.SignatureNotifier;
 import be.myrmacta.domain.signature.SignatureOutcomeHandler;
 import be.myrmacta.domain.signature.model.SignatureMode;
@@ -56,13 +58,15 @@ class HandleSignatureCallbackUseCaseImplTest {
     void setUp() {
         DocumentStoragePort storage = mock(DocumentStoragePort.class);
         when(storage.store(any(), any(), any())).thenReturn("ref");
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(false));
         when(port.fetchArtifacts("hosted:1")).thenReturn(
                 new SignaturePort.SignedArtifacts("S".getBytes(), "application/pdf", "P".getBytes(),
                         "application/pdf", false));
         SignatureNotifier notifier = new SignatureNotifier(TENANT, mock(DossierWorkflowLinkRepository.class),
                 mock(WorkflowParticipantPort.class), mock(SendNotificationUseCase.class));
-        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, addElement,
-                notifier, metrics, listener, Clock.fixed(NOW, ZoneOffset.UTC));
+        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
+                mock(DossierElementRepository.class), addElement, notifier, metrics, listener,
+                Clock.fixed(NOW, ZoneOffset.UTC));
         useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("hosted:1");
         signers = SignatureProgression.start(SignatureMode.PARALLEL, List.of(
@@ -89,6 +93,19 @@ class HandleSignatureCallbackUseCaseImplTest {
         assertThat(statuses()).containsExactly(SignerStatus.SIGNED, SignerStatus.REVOKED);
         verify(addElement, org.mockito.Mockito.times(2)).add(any(), any());
         verify(listener).outcomeRecorded(request.id());
+    }
+
+    @Test
+    void hostedSignedEventClosesWithoutDownloadingOrResuming() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of(signers.get(0).id(), SignerStatus.SIGNED))))
+                .isTrue();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+        verify(addElement, never()).add(any(), any());
+        verify(port, never()).fetchArtifacts(any());
+        verify(listener, never()).outcomeRecorded(any());
     }
 
     @Test

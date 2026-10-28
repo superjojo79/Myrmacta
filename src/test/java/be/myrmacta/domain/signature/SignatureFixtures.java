@@ -6,7 +6,9 @@ import be.myrmacta.domain.signature.model.SignatureStatus;
 import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
+import be.myrmacta.domain.signature.port.out.SignaturePort;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 /** Fabriques de test partagées du domaine signature (TODO §72). */
@@ -16,6 +18,12 @@ public final class SignatureFixtures {
     public static final String TENANT = "tenant_test";
 
     private SignatureFixtures() {}
+
+    /** {@code hosted} vrai : cérémonie chez le fournisseur, signataires facultatifs non pris en charge. */
+    public static SignaturePort.SignatureProviderCapabilities capabilities(boolean hosted) {
+        return new SignaturePort.SignatureProviderCapabilities(true, !hosted, hosted, true,
+                Set.of(hosted ? "ELECTRONIC" : "SIMULATED"));
+    }
 
     public static Signer external(UUID requestId, int position, boolean required, String email) {
         return new Signer(UUID.randomUUID(), TENANT, requestId, position, SignerKind.EXTERNAL, required, null,

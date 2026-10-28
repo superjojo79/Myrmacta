@@ -20,7 +20,10 @@ public interface MySignaturesUseCase {
     DecideSignatureUseCase.Result decide(
             AccessContext.User user, UUID signerId, DecideSignatureUseCase.Choice choice, String reason);
 
-    /** @param myTurn faux tant que le signataire est {@code WAITING} (mode séquentiel) */
+    /**
+     * @param myTurn faux tant que le signataire est {@code WAITING} (mode séquentiel)
+     * @param signingUrl adresse chez le fournisseur, seulement à son tour ; nulle en attente du lien
+     */
     record Item(
             UUID signerId,
             UUID requestId,
@@ -30,5 +33,7 @@ public interface MySignaturesUseCase {
             boolean required,
             boolean myTurn,
             Instant deadlineAt,
-            boolean simulated) {}
+            boolean simulated,
+            boolean hosted,
+            String signingUrl) {}
 }

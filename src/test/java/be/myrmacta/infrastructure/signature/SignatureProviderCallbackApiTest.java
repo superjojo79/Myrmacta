@@ -12,6 +12,7 @@ import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.model.SignatureStatus;
 import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerStatus;
+import be.myrmacta.domain.signature.port.in.DispatchSignatureOutcomesUseCase;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -109,6 +110,9 @@ class SignatureProviderCallbackApiTest extends AbstractSignatureEngineTest {
     @Autowired
     private ConnectorInstanceRepository connectorInstances;
 
+    @Autowired
+    private DispatchSignatureOutcomesUseCase dispatcher;
+
     private UUID connectorId;
     private UUID dossierId;
     private String processInstanceId;
@@ -167,6 +171,11 @@ class SignatureProviderCallbackApiTest extends AbstractSignatureEngineTest {
         assertThat(stored.status()).isEqualTo(SignatureStatus.SIGNED);
         assertThat(signatureRepository.findSigners(request.id())).extracting(Signer::status)
                 .containsExactly(SignerStatus.SIGNED, SignerStatus.REVOKED);
+        assertThat(marked()).isEmpty();
+        assertThat(runtimeService.getVariable(processInstanceId, "signatureOutcome")).isNull();
+
+        assertThat(dispatcher.dispatch(request.id())).isTrue();
+
         assertThat(marked()).hasSize(2).allSatisfy(e -> assertThat(e.metadata()).containsEntry("simulated", false));
         assertThat(runtimeService.getVariable(processInstanceId, "signatureOutcome")).isEqualTo("SIGNED");
         assertThat(taskService.createTaskQuery().processInstanceId(processInstanceId).singleResult().getName())
@@ -184,6 +193,10 @@ class SignatureProviderCallbackApiTest extends AbstractSignatureEngineTest {
                 .andExpect(status().isAccepted()); // clé nouvelle, demande déjà close : ignoré
 
         assertThat(signatureRepository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+        assertThat(marked()).isEmpty();
+        dispatcher.dispatch(request.id());
+        assertThat(marked()).hasSize(2);
+        dispatcher.dispatch(request.id());
         assertThat(marked()).hasSize(2);
     }
 

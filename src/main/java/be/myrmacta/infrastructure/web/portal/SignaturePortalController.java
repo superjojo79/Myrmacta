@@ -90,10 +90,12 @@ class SignaturePortalController {
             String signerName,
             boolean required,
             Instant deadlineAt,
-            boolean simulated) {
+            boolean simulated,
+            boolean hosted,
+            String signingUrl) {
         static SignatureContextResponse from(GetSignatureUseCase.Context context) {
             return new SignatureContextResponse(context.dossierReference(), context.documentLabel(), context.signerName(),
-                    context.required(), context.deadlineAt(), context.simulated());
+                    context.required(), context.deadlineAt(), context.simulated(), context.hosted(), context.signingUrl());
         }
     }
 }

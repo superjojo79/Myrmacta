@@ -5245,6 +5245,10 @@ components:
           format: date-time
         simulated:
           type: boolean
+        hosted:
+          type: boolean
+        signingUrl:
+          type: string
     ManagerLoad:
       type: object
       properties:
@@ -5611,6 +5615,10 @@ components:
           format: date-time
         simulated:
           type: boolean
+        hosted:
+          type: boolean
+        signingUrl:
+          type: string
     ParcoursSummary:
       type: object
       properties:

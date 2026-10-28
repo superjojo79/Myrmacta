@@ -93,10 +93,12 @@ class MySignaturesController {
             boolean required,
             boolean myTurn,
             Instant deadlineAt,
-            boolean simulated) {
+            boolean simulated,
+            boolean hosted,
+            String signingUrl) {
         static MySignatureItemResponse from(MySignaturesUseCase.Item item) {
             return new MySignatureItemResponse(item.signerId(), item.dossierId(), item.dossierReference(), item.documentLabel(),
-                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated());
+                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated(), item.hosted(), item.signingUrl());
         }
     }
 }

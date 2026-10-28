@@ -91,6 +91,8 @@ class MySignaturesApiTest extends AbstractSignatureEngineTest {
                 .andExpect(jsonPath("$[0].myTurn").value(true))
                 .andExpect(jsonPath("$[0].required").value(true))
                 .andExpect(jsonPath("$[0].simulated").value(true))
+                .andExpect(jsonPath("$[0].hosted").value(false))
+                .andExpect(jsonPath("$[0].signingUrl").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$[0].documentLabel").value("Contrat"))
                 .andExpect(jsonPath("$[0].dossierReference").value(dossier.reference()));
         mockMvc.perform(get("/api/signatures/mine").with(as(approver)))

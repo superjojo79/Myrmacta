@@ -2,8 +2,10 @@ package be.myrmacta.domain.signature;
 
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.model.Signer;
@@ -41,6 +43,7 @@ public final class SignatureOutcomeHandler {
     private final SignatureRequestRepository repository;
     private final SignaturePort port;
     private final DocumentStoragePort storage;
+    private final DossierElementRepository elementRepository;
     private final AddDossierElementUseCase addElementUseCase;
     private final SignatureNotifier notifier;
     private final SignatureMetricsPort metrics;
@@ -52,6 +55,7 @@ public final class SignatureOutcomeHandler {
             SignatureRequestRepository repository,
             SignaturePort port,
             DocumentStoragePort storage,
+            DossierElementRepository elementRepository,
             AddDossierElementUseCase addElementUseCase,
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
@@ -61,6 +65,7 @@ public final class SignatureOutcomeHandler {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.port = Objects.requireNonNull(port, "port");
         this.storage = Objects.requireNonNull(storage, "storage");
+        this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.addElementUseCase = Objects.requireNonNull(addElementUseCase, "addElementUseCase");
         this.notifier = Objects.requireNonNull(notifier, "notifier");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
@@ -88,14 +93,20 @@ public final class SignatureOutcomeHandler {
     public void afterClosed(SignatureRequest closed, SignatureOutcome outcome) {
         metrics.outcome(outcome);
         List<String> stored = new ArrayList<>();
+        // TODO §109 — Yousign exige une réponse en moins d'une seconde : le PDF est téléchargé
+        // par le répartiteur, qui reprend ensuite le process. Le stub reste synchrone.
+        boolean deferToDispatcher = outcome == SignatureOutcome.SIGNED && port.capabilities().hostedSigningUrl();
         try {
-            if (outcome == SignatureOutcome.SIGNED) {
+            if (outcome == SignatureOutcome.SIGNED && !deferToDispatcher) {
                 attachArtifacts(closed, stored);
-            } else if (outcome == SignatureOutcome.CANCELLED || outcome == SignatureOutcome.EXPIRED) {
+            } else if (outcome == SignatureOutcome.CANCELLED || outcome == SignatureOutcome.EXPIRED
+                    || (outcome == SignatureOutcome.DECLINED && port.capabilities().hostedSigningUrl())) {
                 cancelAtProvider(closed);
             }
             notifier.notifyOutcome(closed, outcome);
-            listener.outcomeRecorded(closed.id());
+            if (!deferToDispatcher) {
+                listener.outcomeRecorded(closed.id());
+            }
         } catch (RuntimeException ex) {
             // La transaction appelante est annulée : les blobs déjà écrits ne seront jamais référencés (ni purgés).
             for (String ref : stored) {
@@ -116,6 +127,42 @@ public final class SignatureOutcomeHandler {
                 notifier.notifyInternalSigner(request, signer.userId());
             }
         }
+    }
+
+    /**
+     * Télécharge le PDF et la preuve d'une demande hébergée déjà {@code SIGNED}, une seule fois.
+     * Appelé par le répartiteur, hors du webhook (TODO §109, D-SIGNATURE-WEBHOOK).
+     */
+    public void ensureSignedArtifacts(SignatureRequest request) {
+        if (request.status() != be.myrmacta.domain.signature.model.SignatureStatus.SIGNED
+                || !port.capabilities().hostedSigningUrl()
+                || artifactsStored(request)) {
+            return;
+        }
+        List<String> stored = new ArrayList<>();
+        try {
+            attachArtifacts(request, stored);
+        } catch (RuntimeException ex) {
+            for (String ref : stored) {
+                try {
+                    storage.delete(tenantId, ref);
+                } catch (RuntimeException ignored) {
+                    // au mieux : l'erreur d'origine prime
+                }
+            }
+            throw ex;
+        }
+    }
+
+    private boolean artifactsStored(SignatureRequest request) {
+        String id = request.id().toString();
+        for (DossierElement element : elementRepository.findByDossierIdOrderByAddedAtAsc(request.dossierId())) {
+            if (id.equals(String.valueOf(element.metadata().get(META_REQUEST_ID)))
+                    && ROLE_SIGNED_DOCUMENT.equals(element.metadata().get(META_ROLE))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void attachArtifacts(SignatureRequest request, List<String> stored) {

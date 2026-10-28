@@ -16,6 +16,7 @@ import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.MySignaturesUseCase;
+import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
 import be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException;
 import java.time.Clock;
@@ -34,6 +35,7 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
     private final DossierElementRepository elementRepository;
     private final DocumentStoragePort storage;
     private final DecideSignatureUseCase decideUseCase;
+    private final SignaturePort port;
     private final Clock clock;
 
     public MySignaturesUseCaseImpl(
@@ -44,6 +46,7 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
             DecideSignatureUseCase decideUseCase,
+            SignaturePort port,
             Clock clock) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
@@ -52,6 +55,7 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.decideUseCase = Objects.requireNonNull(decideUseCase, "decideUseCase");
+        this.port = Objects.requireNonNull(port, "port");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -103,9 +107,23 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
             return Optional.empty();
         }
         String label = sourceElement(request.get()).map(DossierElement::label).orElse("Document");
+        boolean myTurn = signer.status() == SignerStatus.PENDING;
+        boolean hosted = port.capabilities().hostedSigningUrl();
         return Optional.of(new Item(signer.id(), request.get().id(), dossier.get().id(), dossier.get().reference(),
-                label, signer.required(), signer.status() == SignerStatus.PENDING, request.get().deadlineAt(),
-                request.get().simulated()));
+                label, signer.required(), myTurn, request.get().deadlineAt(), request.get().simulated(), hosted,
+                signingUrl(myTurn, hosted, request.get(), signer.position())));
+    }
+
+    /** Lien demandé seulement à son tour. Un échec laisse l'écran d'attente, sans journaliser l'adresse. */
+    private String signingUrl(boolean myTurn, boolean hosted, SignatureRequest request, int signerPosition) {
+        if (!myTurn || !hosted || request.providerReference() == null) {
+            return null;
+        }
+        try {
+            return port.signingUrl(request.providerReference(), signerPosition).orElse(null);
+        } catch (RuntimeException ex) {
+            return null;
+        }
     }
 
     /** Identité, tour, demande ouverte, dossier ouvert et lisible : sinon, comme si la ressource n'existait pas. */

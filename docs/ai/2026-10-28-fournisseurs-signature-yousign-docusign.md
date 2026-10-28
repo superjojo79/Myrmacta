@@ -70,12 +70,12 @@ Le détail est au [§109](../decisions/109-fournisseurs-de-signature-yousign-et-
 
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | en cours | #247 |
+| 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | livré | #247 |
 | 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | à faire | |
 
-Fait dans le lot 1 : mode `YOUSIGN_HMAC` ; traduction des événements terminaux ; client HTTP (création `delivery_mode=none`, ancre, signataires, activation, lien à la demande, annulation, téléchargement) sur les hôtes bac à sable et production seulement ; adaptateur `yousign` qui ne conserve pas l'URL ; adresse des internes via `KnownUser.email` (`NO_ADDRESS` si elle manque). `signer.notified` ne clôt pas la demande. Issue eID : #248.
+Fait dans le lot 1 : mode `YOUSIGN_HMAC` ; traduction des événements terminaux ; client HTTP (création `delivery_mode=none`, ancre, signataires, activation, lien à la demande, annulation, téléchargement) sur les hôtes bac à sable et production seulement ; adaptateur `yousign` qui ne conserve pas l'URL ; adresse des internes via `KnownUser.email` (`NO_ADDRESS` si elle manque). `signer.notified` ne clôt pas la demande. Le portail et « Mes signatures » demandent le lien à l'ouverture et redirigent ; sans lien, écran d'attente, le refus reste dans Myrmacta. `POST /sign` hébergé répond 409. Le webhook `SIGNED` ne télécharge pas le PDF : le répartiteur le range puis reprend le process. Le stub signe toujours dans le portail. Corrélation des signataires par l'ordre de `GET /signers` (pas de colonne d'identifiant fournisseur). Issue eID : #248.
 
-Prochaine action : redirection du portail et de « Mes signatures » vers le lien demandé à l'ouverture, refus du `POST /sign` hébergé, téléchargement des artefacts par le répartiteur (hors du webhook). Le texte de l'issue eID reste ci-dessous.
+Prochaine action : lot 2, adaptateur DocuSign sur le même parcours. Le texte de l'issue eID reste ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 
@@ -115,6 +115,12 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 |---|---|---|
 | 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignCallbackParserTest,WebhookAuthenticatorTest,CallbackWebhookControllerTest,SignatureCallbackConnectorTest,ConnectorModelsTest` | vert (JDK 21 de la VM) |
 | 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignHttpClientTest,YousignSignatureAdapterTest,SignatureCallbackConnectorTest,SignaturePropertiesTest,SignatureConfigTest,RequestSignatureUseCaseImplTest` | vert (JDK 21 de la VM) |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=SignatureOutcomeHandlerTest,DispatchSignatureOutcomesUseCaseImplTest,DecideSignatureUseCaseImplTest,HandleSignatureCallbackUseCaseImplTest,GetSignatureUseCaseImplTest,MySignaturesUseCaseImplTest` | vert, 47 tests (JDK 21) |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=SignatureProviderCallbackApiTest,SignatureHostedCeremonyApiTest,MySignaturesApiTest,SignaturePortalApiTest` | vert, 19 tests (JDK 21) |
+| 2026-10-28 | `cd frontend && npm run lint && npm run test:all` | vert : lint, Vitest 812, Playwright 148 |
+| 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3937 tests, 0 échec, 5 ignorés (JDK 21, 06:23) |
+| 2026-10-28 | `cd frontend && npm run lint && npm run test:all` | vert : lint, Vitest 131 fichiers / 812 tests, Playwright 148 |
+| 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
 
 ## Revue de clôture
 

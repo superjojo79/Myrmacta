@@ -128,11 +128,11 @@ class ConnectorPersistenceIT {
         String token = UUID.randomUUID().toString().substring(0, 8);
         UUID deletedId = UUID.randomUUID();
         instances.save(new ConnectorInstanceData(
+                UUID.randomUUID(), "tenant_dev", "zzz-page-" + token, "http-rest", true, Map.of()));
+        instances.save(new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "aaa-page-" + token, "http-rest", true, Map.of()));
         instances.save(new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "mmm-page-" + token, "http-rest", true, Map.of()));
-        instances.save(new ConnectorInstanceData(
-                UUID.randomUUID(), "tenant_dev", "zzz-page-" + token, "http-rest", true, Map.of()));
         instances.save(new ConnectorInstanceData(
                 deletedId, "tenant_dev", "del-page-" + token, "http-rest", true, Map.of()));
         instances.softDelete(deletedId, "tenant_dev");
@@ -144,7 +144,7 @@ class ConnectorPersistenceIT {
                 .toList();
         assertThat(names).containsExactly("aaa-page-" + token, "mmm-page-" + token, "zzz-page-" + token);
         assertThat(page0.content()).noneMatch(data -> data.id().equals(deletedId));
-        assertThat(page0.content().stream().map(ConnectorInstanceData::name).toList()).isSorted();
+        // L'ordre des autres lignes du tenant suit la collation PostgreSQL, pas String.compareTo.
 
         var pastEnd = instances.pageByTenantId("tenant_dev", PageQuery.of(9_999, 20));
         assertThat(pastEnd.content()).isEmpty();

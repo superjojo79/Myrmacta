@@ -6,6 +6,7 @@ import {
   declineSignature,
   fetchSignatureContext,
   fetchSignatureDocument,
+  navigateTo,
   PortalApiError,
   signDocument,
   type SignatureContext,
@@ -29,6 +30,8 @@ const error = ref('')
 const deadline = computed(() =>
   context.value?.deadlineAt ? formatDate(context.value.deadlineAt, { day: 'numeric', month: 'long', year: 'numeric' }) : '',
 )
+const hosted = computed(() => context.value?.hosted === true)
+const awaitingLink = computed(() => hosted.value && !context.value?.signingUrl)
 
 function handleError(e: unknown): string {
   if (e instanceof PortalApiError) {
@@ -47,6 +50,10 @@ onMounted(async () => {
   try {
     context.value = await fetchSignatureContext(props.token)
     state.value = 'ready'
+    if (context.value.hosted && context.value.signingUrl) {
+      navigateTo(context.value.signingUrl)
+      return
+    }
     documentUrl.value = URL.createObjectURL(await fetchSignatureDocument(props.token))
   } catch (e) {
     handleError(e)
@@ -119,6 +126,7 @@ async function onDecline() {
       <p>{{ t('portal.signature.intro', { reference: context.dossierReference, name: context.signerName }) }}</p>
       <p v-if="deadline" class="portal__expiry">{{ t('portal.signature.deadline', { date: deadline }) }}</p>
       <p v-if="!context.required" class="portal__muted">{{ t('portal.signature.optional') }}</p>
+      <p v-if="awaitingLink" data-testid="signature-waiting">{{ t('portal.signature.waiting') }}</p>
       <p>
         <a v-if="documentUrl" :href="documentUrl" target="_blank" rel="noopener" data-testid="signature-document">
           {{ t('portal.signature.view') }}
@@ -135,7 +143,7 @@ async function onDecline() {
     <section class="portal__actions">
       <p v-if="error" class="portal__error" role="alert" data-testid="signature-error">{{ error }}</p>
       <template v-if="!declining">
-        <button type="button" class="portal__primary" :disabled="busy" @click="onSign">
+        <button v-if="!hosted" type="button" class="portal__primary" :disabled="busy" @click="onSign">
           {{ busy ? t('portal.submitting') : t('portal.signature.sign') }}
         </button>
         <button type="button" class="portal__secondary" :disabled="busy" @click="declining = true">{{ t('portal.signature.decline') }}</button>

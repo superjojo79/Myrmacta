@@ -8,6 +8,7 @@ import {
   declineMine,
   fetchMySignatureDocument,
   listMySignatures,
+  openSigningPage,
   signMine,
   type MySignatureItem,
 } from '@/api/signatures'
@@ -50,6 +51,18 @@ async function openDocument(item: MySignatureItem) {
   } catch (e) {
     error.value = toProblemDetail(e).detail ?? t('mySignatures.errors.document')
   }
+}
+
+function awaitingLink(item: MySignatureItem): boolean {
+  return item.hosted && !item.signingUrl
+}
+
+function onSign(item: MySignatureItem) {
+  if (item.hosted && item.signingUrl) {
+    openSigningPage(item.signingUrl)
+    return
+  }
+  void decide(item, () => signMine(item.signerId))
 }
 
 async function decide(item: MySignatureItem, action: () => Promise<unknown>) {
@@ -100,7 +113,16 @@ onMounted(load)
                 <button type="button" @click="openDocument(item)">{{ t('mySignatures.view') }}</button>
                 <template v-if="group.active">
                   <template v-if="decliningId !== item.signerId">
-                    <button type="button" :disabled="busyId === item.signerId" @click="decide(item, () => signMine(item.signerId))">
+                    <p v-if="awaitingLink(item)" data-testid="signature-waiting">{{ t('mySignatures.waitingLink') }}</p>
+                    <button
+                      v-else-if="item.hosted && item.signingUrl"
+                      type="button"
+                      data-testid="signature-provider"
+                      @click="onSign(item)"
+                    >
+                      {{ t('mySignatures.signAtProvider') }}
+                    </button>
+                    <button v-else type="button" :disabled="busyId === item.signerId" @click="onSign(item)">
                       {{ t('mySignatures.sign') }}
                     </button>
                     <button type="button" :disabled="busyId === item.signerId" @click="decliningId = item.signerId">

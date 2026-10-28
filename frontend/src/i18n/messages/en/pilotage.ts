@@ -81,6 +81,8 @@ const pilotage: typeof fr = {
     simulation: 'SIMULATION — no legal value',
     dossier: 'Dossier',
     view: 'View',
+    waitingLink: 'The signing link is not available yet.',
+    signAtProvider: 'Continue to sign',
     sign: 'Sign',
     decline: 'Decline',
     reasonPlaceholder: 'Reason (optional)',

@@ -49,6 +49,14 @@ export interface MySignatureItem {
   myTurn: boolean
   deadlineAt: string | null
   simulated: boolean
+  hosted: boolean
+  /** Adresse du fournisseur, seulement quand c'est son tour ; nulle en attente du lien. */
+  signingUrl: string | null
+}
+
+/** Navigation vers la cérémonie du fournisseur (isolée pour les tests). */
+export function openSigningPage(url: string): void {
+  window.location.assign(url)
 }
 
 export async function listSignatureRequests(dossierId: string): Promise<SignatureRequestsResponse> {

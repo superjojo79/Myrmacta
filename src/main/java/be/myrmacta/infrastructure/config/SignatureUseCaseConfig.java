@@ -47,6 +47,7 @@ import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignatureInviteSenderPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.domain.signature.port.out.SignedArtifactDownload;
 import be.myrmacta.domain.signature.usecase.RequestSignatureUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.SendSignatureInvitesUseCaseImpl;
 import be.myrmacta.domain.workflow.portal.port.out.PortalRecipientResolverPort;
@@ -56,11 +57,14 @@ import be.myrmacta.infrastructure.flowable.SignatureRequestTask;
 import be.myrmacta.infrastructure.signature.EmailSignatureInviteSender;
 import be.myrmacta.infrastructure.signature.SignatureInviteSenderJob;
 import java.time.Clock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * TODO §72 — câblage des use cases signature. Présents seulement si un fournisseur est actif
@@ -111,8 +115,18 @@ public class SignatureUseCaseConfig {
             SignatureRequestRepository repository,
             @Lazy WorkflowEnginePort workflowEnginePort,
             SignatureMetricsPort metrics,
+            ObjectProvider<SignatureOutcomeHandler> artifacts,
+            PlatformTransactionManager transactionManager,
             SignatureProperties properties) {
-        return new DispatchSignatureOutcomesUseCaseImpl(repository, workflowEnginePort, metrics, CLOCK,
+        // Le téléchargement a sa propre transaction : un échec l'annule avant que la tentative
+        // de reprise soit comptée, et le webhook n'attend pas le PDF (D-SIGNATURE-WEBHOOK).
+        // ObjectProvider : le handler est final, un proxy @Lazy ne peut pas le sous-classer, et il
+        // dépend du répartiteur via l'écouteur after-commit.
+        TransactionTemplate download = new TransactionTemplate(transactionManager);
+        download.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        SignedArtifactDownload signedArtifacts = request -> download.executeWithoutResult(
+                status -> artifacts.getObject().ensureSignedArtifacts(request));
+        return new DispatchSignatureOutcomesUseCaseImpl(repository, workflowEnginePort, metrics, signedArtifacts, CLOCK,
                 properties.dispatch().maxAttempts(), properties.dispatch().batchSize());
     }
 
@@ -144,20 +158,22 @@ public class SignatureUseCaseConfig {
             SignatureRequestRepository repository,
             SignaturePort port,
             DocumentStoragePort storage,
+            DossierElementRepository elementRepository,
             AddDossierElementUseCase addElementUseCase,
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
             SignatureOutcomeListener listener) {
-        return new SignatureOutcomeHandler(tenantProperties.id(), repository, port, storage, addElementUseCase,
-                notifier, metrics, listener, CLOCK);
+        return new SignatureOutcomeHandler(tenantProperties.id(), repository, port, storage, elementRepository,
+                addElementUseCase, notifier, metrics, listener, CLOCK);
     }
 
     @Bean
     DecideSignatureUseCase decideSignatureUseCase(
             SignatureRequestRepository repository,
             SignatureAccessResolver accessResolver,
-            SignatureOutcomeHandler outcomeHandler) {
-        return new DecideSignatureUseCaseImpl(repository, accessResolver, outcomeHandler, CLOCK);
+            SignatureOutcomeHandler outcomeHandler,
+            SignaturePort port) {
+        return new DecideSignatureUseCaseImpl(repository, accessResolver, outcomeHandler, port, CLOCK);
     }
 
     @Bean
@@ -180,9 +196,10 @@ public class SignatureUseCaseConfig {
             DossierAccessPolicy accessPolicy,
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
-            DecideSignatureUseCase decideUseCase) {
+            DecideSignatureUseCase decideUseCase,
+            SignaturePort port) {
         return new MySignaturesUseCaseImpl(tenantProperties.id(), repository, dossierRepository, accessPolicy,
-                elementRepository, storage, decideUseCase, CLOCK);
+                elementRepository, storage, decideUseCase, port, CLOCK);
     }
 
     @Bean
@@ -229,8 +246,9 @@ public class SignatureUseCaseConfig {
             TenantProperties tenantProperties,
             SignatureAccessResolver accessResolver,
             DossierElementRepository elementRepository,
-            DocumentStoragePort storage) {
-        return new GetSignatureUseCaseImpl(tenantProperties.id(), accessResolver, elementRepository, storage);
+            DocumentStoragePort storage,
+            SignaturePort port) {
+        return new GetSignatureUseCaseImpl(tenantProperties.id(), accessResolver, elementRepository, storage, port);
     }
 
     @Bean

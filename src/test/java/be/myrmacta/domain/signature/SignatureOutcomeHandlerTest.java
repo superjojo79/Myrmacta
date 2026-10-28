@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -17,15 +18,18 @@ import static org.mockito.Mockito.when;
 
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DossierWorkflowLink;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.notification.model.NotificationEvent;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignatureRequest;
+import be.myrmacta.domain.signature.model.SignatureStatus;
 import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.port.out.SignatureMetricsPort;
@@ -47,6 +51,7 @@ class SignatureOutcomeHandlerTest {
     private final InMemorySignatureRepository repository = new InMemorySignatureRepository();
     private final SignaturePort port = mock(SignaturePort.class);
     private final DocumentStoragePort storage = mock(DocumentStoragePort.class);
+    private final DossierElementRepository elements = mock(DossierElementRepository.class);
     private final AddDossierElementUseCase addElement = mock(AddDossierElementUseCase.class);
     private final SendNotificationUseCase sendNotification = mock(SendNotificationUseCase.class);
     private final SignatureMetricsPort metrics = mock(SignatureMetricsPort.class);
@@ -63,7 +68,8 @@ class SignatureOutcomeHandlerTest {
         WorkflowParticipantPort participants = mock(WorkflowParticipantPort.class);
         when(participants.findParticipantUserIds(link)).thenReturn(List.of("manager", "reviewer"));
         SignatureNotifier notifier = new SignatureNotifier(TENANT, links, participants, sendNotification);
-        handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, addElement, notifier, metrics,
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(false));
+        handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, elements, addElement, notifier, metrics,
                 listener, Clock.fixed(NOW, ZoneOffset.UTC));
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("stub:x")
                 .withSimulation(true, "SIMULATED");
@@ -178,5 +184,64 @@ class SignatureOutcomeHandlerTest {
         Signer waiting = external(req, 1, true, "b@example.org");
         List<Signer> out = SignatureOutcomeHandler.closeOpenSigners(List.of(signed, waiting), SignerStatus.EXPIRED, NOW);
         assertThat(out).extracting(Signer::status).containsExactly(SignerStatus.SIGNED, SignerStatus.EXPIRED);
+    }
+
+    @Test
+    void hostedSignedOutcomeLeavesTheDownloadAndTheResumeToTheDispatcher() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+
+        handler.afterClosed(request, SignatureOutcome.SIGNED);
+
+        verify(port, never()).fetchArtifacts(any());
+        verify(addElement, never()).add(any(), any());
+        verify(listener, never()).outcomeRecorded(any());
+        verify(metrics).outcome(SignatureOutcome.SIGNED);
+        verify(sendNotification, times(2)).send(any(NotificationEvent.class), eq(TENANT));
+    }
+
+    @Test
+    void hostedDeclineCancelsTheProviderCeremony() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+
+        handler.afterClosed(request, SignatureOutcome.DECLINED);
+
+        verify(port).cancel("stub:x");
+        verify(listener).outcomeRecorded(request.id());
+    }
+
+    @Test
+    void dispatcherStoresHostedArtifactsOnceAndDropsBlobsWhenTheWriteFails() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        when(port.fetchArtifacts("stub:x")).thenReturn(new SignaturePort.SignedArtifacts(
+                "S".getBytes(), "application/pdf", "P".getBytes(), "application/pdf", false));
+        SignatureRequest signed = request.closed(SignatureOutcome.SIGNED, null, NOW);
+
+        handler.ensureSignedArtifacts(signed);
+        verify(addElement, times(2)).add(any(), any());
+
+        when(elements.findByDossierIdOrderByAddedAtAsc(request.dossierId())).thenReturn(List.of(signedDocument()));
+        handler.ensureSignedArtifacts(signed);
+        verify(port, times(1)).fetchArtifacts("stub:x");
+
+        when(elements.findByDossierIdOrderByAddedAtAsc(request.dossierId())).thenReturn(List.of());
+        when(addElement.add(any(), any())).thenThrow(new IllegalStateException("db down"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> handler.ensureSignedArtifacts(signed))
+                .isInstanceOf(IllegalStateException.class);
+        verify(storage, atLeastOnce()).delete(eq(TENANT), anyString());
+    }
+
+    @Test
+    void stubSignedOutcomeStillDownloadsDuringTheClosingCall() {
+        handler.ensureSignedArtifacts(request.closed(SignatureOutcome.SIGNED, null, NOW));
+        verify(port, never()).fetchArtifacts(any());
+        assertThat(request.status()).isEqualTo(SignatureStatus.PENDING);
+    }
+
+    private DossierElement signedDocument() {
+        return new DossierElement(UUID.randomUUID(), request.dossierId(), TENANT, ElementType.PRODUCED_DOC,
+                "Document signé", "ref/signed", java.util.Map.of(
+                        SignatureOutcomeHandler.META_REQUEST_ID, request.id().toString(),
+                        SignatureOutcomeHandler.META_ROLE, SignatureOutcomeHandler.ROLE_SIGNED_DOCUMENT),
+                "signature", NOW, null);
     }
 }

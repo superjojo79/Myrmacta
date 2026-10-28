@@ -166,3 +166,17 @@ npm install -D vue-tsc
   globaux. Les listes imbriquées restent des tableaux.
 - **SPA :** `AdminPager` et `useAdminListQuery` ; les listes déroulantes hors admin lisent toutes les pages
   (`listAllPages`, taille 100). Écran `/admin/notification-webhooks` ajouté.
+
+## Implémentation — tests de mutation StrykerJS (issue #245, TODO §108)
+
+- **Outil :** StrykerJS et son lanceur Vitest, dépendances de développement (hors SPA livré). Configuration
+  [`frontend/stryker.config.mjs`](../../frontend/stryker.config.mjs) ; `npm run test:mutation`, hors
+  `npm run test:all`. Rapport : `frontend/reports/mutation/` (HTML et JSON, ignoré par git).
+- **Périmètre :** la logique sans rendu, `src/stores`, `src/composables`, `src/api`, `portal`. Les composants `.vue`
+  et la logique BPMN de `src/components` restent hors mutation (coût, voir §108).
+- **CI :** [`mutation.yml`](../../.github/workflows/mutation.yml), run complet chaque semaine avec seuil bloquant
+  (cliquet, `thresholds.break`), run ciblé sur les fichiers modifiés de chaque PR (ou visés par une spec modifiée),
+  sans seuil.
+- **Écrire un test compatible :** les specs tournent aussi dans le bac à sable de Stryker
+  (`frontend/.stryker-tmp/sandbox-*`). Une fixture du backend se lit par `repoFile('src/test/resources/…')`
+  (`src/test/repoRoot.ts`), jamais par un chemin relatif au répertoire courant.

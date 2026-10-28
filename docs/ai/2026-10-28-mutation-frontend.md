@@ -100,7 +100,7 @@ Issue : #245 · Spec du domaine : docs/specs/11-frontend.md · Points du registr
 |---|---|---|---|
 | 1 | Tout le périmètre du cadrage (petite feature : un seul lot, une PR) | en cours | |
 
-Prochaine action : lot 1, en commençant par `repoRoot` en TDD.
+Prochaine action : `./mvnw verify` (en cours), revue indépendante, puis clôture et PR.
 
 ## Preuves
 
@@ -108,6 +108,14 @@ Prochaine action : lot 1, en commençant par `repoRoot` en TDD.
 |---|---|---|
 | 2026-10-28 | pilote Stryker par zone (copie hors dépôt) | voir tableau ci-dessus |
 | 2026-10-28 | `npm ci` (npm 10.9.2) sur le lockfile produit par npm 11 | 696 paquets, Stryker et `@bpmn-io/properties-panel` présents |
+| 2026-10-28 | `npm run test:mutation` (dépôt, 4 cœurs) | 1 686 mutants, score 55,16 %, force 68 %, 27 min 44 ; seuil fixé à 53 |
+| 2026-10-28 | `stryker run --mutate src/api/elements.ts` (seuil 53) | score 10,53 % (identique au run complet), exit 1 |
+| 2026-10-28 | idem avec `STRYKER_NO_BREAK=1 --ignoreStatic` (mode PR) | exit 0, 46 s, résumé lisible |
+| 2026-10-28 | `stryker run --mutate src/api/types.ts` sans `--ignoreStatic` | 94 % ciblé contre 39 % au complet : statiques en Timeout → `--ignoreStatic` en mode PR |
+| 2026-10-28 | `scripts/mutation-targets-frontend.sh --self-test`, `scripts/mutation-targets.sh --self-test` | OK |
+| 2026-10-28 | `npm run lint` ; `npm run test` | OK ; 132 fichiers, 812 tests |
+| 2026-10-28 | `npm run test:e2e` (Chromium 1243 au lieu de 1234, téléchargement bloqué) | 144 tests ; premier essai rouge : `vue-tsc` refusait `repoRoot.ts` (types Node) → vérifié par `tsconfig.node.json` |
+| 2026-10-28 | `scripts/check-docs.sh` | OK |
 
 ## Revue de clôture
 

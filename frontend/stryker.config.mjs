@@ -1,6 +1,9 @@
 // TODO §108 — tests de mutation du frontend (StrykerJS + Vitest), hors `npm run test:all`.
 // `npm run test:mutation` : tout le périmètre, seuil `break` appliqué (run hebdomadaire de .github/workflows/mutation.yml).
-// Sur une PR : `STRYKER_NO_BREAK=1 npx stryker run --mutate <fichiers>` (scripts/mutation-targets-frontend.sh), sans seuil.
+// Sur une PR : `STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate <fichiers>` (scripts/mutation-targets-frontend.sh),
+// sans seuil. `--ignoreStatic` : sur un run ciblé, un mutant statique (constante exécutée au chargement du module)
+// recharge tout le module, dépasse le délai et compterait comme tué ; ignoré, ou « survivant » s'il est aussi couvert
+// test par test (faux survivant visible plutôt que faux tué). Le run complet les garde : 78 sur 1 686 le 2026-10-28.
 // Rapport : reports/mutation/index.html.
 
 /**
@@ -24,8 +27,9 @@ export default {
     '!portal/main.ts',
   ],
   ignorePatterns: ['dist', 'coverage', 'playwright-report', 'test-results'],
-  // Cliquet : score mesuré moins 2 points, arrondi par défaut ; à remonter quand le score progresse.
-  thresholds: { high: 80, low: 60, break: process.env.STRYKER_NO_BREAK ? null : 0 },
+  // Cliquet : score mesuré (55,16 % le 2026-10-28, 1 686 mutants, 28 min sur 4 cœurs) moins 2 points, arrondi par
+  // défaut ; à remonter quand le score progresse.
+  thresholds: { high: 80, low: 60, break: process.env.STRYKER_NO_BREAK ? null : 53 },
   reporters: ['clear-text', 'progress', 'html', 'json'],
   htmlReporter: { fileName: 'reports/mutation/index.html' },
   jsonReporter: { fileName: 'reports/mutation/mutation.json' },

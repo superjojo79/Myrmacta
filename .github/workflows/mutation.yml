@@ -162,7 +162,7 @@ jobs:
         env:
           TARGETS: ${{ steps.targets.outputs.files }}
           STRYKER_NO_BREAK: "1"
-        run: npx --no-install stryker run --mutate "$TARGETS"
+        run: npx --no-install stryker run --ignoreStatic --mutate "$TARGETS"
 
       - name: Summary
         if: always() && steps.targets.outputs.files != ''

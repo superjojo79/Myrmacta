@@ -18,5 +18,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "portal/**/*.ts", "portal/**/*.vue"],
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "portal/**/*.spec.ts"]
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "portal/**/*.spec.ts", "src/test/repoRoot.ts"]
 }

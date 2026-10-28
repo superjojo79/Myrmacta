@@ -92,8 +92,8 @@ class CallbackWebhookController {
         String headerKey = headers.getFirst("Idempotency-Key");
         boolean headerMissing = headerKey == null || headerKey.isBlank();
         // Un appel sans Idempotency-Key reste un 400, y compris si l'instance est inconnue :
-        // répondre 404 révélerait son existence. Yousign n'envoie pas cet en-tête (TODO §109) ;
-        // seul un connecteur YOUSIGN_HMAC connu et activé peut continuer sans lui.
+        // répondre 404 révélerait son existence. Yousign et DocuSign n'envoient pas cet en-tête
+        // (TODO §109) ; seuls ces deux modes, sur un connecteur connu et activé, continuent sans lui.
         if (found.isEmpty()) {
             if (headerMissing) {
                 throw new IllegalArgumentException("Idempotency-Key header is required");
@@ -102,7 +102,7 @@ class CallbackWebhookController {
         }
         ConnectorInstanceData instance = found.get();
         WebhookAuthType authType = authType(instance.config());
-        if (headerMissing && authType != WebhookAuthType.YOUSIGN_HMAC) {
+        if (headerMissing && !idempotencyFromBody(authType)) {
             throw new IllegalArgumentException("Idempotency-Key header is required");
         }
         String secret = stringValue(instance.config().get("webhookSecret"), "webhookSecret");
@@ -160,19 +160,23 @@ class CallbackWebhookController {
     }
 
     /**
-     * TODO §109 — Yousign n'envoie pas {@code Idempotency-Key}. La clé est {@code event_id}, dans le
+     * TODO §109 — Yousign et DocuSign n'envoient pas {@code Idempotency-Key}. La clé est lue dans le
      * corps déjà authentifié. Un en-tête contradictoire est refusé : il n'est pas signé.
      */
     private static String idempotencyKey(
             WebhookAuthType authType, WebhookAuthenticator authenticator, byte[] body, String headerKey) {
-        if (authType != WebhookAuthType.YOUSIGN_HMAC) {
+        if (!idempotencyFromBody(authType) || !(authenticator instanceof BodyIdempotency bodyKey)) {
             return headerKey;
         }
-        String eventId = ((YousignWebhookAuthenticator) authenticator).idempotencyKey(body);
+        String eventId = bodyKey.idempotencyKey(body);
         if (headerKey != null && !headerKey.isBlank() && !headerKey.equals(eventId)) {
-            throw new IllegalArgumentException("Idempotency-Key contradicts the signed event_id");
+            throw new IllegalArgumentException("Idempotency-Key contradicts the signed event id");
         }
         return eventId;
+    }
+
+    private static boolean idempotencyFromBody(WebhookAuthType authType) {
+        return authType == WebhookAuthType.YOUSIGN_HMAC || authType == WebhookAuthType.DOCUSIGN_HMAC;
     }
 
     private WebhookAuthenticator authenticator(WebhookAuthType authType) {

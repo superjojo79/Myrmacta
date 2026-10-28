@@ -19,7 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
  * remplace pas cet identifiant : elle n'est pas couverte par la signature.
  */
 @Component
-public class YousignWebhookAuthenticator implements WebhookAuthenticator {
+public class YousignWebhookAuthenticator implements WebhookAuthenticator, BodyIdempotency {
 
     static final String SIGNATURE_HEADER = "X-Yousign-Signature-256";
     private static final String PREFIX = "sha256=";
@@ -43,6 +43,7 @@ public class YousignWebhookAuthenticator implements WebhookAuthenticator {
     }
 
     /** Identifiant d'idempotence, lu dans le corps déjà authentifié. */
+    @Override
     public String idempotencyKey(byte[] rawBody) {
         JsonNode node;
         try {

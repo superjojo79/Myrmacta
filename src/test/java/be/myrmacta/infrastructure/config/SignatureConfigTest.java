@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
@@ -81,9 +82,22 @@ class SignatureConfigTest {
     @Test
     void unknownProviderFailsStartupExplicitly() {
         // S-CONN-2
-        runner.withPropertyValues("app.signature.provider=docusign").run(ctx -> {
+        runner.withPropertyValues("app.signature.provider=universign").run(ctx -> {
             assertThat(ctx).hasFailed();
-            assertThat(ctx.getStartupFailure()).rootCause().hasMessageContaining("docusign");
+            assertThat(ctx.getStartupFailure()).rootCause().hasMessageContaining("universign");
         });
+    }
+
+    @Test
+    void docusignProviderExposesTheHostedAdapter() {
+        runner.withBean(ConnectorInstanceRepository.class, () -> mock(ConnectorInstanceRepository.class))
+                .withPropertyValues("app.signature.provider=docusign")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    SignaturePort port = ctx.getBean(SignaturePort.class);
+                    assertThat(port.code()).isEqualTo("docusign");
+                    assertThat(port.capabilities().hostedSigningUrl()).isTrue();
+                    assertThat(port.capabilities().optionalSigners()).isFalse();
+                });
     }
 }

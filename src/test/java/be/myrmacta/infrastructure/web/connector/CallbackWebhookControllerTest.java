@@ -71,7 +71,8 @@ class CallbackWebhookControllerTest {
                 JsonMapper.builder().build(),
                 new WebhookRequestRateLimiter(FIXED_CLOCK),
                 new WebhookPreAuthRateLimiter(FIXED_CLOCK),
-                List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator(), new YousignWebhookAuthenticator()));
+                List.of(new SharedSecretWebhookAuthenticator(), new HmacWebhookAuthenticator(),
+                        new YousignWebhookAuthenticator(), new DocusignWebhookAuthenticator()));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ConnectorExceptionHandler())
                 .build();
@@ -410,6 +411,91 @@ class CallbackWebhookControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(idempotencyStore, never()).beginOrGetCompleted(any(), any());
+    }
+
+    @Test
+    void receive_docusignUsesEnvelopeAndEventWithoutIdempotencyHeader() throws Exception {
+        String envelope = "0ef334d2-7f36-4643-8a2a-4283b4a3e4a4";
+        String body = "{\"event\":\"envelope-completed\",\"retryCount\":1,\"data\":{\"envelopeId\":\"" + envelope + "\"}}";
+        String key = envelope + ":envelope-completed";
+        ConnectorInstanceData instance = docusignInstance();
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(instance));
+        when(idempotencyStore.beginOrGetCompleted(INSTANCE_ID, key)).thenReturn(Optional.empty());
+
+        docusignMvc().perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-DocuSign-Signature-1", "not-this-key")
+                        .header("X-DocuSign-Signature-2", bodyHmacBase64("secret", body))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isAccepted());
+
+        verify(runtime).onIncomingCallback(eq(instance), any());
+        verify(idempotencyStore).complete(INSTANCE_ID, key, 202);
+    }
+
+    @Test
+    void receive_docusignRejectsABadSignatureAndAContradictoryIdempotencyKey() throws Exception {
+        String envelope = "0ef334d2-7f36-4643-8a2a-4283b4a3e4a4";
+        String body = "{\"event\":\"envelope-completed\",\"data\":{\"envelopeId\":\"" + envelope + "\"}}";
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(docusignInstance()));
+
+        docusignMvc().perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-DocuSign-Signature-1", bodyHmacBase64("other-secret", body))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+
+        docusignMvc().perform(post("/api/callbacks/{instanceId}", INSTANCE_ID)
+                        .header("X-DocuSign-Signature-1", bodyHmacBase64("secret", body))
+                        .header("Idempotency-Key", "forged-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
+
+        verify(idempotencyStore, never()).beginOrGetCompleted(any(), any());
+    }
+
+    private MockMvc docusignMvc() {
+        var controller = new CallbackWebhookController(
+                new TenantProperties("tenant_dev"),
+                instances,
+                idempotencyStore,
+                runtime,
+                new ConnectorProperties(
+                        new ConnectorProperties.Crypto("unused"),
+                        new ConnectorProperties.Webhook(512, 2, Duration.ofHours(24), 3),
+                        null,
+                        null,
+                        null,
+                        null),
+                JsonMapper.builder().build(),
+                new WebhookRequestRateLimiter(FIXED_CLOCK),
+                new WebhookPreAuthRateLimiter(FIXED_CLOCK),
+                List.of(new DocusignWebhookAuthenticator()));
+        return MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new ConnectorExceptionHandler())
+                .build();
+    }
+
+    private static String bodyHmacBase64(String secret, String body) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            return java.util.Base64.getEncoder().encodeToString(
+                    mac.doFinal(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private static ConnectorInstanceData docusignInstance() {
+        return new ConnectorInstanceData(
+                INSTANCE_ID,
+                "tenant_dev",
+                "Signature",
+                "signature",
+                true,
+                Map.of("webhookAuthType", "DOCUSIGN_HMAC", "webhookSecret", "secret"));
     }
 
     private static String bodyHmac(String secret, String body) {

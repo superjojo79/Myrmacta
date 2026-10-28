@@ -71,11 +71,13 @@ Le détail est au [§109](../decisions/109-fournisseurs-de-signature-yousign-et-
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
 | 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | livré | #247 |
-| 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | à faire | |
+| 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | livré | #247 |
 
 Fait dans le lot 1 : mode `YOUSIGN_HMAC` ; traduction des événements terminaux ; client HTTP (création `delivery_mode=none`, ancre, signataires, activation, lien à la demande, annulation, téléchargement) sur les hôtes bac à sable et production seulement ; adaptateur `yousign` qui ne conserve pas l'URL ; adresse des internes via `KnownUser.email` (`NO_ADDRESS` si elle manque). `signer.notified` ne clôt pas la demande. Le portail et « Mes signatures » demandent le lien à l'ouverture et redirigent ; sans lien, écran d'attente, le refus reste dans Myrmacta. `POST /sign` hébergé répond 409. Le webhook `SIGNED` ne télécharge pas le PDF : le répartiteur le range puis reprend le process. Le stub signe toujours dans le portail. Corrélation des signataires par l'ordre de `GET /signers` (pas de colonne d'identifiant fournisseur). Issue eID : #248.
 
-Prochaine action : lot 2, adaptateur DocuSign sur le même parcours. Le texte de l'issue eID reste ci-dessous.
+Fait dans le lot 2 : `app.signature.provider=docusign`. Jeton JWT RS256 vers `account-d.docusign.com` (bac à sable) ou `account.docusign.com` (production). L'hôte REST vient de `userinfo` et reste sur `demo.docusign.net` ou `*.docusign.net`. Enveloppe `sent` avec `clientUserId`, `routingOrder` et l'ancre `{{sN|signature|85|37}}`. Ancre absente : la création répond `ANCHOR_TAB_STRING_NOT_FOUND`, la demande échoue, aucune enveloppe à annuler. La vue (`createRecipientView`) est demandée à l'ouverture ; `RECIPIENT_NOT_IN_SEQUENCE` laisse l'écran d'attente. L'URL de retour est `<URL publique>/portal/`, sans fragment. Webhook `DOCUSIGN_HMAC` : Base64 du HMAC, une des en-têtes `X-DocuSign-Signature-N` suffit, idempotence = `envelopeId` + événement (`retryCount` ignoré). `envelope-completed` → signé, `envelope-declined` → refusé, `envelope-voided` avec motif `Envelope has expired.` → expiré, autre `envelope-voided` → annulé, `envelope-removed` → échec. `envelope-sent` ne clôt pas. Le PDF signé est le document 1, la preuve est le certificat de complétion. Clé privée PEM PKCS#8 ou PKCS#1. Les signataires restent corrélés par `recipientId` = rang, sans colonne d'identifiant fournisseur.
+
+Prochaine action : revue de clôture indépendante, puis documentation de clôture et fermeture de #191. Le texte de l'issue eID reste ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 
@@ -120,6 +122,9 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 | 2026-10-28 | `cd frontend && npm run lint && npm run test:all` | vert : lint, Vitest 812, Playwright 148 |
 | 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3937 tests, 0 échec, 5 ignorés (JDK 21, 06:23) |
 | 2026-10-28 | `cd frontend && npm run lint && npm run test:all` | vert : lint, Vitest 131 fichiers / 812 tests, Playwright 148 |
+| 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=DocusignCallbackParserTest,DocusignHttpClientTest,DocusignSignatureAdapterTest,WebhookAuthenticatorTest,CallbackWebhookControllerTest,SignatureCallbackConnectorTest,SignaturePropertiesTest,SignatureConfigTest,ConnectorModelsTest` | vert, 82 tests (JDK 21) |
+| 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3962 tests, 0 échec, 5 ignorés (JDK 21, 06:27, terminé à 19:58 Europe/Brussels) |
 | 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
 
 ## Revue de clôture

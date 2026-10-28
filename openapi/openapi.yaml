@@ -5267,12 +5267,16 @@ components:
         hosted:
           type: boolean
         signingUrl:
-          type: string
+          type:
+          - string
+          - "null"
     SigningUrlResponse:
       type: object
       properties:
         signingUrl:
-          type: string
+          type:
+          - string
+          - "null"
     ManagerLoad:
       type: object
       properties:
@@ -5642,7 +5646,9 @@ components:
         hosted:
           type: boolean
         signingUrl:
-          type: string
+          type:
+          - string
+          - "null"
     ParcoursSummary:
       type: object
       properties:

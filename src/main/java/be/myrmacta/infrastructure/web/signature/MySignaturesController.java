@@ -4,6 +4,7 @@ import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.MySignaturesUseCase;
 import be.myrmacta.infrastructure.web.dossier.AccessContextFactory;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -83,7 +84,7 @@ class MySignaturesController {
                 DecideSignatureUseCase.Choice.DECLINE, body == null ? null : body.reason()));
     }
 
-    record SigningUrlResponse(String signingUrl) {}
+    record SigningUrlResponse(@Schema(nullable = true) String signingUrl) {}
 
     record SignatureDeclineRequest(String reason) {}
 
@@ -103,7 +104,7 @@ class MySignaturesController {
             Instant deadlineAt,
             boolean simulated,
             boolean hosted,
-            String signingUrl) {
+            @Schema(nullable = true) String signingUrl) {
         static MySignatureItemResponse from(MySignaturesUseCase.Item item) {
             return new MySignatureItemResponse(item.signerId(), item.dossierId(), item.dossierReference(), item.documentLabel(),
                     item.required(), item.myTurn(), item.deadlineAt(), item.simulated(), item.hosted(), item.signingUrl());

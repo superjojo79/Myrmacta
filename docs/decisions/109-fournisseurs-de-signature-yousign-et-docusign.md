@@ -4,7 +4,11 @@
 
 **Conception (2026-10-28).** Cadrage validé le même jour (issue #191, document de travail
 `docs/ai/2026-10-28-fournisseurs-signature-yousign-docusign.md`). Le socle reste celui du
-[§72](072-signature-electronique-socle-generique-et-stub.md). Les deux lots ne sont pas encore livrés.
+[§72](072-signature-electronique-socle-generique-et-stub.md).
+
+**Livraison (2026-10-28).** Les deux lots sont livrés ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247)) :
+Yousign, puis DocuSign. Le comportement est repris dans la spec
+[30](../specs/30-signature-electronique.md). Le parcours eID reste hors point.
 
 **Décisions.**
 
@@ -21,13 +25,14 @@
   `{{sN|signature|85|37}}`, N = rang du signataire à partir de 1. Yousign le lit comme ancre
   intelligente (`parse_anchors=true`, doc « Field creation with Smart Anchors »). DocuSign pose un
   onglet SignHere sur la même chaîne (`anchorString`, doc « Auto-Place »). Aucun paramètre de
-  coordonnées dans le BPMN. Repère absent : la demande passe `FAILED`, le brouillon côté fournisseur
+  coordonnées dans le BPMN. Yousign ne renvoie que le nombre d'ancres : chaque rang doit avoir son
+  repère dans le PDF. Repère absent : la demande passe `FAILED`, le brouillon côté fournisseur
   est annulé au mieux.
 - **D-SIGNATURE-LINK.** L'URL de signature n'est pas conservée à la création. Yousign la donne pour
   48 heures par défaut et la renouvelle via « Get a Signer » ; en mode séquentiel elle est nulle
   tant que ce n'est pas le tour du signataire. L'URL DocuSign (`createRecipientView`) est à usage
-  unique et expire au bout de 5 minutes : la doc interdit de la stocker. Le portail et
-  « Mes signatures » la demandent au moment où le signataire ouvre la page, puis redirigent.
+  unique et expire au bout de 5 minutes : la doc interdit de la stocker. Le portail la demande à
+  l'ouverture de la page. « Mes signatures » la demande au clic, pas dans la liste. Puis redirection.
   L'hôte de cette URL est contrôlé (liste fixe du fournisseur) avant la redirection.
 - **D-SIGNATURE-RETURN.** L'URL de retour envoyée à DocuSign ne contient pas le jeton Myrmacta.
   La page de retour est neutre. La confirmation vient du webhook.

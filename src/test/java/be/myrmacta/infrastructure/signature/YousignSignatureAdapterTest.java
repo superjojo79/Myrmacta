@@ -10,12 +10,19 @@ import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignaturePort.SignatureSubmission;
 import be.myrmacta.domain.signature.port.out.SignaturePort.SubmitCommand;
 import be.myrmacta.domain.signature.port.out.SignaturePort.SubmitSigner;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.Test;
 
 /** Cérémonie Yousign : ancre, activation, lien non conservé (TODO §109). */
@@ -25,9 +32,10 @@ class YousignSignatureAdapterTest {
     private final YousignSignatureAdapter adapter = new YousignSignatureAdapter(client);
 
     @Test
-    void submitCreatesUploadsAddsSignersAndActivatesWithoutStoringTheLink() {
+    void submitCreatesUploadsAddsSignersAndActivatesWithoutStoringTheLink() throws IOException {
         client.anchors = 2;
-        SignatureSubmission submission = adapter.submit(command(SignatureMode.SEQUENTIAL, "Ada Lovelace", "Bob"));
+        byte[] pdf = pdf("{{s1|signature|85|37}}", "{{s2|signature|85|37}}");
+        SignatureSubmission submission = adapter.submit(command(SignatureMode.SEQUENTIAL, pdf, "Ada Lovelace", "Bob"));
 
         assertThat(client.calls).containsExactly("create:true", "upload", "signer:Ada:Lovelace", "signer:Bob:-", "activate");
         assertThat(submission.providerReference()).isEqualTo("yousign:" + FakeYousign.REQUEST_ID);
@@ -42,6 +50,18 @@ class YousignSignatureAdapterTest {
         client.anchors = 0;
 
         assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, "Ada Lovelace")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("anchor");
+        assertThat(client.calls).contains("cancel").doesNotContain("activate");
+    }
+
+    /** Deux fois l'ancre du rang 1 : Yousign compte 2, mais le rang 2 n'a pas la sienne. */
+    @Test
+    void duplicateAnchorOnTheFirstRankCancelsTheDraft() throws IOException {
+        client.anchors = 2;
+        byte[] pdf = pdf("{{s1|signature|85|37}}", "{{s1|signature|85|37}}");
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace", "Bob")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("anchor");
         assertThat(client.calls).contains("cancel").doesNotContain("activate");
@@ -65,13 +85,36 @@ class YousignSignatureAdapterTest {
     }
 
     private static SubmitCommand command(SignatureMode mode, String... names) {
+        return command(mode, new byte[] {'%'}, names);
+    }
+
+    private static SubmitCommand command(SignatureMode mode, byte[] pdf, String... names) {
         List<SubmitSigner> signers = new ArrayList<>();
         int position = 0;
         for (String name : names) {
             signers.add(new SubmitSigner(UUID.randomUUID(), position++, SignerKind.EXTERNAL, true, name, "a@example.org"));
         }
-        return new SubmitCommand(UUID.randomUUID(), "Contrat", "application/pdf", new byte[] {'%'}, "digest",
+        return new SubmitCommand(UUID.randomUUID(), "Contrat", "application/pdf", pdf, "digest",
                 signers, mode, null, Instant.parse("2026-11-11T00:00:00Z"), null);
+    }
+
+    private static byte[] pdf(String... lines) throws IOException {
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            try (PDPageContentStream stream = new PDPageContentStream(document, page)) {
+                stream.beginText();
+                stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                stream.newLineAtOffset(72, 700);
+                for (String line : lines) {
+                    stream.showText(line);
+                    stream.newLineAtOffset(0, -20);
+                }
+                stream.endText();
+            }
+            document.save(out);
+            return out.toByteArray();
+        }
     }
 
     private static final class FakeYousign implements YousignClient {

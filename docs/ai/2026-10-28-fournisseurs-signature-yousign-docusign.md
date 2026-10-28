@@ -131,6 +131,9 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 | 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
 | 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3969 tests, 0 échec, 5 ignorés (JDK 21, 06:30, terminé à 20:57 Europe/Brussels) |
 | 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignSignatureAdapterTest#duplicateAnchorOnTheFirstRankCancelsTheDraft` | rouge : la demande avec deux ancres du rang 1 était activée |
+| 2026-10-28 | `./mvnw verify -Dskip.frontend=true -Dmaven.compiler.release=21` | vert, 3970 tests, 0 échec, 5 ignorés (JDK 21, 06:19, terminé à 22:05 Europe/Brussels) |
+| 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
 
 ## Revue de clôture
 
@@ -139,6 +142,6 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 | SIG-1. Une note du dossier dont les métadonnées imitent un document signé faisait sauter le téléchargement, et le process reprenait quand même. | Haute | Corrigé. Seul un `PRODUCED_DOC` ajouté par `signature` compte comme déjà archivé. Test `aNoteThatImitatesTheSignedDocumentDoesNotSkipTheDownload`. |
 | SIG-2. Un refus local puis un webhook `SIGNED` hébergé laissaient la demande refusée alors que le fournisseur a le document signé. La seconde revue a montré qu'un refus déjà repris passait quand même à `SIGNED` sans PDF et sans changer la branche du process. | Moyenne | Corrigé. Un `SIGNED` hébergé remplace seulement un refus local `REQUIRED_DECLINED` pas encore repris. Un refus déjà distribué, ou un refus du fournisseur, reste clos. Tests `hostedSignedEventAfterALocalDeclineBecomesSigned`, `hostedSignedEventAfterADispatchedLocalDeclineStaysDeclined`, `hostedSignedEventAfterAProviderDeclineStaysDeclined`. |
 | SIG-3. `GET /api/signatures/mine` appelait le fournisseur pour chaque signataire à son tour, dans la transaction de liste. | Moyenne | Corrigé. La liste ne demande plus de lien. Le clic appelle `GET /api/signatures/mine/{signerId}/signing-url`. Test `listingDoesNotCallTheProviderOncePerRequest`. |
-| SIG-4. Yousign accepte un total d'ancres égal au nombre de signataires, même si un rang n'a pas la sienne. DocuSign, lui, échoue. | Basse | Issue à ouvrir (le jeton de l'agent ne peut pas créer d'issue). |
-| SIG-5. La spec 30 dit encore qu'aucun fournisseur réel n'est livré, et le §109 que les lots ne le sont pas. | Basse | Documentation de clôture, après la seconde revue. |
-| SIG-6. `signingUrl` est publié `type: string` sans `nullable`, alors que l'API renvoie `null`. | Basse | Issue à ouvrir (le jeton de l'agent ne peut pas créer d'issue). |
+| SIG-4. Yousign accepte un total d'ancres égal au nombre de signataires, même si un rang n'a pas la sienne. DocuSign, lui, échoue. | Basse | Corrigé. Chaque rang doit avoir `{{sN|signature|85|37}}` dans le PDF, en plus du compte Yousign. Test `duplicateAnchorOnTheFirstRankCancelsTheDraft`. |
+| SIG-5. La spec 30 dit encore qu'aucun fournisseur réel n'est livré, et le §109 que les lots ne le sont pas. | Basse | Corrigé. Section « Implémentation » de la spec 30 (ancres, lien, webhook, hôtes fixés) et phrase de livraison du §109. |
+| SIG-6. `signingUrl` est publié `type: string` sans `nullable`, alors que l'API renvoie `null`. | Basse | Corrigé. `nullable` sur le contexte portail, la ligne « Mes signatures » et la réponse du lien. |

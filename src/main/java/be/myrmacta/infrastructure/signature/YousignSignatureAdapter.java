@@ -67,7 +67,9 @@ public final class YousignSignatureAdapter implements SignaturePort {
         UUID requestId = client.createSignatureRequest(
                 command.documentName(), ordered, command.requestId().toString(), expiration);
         YousignClient.Upload upload = client.uploadSignablePdf(requestId, command.documentName(), command.document());
-        if (upload.totalAnchors() < command.signers().size()) {
+        // total_anchors ne distingue pas deux ancres du même rang d'une ancre par signataire.
+        if (upload.totalAnchors() < command.signers().size()
+                || !SignatureAnchors.everyRankPresent(command.document(), command.signers().size())) {
             cancelQuietly(client, requestId);
             throw new IllegalStateException("the document is missing a signature anchor");
         }

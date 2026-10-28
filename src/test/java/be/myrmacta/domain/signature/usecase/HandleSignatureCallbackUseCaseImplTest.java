@@ -131,7 +131,36 @@ class HandleSignatureCallbackUseCaseImplTest {
 
         assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isTrue();
 
-        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+        SignatureRequest after = repository.findById(request.id()).orElseThrow();
+        assertThat(after.status()).isEqualTo(SignatureStatus.SIGNED);
+        assertThat(after.outcomeDispatchedAt()).isNull();
+    }
+
+    @Test
+    void hostedSignedEventAfterADispatchedLocalDeclineStaysDeclined() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(
+                        request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW).dispatched(NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(port, never()).fetchArtifacts(any());
+        verify(metrics).callbackRejected("already_closed");
+    }
+
+    @Test
+    void hostedSignedEventAfterAProviderDeclineStaysDeclined() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(
+                        request.closed(SignatureOutcome.DECLINED, "PROVIDER_CALLBACK", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(metrics).callbackRejected("already_closed");
     }
 
     @Test

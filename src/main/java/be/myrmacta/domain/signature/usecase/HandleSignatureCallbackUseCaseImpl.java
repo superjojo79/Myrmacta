@@ -21,7 +21,8 @@ import java.util.Objects;
  * signataire ne servent qu'à l'affichage) ; les signataires non décidés sont clos avec la demande
  * ({@code EXPIRED} pour une expiration, sinon {@code REVOKED}). Une référence inconnue est une erreur
  * de requête (400 pour le fournisseur) ; un événement sur une demande déjà close est ignoré, sauf un
- * {@code SIGNED} hébergé qui remplace un refus local : le document signé chez le fournisseur fait foi.
+ * {@code SIGNED} hébergé qui remplace un refus local pas encore repris par le process. Un refus déjà
+ * distribué, ou un refus venu du fournisseur, reste clos.
  */
 public final class HandleSignatureCallbackUseCaseImpl implements HandleSignatureCallbackUseCase {
 
@@ -80,10 +81,16 @@ public final class HandleSignatureCallbackUseCaseImpl implements HandleSignature
         return closed;
     }
 
-    /** Le refus local a pu précéder le webhook du document réellement signé (revue SIG-2). */
+    /**
+     * Refus local ({@code REQUIRED_DECLINED}) pas encore repris : le webhook {@code SIGNED} hébergé
+     * peut encore remplacer l'issue, et le répartiteur téléchargera le PDF. Un refus déjà distribué
+     * laisserait le process sur la branche refusée (revue SIG-2).
+     */
     private boolean signedAfterLocalDecline(SignatureRequest request, SignaturePort.SignatureCallbackEvent event) {
         return request.status() == SignatureStatus.DECLINED
                 && event.outcome() == SignatureOutcome.SIGNED
+                && request.outcomeDispatchedAt() == null
+                && DecideSignatureUseCaseImpl.REASON_REQUIRED_DECLINED.equals(request.statusReason())
                 && signaturePort.capabilities().hostedSigningUrl();
     }
 }

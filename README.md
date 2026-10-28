@@ -247,17 +247,18 @@ Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-adden
 
 ## Statut
 
-> Projet en développement actif : le socle (dossiers, workflows BPMN/DMN, documents, connecteurs,
-> serveur MCP, portail externe tokenisé, signature électronique générique avec fournisseur de
-> simulation, reporting/SLA, notifications) et la Vague D (couche low-code, champs enrichis,
-> recherche, intégrations entreprise, promotion, MCP de conception, i18n fr/en) sont livrés sur
-> `main`. Prochains lots : [issues GitHub](https://github.com/superjojo79/FlowForge/issues) de priorité 2
-> (pièce jointe e-mail #183, unicité de champ #184). Hors périmètre : fournisseur de signature qualifiée réel, export BI JDBC,
-> scripts en bac à sable (spike : non nécessaire). Détails : [ROADMAP.md](ROADMAP.md),
-> [docs/decisions/roadmap-2026/AVANCEMENT.md](docs/decisions/roadmap-2026/AVANCEMENT.md).
->  Activité indépendante complémentaire.
+> Projet en développement actif. Le socle, la Vague D, la pièce jointe de « Notifier » (#183),
+> l'unicité d'un champ (#184), l'authentification belge (§104), la pré-vérification IA (§106,
+> désactivée par défaut) et les tests de mutation (§108) sont livrés sur `main`.
+> Prochaine feature de priorité 1 : fournisseur de signature réel ([#191](https://github.com/superjojo79/FlowForge/issues/191)).
+> Suite riverain en priorité 3 : [#185](https://github.com/superjojo79/FlowForge/issues/185) à
+> [#190](https://github.com/superjojo79/FlowForge/issues/190). Hors V1 : [#194](https://github.com/superjojo79/FlowForge/issues/194).
+> Détails : [ROADMAP.md](ROADMAP.md).
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).
-Les décisions actées et le seul point encore ouvert (§71) sont dans le [registre des décisions](docs/decisions/README.md).
+Les points du registre encore ouverts sont le [§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)
+(exposition MCP) et le [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
+(revue d'avocat de la double licence). Le registre complet est
+[docs/decisions/README.md](docs/decisions/README.md).
 Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/FlowForge/issues)
 (libellés `priorite-*`, `type-*`, `vague-*`).

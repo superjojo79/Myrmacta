@@ -22,18 +22,31 @@ flux à leurs clients, avec une **couche low-code** pour les utilisateurs métie
 | Documents | Modèles Thymeleaf versionnés, éditeur visuel, PDF (Flying Saucer + OpenPDF), aperçu |
 | Intégrations | Connecteurs REST, callback, webhooks, Kafka, import batch SFTP, SMTP, e-mail entrant IMAP/Graph, Azure Service Bus, stockage S3/fichiers, OAuth2 client credentials |
 | Utilisateurs | SPA Vue 3 embarquée (fr, en), portail externe pour les tiers, signature électronique (socle + stub), notifications et boîte de réception, rapports et SLA |
-| IA et MCP | Serveur MCP gouverné (brouillons, provenance, publication), assistant de conception (désactivé par défaut), promotion de configuration entre environnements |
-| Socle | Architecture hexagonale vérifiée par ArchUnit, OIDC en BFF, en-têtes de sécurité, antivirus ClamAV, provisioning de tenant, observabilité ECS + Micrometer |
+| IA et MCP | Serveur MCP gouverné (brouillons, provenance, publication), assistant de conception (désactivé par défaut), promotion de configuration entre environnements, pré-vérification IA des dossiers (désactivée par défaut, [#211](https://github.com/superjojo79/FlowForge/issues/211), [§106](docs/decisions/106-preverification-ia-et-types-de-pieces.md)) |
+| Socle | Architecture hexagonale vérifiée par ArchUnit, OIDC en BFF, en-têtes de sécurité, antivirus ClamAV, provisioning de tenant, observabilité ECS + Micrometer, authentification belge FAS / itsme ([#210](https://github.com/superjojo79/FlowForge/issues/210), [§104](docs/decisions/104-authentification-belge-fas-et-itsme.md)), tests de mutation PIT hors `verify` ([§108](docs/decisions/108-tests-de-mutation-pit.md)) |
+
+Depuis le 23 octobre, l'exemple riverain peut joindre le PDF à « Notifier »
+([#183](https://github.com/superjojo79/FlowForge/issues/183), [§96](docs/decisions/096-piece-jointe-de-la-brique-notifier.md))
+et refuser un doublon de champ ouvert
+([#184](https://github.com/superjojo79/FlowForge/issues/184), [§102](docs/decisions/102-unicite-d-un-champ-de-dossier.md)).
 
 ## Prochaines étapes
 
-1. **Backlog de l'exemple « autorisation riverain »** (flux monté par configuration seule) : pièce jointe
-   sur « Notifier » (#183) et unicité d'un champ de dossier (#184) en priorité 2, puis gabarits de
-   notification, minuteur de parcours, variables de démarrage déclarées et assignation par groupe.
-2. **Avant un premier client :** industrialiser le déploiement par tenant, choisir un fournisseur de
-   signature réel (#191), recetter ClamAV et Keycloak sur environnement réel (#192).
-3. **À trancher :** exposition MCP résiduelle ([TODO §71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)),
-   demande initiale par le portail (#188), relecture des champs en cours de workflow (#189).
+État des issues ouvertes au 28 octobre 2026. Le détail et l'ordre réel restent la
+[liste d'issues](https://github.com/superjojo79/FlowForge/issues).
+
+1. **Priorité 1 :** fournisseur de signature réel, eIDAS ([#191](https://github.com/superjojo79/FlowForge/issues/191)), à cadrer.
+2. **Exemple riverain, priorité 3 :** gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)),
+   minuteur de parcours ([#186](https://github.com/superjojo79/FlowForge/issues/186)), variables de démarrage déclarées
+   ([#187](https://github.com/superjojo79/FlowForge/issues/187)), assignation par groupe
+   ([#190](https://github.com/superjojo79/FlowForge/issues/190)).
+3. **À trancher avant code :** dépôt initial par le portail ([#188](https://github.com/superjojo79/FlowForge/issues/188)),
+   relecture des champs après le démarrage ([#189](https://github.com/superjojo79/FlowForge/issues/189)),
+   exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
+4. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
+   La double licence est choisie (PolyForm-Noncommercial-1.0.0 et commerciale sur demande) ; le registre [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
+   reste ouvert le temps de la revue de l'avocat.
+5. **Sans priorité :** eBox et digital mail room ([#213](https://github.com/superjojo79/FlowForge/issues/213) à [#217](https://github.com/superjojo79/FlowForge/issues/217)).
 
 ## Hors V1
 

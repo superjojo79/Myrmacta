@@ -79,8 +79,10 @@ STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate src/stores/auth.ts  #
   graphe de modules) : les tests eux-mêmes prennent 16 s en tout.
 - **Seuil** (`thresholds.break`) : cliquet à 53 %. Premier run complet : 1 686 mutants, score 55,16 %, force des
   tests 68 %, 28 min sur 4 cœurs ; le seuil est ce score moins 2 points, arrondi par défaut.
-- **PR** : seuls les fichiers du périmètre modifiés, ou dont la spec l'est (`scripts/mutation-targets-frontend.sh`),
-  sans seuil (`STRYKER_NO_BREAK`), avec `--ignoreStatic`. Un mutant statique (constante exécutée au chargement du
+- **PR** : seuls les fichiers du périmètre modifiés, ou dont la spec l'est (`scripts/mutation-targets-frontend.sh` :
+  la source homonyme, sinon les fichiers du périmètre que la spec importe, comme pour `src/api/apiCoverage.spec.ts`),
+  sans seuil (`STRYKER_NO_BREAK=1`), avec `--ignoreStatic`. Une PR qui ne change que l'outillage (configuration
+  Stryker ou Vite, dépendances, script) lance le run initial seul (`--dryRunOnly`). Un mutant statique (constante exécutée au chargement du
   module) recharge tout le module ; sur un run ciblé il dépasse le délai et compterait comme tué (`src/api/types.ts` :
   94 % ciblé contre 39 % au run complet). Ignoré, ou « survivant » s'il est aussi couvert test par test : un faux
   survivant reste visible, un faux tué cacherait un vrai trou. Le run complet les garde (78 sur 1 686).

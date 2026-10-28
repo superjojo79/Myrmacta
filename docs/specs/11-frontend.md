@@ -175,7 +175,8 @@ npm install -D vue-tsc
 - **Périmètre :** la logique sans rendu, `src/stores`, `src/composables`, `src/api`, `portal`. Les composants `.vue`
   et la logique BPMN de `src/components` restent hors mutation (coût, voir §108).
 - **CI :** [`mutation.yml`](../../.github/workflows/mutation.yml), run complet chaque semaine avec seuil bloquant
-  (cliquet, `thresholds.break`), run ciblé sur les fichiers modifiés de chaque PR, sans seuil.
+  (cliquet, `thresholds.break`), run ciblé sur les fichiers modifiés de chaque PR (ou visés par une spec modifiée),
+  sans seuil.
 - **Écrire un test compatible :** les specs tournent aussi dans le bac à sable de Stryker
   (`frontend/.stryker-tmp/sandbox-*`). Une fixture du backend se lit par `repoFile('src/test/resources/…')`
   (`src/test/repoRoot.ts`), jamais par un chemin relatif au répertoire courant.

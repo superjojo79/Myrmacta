@@ -12,7 +12,8 @@ import json
 import sys
 import xml.etree.ElementTree as ET
 
-PIT_KILLED = {"KILLED", "TIMED_OUT", "MEMORY_ERROR"}
+# Détectés selon PIT 1.30 (DetectionStatus.isDetected).
+PIT_KILLED = {"KILLED", "TIMED_OUT", "MEMORY_ERROR", "NON_VIABLE", "RUN_ERROR"}
 STRYKER_KILLED = {"Killed", "Timeout"}
 # Comme le score de Stryker : un mutant qui ne compile pas, plante au chargement ou est ignoré ne compte pas.
 STRYKER_INVALID = {"CompileError", "RuntimeError", "Ignored"}
@@ -26,21 +27,22 @@ def read_pit(path):
         cls = m.findtext("mutatedClass")
         mutants.append(Mutant(cls.split("$")[0], cls.split(".")[-1], m.findtext("lineNumber"), m.get("status"),
                               m.findtext("description"), m.get("status") in PIT_KILLED))
-    return "PIT", mutants
+    return "PIT", mutants, collections.Counter()
 
 
 def read_stryker(path):
     with open(path, encoding="utf-8") as report:
         files = json.load(report)["files"]
-    mutants = []
+    mutants, discarded = [], collections.Counter()
     for name, content in files.items():
         for m in content["mutants"]:
             if m["status"] in STRYKER_INVALID:
+                discarded[m["status"]] += 1
                 continue
             description = m["mutatorName"] + (f" → {m['replacement']}" if m.get("replacement") else "")
             mutants.append(Mutant(name, name.split("/")[-1], str(m["location"]["start"]["line"]), m["status"],
                                   description, m["status"] in STRYKER_KILLED))
-    return "StrykerJS", mutants
+    return "StrykerJS", mutants, discarded
 
 
 def main() -> int:
@@ -50,7 +52,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        tool, mutations = (read_stryker if args.report.endswith(".json") else read_pit)(args.report)
+        tool, mutations, discarded = (read_stryker if args.report.endswith(".json") else read_pit)(args.report)
     except (OSError, ET.ParseError, json.JSONDecodeError, KeyError) as error:
         print(f"Rapport de mutation illisible ({args.report}) : {error}")
         return 1
@@ -63,10 +65,14 @@ def main() -> int:
     if total == 0:
         print("Aucun mutant généré.")
         return 0
-    print(f"- Mutants : **{total}**, tués : **{killed}** — score **{round(100 * killed / total)} %**")
+    # Une décimale : le seuil compare le score exact (52,6 % échoue sous 53).
+    print(f"- Mutants : **{total}**, tués : **{killed}** — score **{100 * killed / total:.1f} %**")
     if covered:
-        print(f"- Force des tests (mutants couverts) : **{round(100 * killed / covered)} %**")
-    print(f"- Non couverts : {no_coverage}\n")
+        print(f"- Force des tests (mutants couverts) : **{100 * killed / covered:.1f} %**")
+    print(f"- Non couverts : {no_coverage}")
+    if discarded:
+        print("- Hors score : " + ", ".join(f"{status} {count}" for status, count in sorted(discarded.items())))
+    print()
 
     survivors = [m for m in mutations if not m.killed]
     if not survivors:

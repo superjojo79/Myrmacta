@@ -29,7 +29,7 @@ export default {
   ignorePatterns: ['dist', 'coverage', 'playwright-report', 'test-results'],
   // Cliquet : score mesuré (55,16 % le 2026-10-28, 1 686 mutants, 28 min sur 4 cœurs) moins 2 points, arrondi par
   // défaut ; à remonter quand le score progresse.
-  thresholds: { high: 80, low: 60, break: process.env.STRYKER_NO_BREAK ? null : 53 },
+  thresholds: { high: 80, low: 60, break: process.env.STRYKER_NO_BREAK === '1' ? null : 53 },
   reporters: ['clear-text', 'progress', 'html', 'json'],
   htmlReporter: { fileName: 'reports/mutation/index.html' },
   jsonReporter: { fileName: 'reports/mutation/mutation.json' },

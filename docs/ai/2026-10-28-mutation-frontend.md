@@ -100,7 +100,7 @@ Issue : #245 · Spec du domaine : docs/specs/11-frontend.md · Points du registr
 |---|---|---|---|
 | 1 | Tout le périmètre du cadrage (petite feature : un seul lot, une PR) | en cours | |
 
-Prochaine action : `./mvnw verify` (en cours), revue indépendante, puis clôture et PR.
+Prochaine action : clôture (suppression de ce document) et PR.
 
 ## Preuves
 
@@ -116,8 +116,19 @@ Prochaine action : `./mvnw verify` (en cours), revue indépendante, puis clôtur
 | 2026-10-28 | `npm run lint` ; `npm run test` | OK ; 132 fichiers, 812 tests |
 | 2026-10-28 | `npm run test:e2e` (Chromium 1243 au lieu de 1234, téléchargement bloqué) | 144 tests ; premier essai rouge : `vue-tsc` refusait `repoRoot.ts` (types Node) → vérifié par `tsconfig.node.json` |
 | 2026-10-28 | `scripts/check-docs.sh` | OK |
+| 2026-10-28 | `./mvnw verify` (JDK 25, PostgreSQL 16 local, `npm ci` en npm 10.9.2) | 3 898 tests, 0 échec, Jacoco OK |
+| 2026-10-28 | après la revue : `npm run build`, `lint`, `test` (812), `test:e2e` (144), `stryker run --dryRunOnly`, self-tests, `check-docs.sh` | OK |
 
 ## Revue de clôture
 
 | Constat | Sévérité | Correctif ou issue |
 |---|---|---|
+| Spec agrégée sans source homonyme : rien à muter sur la PR | moyenne | `spec_sources` lit ses imports ; cas ajouté au `--self-test` (vu échouer avant) |
+| Noms avec accent, virgule ou glob mal transmis à `--mutate` | basse | `git -c core.quotePath=false diff -z`, refus signalé ; message si `const scope` illisible |
+| PR d'outillage seul jamais exécutée | basse | `--dryRunOnly` dans le job PR |
+| Job backend qui installe le JDK sur une PR frontend | basse | JDK installé seulement s'il y a des classes |
+| Score arrondi à l'unité face au seuil exact | basse | une décimale, mutants hors score affichés |
+| `STRYKER_NO_BREAK=0` désactivait le seuil | basse | `=== '1'` |
+| Répertoire temporaire non nettoyé (`repoRoot.spec.ts`) | basse | `rmSync` dans `finally` |
+| `repoRoot.ts` vérifié sans `strict` | basse | `strict: true` dans `tsconfig.node.json` |
+| `NON_VIABLE`, `RUN_ERROR` de PIT comptés non tués | basse (antérieur) | ajoutés aux détectés |

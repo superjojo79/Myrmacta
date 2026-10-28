@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { repoFile, repoRoot } from './repoRoot'
@@ -21,7 +21,11 @@ describe('repoRoot', () => {
 
   it('fails with an explicit message when no parent holds pom.xml', () => {
     const outside = mkdtempSync(join(tmpdir(), 'no-repo-'))
-    mkdirSync(join(outside, 'nested'))
-    expect(() => repoRoot(join(outside, 'nested'))).toThrow(/pom\.xml/)
+    try {
+      mkdirSync(join(outside, 'nested'))
+      expect(() => repoRoot(join(outside, 'nested'))).toThrow(/pom\.xml/)
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
   })
 })

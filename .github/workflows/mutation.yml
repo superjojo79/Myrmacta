@@ -48,13 +48,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
-
       - name: Classes to mutate
         id: targets
         env:
@@ -68,6 +61,14 @@ jobs:
           else
             tr ',' '\n' <<< "$targets"
           fi
+
+      - name: Set up JDK 25
+        if: steps.targets.outputs.classes != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
 
       - name: Mutation testing (changed classes, report only)
         if: steps.targets.outputs.classes != ''
@@ -137,14 +138,20 @@ jobs:
           scripts/mutation-targets-frontend.sh --self-test
           targets="$(scripts/mutation-targets-frontend.sh "origin/$BASE_REF")"
           echo "files=$targets" >> "$GITHUB_OUTPUT"
-          if [[ -z "$targets" ]]; then
+          # Outillage modifié sans fichier à muter : le run initial (sans mutation) vérifie au moins la configuration.
+          tooling="$(git diff --name-only "origin/$BASE_REF"...HEAD -- frontend/stryker.config.mjs frontend/vite.config.ts \
+            frontend/package.json frontend/package-lock.json scripts/mutation-targets-frontend.sh)"
+          if [[ -z "$targets" && -n "$tooling" ]]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            echo "Outillage de mutation modifié sans fichier à muter : run initial seul (--dryRunOnly)." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ -z "$targets" ]]; then
             echo "Aucun fichier frontend du périmètre de mutation modifié : rien à muter." >> "$GITHUB_STEP_SUMMARY"
           else
             tr ',' '\n' <<< "$targets"
           fi
 
       - name: Set up Node.js
-        if: steps.targets.outputs.files != ''
+        if: steps.targets.outputs.files != '' || steps.targets.outputs.dry_run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22.14.0"
@@ -152,7 +159,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        if: steps.targets.outputs.files != ''
+        if: steps.targets.outputs.files != '' || steps.targets.outputs.dry_run == 'true'
         working-directory: frontend
         run: npm ci
 
@@ -163,6 +170,11 @@ jobs:
           TARGETS: ${{ steps.targets.outputs.files }}
           STRYKER_NO_BREAK: "1"
         run: npx --no-install stryker run --ignoreStatic --mutate "$TARGETS"
+
+      - name: Stryker dry run (tooling changed, nothing to mutate)
+        if: steps.targets.outputs.dry_run == 'true'
+        working-directory: frontend
+        run: npx --no-install stryker run --dryRunOnly
 
       - name: Summary
         if: always() && steps.targets.outputs.files != ''

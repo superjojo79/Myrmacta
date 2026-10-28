@@ -1,6 +1,6 @@
 # Fournisseurs de signature Yousign et DocuSign — document de travail
 
-Issue : #191 · Spec du domaine : [docs/specs/30-signature-electronique.md](../specs/30-signature-electronique.md) · Points du registre : [§72](../decisions/072-signature-electronique-socle-generique-et-stub.md)
+Issue : #191 · Spec du domaine : [docs/specs/30-signature-electronique.md](../specs/30-signature-electronique.md) · Points du registre : [§72](../decisions/072-signature-electronique-socle-generique-et-stub.md), [§109](../decisions/109-fournisseurs-de-signature-yousign-et-docusign.md)
 
 ## Cadrage
 
@@ -33,31 +33,47 @@ Issue : #191 · Spec du domaine : [docs/specs/30-signature-electronique.md](../s
 | Piste eID + TSA BOSA | Dans #191, ou piste séparée pour des signatures rares | Piste séparée, sans conception dans #191 | Tranchée : option C |
 | Fournisseurs du premier vrai branchement | Yousign seul, DocuSign seul, ou les deux | Les deux, dans #191 | Tranchée : option C |
 | Ordre des lots | Yousign puis DocuSign, ou l'inverse | Yousign d'abord : clé d'API et lien de signature, plus proches du port. DocuSign ajoute JWT, consentement et URI de compte | Tranchée le 2026-10-28 |
-| Bibliothèque cliente | SDK éditeur, client HTTP écrit à la main, ou client généré depuis l'OpenAPI du fournisseur | Pas de SDK éditeur. Même technique pour les deux : HTTP écrit à la main, ou client généré. Le choix se fait en conception. Une génération est limitée aux opérations réellement appelées : la spec DocuSign complète couvre toute l'API eSignature | Tranchée le 2026-10-28 : HTTP ou généré, pour les deux |
-| Emplacement de la signature sur le PDF | Coordonnées dans le BPMN, ou repère textuel dans le modèle de document | Repère textuel dans le PDF. Pas de nouveau paramètre de bloc tant que les deux API l'acceptent | Tranchée le 2026-10-28 ; la conception vérifie que les deux API l'acceptent |
-| Entrée du signataire | Courriel du fournisseur, ou lien Myrmacta puis redirection | Lien Myrmacta (portail ou « Mes signatures »), puis redirection. Le port le prévoit (`hostedSigningUrl`) ; l'URL n'est pas encore conservée | Tranchée le 2026-10-28, alignée sur D-SIGNATURE-UX / D-SIGNATURE-PORTAL-KIND (§72) |
+| Bibliothèque cliente | SDK éditeur, client HTTP écrit à la main, ou client généré depuis l'OpenAPI du fournisseur | HTTP du JDK, pas de génération | Tranchée → [§109](../decisions/109-fournisseurs-de-signature-yousign-et-docusign.md) D-SIGNATURE-HTTP |
+| Emplacement de la signature sur le PDF | Coordonnées dans le BPMN, ou repère textuel dans le modèle de document | Repère `{{sN|signature|85|37}}`, lu par les deux API | Tranchée → §109 D-SIGNATURE-ANCHOR |
+| Entrée du signataire | Courriel du fournisseur, ou lien Myrmacta puis redirection | Lien Myrmacta, URL obtenue à l'ouverture, redirection | Tranchée → §109 D-SIGNATURE-LINK |
 
 ## Conception
 
+Le détail est au [§109](../decisions/109-fournisseurs-de-signature-yousign-et-docusign.md). Ici, seulement ce qui guide les lots.
+
 - Faits vérifiés dans le code ou les sources (fichier, méthode) :
-  - `SignaturePort` (`domain/signature/port/out/SignaturePort.java`) : `submit`, `status`, `parseCallback`, `cancel`, `fetchArtifacts`, capacités `hostedSigningUrl`.
-  - `RequestSignatureUseCaseImpl.request` conserve la référence fournisseur et le drapeau simulé, et ignore `signingUrls`.
-  - `SignatureProperties` n'accepte que `none` et `stub`.
-  - `SignaturePortalController.sign` clôt la demande sans preuve cryptographique.
-  - `SignatureCallbackConnector` reçoit déjà le webhook authentifié.
-  - Bacs à sable publics : Yousign `https://api-sandbox.yousign.app/v3` (essai, signatures non opposables, documents filigranés) ; DocuSign `https://demo.docusign.net/restapi` et `account-d.docusign.com` (compte développeur gratuit, signatures sans valeur de production).
-  - Yousign v3 n'a pas de SDK Java officiel : le contrat est l'OpenAPI publique. Le SDK Java DocuSign (6.9.0) est généré depuis toute l'API eSignature et embarque Jersey, Jackson 2 et BouncyCastle, à côté du Jackson 3 de Spring Boot 4. Jusqu'à la 6.7.0 (2026-07-01), il acceptait tous les certificats TLS par défaut.
-- Composants touchés (domaine, ports, adaptateurs, frontend, MCP) : à détailler après validation, avant le lot 1.
-- Scénarios de test (unitaire, intégration, chaîne HTTP et sécurité, Playwright) : à dériver des critères de succès après validation.
+  - `RequestSignatureUseCaseImpl.request` ignore `signingUrls`. Un signataire interne est créé sans adresse (`resolveSigner`). `KnownUser.email` existe et peut être vide.
+  - `CallbackWebhookController` refuse un corps sans `Idempotency-Key`. `HmacWebhookAuthenticator` ne couvre pas le HMAC Yousign ni celui de DocuSign.
+  - `SignatureOutcomeHandler.attachArtifacts` télécharge le PDF dans la transaction du webhook. Yousign exige une réponse 2xx en moins d'une seconde.
+  - Yousign, docs publiques : `delivery_mode=none`, ancre `{{s1|signature|85|37}}` avec `parse_anchors=true`, `signature_link` lu par GET (48 h, renouvelable ; nul avant le tour en mode séquentiel), webhook `signature_request.done` signé `x-yousign-signature-256`.
+  - DocuSign, docs publiques : `clientUserId` puis `createRecipientView` (URL à usage unique, 5 minutes, à ne pas stocker), `anchorString`.
+  - Pas de SDK Java Yousign v3. Le SDK Java DocuSign 6.9.0 embarque Jersey et Jackson 2, à côté du Jackson 3 du projet.
+- Composants touchés (domaine, ports, adaptateurs, frontend, MCP) :
+  - Port : une opération « URL de signature maintenant », appelée par le portail et « Mes signatures ». `submit` ne renvoie plus une URL à conserver.
+  - Colonne nullable : référence du signataire chez le fournisseur.
+  - Adaptateur HTTP Yousign (lot 1), puis DocuSign (lot 2). Hôtes et URL de redirection sur liste fixe.
+  - Authentifiant de webhook du connecteur `signature`, un mode par fournisseur.
+  - Répartiteur : télécharge les artefacts puis reprend le process, pour une demande hébergée.
+  - Portail et « Mes signatures » : redirection si le fournisseur héberge ; écran d'attente si le lien n'est pas encore là ; `POST /sign` refusé dans ce cas. Le stub ne change pas.
+  - MCP : aucun outil nouveau.
+- Non couvert, à lire en tête de lot avant le mapping : noms exacts des webhooks « refusé » et « expiré ». `signature_request.done` est vérifié.
+- Scénarios de test (unitaire, intégration, chaîne HTTP et sécurité, Playwright) :
+  1. Serveur fictif Yousign : création, ancre, activation, GET du lien, redirection, webhook `SIGNED` avec le HMAC Yousign et `event_id` rejoué (une seule clôture), PDF et preuve dans le dossier, process repris. Même chaîne `DECLINED`, `EXPIRED`, `FAILED`.
+  2. Lien refusé si l'hôte n'est pas celui de Yousign. Jeton Myrmacta absent de la requête sortante.
+  3. Signataire interne sans `KnownUser.email` : demande `FAILED` / `NO_ADDRESS`.
+  4. `POST /sign` sur une demande hébergée : refus. Le stub signe encore dans le portail.
+  5. Chaîne HTTP réelle : webhook signé accepté, webhook mal signé rejeté, corps trop gros rejeté, sans nouvelle route.
+  6. Playwright : le portail et « Mes signatures » partent vers l'URL du fournisseur ; l'écran d'attente s'affiche quand le lien est nul.
+  7. Le lot 2 rejoue 1, 2, 4 et 5 contre un fictif DocuSign (HMAC Base64, URL de vue créée à l'ouverture).
 
 ## Lots
 
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | Adaptateur Yousign, conservation de l'URL de signature, redirection portail et « Mes signatures », refus du `POST /sign` pour une demande hébergée, webhook et récupération des artefacts, stub inchangé | à faire | |
-| 2 | Adaptateur DocuSign sur le même parcours | à faire | |
+| 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | à faire | |
+| 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | à faire | |
 
-Prochaine action : conception du lot 1 (Yousign). L'issue eID reste à déposer avec le texte ci-dessous.
+Prochaine action : lot 1 (Yousign), en TDD. L'issue eID reste à déposer avec le texte ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 

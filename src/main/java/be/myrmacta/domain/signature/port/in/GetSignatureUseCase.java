@@ -12,13 +12,19 @@ public interface GetSignatureUseCase {
 
     DocumentContent document(String token);
 
+    /**
+     * {@code signingUrl} est l'adresse chez le fournisseur au moment de l'ouverture, nulle tant que
+     * le signataire n'est pas notifié ou si la signature se fait dans Myrmacta (D-SIGNATURE-LINK).
+     */
     record Context(
             String dossierReference,
             String documentLabel,
             String signerName,
             boolean required,
             Instant deadlineAt,
-            boolean simulated) {}
+            boolean simulated,
+            boolean hosted,
+            String signingUrl) {}
 
     record DocumentContent(byte[] content, String contentType, String filename) {}
 }

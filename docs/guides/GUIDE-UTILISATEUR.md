@@ -827,8 +827,11 @@ portail.
 Quand un workflow contient un **bloc de signature** (GUIDE-CONCEPTION-BPMN §3quater), Myrmacta invite
 les signataires à signer un document du dossier, suit leurs décisions et fait reprendre le workflow.
 La fonctionnalité est **désactivée par défaut** (voir [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md#10-signature-électronique)).
-Tant qu'aucun fournisseur réel n'est branché, les signatures sont une **simulation sans valeur
-juridique** : un bandeau « SIMULATION » l'indique partout et les PDF produits le portent.
+Avec le fournisseur `stub`, les signatures sont une **simulation sans valeur juridique** : un bandeau
+« SIMULATION » l'indique partout et les PDF produits le portent. Avec `yousign` ou `docusign`, le
+signataire est envoyé sur le site du fournisseur. S'il n'est pas encore son tour, ou si le lien
+n'est pas prêt, l'écran demande d'attendre. Dans « Mes signatures », ce lien est demandé au clic.
+Le refus se fait dans Myrmacta. Un signataire interne doit avoir une adresse sur son compte.
 
 **Signataire externe (sans compte).** Il reçoit un e-mail avec un lien personnel : il consulte le
 document, puis **signe** ou **refuse** (motif facultatif). Un lien inconnu, expiré, déjà utilisé ou

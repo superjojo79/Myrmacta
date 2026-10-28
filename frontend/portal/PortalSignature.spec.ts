@@ -13,6 +13,8 @@ const context: api.SignatureContext = {
   required: true,
   deadlineAt: '2026-10-30T10:00:00Z',
   simulated: true,
+  hosted: false,
+  signingUrl: null,
 }
 
 describe('PortalSignature (S-VT-1)', () => {
@@ -80,5 +82,35 @@ describe('PortalSignature (S-VT-1)', () => {
 
     expect(wrapper.text()).toContain('Contrat')
     expect(task).not.toHaveBeenCalled()
+  })
+
+  it('sends a hosted signer to the provider without signing in the portal', async () => {
+    vi.spyOn(api, 'fetchSignatureContext').mockResolvedValue({
+      ...context,
+      simulated: false,
+      hosted: true,
+      signingUrl: 'https://yousign.app/signatures/abc',
+    })
+    const sign = vi.spyOn(api, 'signDocument')
+    const go = vi.spyOn(api, 'navigateTo').mockImplementation(() => {})
+    const wrapper = mount(PortalSignature, { props: { token: TOKEN } })
+    await flushPromises()
+
+    expect(go).toHaveBeenCalledWith('https://yousign.app/signatures/abc')
+    expect(sign).not.toHaveBeenCalled()
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Signer')).toBe(false)
+    expect(wrapper.find('button.portal__secondary').text()).toContain('Refuser')
+  })
+
+  it('waits when the provider has not published the link yet', async () => {
+    vi.spyOn(api, 'fetchSignatureContext').mockResolvedValue({ ...context, hosted: true, signingUrl: null })
+    const go = vi.spyOn(api, 'navigateTo')
+    const wrapper = mount(PortalSignature, { props: { token: TOKEN } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="signature-waiting"]').exists()).toBe(true)
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Signer')).toBe(false)
+    expect(wrapper.text()).toContain('Refuser')
+    expect(go).not.toHaveBeenCalled()
   })
 })

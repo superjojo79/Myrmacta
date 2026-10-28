@@ -152,6 +152,10 @@ export interface SignatureContext {
   required: boolean
   deadlineAt: string | null
   simulated: boolean
+  /** Vrai quand la cérémonie se déroule chez le fournisseur. */
+  hosted: boolean
+  /** Adresse du fournisseur à l'ouverture ; nulle tant que le signataire n'est pas notifié. */
+  signingUrl: string | null
 }
 
 export type SignatureDecision = 'SIGNED' | 'DECLINED'

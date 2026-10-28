@@ -220,9 +220,9 @@ test('E2E-SIG-2 internal signer signs from « Mes signatures » (S-PW-1)', async
   await mockSession(page)
   let items = [
     { signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
-      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true },
+      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true, hosted: false, signingUrl: null },
     { signerId: 'sg-2', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Avenant',
-      required: true, myTurn: false, deadlineAt: null, simulated: true },
+      required: true, myTurn: false, deadlineAt: null, simulated: true, hosted: false, signingUrl: null },
   ]
   await page.route('**/api/signatures/mine**', async (route) => {
     const request = route.request()
@@ -252,6 +252,65 @@ test('E2E-SIG-3 « Mes signatures » says the feature is off when the routes are
   await openApp(page)
   await page.getByRole('link', { name: 'Mes signatures' }).click()
   await expect(page.getByTestId('signatures-unavailable')).toBeVisible()
+})
+
+test('E2E-SIG-9 internal signer continues on the provider', async ({ page }) => {
+  await mockSession(page)
+  await page.route('https://yousign.app/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>fournisseur</body></html>' })
+  })
+  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().url().includes('/signing-url')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ signingUrl: 'https://yousign.app/signatures/abc' }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+        required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
+        hosted: true, signingUrl: null,
+      }]),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+  await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
+  await expect(page).toHaveURL(/yousign\.app\/signatures\/abc/)
+})
+
+test('E2E-SIG-10 internal signer waits when the provider link is not ready', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().url().includes('/signing-url')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ signingUrl: null }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+        required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
+        hosted: true, signingUrl: null,
+      }]),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+  await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
+  await expect(page.getByTestId('signature-waiting')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Signer' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Refuser' })).toBeVisible()
 })
 
 test('E2E-PORTAL-4 BPMN editor marks a userTask as external, round-trips on save', async ({ page }) => {

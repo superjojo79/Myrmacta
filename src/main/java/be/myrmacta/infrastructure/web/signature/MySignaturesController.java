@@ -4,6 +4,7 @@ import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.MySignaturesUseCase;
 import be.myrmacta.infrastructure.web.dossier.AccessContextFactory;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -46,6 +47,12 @@ class MySignaturesController {
         return useCase.list(accessContextFactory.user(authentication)).stream().map(MySignatureItemResponse::from).toList();
     }
 
+    /** Lien demandé au clic, hors de la transaction de liste (revue SIG-3). */
+    @GetMapping("/{signerId}/signing-url")
+    SigningUrlResponse signingUrl(@PathVariable UUID signerId, Authentication authentication) {
+        return new SigningUrlResponse(useCase.signingUrl(accessContextFactory.user(authentication), signerId));
+    }
+
     @GetMapping("/{signerId}/document")
     @Transactional(readOnly = true)
     ResponseEntity<byte[]> document(@PathVariable UUID signerId, Authentication authentication) {
@@ -77,6 +84,8 @@ class MySignaturesController {
                 DecideSignatureUseCase.Choice.DECLINE, body == null ? null : body.reason()));
     }
 
+    record SigningUrlResponse(@Schema(nullable = true) String signingUrl) {}
+
     record SignatureDeclineRequest(String reason) {}
 
     record SignatureDecisionResponse(String status) {
@@ -93,10 +102,12 @@ class MySignaturesController {
             boolean required,
             boolean myTurn,
             Instant deadlineAt,
-            boolean simulated) {
+            boolean simulated,
+            boolean hosted,
+            @Schema(nullable = true) String signingUrl) {
         static MySignatureItemResponse from(MySignaturesUseCase.Item item) {
             return new MySignatureItemResponse(item.signerId(), item.dossierId(), item.dossierReference(), item.documentLabel(),
-                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated());
+                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated(), item.hosted(), item.signingUrl());
         }
     }
 }

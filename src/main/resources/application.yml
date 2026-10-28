@@ -331,9 +331,11 @@ app:
         encryption-key-file: ${APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_FILE:}
         encryption-key-id: ${APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_ID:}
   signature:
-    # TODO §72 (signature-electronique). provider : none (défaut : fonctionnalité absente, un bloc
-    # signature est refusé au déploiement) | stub (simulation, sans valeur juridique). Le stub ne
-    # démarre sans drapeau que sous le profil local ou test (D-SIGNATURE-STUB-GUARD).
+    # TODO §72, §109. provider : none (défaut : fonctionnalité absente, un bloc signature est
+    # refusé au déploiement) | stub (simulation, sans valeur juridique) | yousign | docusign.
+    # Les secrets des fournisseurs réels sont des champs du connecteur signature, pas des
+    # variables d'environnement. Le stub ne démarre sans drapeau que sous le profil local ou
+    # test (D-SIGNATURE-STUB-GUARD).
     provider: ${APP_SIGNATURE_PROVIDER:none}
     max-signers: 10
     default-deadline: ${APP_SIGNATURE_DEFAULT_DEADLINE:14d}

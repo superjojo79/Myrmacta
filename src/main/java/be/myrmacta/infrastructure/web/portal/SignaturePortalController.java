@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.web.portal;
 
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -90,10 +91,12 @@ class SignaturePortalController {
             String signerName,
             boolean required,
             Instant deadlineAt,
-            boolean simulated) {
+            boolean simulated,
+            boolean hosted,
+            @Schema(nullable = true) String signingUrl) {
         static SignatureContextResponse from(GetSignatureUseCase.Context context) {
             return new SignatureContextResponse(context.dossierReference(), context.documentLabel(), context.signerName(),
-                    context.required(), context.deadlineAt(), context.simulated());
+                    context.required(), context.deadlineAt(), context.simulated(), context.hosted(), context.signingUrl());
         }
     }
 }

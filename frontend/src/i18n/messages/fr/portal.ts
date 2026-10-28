@@ -45,6 +45,7 @@ export default {
     view: 'Consulter le document',
     documentLoading: 'Document en cours de chargement…',
     reason: 'Motif du refus (facultatif)',
+    waiting: 'Le lien de signature n’est pas encore disponible. Rouvrez cette page quand ce sera votre tour.',
     sign: 'Signer',
     decline: 'Refuser',
     confirmDecline: 'Confirmer le refus',

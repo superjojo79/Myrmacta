@@ -79,6 +79,8 @@ export default {
     simulation: 'SIMULATION — sans valeur juridique',
     dossier: 'Dossier',
     view: 'Consulter',
+    waitingLink: 'Le lien de signature n’est pas encore disponible.',
+    signAtProvider: 'Continuer vers la signature',
     sign: 'Signer',
     decline: 'Refuser',
     reasonPlaceholder: 'Motif (facultatif)',

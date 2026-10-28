@@ -16,9 +16,11 @@ import static org.mockito.Mockito.when;
 
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.signature.InMemorySignatureRepository;
+import be.myrmacta.domain.signature.SignatureFixtures;
 import be.myrmacta.domain.signature.SignatureNotifier;
 import be.myrmacta.domain.signature.SignatureOutcomeHandler;
 import be.myrmacta.domain.signature.model.SignatureMode;
@@ -56,14 +58,16 @@ class HandleSignatureCallbackUseCaseImplTest {
     void setUp() {
         DocumentStoragePort storage = mock(DocumentStoragePort.class);
         when(storage.store(any(), any(), any())).thenReturn("ref");
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(false));
         when(port.fetchArtifacts("hosted:1")).thenReturn(
                 new SignaturePort.SignedArtifacts("S".getBytes(), "application/pdf", "P".getBytes(),
                         "application/pdf", false));
         SignatureNotifier notifier = new SignatureNotifier(TENANT, mock(DossierWorkflowLinkRepository.class),
                 mock(WorkflowParticipantPort.class), mock(SendNotificationUseCase.class));
-        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, addElement,
-                notifier, metrics, listener, Clock.fixed(NOW, ZoneOffset.UTC));
-        useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
+        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
+                mock(DossierElementRepository.class), addElement, notifier, metrics, listener,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+        useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, port, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("hosted:1");
         signers = SignatureProgression.start(SignatureMode.PARALLEL, List.of(
                         external(request.id(), 0, true, "a@example.org"), external(request.id(), 1, false, "b@example.org")))
@@ -92,6 +96,19 @@ class HandleSignatureCallbackUseCaseImplTest {
     }
 
     @Test
+    void hostedSignedEventClosesWithoutDownloadingOrResuming() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of(signers.get(0).id(), SignerStatus.SIGNED))))
+                .isTrue();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+        verify(addElement, never()).add(any(), any());
+        verify(port, never()).fetchArtifacts(any());
+        verify(listener, never()).outcomeRecorded(any());
+    }
+
+    @Test
     void expiredEventExpiresEveryOpenSigner() {
         useCase.apply(event(SignatureOutcome.EXPIRED, Map.of()));
         assertThat(statuses()).containsOnly(SignerStatus.EXPIRED);
@@ -104,6 +121,57 @@ class HandleSignatureCallbackUseCaseImplTest {
         useCase.apply(event(SignatureOutcome.DECLINED, Map.of(signers.get(1).id(), SignerStatus.DECLINED)));
         assertThat(statuses()).containsExactly(SignerStatus.REVOKED, SignerStatus.DECLINED);
         assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+    }
+
+    @Test
+    void hostedSignedEventAfterALocalDeclineBecomesSigned() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isTrue();
+
+        SignatureRequest after = repository.findById(request.id()).orElseThrow();
+        assertThat(after.status()).isEqualTo(SignatureStatus.SIGNED);
+        assertThat(after.outcomeDispatchedAt()).isNull();
+    }
+
+    @Test
+    void hostedSignedEventAfterADispatchedLocalDeclineStaysDeclined() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(
+                        request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW).dispatched(NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(port, never()).fetchArtifacts(any());
+        verify(metrics).callbackRejected("already_closed");
+    }
+
+    @Test
+    void hostedSignedEventAfterAProviderDeclineStaysDeclined() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(
+                        request.closed(SignatureOutcome.DECLINED, "PROVIDER_CALLBACK", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(metrics).callbackRejected("already_closed");
+    }
+
+    @Test
+    void stubSignedEventAfterALocalDeclineStaysDeclined() {
+        assertThat(repository.update(request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(metrics).callbackRejected("already_closed");
     }
 
     @Test

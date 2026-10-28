@@ -4,6 +4,7 @@ import {
   cancelSignatureRequest,
   declineMine,
   fetchMySignatureDocument,
+  fetchMySigningUrl,
   listMySignatures,
   listSignatureRequests,
   resendSignatureInvite,
@@ -38,6 +39,8 @@ describe('signatures api (TODO §72)', () => {
     vi.mocked(axios.post).mockResolvedValue({ data: { status: 'SIGNED' } })
     await listMySignatures()
     await fetchMySignatureDocument('s1')
+    await fetchMySigningUrl('s 1')
+    expect(axios.get).toHaveBeenCalledWith('/api/signatures/mine/s%201/signing-url')
     await signMine('s1')
     await declineMine('s1', '  trop cher ')
     expect(axios.get).toHaveBeenCalledWith('/api/signatures/mine')

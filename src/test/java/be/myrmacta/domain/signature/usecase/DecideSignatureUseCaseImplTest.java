@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.notification.model.NotificationEvent;
@@ -28,6 +29,8 @@ import be.myrmacta.domain.signature.InMemorySignatureRepository;
 import be.myrmacta.domain.signature.SignatureAccessResolver;
 import be.myrmacta.domain.signature.SignatureNotifier;
 import be.myrmacta.domain.signature.SignatureOutcomeHandler;
+import be.myrmacta.domain.signature.SignatureFixtures;
+import be.myrmacta.domain.signature.model.HostedSignatureException;
 import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignatureProgression;
 import be.myrmacta.domain.signature.model.SignatureRequest;
@@ -80,6 +83,7 @@ class DecideSignatureUseCaseImplTest {
         when(port.fetchArtifacts(any())).thenReturn(
                 new SignaturePort.SignedArtifacts("signed".getBytes(), "application/pdf", "proof".getBytes(),
                         "application/pdf", true));
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(false));
         when(storage.store(eq(TENANT), anyString(), any())).thenReturn("ref");
         DossierWorkflowLinkRepository links = mock(DossierWorkflowLinkRepository.class);
         WorkflowParticipantPort participants = mock(WorkflowParticipantPort.class);
@@ -89,9 +93,9 @@ class DecideSignatureUseCaseImplTest {
 
     private DecideSignatureUseCaseImpl build(Clock clock, SignatureNotifier notifier) {
         SignatureAccessResolver resolver = new SignatureAccessResolver(repository, tokenPort, dossiers, clock);
-        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, addElement,
-                notifier, metrics, listener, clock);
-        return new DecideSignatureUseCaseImpl(repository, resolver, handler, clock);
+        SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
+                mock(DossierElementRepository.class), addElement, notifier, metrics, listener, clock);
+        return new DecideSignatureUseCaseImpl(repository, resolver, handler, port, clock);
     }
 
     /** Crée une demande et ses signataires ; ceux qui ont un e-mail reçoivent le jeton « tok-<rang> ». */
@@ -270,5 +274,21 @@ class DecideSignatureUseCaseImplTest {
         ArgumentCaptor<NotificationEvent> captor = ArgumentCaptor.forClass(NotificationEvent.class);
         verify(sendNotification).send(captor.capture(), eq(TENANT));
         assertThat(captor.getValue().userId()).isEqualTo("bob");
+    }
+
+    @Test
+    void hostedProviderRefusesToSignInsideMyrmactaAndStillAcceptsADecline() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        seed(SignatureMode.PARALLEL, ext(0, true));
+        repository.updateRequest(repository.findById(request.id()).orElseThrow().withProviderReference("yousign:1"));
+
+        assertThatThrownBy(() -> useCase.decideByToken("tok-0", Choice.SIGN, null))
+                .isInstanceOf(HostedSignatureException.class);
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.PENDING);
+
+        useCase.decideByToken("tok-0", Choice.DECLINE, "non");
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(port).cancel("yousign:1");
     }
 }

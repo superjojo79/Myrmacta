@@ -1,11 +1,14 @@
 package be.myrmacta.infrastructure.config;
 
+import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.infrastructure.signature.DocusignSignatureAdapter;
 import be.myrmacta.infrastructure.signature.SignatureStubGuard;
 import be.myrmacta.infrastructure.signature.StubSignatureAdapter;
+import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Set;
@@ -56,6 +59,21 @@ public class SignatureConfig {
                 .description("1 when the simulated signature provider is active")
                 .register(meterRegistry);
         return new StubSignatureAdapter(tenantProperties.id(), repository, storage);
+    }
+
+    /** TODO §109 (D-SIGNATURE-PROVIDER) — un seul adaptateur actif, ici Yousign. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "yousign")
+    SignaturePort yousignSignaturePort(TenantProperties tenantProperties, ConnectorInstanceRepository instances) {
+        return new YousignSignatureAdapter(tenantProperties.id(), instances);
+    }
+
+    /** TODO §109 (D-SIGNATURE-PROVIDER) — un seul adaptateur actif, ici DocuSign. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "docusign")
+    SignaturePort docusignSignaturePort(
+            TenantProperties tenantProperties, ConnectorInstanceRepository instances, PortalProperties portal) {
+        return new DocusignSignatureAdapter(tenantProperties.id(), instances, portal.publicBaseUrl());
     }
 
     @Bean

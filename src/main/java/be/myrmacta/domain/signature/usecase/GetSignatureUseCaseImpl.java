@@ -8,6 +8,7 @@ import be.myrmacta.domain.signature.SignatureAccessResolver;
 import be.myrmacta.domain.signature.SignatureAccessResolver.ResolvedAccess;
 import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException;
 import java.util.Objects;
 
@@ -18,16 +19,19 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
     private final SignatureAccessResolver accessResolver;
     private final DossierElementRepository elementRepository;
     private final DocumentStoragePort storage;
+    private final SignaturePort port;
 
     public GetSignatureUseCaseImpl(
             String tenantId,
             SignatureAccessResolver accessResolver,
             DossierElementRepository elementRepository,
-            DocumentStoragePort storage) {
+            DocumentStoragePort storage,
+            SignaturePort port) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.storage = Objects.requireNonNull(storage, "storage");
+        this.port = Objects.requireNonNull(port, "port");
     }
 
     @Override
@@ -35,8 +39,22 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
         ResolvedAccess access = accessResolver.resolve(token);
         SignatureRequest request = access.request();
         String label = sourceElement(request).map(DossierElement::label).orElse("Document");
+        boolean hosted = port.capabilities().hostedSigningUrl();
         return new Context(access.dossier().reference(), label, access.signer().displayName(),
-                access.signer().required(), request.deadlineAt(), request.simulated());
+                access.signer().required(), request.deadlineAt(), request.simulated(), hosted,
+                signingUrl(hosted, request, access.signer().position()));
+    }
+
+    /** Échec fournisseur : écran d'attente, sans journaliser l'adresse (elle contient un jeton). */
+    private String signingUrl(boolean hosted, SignatureRequest request, int signerPosition) {
+        if (!hosted || request.providerReference() == null) {
+            return null;
+        }
+        try {
+            return port.signingUrl(request.providerReference(), signerPosition).orElse(null);
+        } catch (RuntimeException ex) {
+            return null;
+        }
     }
 
     @Override

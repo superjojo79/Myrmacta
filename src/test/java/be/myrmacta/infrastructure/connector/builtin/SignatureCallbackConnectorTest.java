@@ -42,7 +42,10 @@ class SignatureCallbackConnectorTest {
         assertThat(connector.getType()).isEqualTo("signature");
         assertThat(connector.getCapability()).isEqualTo(ConnectorCapability.CALLBACK);
         List<ConfigField> schema = connector.getConfigSchema();
-        assertThat(schema).extracting(ConfigField::name).containsExactly("webhookAuthType", "webhookSecret");
+        assertThat(schema).extracting(ConfigField::name)
+                .containsExactly("webhookAuthType", "webhookSecret", "yousignEnvironment", "yousignApiKey");
+        assertThat(schema.stream().filter(f -> f.name().equals("yousignApiKey")).findFirst().orElseThrow().type())
+                .isEqualTo(ConfigFieldType.PASSWORD);
         assertThat(schema.stream().filter(f -> f.name().equals("webhookSecret")).findFirst().orElseThrow().type())
                 .isEqualTo(ConfigFieldType.PASSWORD);
     }
@@ -63,6 +66,10 @@ class SignatureCallbackConnectorTest {
                 .isInstanceOf(ConnectorValidationException.class);
         assertThatThrownBy(() -> connector.validate(Map.of("webhookAuthType", "HMAC_SHA256", "webhookSecret", "court")))
                 .isInstanceOf(ConnectorValidationException.class);
+        assertThatThrownBy(() -> connector.validate(Map.of(
+                        "webhookAuthType", "YOUSIGN_HMAC", "webhookSecret", SECRET, "yousignEnvironment", "https://evil.example")))
+                .isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("yousignEnvironment");
     }
 
     @Test
@@ -78,6 +85,17 @@ class SignatureCallbackConnectorTest {
 
         verify(useCase).apply(event);
         verifyNoInteractions(engine);
+    }
+
+    @Test
+    void yousignInformationalEventDoesNotCloseTheRequest() {
+        when(port.code()).thenReturn("yousign");
+
+        connector.handleCallback(instance(), Map.of(
+                "event_name", "signer.notified",
+                "data", Map.of("signature_request", Map.of("id", UUID.randomUUID().toString()))));
+
+        verifyNoInteractions(useCase);
     }
 
     @Test

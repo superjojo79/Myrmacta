@@ -29,6 +29,7 @@ class SignaturePropertiesTest {
     @Test
     void providerIsNormalizedAndValidated() {
         assertThat(of(" Stub ", null, null).stubSelected()).isTrue();
+        assertThat(of("yousign", null, null).provider()).isEqualTo("yousign");
         assertThatThrownBy(() -> of("docusign", null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("docusign");

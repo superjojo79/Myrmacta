@@ -30,6 +30,7 @@ import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.port.in.RequestSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.InternalSignerEmails;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignatureConflictException;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
@@ -71,6 +72,8 @@ class RequestSignatureUseCaseImplTest {
     private final be.myrmacta.domain.signature.port.out.SignatureOutcomeListener listener =
             mock(be.myrmacta.domain.signature.port.out.SignatureOutcomeListener.class);
     private final UUID dossierId = UUID.randomUUID();
+    private final java.util.Map<String, String> internalEmails = new java.util.HashMap<>();
+    private final InternalSignerEmails emails = userId -> Optional.ofNullable(internalEmails.get(userId));
     private RequestSignatureUseCaseImpl useCase;
 
     @BeforeEach
@@ -93,7 +96,7 @@ class RequestSignatureUseCaseImplTest {
         when(participants.findParticipantUserIds(link)).thenReturn(List.of("manager"));
         SignatureNotifier notifier = new SignatureNotifier(TENANT, links, participants, sendNotification);
         useCase = new RequestSignatureUseCaseImpl(TENANT, repository, port, availability, resolver, elements, storage,
-                notifier, metrics, listener, Clock.fixed(NOW, ZoneOffset.UTC));
+                notifier, metrics, listener, emails, Clock.fixed(NOW, ZoneOffset.UTC));
         values.put("generatedDocumentId", STORAGE_REF);
         values.put("email", "Alice@Example.org");
         values.put("email2", "bob@example.org");
@@ -194,6 +197,23 @@ class RequestSignatureUseCaseImplTest {
         values.remove("email");
         assertThat(useCase.request(command(SignatureMode.PARALLEL, ext("email", true))).reason())
                 .isEqualTo("NO_ADDRESS");
+    }
+
+    @Test
+    void hostedProviderRequiresTheKnownUserEmail() {
+        when(port.capabilities()).thenReturn(new SignaturePort.SignatureProviderCapabilities(
+                true, false, true, true, Set.of("ELECTRONIC")));
+
+        assertThat(useCase.request(command(SignatureMode.PARALLEL, internal("manager", true))).reason())
+                .isEqualTo("NO_ADDRESS");
+        verify(port, never()).submit(any());
+
+        internalEmails.put("carol", "Carol@Example.org");
+        useCase.request(command(SignatureMode.PARALLEL, internal("manager", true)));
+        ArgumentCaptor<SignaturePort.SubmitCommand> captor = ArgumentCaptor.forClass(SignaturePort.SubmitCommand.class);
+        verify(port).submit(captor.capture());
+        assertThat(captor.getValue().signers()).extracting(SignaturePort.SubmitSigner::email)
+                .containsExactly("Carol@Example.org");
     }
 
     @Test
@@ -337,7 +357,7 @@ class RequestSignatureUseCaseImplTest {
         org.mockito.Mockito.doThrow(new SignatureConflictException("race", null)).when(racing).insert(any(), any());
         SignatureNotifier notifier = new SignatureNotifier(TENANT, links, participants, sendNotification);
         RequestSignatureUseCaseImpl racingUseCase = new RequestSignatureUseCaseImpl(TENANT, racing, port, availability,
-                resolver, elements, storage, notifier, metrics, listener, Clock.fixed(NOW, ZoneOffset.UTC));
+                resolver, elements, storage, notifier, metrics, listener, emails, Clock.fixed(NOW, ZoneOffset.UTC));
 
         RequestSignatureUseCase.Result result =
                 racingUseCase.request(command(SignatureMode.PARALLEL, ext("email", true)));

@@ -11,9 +11,12 @@ import be.myrmacta.domain.connector.model.WebhookAuthType;
 import be.myrmacta.domain.connector.model.WebhookSecretPolicy;
 import be.myrmacta.domain.signature.port.in.HandleSignatureCallbackUseCase;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
+import be.myrmacta.infrastructure.signature.YousignCallbackParser;
+import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Entrée de catalogue de la signature (TODO §72, D-SIGNATURE-ABSTRACTION) : porte la
@@ -72,7 +75,23 @@ public final class SignatureCallbackConnector implements ConnectorDefinition, Ca
                         true,
                         null,
                         List.of(),
-                        "Secret HMAC ou jeton partagé — au moins " + WebhookSecretPolicy.MIN_LENGTH + " caractères"));
+                        "Secret HMAC ou jeton partagé — au moins " + WebhookSecretPolicy.MIN_LENGTH + " caractères"),
+                new ConfigField(
+                        "yousignEnvironment",
+                        "Yousign environment",
+                        ConfigFieldType.SELECT,
+                        false,
+                        "sandbox",
+                        List.of("sandbox", "production"),
+                        "Hôte d'appel fixé : bac à sable ou production. Jamais une URL libre."),
+                new ConfigField(
+                        "yousignApiKey",
+                        "Yousign API key",
+                        ConfigFieldType.PASSWORD,
+                        false,
+                        null,
+                        List.of(),
+                        "Clé d'API du même environnement. Requis quand le fournisseur actif est Yousign."));
     }
 
     @Override
@@ -98,11 +117,21 @@ public final class SignatureCallbackConnector implements ConnectorDefinition, Ca
             throw new ConnectorValidationException("webhookSecret is required");
         }
         WebhookSecretPolicy.validate(text);
+        Object environment = config.get("yousignEnvironment");
+        if (environment != null && !String.valueOf(environment).isBlank()
+                && !Set.of("sandbox", "production").contains(String.valueOf(environment))) {
+            throw new ConnectorValidationException("yousignEnvironment must be sandbox or production");
+        }
     }
 
     @Override
     public void handleCallback(ConnectorInstanceData instance, Object rawPayload) {
         Objects.requireNonNull(instance, "instance");
+        if (YousignSignatureAdapter.CODE.equals(port.code())) {
+            // Un événement sans issue (signer.notified, rappel) répond quand même 2xx : Yousign rejoue le reste.
+            YousignCallbackParser.parse(rawPayload).ifPresent(useCase::apply);
+            return;
+        }
         SignaturePort.SignatureCallbackEvent event = port.parseCallback(rawPayload);
         useCase.apply(event);
     }

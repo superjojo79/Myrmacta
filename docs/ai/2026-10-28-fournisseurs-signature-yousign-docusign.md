@@ -73,13 +73,13 @@ Le détail est au [§109](../decisions/109-fournisseurs-de-signature-yousign-et-
 | 1 | Adaptateur HTTP Yousign, URL demandée à l'ouverture, redirection, HMAC `event_id`, artefacts via le répartiteur, adresse des internes, refus du `POST /sign` hébergé, stub inchangé | en cours | #247 |
 | 2 | Adaptateur HTTP DocuSign sur le même parcours (JWT, `createRecipientView`, HMAC Base64) | à faire | |
 
-Fait dans le lot 1 : mode `YOUSIGN_HMAC` (corps brut, idempotence = `event_id`, en-tête contradictoire refusé) et traduction des événements terminaux (`done`, `declined`, `expired`, `canceled`, `rejected`). Noms relus le 2026-10-28 sur la référence publique Yousign. `signer.notified` et les autres événements sans issue ne closent pas la demande.
+Fait dans le lot 1 : mode `YOUSIGN_HMAC` ; traduction des événements terminaux ; client HTTP (création `delivery_mode=none`, ancre, signataires, activation, lien à la demande, annulation, téléchargement) sur les hôtes bac à sable et production seulement ; adaptateur `yousign` qui ne conserve pas l'URL ; adresse des internes via `KnownUser.email` (`NO_ADDRESS` si elle manque). `signer.notified` ne clôt pas la demande. Issue eID : #248.
 
-Prochaine action : client HTTP Yousign (création, ancre, activation, lien à l'ouverture), puis branchement de `YousignCallbackParser` sur l'adaptateur. L'issue eID reste à déposer avec le texte ci-dessous.
+Prochaine action : redirection du portail et de « Mes signatures » vers le lien demandé à l'ouverture, refus du `POST /sign` hébergé, téléchargement des artefacts par le répartiteur (hors du webhook). Le texte de l'issue eID reste ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 
-Dépôt refusé le 2026-10-28 : `gh issue create` et `POST /repos/superjojo79/Myrmacta/issues` répondent `Resource not accessible by integration` (jeton sans droit d'ouvrir une issue).
+Déposée : [#248](https://github.com/superjojo79/Myrmacta/issues/248). Le jeton de l'agent ne pouvait pas la créer ; le texte ci-dessous est celui qui a été collé.
 
 - Titre : `Signature par carte eID et horodatage BOSA — à cadrer`
 - Libellés : `type-feature`, `priorite-3`
@@ -114,6 +114,7 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 | Date | Commande | Résultat |
 |---|---|---|
 | 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignCallbackParserTest,WebhookAuthenticatorTest,CallbackWebhookControllerTest,SignatureCallbackConnectorTest,ConnectorModelsTest` | vert (JDK 21 de la VM) |
+| 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=YousignHttpClientTest,YousignSignatureAdapterTest,SignatureCallbackConnectorTest,SignaturePropertiesTest,SignatureConfigTest,RequestSignatureUseCaseImplTest` | vert (JDK 21 de la VM) |
 
 ## Revue de clôture
 

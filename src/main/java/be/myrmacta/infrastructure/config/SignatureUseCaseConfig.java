@@ -29,9 +29,12 @@ import be.myrmacta.domain.signature.usecase.DecideSignatureUseCaseImpl;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.signature.port.in.DispatchSignatureOutcomesUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.InternalSignerEmails;
 import be.myrmacta.domain.signature.port.out.SignatureMetricsPort;
 import be.myrmacta.domain.signature.port.out.SignatureOutcomeListener;
 import be.myrmacta.domain.signature.usecase.DispatchSignatureOutcomesUseCaseImpl;
+import be.myrmacta.domain.user.model.KnownUser;
+import be.myrmacta.domain.user.port.out.KnownUserRepository;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.infrastructure.signature.AfterCommitSignatureOutcomeListener;
 import be.myrmacta.infrastructure.signature.MicrometerSignatureMetrics;
@@ -91,9 +94,11 @@ public class SignatureUseCaseConfig {
             DocumentStoragePort storage,
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
-            SignatureOutcomeListener outcomeListener) {
+            SignatureOutcomeListener outcomeListener,
+            KnownUserRepository knownUsers) {
+        InternalSignerEmails emails = userId -> knownUsers.findById(tenantProperties.id(), userId).map(KnownUser::email);
         return new RequestSignatureUseCaseImpl(tenantProperties.id(), repository, port, availability, resolver,
-                elementRepository, storage, notifier, metrics, outcomeListener, CLOCK);
+                elementRepository, storage, notifier, metrics, outcomeListener, emails, CLOCK);
     }
 
     @Bean

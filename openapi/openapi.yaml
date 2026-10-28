@@ -2408,6 +2408,25 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MySignatureItemResponse"
+  /api/signatures/mine/{signerId}/signing-url:
+    get:
+      tags:
+      - my-signatures-controller
+      operationId: signingUrl
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SigningUrlResponse"
   /api/signatures/mine/{signerId}/document:
     get:
       tags:
@@ -5247,6 +5266,11 @@ components:
           type: boolean
         hosted:
           type: boolean
+        signingUrl:
+          type: string
+    SigningUrlResponse:
+      type: object
+      properties:
         signingUrl:
           type: string
     ManagerLoad:

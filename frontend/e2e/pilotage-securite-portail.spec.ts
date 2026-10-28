@@ -260,25 +260,14 @@ test('E2E-SIG-9 internal signer continues on the provider', async ({ page }) => 
     await route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>fournisseur</body></html>' })
   })
   await page.route('**/api/signatures/mine**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([{
-        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
-        required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
-        hosted: true, signingUrl: 'https://yousign.app/signatures/abc',
-      }]),
-    })
-  })
-  await openApp(page)
-  await page.getByRole('link', { name: 'Mes signatures' }).click()
-  await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
-  await expect(page).toHaveURL(/yousign\.app\/signatures\/abc/)
-})
-
-test('E2E-SIG-10 internal signer waits when the provider link is not ready', async ({ page }) => {
-  await mockSession(page)
-  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().url().includes('/signing-url')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ signingUrl: 'https://yousign.app/signatures/abc' }),
+      })
+      return
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -291,6 +280,34 @@ test('E2E-SIG-10 internal signer waits when the provider link is not ready', asy
   })
   await openApp(page)
   await page.getByRole('link', { name: 'Mes signatures' }).click()
+  await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
+  await expect(page).toHaveURL(/yousign\.app\/signatures\/abc/)
+})
+
+test('E2E-SIG-10 internal signer waits when the provider link is not ready', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().url().includes('/signing-url')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ signingUrl: null }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+        required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
+        hosted: true, signingUrl: null,
+      }]),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+  await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
   await expect(page.getByTestId('signature-waiting')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Signer' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Refuser' })).toBeVisible()

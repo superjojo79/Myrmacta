@@ -85,6 +85,14 @@ export async function listMySignatures(): Promise<MySignatureItem[]> {
   return data
 }
 
+/** Lien demandé au clic, pour ne pas appeler le fournisseur une fois par ligne de la liste. */
+export async function fetchMySigningUrl(signerId: string): Promise<string | null> {
+  const { data } = await axios.get<{ signingUrl: string | null }>(
+    `/api/signatures/mine/${encodeURIComponent(signerId)}/signing-url`,
+  )
+  return data.signingUrl
+}
+
 export async function fetchMySignatureDocument(signerId: string): Promise<Blob> {
   const { data } = await axios.get<Blob>(`/api/signatures/mine/${encodeURIComponent(signerId)}/document`, {
     responseType: 'blob',

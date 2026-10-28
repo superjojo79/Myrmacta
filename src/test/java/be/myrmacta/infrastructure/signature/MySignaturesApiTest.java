@@ -104,6 +104,18 @@ class MySignaturesApiTest extends AbstractSignatureEngineTest {
     }
 
     @Test
+    void signingUrlIsFetchedForTheSignerOnHisTurnAndHiddenFromTheOthers() throws Exception {
+        Signer rev = signerOf(reviewer);
+        mockMvc.perform(get("/api/signatures/mine/{id}/signing-url", rev.id()).with(as(reviewer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signingUrl").value(org.hamcrest.Matchers.nullValue()));
+        mockMvc.perform(get("/api/signatures/mine/{id}/signing-url", rev.id()).with(as(approver)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/signatures/mine").with(as(reviewer)))
+                .andExpect(jsonPath("$[0].signingUrl").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
     void documentAndDecisionAreReservedToTheSignerOnHisTurn() throws Exception {
         // S-INT-2, S-INT-5
         Signer rev = signerOf(reviewer);

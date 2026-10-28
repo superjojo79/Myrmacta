@@ -46,6 +46,12 @@ class MySignaturesController {
         return useCase.list(accessContextFactory.user(authentication)).stream().map(MySignatureItemResponse::from).toList();
     }
 
+    /** Lien demandé au clic, hors de la transaction de liste (revue SIG-3). */
+    @GetMapping("/{signerId}/signing-url")
+    SigningUrlResponse signingUrl(@PathVariable UUID signerId, Authentication authentication) {
+        return new SigningUrlResponse(useCase.signingUrl(accessContextFactory.user(authentication), signerId));
+    }
+
     @GetMapping("/{signerId}/document")
     @Transactional(readOnly = true)
     ResponseEntity<byte[]> document(@PathVariable UUID signerId, Authentication authentication) {
@@ -76,6 +82,8 @@ class MySignaturesController {
         return SignatureDecisionResponse.from(useCase.decide(accessContextFactory.user(authentication), signerId,
                 DecideSignatureUseCase.Choice.DECLINE, body == null ? null : body.reason()));
     }
+
+    record SigningUrlResponse(String signingUrl) {}
 
     record SignatureDeclineRequest(String reason) {}
 

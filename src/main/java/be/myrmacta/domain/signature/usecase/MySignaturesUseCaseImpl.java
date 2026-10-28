@@ -110,17 +110,17 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         boolean myTurn = signer.status() == SignerStatus.PENDING;
         boolean hosted = port.capabilities().hostedSigningUrl();
         return Optional.of(new Item(signer.id(), request.get().id(), dossier.get().id(), dossier.get().reference(),
-                label, signer.required(), myTurn, request.get().deadlineAt(), request.get().simulated(), hosted,
-                signingUrl(myTurn, hosted, request.get(), signer.position())));
+                label, signer.required(), myTurn, request.get().deadlineAt(), request.get().simulated(), hosted, null));
     }
 
-    /** Lien demandé seulement à son tour. Un échec laisse l'écran d'attente, sans journaliser l'adresse. */
-    private String signingUrl(boolean myTurn, boolean hosted, SignatureRequest request, int signerPosition) {
-        if (!myTurn || !hosted || request.providerReference() == null) {
+    @Override
+    public String signingUrl(AccessContext.User user, UUID signerId) {
+        Access access = requireAccess(user, signerId);
+        if (!port.capabilities().hostedSigningUrl() || access.request().providerReference() == null) {
             return null;
         }
         try {
-            return port.signingUrl(request.providerReference(), signerPosition).orElse(null);
+            return port.signingUrl(access.request().providerReference(), access.signer().position()).orElse(null);
         } catch (RuntimeException ex) {
             return null;
         }

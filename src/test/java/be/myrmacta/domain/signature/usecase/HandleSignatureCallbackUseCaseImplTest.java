@@ -67,7 +67,7 @@ class HandleSignatureCallbackUseCaseImplTest {
         SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
                 mock(DossierElementRepository.class), addElement, notifier, metrics, listener,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-        useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
+        useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, port, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("hosted:1");
         signers = SignatureProgression.start(SignatureMode.PARALLEL, List.of(
                         external(request.id(), 0, true, "a@example.org"), external(request.id(), 1, false, "b@example.org")))
@@ -121,6 +121,28 @@ class HandleSignatureCallbackUseCaseImplTest {
         useCase.apply(event(SignatureOutcome.DECLINED, Map.of(signers.get(1).id(), SignerStatus.DECLINED)));
         assertThat(statuses()).containsExactly(SignerStatus.REVOKED, SignerStatus.DECLINED);
         assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+    }
+
+    @Test
+    void hostedSignedEventAfterALocalDeclineBecomesSigned() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        assertThat(repository.update(request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isTrue();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+    }
+
+    @Test
+    void stubSignedEventAfterALocalDeclineStaysDeclined() {
+        assertThat(repository.update(request.closed(SignatureOutcome.DECLINED, "REQUIRED_DECLINED", NOW), signers))
+                .isTrue();
+
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isFalse();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
+        verify(metrics).callbackRejected("already_closed");
     }
 
     @Test

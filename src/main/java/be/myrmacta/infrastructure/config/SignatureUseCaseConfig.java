@@ -229,10 +229,12 @@ public class SignatureUseCaseConfig {
     HandleSignatureCallbackUseCase handleSignatureCallbackUseCase(
             SignatureRequestRepository repository,
             SignatureOutcomeHandler outcomeHandler,
+            SignaturePort signaturePort,
             SignatureMetricsPort metrics,
             org.springframework.transaction.PlatformTransactionManager transactionManager) {
         return new be.myrmacta.infrastructure.signature.TransactionalHandleSignatureCallbackUseCase(
-                new HandleSignatureCallbackUseCaseImpl(repository, outcomeHandler, metrics, CLOCK), transactionManager);
+                new HandleSignatureCallbackUseCaseImpl(repository, outcomeHandler, signaturePort, metrics, CLOCK),
+                transactionManager);
     }
 
     /** Entrée de catalogue : configuration, secrets et retour du fournisseur actif (D-SIGNATURE-ABSTRACTION). */

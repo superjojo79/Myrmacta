@@ -38,6 +38,7 @@ import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import java.time.Clock;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -231,10 +232,35 @@ class SignatureOutcomeHandlerTest {
     }
 
     @Test
+    void aNoteThatImitatesTheSignedDocumentDoesNotSkipTheDownload() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
+        when(port.fetchArtifacts("stub:x")).thenReturn(new SignaturePort.SignedArtifacts(
+                "S".getBytes(), "application/pdf", "P".getBytes(), "application/pdf", false));
+        SignatureRequest signed = request.closed(SignatureOutcome.SIGNED, null, NOW);
+        when(elements.findByDossierIdOrderByAddedAtAsc(request.dossierId())).thenReturn(List.of(
+                marker(ElementType.NOTE, "alice", Map.of(
+                        SignatureOutcomeHandler.META_REQUEST_ID, request.id().toString(),
+                        SignatureOutcomeHandler.META_ROLE, SignatureOutcomeHandler.ROLE_SIGNED_DOCUMENT,
+                        "text", "déjà archivé")),
+                marker(ElementType.PRODUCED_DOC, "alice", Map.of(
+                        SignatureOutcomeHandler.META_REQUEST_ID, request.id().toString(),
+                        SignatureOutcomeHandler.META_ROLE, SignatureOutcomeHandler.ROLE_SIGNED_DOCUMENT))));
+
+        handler.ensureSignedArtifacts(signed);
+
+        verify(port).fetchArtifacts("stub:x");
+    }
+
+    @Test
     void stubSignedOutcomeStillDownloadsDuringTheClosingCall() {
         handler.ensureSignedArtifacts(request.closed(SignatureOutcome.SIGNED, null, NOW));
         verify(port, never()).fetchArtifacts(any());
         assertThat(request.status()).isEqualTo(SignatureStatus.PENDING);
+    }
+
+    private DossierElement marker(ElementType type, String addedBy, java.util.Map<String, Object> metadata) {
+        return new DossierElement(UUID.randomUUID(), request.dossierId(), TENANT, type, "Marqueur", null, metadata,
+                addedBy, NOW, null);
     }
 
     private DossierElement signedDocument() {

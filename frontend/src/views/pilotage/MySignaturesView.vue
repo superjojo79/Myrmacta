@@ -7,6 +7,7 @@ import { formatDate as formatLocalDate } from '@/i18n/format'
 import {
   declineMine,
   fetchMySignatureDocument,
+  fetchMySigningUrl,
   listMySignatures,
   openSigningPage,
   signMine,
@@ -21,6 +22,7 @@ const loading = ref(true)
 const unavailable = ref(false)
 const busyId = ref<string | null>(null)
 const decliningId = ref<string | null>(null)
+const linkMissingId = ref<string | null>(null)
 const reason = ref('')
 const error = ref('')
 
@@ -53,13 +55,22 @@ async function openDocument(item: MySignatureItem) {
   }
 }
 
-function awaitingLink(item: MySignatureItem): boolean {
-  return item.hosted && !item.signingUrl
-}
-
-function onSign(item: MySignatureItem) {
-  if (item.hosted && item.signingUrl) {
-    openSigningPage(item.signingUrl)
+async function onSign(item: MySignatureItem) {
+  if (item.hosted) {
+    busyId.value = item.signerId
+    error.value = ''
+    try {
+      const url = await fetchMySigningUrl(item.signerId)
+      if (!url) {
+        linkMissingId.value = item.signerId
+        return
+      }
+      openSigningPage(url)
+    } catch (e) {
+      error.value = toProblemDetail(e).detail ?? t('mySignatures.errors.action')
+    } finally {
+      busyId.value = null
+    }
     return
   }
   void decide(item, () => signMine(item.signerId))
@@ -113,11 +124,12 @@ onMounted(load)
                 <button type="button" @click="openDocument(item)">{{ t('mySignatures.view') }}</button>
                 <template v-if="group.active">
                   <template v-if="decliningId !== item.signerId">
-                    <p v-if="awaitingLink(item)" data-testid="signature-waiting">{{ t('mySignatures.waitingLink') }}</p>
+                    <p v-if="linkMissingId === item.signerId" data-testid="signature-waiting">{{ t('mySignatures.waitingLink') }}</p>
                     <button
-                      v-else-if="item.hosted && item.signingUrl"
+                      v-if="item.hosted"
                       type="button"
                       data-testid="signature-provider"
+                      :disabled="busyId === item.signerId"
                       @click="onSign(item)"
                     >
                       {{ t('mySignatures.signAtProvider') }}

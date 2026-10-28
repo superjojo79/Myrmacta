@@ -89,21 +89,26 @@ describe('MySignaturesView (S-VT-4)', () => {
   })
 
   it('opens the provider when the signing link is ready', async () => {
-    vi.mocked(api.listMySignatures).mockResolvedValue([
-      item({ hosted: true, simulated: false, signingUrl: 'https://yousign.app/signatures/abc' }),
-    ])
+    vi.mocked(api.listMySignatures).mockResolvedValue([item({ hosted: true, simulated: false, signingUrl: null })])
+    vi.mocked(api.fetchMySigningUrl).mockResolvedValue('https://yousign.app/signatures/abc')
     const wrapper = mountView()
     await flushPromises()
 
     await wrapper.find('[data-testid="signature-provider"]').trigger('click')
+    await flushPromises()
 
+    expect(api.fetchMySigningUrl).toHaveBeenCalledWith('s1')
     expect(api.openSigningPage).toHaveBeenCalledWith('https://yousign.app/signatures/abc')
     expect(api.signMine).not.toHaveBeenCalled()
   })
 
-  it('waits without a sign button when the link is not ready', async () => {
+  it('waits without a local sign button when the link is not ready', async () => {
     vi.mocked(api.listMySignatures).mockResolvedValue([item({ hosted: true, signingUrl: null })])
+    vi.mocked(api.fetchMySigningUrl).mockResolvedValue(null)
     const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="signature-provider"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.find('[data-testid="signature-waiting"]').exists()).toBe(true)

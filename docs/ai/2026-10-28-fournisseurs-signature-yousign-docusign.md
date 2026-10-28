@@ -77,7 +77,7 @@ Fait dans le lot 1 : mode `YOUSIGN_HMAC` ; traduction des événements terminaux
 
 Fait dans le lot 2 : `app.signature.provider=docusign`. Jeton JWT RS256 vers `account-d.docusign.com` (bac à sable) ou `account.docusign.com` (production). L'hôte REST vient de `userinfo` et reste sur `demo.docusign.net` ou `*.docusign.net`. Enveloppe `sent` avec `clientUserId`, `routingOrder` et l'ancre `{{sN|signature|85|37}}`. Ancre absente : la création répond `ANCHOR_TAB_STRING_NOT_FOUND`, la demande échoue, aucune enveloppe à annuler. La vue (`createRecipientView`) est demandée à l'ouverture ; `RECIPIENT_NOT_IN_SEQUENCE` laisse l'écran d'attente. L'URL de retour est `<URL publique>/portal/`, sans fragment. Webhook `DOCUSIGN_HMAC` : Base64 du HMAC, une des en-têtes `X-DocuSign-Signature-N` suffit, idempotence = `envelopeId` + événement (`retryCount` ignoré). `envelope-completed` → signé, `envelope-declined` → refusé, `envelope-voided` avec motif `Envelope has expired.` → expiré, autre `envelope-voided` → annulé, `envelope-removed` → échec. `envelope-sent` ne clôt pas. Le PDF signé est le document 1, la preuve est le certificat de complétion. Clé privée PEM PKCS#8 ou PKCS#1. Les signataires restent corrélés par `recipientId` = rang, sans colonne d'identifiant fournisseur.
 
-Prochaine action : revue de clôture indépendante, puis documentation de clôture et fermeture de #191. Le texte de l'issue eID reste ci-dessous.
+Prochaine action : seconde revue indépendante, après correction des constats haut et moyens. Puis documentation de clôture et fermeture de #191. Le texte de l'issue eID reste ci-dessous.
 
 ## Issue eID — texte prêt à déposer
 
@@ -126,9 +126,17 @@ Spec du socle : `docs/specs/30-signature-electronique.md`. Décision du socle : 
 | 2026-10-28 | `./mvnw test -Dskip.frontend=true -Dmaven.compiler.release=21 -Dtest=DocusignCallbackParserTest,DocusignHttpClientTest,DocusignSignatureAdapterTest,WebhookAuthenticatorTest,CallbackWebhookControllerTest,SignatureCallbackConnectorTest,SignaturePropertiesTest,SignatureConfigTest,ConnectorModelsTest` | vert, 82 tests (JDK 21) |
 | 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3962 tests, 0 échec, 5 ignorés (JDK 21, 06:27, terminé à 19:58 Europe/Brussels) |
 | 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
+| 2026-10-28 | `./mvnw verify -Dmaven.compiler.release=21` | vert, 3967 tests, 0 échec, 5 ignorés (JDK 21, 06:31, terminé à 20:36 Europe/Brussels) |
+| 2026-10-28 | `cd frontend && npm run lint && npm run test:all` | vert : lint, Vitest 812, Playwright 148 |
+| 2026-10-28 | `scripts/check-docs.sh` | vert : links, skills, todo-refs, decision-ids, versions, decisions-index |
 
 ## Revue de clôture
 
 | Constat | Sévérité | Correctif ou issue |
 |---|---|---|
-| | | |
+| SIG-1. Une note du dossier dont les métadonnées imitent un document signé faisait sauter le téléchargement, et le process reprenait quand même. | Haute | Corrigé. Seul un `PRODUCED_DOC` ajouté par `signature` compte comme déjà archivé. Test `aNoteThatImitatesTheSignedDocumentDoesNotSkipTheDownload`. |
+| SIG-2. Un refus local puis un webhook `SIGNED` hébergé laissaient la demande refusée alors que le fournisseur a le document signé. | Moyenne | Corrigé. Un `SIGNED` hébergé remplace le refus local. Le stub ignore toujours un événement sur une demande close. Test `hostedSignedEventAfterALocalDeclineBecomesSigned`. |
+| SIG-3. `GET /api/signatures/mine` appelait le fournisseur pour chaque signataire à son tour, dans la transaction de liste. | Moyenne | Corrigé. La liste ne demande plus de lien. Le clic appelle `GET /api/signatures/mine/{signerId}/signing-url`. Test `listingDoesNotCallTheProviderOncePerRequest`. |
+| SIG-4. Yousign accepte un total d'ancres égal au nombre de signataires, même si un rang n'a pas la sienne. DocuSign, lui, échoue. | Basse | Issue à ouvrir (le jeton de l'agent ne peut pas créer d'issue). |
+| SIG-5. La spec 30 dit encore qu'aucun fournisseur réel n'est livré, et le §109 que les lots ne le sont pas. | Basse | Documentation de clôture, après la seconde revue. |
+| SIG-6. `signingUrl` est publié `type: string` sans `nullable`, alors que l'API renvoie `null`. | Basse | Issue à ouvrir (le jeton de l'agent ne peut pas créer d'issue). |

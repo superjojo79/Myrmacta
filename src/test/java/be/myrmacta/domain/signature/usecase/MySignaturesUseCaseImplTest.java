@@ -71,7 +71,9 @@ class MySignaturesUseCaseImplTest {
         assertThat(items).hasSize(1);
         assertThat(items.getFirst().myTurn()).isTrue();
         assertThat(items.getFirst().hosted()).isTrue();
-        assertThat(items.getFirst().signingUrl()).isEqualTo("https://yousign.app/signatures/abc");
+        assertThat(items.getFirst().signingUrl()).isNull();
+        verify(port, never()).signingUrl(any(), anyInt());
+        assertThat(useCase.signingUrl(bob, items.getFirst().signerId())).isEqualTo("https://yousign.app/signatures/abc");
     }
 
     @Test
@@ -87,14 +89,28 @@ class MySignaturesUseCaseImplTest {
     }
 
     @Test
+    void listingDoesNotCallTheProviderOncePerRequest() {
+        for (int index = 0; index < 3; index++) {
+            SignatureRequest pending = request(UUID.randomUUID(), SignatureMode.PARALLEL, "proc-list-" + index)
+                    .withProviderReference("yousign:" + index)
+                    .withSimulation(false, "ELECTRONIC");
+            when(dossiers.findById(pending.dossierId())).thenReturn(Optional.of(new Dossier(pending.dossierId(), TENANT,
+                    "DOS-" + index, "SINISTRE", "Dossier", DossierStatus.OUVERT, Map.of(), null, 0L, "test", NOW, null,
+                    null, null, null, null)));
+            repository.insert(pending, List.of(internal(pending.id(), 0, true, "bob").withStatus(SignerStatus.PENDING)));
+        }
+
+        assertThat(useCase.list(bob)).hasSize(3);
+        verify(port, never()).signingUrl(any(), anyInt());
+    }
+
+    @Test
     void providerFailureLeavesTheLinkEmpty() {
         repository.insert(request, List.of(internal(request.id(), 0, true, "bob").withStatus(SignerStatus.PENDING)));
         when(port.signingUrl(any(), anyInt())).thenThrow(new IllegalStateException("https://evil.example/secret-token"));
 
-        MySignaturesUseCase.Item item = useCase.list(bob).getFirst();
+        UUID signerId = useCase.list(bob).getFirst().signerId();
 
-        assertThat(item.hosted()).isTrue();
-        assertThat(item.signingUrl()).isNull();
-        assertThat(item.toString()).doesNotContain("secret-token");
+        assertThat(useCase.signingUrl(bob, signerId)).isNull();
     }
 }

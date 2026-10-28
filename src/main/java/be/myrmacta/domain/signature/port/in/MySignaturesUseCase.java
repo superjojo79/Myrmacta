@@ -15,6 +15,12 @@ public interface MySignaturesUseCase {
 
     List<Item> list(AccessContext.User user);
 
+    /**
+     * Lien chez le fournisseur, demandé au clic du signataire à son tour. {@code null} si le lien
+     * n'est pas prêt ou si le fournisseur échoue : l'écran d'attente reste affiché.
+     */
+    String signingUrl(AccessContext.User user, UUID signerId);
+
     GetSignatureUseCase.DocumentContent document(AccessContext.User user, UUID signerId);
 
     DecideSignatureUseCase.Result decide(
@@ -22,7 +28,7 @@ public interface MySignaturesUseCase {
 
     /**
      * @param myTurn faux tant que le signataire est {@code WAITING} (mode séquentiel)
-     * @param signingUrl adresse chez le fournisseur, seulement à son tour ; nulle en attente du lien
+     * @param signingUrl toujours nulle dans la liste : le lien se demande au clic ({@link #signingUrl})
      */
     record Item(
             UUID signerId,

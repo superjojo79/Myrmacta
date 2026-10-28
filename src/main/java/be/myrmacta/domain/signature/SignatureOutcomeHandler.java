@@ -157,7 +157,9 @@ public final class SignatureOutcomeHandler {
     private boolean artifactsStored(SignatureRequest request) {
         String id = request.id().toString();
         for (DossierElement element : elementRepository.findByDossierIdOrderByAddedAtAsc(request.dossierId())) {
-            if (id.equals(String.valueOf(element.metadata().get(META_REQUEST_ID)))
+            if (element.type() == ElementType.PRODUCED_DOC
+                    && ADDED_BY.equals(element.addedBy())
+                    && id.equals(String.valueOf(element.metadata().get(META_REQUEST_ID)))
                     && ROLE_SIGNED_DOCUMENT.equals(element.metadata().get(META_ROLE))) {
                 return true;
             }

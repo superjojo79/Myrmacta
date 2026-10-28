@@ -9,11 +9,14 @@ on:
 permissions:
   contents: read
 
+# TODO §110 : la variable de dépôt `CI_RUNNER` envoie les jobs sur le runner auto-hébergé (docker/ci-runner) ;
+# sans elle, ubuntu-latest.
+
 jobs:
   # TODO §95 : cohérence de la documentation (liens, copies de skills, références TODO §N et identifiants de
   # décision cités par le code, versions du README). Hors ligne, quelques secondes.
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +28,7 @@ jobs:
         run: scripts/check-docs.sh
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,7 +72,7 @@ jobs:
           -Dskip.frontend=true -Djacoco.skip=true -Dsurefire.failIfNoSpecifiedTests=false
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: frontend

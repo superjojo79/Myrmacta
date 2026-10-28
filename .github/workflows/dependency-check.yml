@@ -9,9 +9,12 @@ on:
 permissions:
   contents: read
 
+# TODO §110 : la variable de dépôt `CI_RUNNER` envoie les jobs sur le runner auto-hébergé (docker/ci-runner) ;
+# sans elle, ubuntu-latest.
+
 jobs:
   owasp-dependency-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

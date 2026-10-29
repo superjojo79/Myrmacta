@@ -63,6 +63,38 @@ test('E2E-START-VARS-1 start variables typed in the dialog are sent with the sta
   expect((await request).postDataJSON()).toEqual({ processDefinitionKey: expect.any(String), variables: { priorite: 'haute' } })
 })
 
+test('E2E-START-VARS-3 declared start variables replace the free-form rows (TODO §111)', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/workflow-start-variables**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        variables: [
+          { name: 'motif', label: 'Motif', required: true },
+          { name: 'note', label: 'Note', required: false },
+        ],
+      }),
+    })
+  })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await expect(page.getByRole('textbox', { name: 'Motif' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ajouter une variable' })).toHaveCount(0)
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Motif' })).toBeVisible()
+  await page.getByRole('textbox', { name: 'Motif' }).fill('travaux')
+  const request = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/api\/dossiers\/[^/]+\/workflows$/.test(new URL(r.url()).pathname),
+  )
+  await page.locator('.dialog button.primary').click()
+  expect((await request).postDataJSON()).toEqual({
+    processDefinitionKey: expect.any(String),
+    variables: { motif: 'travaux' },
+  })
+})
+
 test('E2E-START-VARS-2 a reserved start variable name is refused before any request (TODO §93)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

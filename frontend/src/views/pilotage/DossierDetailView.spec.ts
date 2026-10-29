@@ -19,6 +19,7 @@ vi.mock('@/api/workflows', () => ({
   getWorkflowHistory: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   getWorkflowTasks: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
   listAllWorkflowTypeConfigs: vi.fn().mockResolvedValue([]),
+  listStartVariables: vi.fn().mockResolvedValue([]),
   reassignWorkflowTask: vi.fn().mockResolvedValue(undefined),
   claimWorkflowTask: vi.fn().mockResolvedValue(undefined),
   listAssignableUsers: vi.fn().mockResolvedValue([]),
@@ -81,6 +82,7 @@ describe('DossierDetailView phase 8', () => {
       completedIds: [],
       failedIds: [],
     })
+    vi.mocked(workflowsApi.listStartVariables).mockResolvedValue([])
     vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
     vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
       asPage([

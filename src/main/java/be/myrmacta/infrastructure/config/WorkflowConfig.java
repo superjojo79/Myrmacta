@@ -210,7 +210,8 @@ public class WorkflowConfig {
             WorkflowEnginePort workflowEnginePort,
             IdempotencyStore idempotencyStore,
             WorkflowStartConfirmationPort workflowStartConfirmer,
-            WorkflowEventPublisher eventPublisher) {
+            WorkflowEventPublisher eventPublisher,
+            be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort startVariableCatalog) {
         return new ManualStartOrchestrator(
                 dossierRepository,
                 dossierTypeRepository,
@@ -219,7 +220,8 @@ public class WorkflowConfig {
                 workflowEnginePort,
                 idempotencyStore,
                 workflowStartConfirmer,
-                eventPublisher);
+                eventPublisher,
+                startVariableCatalog);
     }
 
     @Bean

@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,12 +16,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import be.myrmacta.support.OidcClientTestConfiguration;
 import be.myrmacta.domain.dossier.port.in.AttachWorkflowUseCase;
 import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -43,6 +47,9 @@ class WorkflowApiTest {
 
     @Autowired
     private TaskService taskService;
+
+    @Autowired
+    private RuntimeService runtimeService;
 
     @Autowired
     private AttachWorkflowUseCase attachWorkflow;
@@ -660,6 +667,93 @@ class WorkflowApiTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void declaredStartVariablesAreReadFromTheDeployedBpmnAndEnforced() throws Exception {
+        String processKey = "declared" + System.nanoTime();
+        createWorkflowConfig(processKey);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", processKey + ".bpmn20.xml", "application/xml", declaredBpmn(processKey));
+        mockMvc.perform(multipart("/api/workflow-bpmn-deployments")
+                        .file(file)
+                        .with(user("admin-declared", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/workflow-start-variables").param("processDefinitionKey", processKey))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/workflow-start-variables")
+                        .param("processDefinitionKey", processKey)
+                        .with(user("declared-reader")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.variables", hasSize(2)))
+                .andExpect(jsonPath("$.variables[0].name").value("motif"))
+                .andExpect(jsonPath("$.variables[0].label").value("Motif"))
+                .andExpect(jsonPath("$.variables[0].required").value(true))
+                .andExpect(jsonPath("$.variables[1].name").value("note"))
+                .andExpect(jsonPath("$.variables[1].required").value(false));
+
+        String typeCode = createType();
+        grant(typeCode, "declared-editor", "EDIT");
+        String dossierId = createDossier(typeCode, "declared-editor");
+
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("declared-editor"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"processDefinitionKey":"%s","variables":{"motif":" "}}
+                                """.formatted(processKey)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("motif")));
+        mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("declared-editor"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"processDefinitionKey":"%s","variables":{"motif":"ok","secret":"cachette"}}
+                                """.formatted(processKey)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", containsString("secret")))
+                .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.not(containsString("cachette"))));
+
+        MvcResult started = mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId)
+                        .with(user("declared-editor"))
+                        .with(csrf())
+                        .header("Idempotency-Key", "idem-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"processDefinitionKey":"%s","variables":{"motif":"  travaux  ","note":"  "}}
+                                """.formatted(processKey)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String instanceId = extractString(started.getResponse().getContentAsString(), "processInstanceId");
+        assertThat(runtimeService.getVariable(instanceId, "motif")).isEqualTo("travaux");
+        assertThat(runtimeService.getVariable(instanceId, "note")).isNull();
+    }
+
+    private static byte[] declaredBpmn(String processKey) {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             xmlns:flowable="http://flowable.org/bpmn"
+                             targetNamespace="http://myrmacta/test">
+                  <process id="%s" isExecutable="true">
+                    <extensionElements>
+                      <flowable:startVariable name="motif" label="Motif" required="true"/>
+                      <flowable:startVariable name="note" label="Note" required="false"/>
+                    </extensionElements>
+                    <startEvent id="start"/>
+                    <userTask id="wait" name="Wait"/>
+                    <endEvent id="end"/>
+                    <sequenceFlow id="toWait" sourceRef="start" targetRef="wait"/>
+                    <sequenceFlow id="toEnd" sourceRef="wait" targetRef="end"/>
+                  </process>
+                </definitions>
+                """.formatted(processKey).getBytes(StandardCharsets.UTF_8);
     }
 
     private void createWorkflowConfig(String workflowKey) throws Exception {

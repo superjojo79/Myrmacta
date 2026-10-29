@@ -275,10 +275,13 @@ Depuis la fiche dossier (`/dossiers/{id}`), bouton **Démarrer workflow** :
 
 - proposé par défaut : la config workflow associée au type du dossier (`workflowKey` du type) ;
 - possibilité de choisir une autre config workflow existante dans la liste déroulante.
-- **Variables de démarrage** (section repliée) : ajouter des lignes *nom / valeur* (texte) transmises au
-  workflow, par exemple une adresse ou une priorité attendue par le processus. Le nom accepte lettres,
-  chiffres et `_` ; les noms réservés de la plateforme (`dossierId`, `dossierWorkflowLinkId`, `tenantId`,
-  `dossierFields`, `connectorResult`, `generatedDocumentId`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
+- **Variables de démarrage**. Si le diagramme déployé déclare des variables (`flowable:startVariable`,
+  voir le guide de conception), le dialogue les affiche comme un formulaire : le libellé, une étoile si la
+  valeur est obligatoire, et un champ texte. Une obligatoire vide n'est pas envoyée. Si le diagramme n'en
+  déclare aucune, une section repliée permet d'ajouter des lignes *nom / valeur* (texte), par exemple une
+  adresse ou une priorité attendue par le processus. Le nom accepte lettres, chiffres et `_` ; les noms
+  réservés de la plateforme (`dossierId`, `dossierWorkflowLinkId`, `tenantId`, `dossierFields`,
+  `connectorResult`, `generatedDocumentId`) et les doublons sont refusés avant l'envoi. Un paramètre écrit dans
   le BPMN prime toujours sur une variable de même nom. Une adresse `notificationTo` doit être une seule
   adresse (`nom@domaine`) ; un `documentType` doit faire partie des templates autorisés du type de dossier.
 

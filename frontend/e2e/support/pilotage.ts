@@ -157,6 +157,13 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
   ]
   let elements: Array<Record<string, unknown>> = []
 
+  await page.route('**/api/workflow-start-variables**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ variables: [] }),
+    })
+  })
   await page.route('**/api/documents/preview/pdf**', async (route) => {
     await route.fulfill({
       status: 200,

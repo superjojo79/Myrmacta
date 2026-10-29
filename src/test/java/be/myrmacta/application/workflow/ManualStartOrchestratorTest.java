@@ -22,11 +22,14 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.workflow.WorkflowVariables;
+import be.myrmacta.domain.workflow.model.StartVariableDeclaration;
 import be.myrmacta.domain.workflow.port.out.IdempotencyStore;
+import be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEventPublisher;
 import be.myrmacta.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +50,7 @@ class ManualStartOrchestratorTest {
     private WorkflowStartConfirmationPort workflowStartConfirmer;
     private WorkflowEventPublisher eventPublisher;
     private DossierTypeRepository dossierTypeRepository;
+    private StartVariableCatalogPort startVariableCatalog;
     private ManualStartOrchestrator orchestrator;
 
     @BeforeEach
@@ -59,6 +63,8 @@ class ManualStartOrchestratorTest {
         workflowStartConfirmer = mock(WorkflowStartConfirmationPort.class);
         eventPublisher = mock(WorkflowEventPublisher.class);
         dossierTypeRepository = mock(DossierTypeRepository.class);
+        startVariableCatalog = mock(StartVariableCatalogPort.class);
+        when(startVariableCatalog.findDeclared(anyString())).thenReturn(List.of());
         orchestrator = new ManualStartOrchestrator(
                 dossierRepository,
                 dossierTypeRepository,
@@ -67,7 +73,8 @@ class ManualStartOrchestratorTest {
                 workflowEnginePort,
                 idempotencyStore,
                 workflowStartConfirmer,
-                eventPublisher);
+                eventPublisher,
+                startVariableCatalog);
     }
 
     @Test
@@ -93,6 +100,20 @@ class ManualStartOrchestratorTest {
         // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
         verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
         verify(eventPublisher).publish(any());
+    }
+
+    @Test
+    void start_refusesAMissingDeclaredVariableBeforeAnyReservation() {
+        UUID dossierId = UUID.randomUUID();
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
+        when(startVariableCatalog.findDeclared(PROCESS))
+                .thenReturn(List.of(new StartVariableDeclaration("motif", "Motif", true)));
+
+        assertThatThrownBy(() -> orchestrator.start(dossierId, PROCESS, Map.of("motif", "  "), "idem-1", "starter-sub"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("motif");
+        verifyNoInteractions(attachWorkflow, workflowEnginePort);
     }
 
     /**

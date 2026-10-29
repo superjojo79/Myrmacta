@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { onMounted, ref, watch } from 'vue'
-import { listAllWorkflowTypeConfigs } from '@/api/workflows'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { listAllWorkflowTypeConfigs, listStartVariables } from '@/api/workflows'
 import type { WorkflowTypeConfig } from '@/api/types'
-import { validateStartVariables, type StartVariableError, type StartVariableRow } from './startVariables'
+import {
+  collectDeclaredStartVariables,
+  validateStartVariables,
+  type DeclaredStartVariable,
+  type StartVariableError,
+  type StartVariableRow,
+} from './startVariables'
 
 const props = defineProps<{
   open: boolean
@@ -18,11 +24,20 @@ const emit = defineEmits<{
 const useOther = ref(false)
 const selectedKey = ref(props.defaultWorkflowKey)
 const configs = ref<WorkflowTypeConfig[]>([])
-const loading = ref(false)
+const loading = shallowRef(false)
 // TODO §93 — variables de démarrage (texte) : section repliée, validée avant l'envoi.
 const rows = ref<StartVariableRow[]>([])
 const rowErrors = ref<Record<number, StartVariableError>>({})
-const variablesOpen = ref(false)
+const variablesOpen = shallowRef(false)
+// TODO §111 — si le BPMN déployé déclare des variables, le formulaire remplace la saisie libre.
+const declared = ref<DeclaredStartVariable[]>([])
+const declaredValues = ref<Record<string, string>>({})
+const declaredMissing = shallowRef('')
+const variablesReady = shallowRef(false)
+const variablesError = shallowRef(false)
+let loadToken = 0
+
+const effectiveKey = computed(() => (useOther.value ? selectedKey.value : props.defaultWorkflowKey))
 
 watch(
   () => props.defaultWorkflowKey,
@@ -40,8 +55,17 @@ watch(
       rows.value = []
       rowErrors.value = {}
       variablesOpen.value = false
+      declaredMissing.value = ''
     }
   },
+)
+
+watch(
+  [() => props.open, effectiveKey],
+  () => {
+    if (props.open) void loadDeclarations(effectiveKey.value)
+  },
+  { immediate: true },
 )
 
 onMounted(async () => {
@@ -52,6 +76,30 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+async function loadDeclarations(key: string) {
+  const token = ++loadToken
+  variablesReady.value = false
+  variablesError.value = false
+  declaredMissing.value = ''
+  if (!key) {
+    declared.value = []
+    declaredValues.value = {}
+    variablesReady.value = true
+    return
+  }
+  try {
+    const next = await listStartVariables(key)
+    if (token !== loadToken) return
+    declared.value = next
+    declaredValues.value = Object.fromEntries(next.map((item) => [item.name, '']))
+    variablesReady.value = true
+  } catch {
+    if (token !== loadToken) return
+    declared.value = []
+    variablesError.value = true
+  }
+}
 
 function addRow() {
   rows.value.push({ name: '', value: '' })
@@ -68,8 +116,17 @@ function onToggle(event: Event) {
 }
 
 function submit() {
-  const key = useOther.value ? selectedKey.value : props.defaultWorkflowKey
-  if (!key) return
+  const key = effectiveKey.value
+  if (!key || !variablesReady.value || variablesError.value) return
+  if (declared.value.length > 0) {
+    const { variables, missing } = collectDeclaredStartVariables(declared.value, declaredValues.value)
+    if (missing.length > 0) {
+      declaredMissing.value = missing[0].label
+      return
+    }
+    emit('start', key, variables)
+    return
+  }
   const { variables, errors } = validateStartVariables(rows.value)
   rowErrors.value = errors
   if (Object.keys(errors).length > 0) {
@@ -99,7 +156,36 @@ const { t } = useI18n()
           </option>
         </select>
       </label>
-      <details data-testid="start-variables" class="dialog__variables" :open="variablesOpen" @toggle="onToggle">
+      <p v-if="variablesError" class="dialog__error" role="alert">{{ t('workflow.startDialog.variables.loadError') }}</p>
+      <div
+        v-else-if="variablesReady && declared.length > 0"
+        data-testid="declared-start-variables"
+        class="dialog__declared"
+      >
+        <p class="dialog__hint">{{ t('workflow.startDialog.variables.declaredHint') }}</p>
+        <label v-for="field in declared" :key="field.name" class="dialog__row">
+          <span>
+            {{ field.label }}
+            <abbr v-if="field.required" :title="t('workflow.startDialog.variables.required')">*</abbr>
+          </span>
+          <input
+            v-model="declaredValues[field.name]"
+            data-testid="declared-start-variable"
+            :aria-label="field.label"
+            :aria-required="field.required ? 'true' : undefined"
+          />
+        </label>
+        <p v-if="declaredMissing" data-testid="declared-start-error" class="dialog__error" role="alert">
+          {{ t('workflow.startDialog.variables.missing', { label: declaredMissing }) }}
+        </p>
+      </div>
+      <details
+        v-else-if="variablesReady"
+        data-testid="start-variables"
+        class="dialog__variables"
+        :open="variablesOpen"
+        @toggle="onToggle"
+      >
         <summary>{{ t('workflow.startDialog.variables.title') }}</summary>
         <p class="dialog__hint">{{ t('workflow.startDialog.variables.hint') }}</p>
         <div v-for="(row, index) in rows" :key="index" data-testid="start-variable-row" class="dialog__variable">
@@ -134,7 +220,12 @@ const { t } = useI18n()
       </details>
       <div class="dialog__actions">
         <button type="button" @click="emit('close')">{{ t('common.cancel') }}</button>
-        <button type="button" class="primary" :disabled="!selectedKey && !defaultWorkflowKey" @click="submit">
+        <button
+          type="button"
+          class="primary"
+          :disabled="(!selectedKey && !defaultWorkflowKey) || !variablesReady || variablesError"
+          @click="submit"
+        >
           {{ t('workflow.startDialog.start') }}
         </button>
       </div>
@@ -163,7 +254,8 @@ const { t } = useI18n()
   display: grid;
   gap: 0.35rem;
 }
-.dialog__variables {
+.dialog__variables,
+.dialog__declared {
   display: grid;
   gap: 0.5rem;
 }
@@ -205,5 +297,9 @@ button.primary {
   background: var(--color-accent, #5980a6);
   color: white;
   border-color: transparent;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 </style>

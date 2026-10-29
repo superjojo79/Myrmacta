@@ -20,12 +20,15 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.model.OutboxEvent;
 import be.myrmacta.domain.workflow.model.TriggerOutboxPayload;
+import be.myrmacta.domain.workflow.model.StartVariableDeclaration;
 import be.myrmacta.domain.workflow.port.out.OutboxRepository;
+import be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.infrastructure.config.WorkflowProperties;
 import be.myrmacta.infrastructure.observability.MdcScope;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,6 +44,7 @@ class OutboxRelaySchedulerTest {
     private AttachWorkflowUseCase attachWorkflow;
     private WorkflowEnginePort workflowEnginePort;
     private DossierRepository dossierRepository;
+    private StartVariableCatalogPort startVariableCatalog;
     private OutboxRelayScheduler scheduler;
 
     @AfterEach
@@ -54,6 +58,8 @@ class OutboxRelaySchedulerTest {
         attachWorkflow = mock(AttachWorkflowUseCase.class);
         workflowEnginePort = mock(WorkflowEnginePort.class);
         dossierRepository = mock(DossierRepository.class);
+        startVariableCatalog = mock(StartVariableCatalogPort.class);
+        when(startVariableCatalog.findDeclared(anyString())).thenReturn(List.of());
         WorkflowProperties properties = new WorkflowProperties(
                 Duration.ofMinutes(5),
                 new WorkflowProperties.Outbox(20, 5, Duration.ofSeconds(1), Duration.ofDays(7)),
@@ -64,7 +70,8 @@ class OutboxRelaySchedulerTest {
                 workflowEnginePort,
                 dossierRepository,
                 properties,
-                new be.myrmacta.infrastructure.config.TenantProperties("tenant_dev"));
+                new be.myrmacta.infrastructure.config.TenantProperties("tenant_dev"),
+                startVariableCatalog);
     }
 
     private static Dossier dossier(UUID id, Map<String, Object> fields) {
@@ -235,6 +242,21 @@ class OutboxRelaySchedulerTest {
 
         org.assertj.core.api.Assertions.assertThat(MDC.get(MdcScope.PROCESS_INSTANCE_ID)).isNull();
         verify(outboxRepository).markProcessed(event.eventId());
+    }
+
+    @Test
+    void processOne_missingDeclaredVariableIsDeadAndDoesNotReserve() {
+        when(startVariableCatalog.findDeclared("smokeProcess"))
+                .thenReturn(List.of(new StartVariableDeclaration("motif", "Motif", true)));
+        OutboxEvent event = OutboxEvent.pending(
+                new TriggerOutboxPayload(UUID.randomUUID(), null, "smokeProcess", Map.of(), "seed:test"),
+                Instant.parse("2026-08-02T10:00:00Z"));
+
+        scheduler.processOne(event);
+
+        verify(outboxRepository).markDead(eq(event.eventId()), org.mockito.ArgumentMatchers.contains("motif"));
+        verify(attachWorkflow, never()).reserveOrResume(any(), any(), any(), any());
+        verify(workflowEnginePort, never()).start(anyString(), anyString(), anyString(), anyMap());
     }
 
     private static OutboxEvent pendingEvent() {

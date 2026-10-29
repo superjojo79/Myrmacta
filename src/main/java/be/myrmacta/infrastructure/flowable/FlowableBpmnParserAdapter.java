@@ -6,6 +6,8 @@ import be.myrmacta.domain.signature.model.SignatureBlockDefinition;
 import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.workflow.AllowedBpmnDelegates;
+import be.myrmacta.domain.workflow.StartVariableDeclarations;
+import be.myrmacta.domain.workflow.model.StartVariableDeclaration;
 import be.myrmacta.domain.workflow.TaskQuestionFormKeys;
 import be.myrmacta.domain.workflow.model.InvalidBpmnException;
 import be.myrmacta.domain.expression.model.InvalidExpressionException;
@@ -29,6 +31,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
+import org.flowable.bpmn.model.Artifact;
+import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.BusinessRuleTask;
 import org.flowable.bpmn.model.ExtensionAttribute;
@@ -38,6 +42,8 @@ import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.HasExecutionListeners;
 import org.flowable.bpmn.model.ImplementationType;
+import org.flowable.bpmn.model.Lane;
+import org.flowable.bpmn.model.Pool;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.ScriptTask;
 import org.flowable.bpmn.model.SequenceFlow;
@@ -80,6 +86,9 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
         for (Process process : model.getProcesses()) {
             assertSafeProcess(process);
+        }
+        for (Pool pool : model.getPools()) {
+            assertNoStartVariable(pool, "BPMN participant " + pool.getId());
         }
         // TODO §69 : après les règles ciblées ci-dessus (qui gardent leurs messages précis), toute
         // autre surface UEL du document est refusée — voir BpmnExpressionSurfaceScanner.
@@ -200,6 +209,37 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         return List.copyOf(blocks);
     }
 
+    @Override
+    public List<StartVariableDeclaration> extractStartVariables(byte[] bpmnXml, String processDefinitionKey) {
+        if (processDefinitionKey == null || processDefinitionKey.isBlank()) {
+            throw new InvalidBpmnException("process definition key is required");
+        }
+        BpmnModel model = readModel(bpmnXml);
+        if (model.getProcesses().isEmpty()) {
+            throw new InvalidBpmnException("BPMN document does not define a process with an id");
+        }
+        Process match = null;
+        for (Process process : model.getProcesses()) {
+            if (processDefinitionKey.equals(process.getId())) {
+                match = process;
+            }
+        }
+        if (match == null) {
+            throw new InvalidBpmnException("BPMN document does not define process " + processDefinitionKey);
+        }
+        return startVariables(match);
+    }
+
+    private static BpmnModel readModel(byte[] bpmnXml) {
+        try {
+            return new BpmnXMLConverter().convertToBpmnModel(() -> new ByteArrayInputStream(bpmnXml), true, false);
+        } catch (InvalidBpmnException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new InvalidBpmnException("File is not a valid BPMN 2.0 document: " + ex.getMessage(), ex);
+        }
+    }
+
     private static void collectPrecheckBlocks(Collection<FlowElement> elements, List<PrecheckBlock> blocks) {
         if (elements == null) {
             return;
@@ -289,6 +329,8 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
     private static final String SIGNATURE_DEADLINE_ATTRIBUTE = "signatureDeadlineDays";
     private static final String SIGNER_ELEMENT = "signer";
     private static final Set<String> SIGNER_ATTRIBUTES = Set.of("source", "kind", "required", "name");
+    private static final String START_VARIABLE_ELEMENT = "startVariable";
+    private static final Set<String> START_VARIABLE_ATTRIBUTES = Set.of("name", "label", "required");
     private static final int MAX_SIGNATURE_DEADLINE_DAYS = 365;
     /** Colonne {@code signature_request.activity_id} : varchar(128). */
     private static final int MAX_ACTIVITY_ID_LENGTH = 128;
@@ -517,7 +559,71 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
 
     private void assertSafeProcess(Process process) {
         assertSafeListeners("process " + process.getId(), process.getExecutionListeners());
+        startVariables(process);
+        for (Lane lane : process.getLanes()) {
+            assertNoStartVariable(lane, "BPMN lane " + lane.getId());
+        }
+        for (Artifact artifact : process.getArtifacts()) {
+            assertNoStartVariable(artifact, "BPMN artifact " + artifact.getId());
+        }
         walk(process.getFlowElements());
+    }
+
+    /**
+     * TODO §111 (D-START-DECLARED) — {@code <flowable:startVariable name label required/>} sur le processus,
+     * élément vide. Un élément homonyme ailleurs est refusé : il ne serait pas lu au démarrage.
+     */
+    private static List<StartVariableDeclaration> startVariables(Process process) {
+        try {
+            return StartVariableDeclarations.parse(startVariableRaw(process));
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidBpmnException(ex.getMessage(), ex);
+        }
+    }
+
+    private static List<StartVariableDeclarations.Raw> startVariableRaw(Process process) {
+        List<ExtensionElement> elements = process.getExtensionElements().get(START_VARIABLE_ELEMENT);
+        if (elements == null || elements.isEmpty()) {
+            return List.of();
+        }
+        List<StartVariableDeclarations.Raw> raw = new ArrayList<>();
+        for (ExtensionElement element : elements) {
+            if (!FLOWABLE_NAMESPACE.equals(element.getNamespace())) {
+                continue;
+            }
+            for (String attribute : element.getAttributes().keySet()) {
+                if (!START_VARIABLE_ATTRIBUTES.contains(attribute)) {
+                    throw new InvalidBpmnException(
+                            "process " + process.getId() + ": unexpected attribute '" + attribute
+                                    + "' on flowable:startVariable");
+                }
+            }
+            if (element.getChildElements() != null && !element.getChildElements().isEmpty()
+                    || (element.getElementText() != null && !element.getElementText().isBlank())) {
+                throw new InvalidBpmnException(
+                        "process " + process.getId() + ": flowable:startVariable must be an empty element");
+            }
+            raw.add(new StartVariableDeclarations.Raw(
+                    signerAttribute(element, "name"),
+                    signerAttribute(element, "label"),
+                    signerAttribute(element, "required")));
+        }
+        return raw;
+    }
+
+    private static void assertNoNestedStartVariable(FlowElement element) {
+        assertNoStartVariable(element, "BPMN activity " + element.getId());
+    }
+
+    private static void assertNoStartVariable(BaseElement element, String where) {
+        List<ExtensionElement> elements = element.getExtensionElements().get(START_VARIABLE_ELEMENT);
+        if (elements == null) {
+            return;
+        }
+        boolean present = elements.stream().anyMatch(e -> FLOWABLE_NAMESPACE.equals(e.getNamespace()));
+        if (present) {
+            throw new InvalidBpmnException(where + ": flowable:startVariable is only allowed on the process");
+        }
     }
 
     private void walk(Collection<FlowElement> elements) {
@@ -527,12 +633,16 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         for (FlowElement element : elements) {
             assertSafeElement(element);
             if (element instanceof SubProcess subProcess) {
+                for (Artifact artifact : subProcess.getArtifacts()) {
+                    assertNoStartVariable(artifact, "BPMN artifact " + artifact.getId());
+                }
                 walk(subProcess.getFlowElements());
             }
         }
     }
 
     private void assertSafeElement(FlowElement element) {
+        assertNoNestedStartVariable(element);
         // TODO §73 : forme des attributs de brique (dérivée du catalogue), sur tout élément — un attribut de brique
         // posé hors de son delegate est refusé.
         BlockAttributeRules.validate(element.getId(), blockDelegate(element), flowableAttributes(element));

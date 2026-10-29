@@ -91,6 +91,8 @@ class MySignaturesApiTest extends AbstractSignatureEngineTest {
                 .andExpect(jsonPath("$[0].myTurn").value(true))
                 .andExpect(jsonPath("$[0].required").value(true))
                 .andExpect(jsonPath("$[0].simulated").value(true))
+                .andExpect(jsonPath("$[0].hosted").value(false))
+                .andExpect(jsonPath("$[0].signingUrl").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$[0].documentLabel").value("Contrat"))
                 .andExpect(jsonPath("$[0].dossierReference").value(dossier.reference()));
         mockMvc.perform(get("/api/signatures/mine").with(as(approver)))
@@ -99,6 +101,18 @@ class MySignaturesApiTest extends AbstractSignatureEngineTest {
         mockMvc.perform(get("/api/signatures/mine").with(as("someone-else")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void signingUrlIsFetchedForTheSignerOnHisTurnAndHiddenFromTheOthers() throws Exception {
+        Signer rev = signerOf(reviewer);
+        mockMvc.perform(get("/api/signatures/mine/{id}/signing-url", rev.id()).with(as(reviewer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signingUrl").value(org.hamcrest.Matchers.nullValue()));
+        mockMvc.perform(get("/api/signatures/mine/{id}/signing-url", rev.id()).with(as(approver)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/signatures/mine").with(as(reviewer)))
+                .andExpect(jsonPath("$[0].signingUrl").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test

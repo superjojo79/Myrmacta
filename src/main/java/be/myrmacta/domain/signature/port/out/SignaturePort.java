@@ -52,6 +52,15 @@ public interface SignaturePort {
     SignedArtifacts fetchArtifacts(String providerReference);
 
     /**
+     * URL de signature à l'instant de l'appel (TODO §109, D-SIGNATURE-LINK). Vide si le signataire
+     * n'est pas encore notifié, ou si l'adaptateur signe dans Myrmacta. {@code signerPosition} est
+     * le rang Myrmacta, à partir de 0.
+     */
+    default Optional<String> signingUrl(String providerReference, int signerPosition) {
+        return Optional.empty();
+    }
+
+    /**
      * @param requestId corrélation Myrmacta de la demande
      * @param document contenu à signer (borné par {@code app.signature.max-document-bytes})
      */

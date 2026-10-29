@@ -47,6 +47,7 @@ const portal: typeof fr = {
     view: 'View the document',
     documentLoading: 'Document loading…',
     reason: 'Reason for declining (optional)',
+    waiting: 'The signing link is not available yet. Reopen this page when it is your turn.',
     sign: 'Sign',
     decline: 'Decline',
     confirmDecline: 'Confirm the refusal',

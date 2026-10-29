@@ -3,6 +3,7 @@ package be.myrmacta.domain.signature.usecase;
 import be.myrmacta.domain.signature.SignatureAccessResolver;
 import be.myrmacta.domain.signature.SignatureAccessResolver.ResolvedAccess;
 import be.myrmacta.domain.signature.SignatureOutcomeHandler;
+import be.myrmacta.domain.signature.model.HostedSignatureException;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignatureProgression;
 import be.myrmacta.domain.signature.model.SignatureRequest;
@@ -11,6 +12,7 @@ import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
 import be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException;
 import java.time.Clock;
@@ -25,6 +27,9 @@ import java.util.UUID;
  * {@link SignatureProgression} ; la persistance est un compare-and-set atomique sur la demande et ses
  * signataires : une double soumission ou une décision concurrente perd et reçoit le refus uniforme
  * (S-DEC-3). L'actrice est tracée par {@link Signer#actorId()} (D-SIGNATURE-ACTOR).
+ *
+ * <p>Un fournisseur hébergé refuse le clic « signer » dans Myrmacta (D-SIGNATURE-LINK) : la cérémonie
+ * se fait sur son site. Le refus, lui, reste local.
  */
 public final class DecideSignatureUseCaseImpl implements DecideSignatureUseCase {
 
@@ -34,16 +39,19 @@ public final class DecideSignatureUseCaseImpl implements DecideSignatureUseCase 
     private final SignatureRequestRepository repository;
     private final SignatureAccessResolver accessResolver;
     private final SignatureOutcomeHandler outcomeHandler;
+    private final SignaturePort signaturePort;
     private final Clock clock;
 
     public DecideSignatureUseCaseImpl(
             SignatureRequestRepository repository,
             SignatureAccessResolver accessResolver,
             SignatureOutcomeHandler outcomeHandler,
+            SignaturePort signaturePort,
             Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.outcomeHandler = Objects.requireNonNull(outcomeHandler, "outcomeHandler");
+        this.signaturePort = Objects.requireNonNull(signaturePort, "signaturePort");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -67,6 +75,9 @@ public final class DecideSignatureUseCaseImpl implements DecideSignatureUseCase 
     private static final int MAX_ATTEMPTS = 3;
 
     private Result apply(SignatureRequest request, Signer signer, Choice choice, String rawReason) {
+        if (choice == Choice.SIGN && signaturePort.capabilities().hostedSigningUrl()) {
+            throw new HostedSignatureException();
+        }
         String reason = choice == Choice.DECLINE ? cleanReason(rawReason) : null;
         SignatureRequest currentRequest = request;
         for (int attempt = 1; ; attempt++) {

@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.web.portal;
 
 import be.myrmacta.domain.dossier.model.DossierConflictException;
 import be.myrmacta.domain.dossier.model.InvalidDossierElementException;
+import be.myrmacta.domain.signature.model.HostedSignatureException;
 import be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException;
 import be.myrmacta.infrastructure.security.ClientIpResolver;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -66,6 +67,13 @@ class PortalExceptionHandler {
     @ExceptionHandler(DossierConflictException.class)
     ProblemDetail handleConflict(DossierConflictException ex) {
         return problem(HttpStatus.CONFLICT, "Dossier clos", "Ce dossier n'accepte plus de pièces.");
+    }
+
+    /** La cérémonie est chez le fournisseur : le clic « signer » du portail ne la clôt pas (D-SIGNATURE-LINK). */
+    @ExceptionHandler(HostedSignatureException.class)
+    ProblemDetail handleHostedSignature(HostedSignatureException ex) {
+        return problem(HttpStatus.CONFLICT, "Signature chez le fournisseur",
+                "Cette signature se fait sur le site du fournisseur.");
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

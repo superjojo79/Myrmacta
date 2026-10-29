@@ -12,9 +12,14 @@ const CONTEXT = {
   required: true,
   deadlineAt: '2026-10-30T10:00:00Z',
   simulated: true,
+  hosted: false,
+  signingUrl: null as string | null,
 }
 
-async function mockSignatureApi(page: Page, opts: { denied?: boolean } = {}) {
+async function mockSignatureApi(
+  page: Page,
+  opts: { denied?: boolean; context?: typeof CONTEXT } = {},
+) {
   const calls: string[] = []
   await page.route('**/api/portal/signature**', async (route) => {
     const request = route.request()
@@ -33,7 +38,11 @@ async function mockSignatureApi(page: Page, opts: { denied?: boolean } = {}) {
       calls.push(`decline:${(request.postDataJSON() as { reason: string }).reason}`)
       await route.fulfill({ status: 200, contentType: 'application/json', body: '{"status":"DECLINED"}' })
     } else {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CONTEXT) })
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(opts.context ?? CONTEXT),
+      })
     }
   })
   return calls
@@ -71,4 +80,28 @@ test('E2E-SIG-6 invalid link shows a neutral message (S-PW-6)', async ({ page })
 
   await expect(page.getByTestId('portal-denied')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('secret internal detail')
+})
+
+test('E2E-SIG-7 hosted signer is sent to the provider', async ({ page }) => {
+  await page.route('https://yousign.app/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>fournisseur</body></html>' })
+  })
+  const calls = await mockSignatureApi(page, {
+    context: { ...CONTEXT, simulated: false, hosted: true, signingUrl: 'https://yousign.app/signatures/abc' },
+  })
+  await page.goto(LINK)
+
+  await expect(page).toHaveURL(/yousign\.app\/signatures\/abc/)
+  expect(calls).toEqual([])
+})
+
+test('E2E-SIG-8 hosted signer without a link waits and can still decline', async ({ page }) => {
+  await mockSignatureApi(page, {
+    context: { ...CONTEXT, simulated: false, hosted: true, signingUrl: null },
+  })
+  await page.goto(LINK)
+
+  await expect(page.getByTestId('signature-waiting')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Signer' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Refuser' })).toBeVisible()
 })

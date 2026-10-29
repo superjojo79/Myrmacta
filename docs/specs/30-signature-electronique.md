@@ -1,6 +1,6 @@
 # Signature électronique — socle générique et stub, en préparation d'un provider
 
-> **Statut : livré le 2026-09-29** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 clos) — socle générique + stub, sans provider ; fournisseur réel et eIDAS à cadrer. La Phase 2 a élargi
+> **Statut : livré le 2026-09-29** ([PR #149](https://github.com/superjojo79/FlowForge/pull/149), TODO §72 clos) — socle générique + stub. La Phase 2 a élargi
 > le périmètre (signataires internes, modes parallèle et séquentiel, requis / facultatifs, issue en
 > variable de process, un seul document, échéance unique, preuve PDF) : les
 > [requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/requirements/2026-09-29-feature-signature-electronique.md) font foi sur
@@ -31,6 +31,10 @@
 > **nouveau type de tâche externe « signature »** ; D-SIGNATURE-ELEMENT = **`PRODUCED_DOC` marqué** ;
 > D-SIGNATURE-STUB-GUARD = **refus en profil production, activable par un second drapeau
 > explicite** ; D-SIGNATURE-CONTRACT-CHECK = **oui, revue documentaire de 2 à 3 API publiques**.
+>
+> **Fournisseurs livrés le 2026-10-28** ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247),
+> TODO §109, issue #191) : Yousign et DocuSign, un seul actif par instance. Le niveau eIDAS reste
+> celui du compte chez le fournisseur. Le parcours eID n'est pas dans ce lot. Détail en fin de spec.
 
 ---
 
@@ -129,7 +133,9 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 
 ## 3. Ce que le lot ne fait pas
 
-- Aucun fournisseur réel, aucune valeur juridique, aucun choix de niveau eIDAS **implémenté**.
+- Le socle (§72) n'implémente ni fournisseur réel, ni valeur juridique, ni choix de niveau eIDAS.
+  Yousign et DocuSign sont livrés ensuite (TODO §109, section Implémentation) : le niveau reste
+  celui du compte fournisseur, pas un choix de Myrmacta.
 - Pas de signature manuscrite, de certificat ni d'horodatage qualifié gérés par Myrmacta.
 - Pas d'aller-retour complexe multi-fournisseurs ni de bascule à chaud d'un provider vers un autre
   pour des demandes en cours.
@@ -145,7 +151,7 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
 | **R-DELEGATE** | Un nouveau delegate modifie la surface d'exécution BPMN | Ajout à `AllowedBpmnDelegates` + tests de l'allowlist (§57/§69) ; aucune expression libre |
 | **Secrets fournisseur** | Clés API en clair | Champs `PASSWORD` de connecteur (chiffrés au repos) ; jamais en propriété d'environnement partagée |
 | **Webhook du fournisseur** | Rejeu, secret faible, DoS mémoire | Réutiliser les correctifs F5–F8 de `flowable-callback` |
-| **SSRF** | Appel sortant vers le fournisseur | Mêmes garde-fous que `http-rest` SERVICE (TODO §44) |
+| **SSRF** | Appel sortant vers le fournisseur | Hôtes fixés par le fournisseur et l'environnement (bac à sable ou production), jamais une URL venue du BPMN ; pas de redirection. Le lien de signature est contrôlé sur la même liste avant redirection (D-SIGNATURE-HTTP, TODO §109) |
 | **CSP** | Un parcours embarqué (iframe) exigerait d'élargir `frame-src` | Redirection plutôt qu'iframe ; ne pas toucher à la CSP dans ce lot |
 | **Conformité juridique** | Valeur probante, niveau eIDAS | **Hors lot** : arbitrage reporté au choix du premier provider réel (voir D-SIGNATURE-LEVEL) |
 
@@ -187,3 +193,27 @@ propriété dédiée).
   « Demander une signature » de la palette LC1 s'appuie sur le delegate posé ici.
 
 Aucune décision de priorité n'est prise par ce document.
+
+## Implémentation — fournisseurs Yousign et DocuSign (TODO §109, PR #247)
+
+Le socle du §72 reste en place. Les deux adaptateurs sont livrés ; un seul est actif
+(`app.signature.provider` : `yousign` ou `docusign`). Le stub reste le troisième choix, refusé en
+profil de production sans le second drapeau.
+
+- **Ancre.** Le PDF porte `{{sN|signature|85|37}}` pour chaque rang N à partir de 1. Yousign ne
+  renvoie que le nombre d'ancres reconnues : deux repères du même rang ne comptent pas pour deux
+  signataires. La demande passe `FAILED` et le brouillon est annulé au mieux si un rang n'a pas le
+  sien, ou si ce nombre est inférieur au nombre de signataires (D-SIGNATURE-ANCHOR). DocuSign pose
+  un onglet SignHere sur la même chaîne et échoue de son côté si elle est absente.
+- **Lien.** Il n'est pas conservé à la création. Le portail le demande à l'ouverture de la page.
+  « Mes signatures » le demande au clic (`GET /api/signatures/mine/{signerId}/signing-url`), pas
+  dans la liste. `signingUrl` est nul tant que le lien n'est pas prêt (tour séquentiel, attente) et
+  le contrat OpenAPI l'accepte nul. L'hôte est contrôlé avant la redirection (D-SIGNATURE-LINK).
+- **Webhook.** Réponse courte après enregistrement de l'issue. Le PDF signé et la preuve sont
+  téléchargés par le répartiteur déjà en place, puis le process reprend. Un document produit par
+  `signature` seul compte comme déjà archivé.
+- **Appels sortants.** Client HTTP du JDK vers l'hôte du bac à sable ou de la production, sans
+  redirection, corps borné, secret absent des erreurs (D-SIGNATURE-HTTP). Ce ne sont pas les
+  garde-fous d'une URL libre de `http-rest`.
+- **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le
+  fournisseur, pas un niveau choisi par Myrmacta.

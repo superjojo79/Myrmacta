@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * TODO §72 (signature-electronique). {@code provider} : {@code none} (défaut, aucune fonctionnalité,
- * un bloc signature est refusé au déploiement), {@code stub} (simulation, D-SIGNATURE-STUB-BEHAVIOR)
- * ou le code d'un futur fournisseur. Le stub est soumis à la garde de profil
+ * un bloc signature est refusé au déploiement), {@code stub} (simulation, D-SIGNATURE-STUB-BEHAVIOR),
+ * {@code yousign} ou {@code docusign} (TODO §109, D-SIGNATURE-PROVIDER). Le stub est soumis à la garde de profil
  * (D-SIGNATURE-STUB-GUARD) : hors profil {@code local}/{@code test}, il exige
  * {@code stub.allowOutsideLocal=true}.
  */
@@ -26,7 +26,10 @@ public record SignatureProperties(
 
     public static final String PROVIDER_NONE = "none";
     public static final String PROVIDER_STUB = "stub";
-    private static final Set<String> KNOWN_PROVIDERS = Set.of(PROVIDER_NONE, PROVIDER_STUB);
+    public static final String PROVIDER_YOUSIGN = "yousign";
+    public static final String PROVIDER_DOCUSIGN = "docusign";
+    private static final Set<String> KNOWN_PROVIDERS =
+            Set.of(PROVIDER_NONE, PROVIDER_STUB, PROVIDER_YOUSIGN, PROVIDER_DOCUSIGN);
 
     public SignatureProperties {
         provider = provider == null || provider.isBlank() ? PROVIDER_NONE : provider.trim().toLowerCase(Locale.ROOT);

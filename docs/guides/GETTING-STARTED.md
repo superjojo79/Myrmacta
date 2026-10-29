@@ -460,7 +460,9 @@ APP_PORTAL_PUBLIC_BASE_URL=http://localhost:8080
 
 Le fournisseur `stub` **simule** la signature (PDF marqué « SIMULATION — sans valeur juridique »).
 Il démarre sans autre réglage sous le profil `local` ou `test` ; hors de ces profils, il refuse de
-démarrer (voir docs/guides/DEPLOIEMENT.md § Signature électronique). Variables facultatives :
+démarrer (voir docs/guides/DEPLOIEMENT.md § Signature électronique). Les fournisseurs `yousign` et
+`docusign` se règlent dans cette même section, avec les secrets sur le connecteur `signature`.
+Variables facultatives :
 `APP_SIGNATURE_DEFAULT_DEADLINE` (défaut `14d`), `APP_SIGNATURE_MAX_DEADLINE` (défaut `90d`).
 Déployer ensuite un BPMN contenant un bloc de signature (GUIDE-CONCEPTION-BPMN §3quater).
 

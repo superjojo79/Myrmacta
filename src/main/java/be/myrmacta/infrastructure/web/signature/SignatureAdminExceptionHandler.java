@@ -1,6 +1,7 @@
 package be.myrmacta.infrastructure.web.signature;
 
 import be.myrmacta.domain.dossier.model.DossierNotFoundException;
+import be.myrmacta.domain.signature.model.HostedSignatureException;
 import be.myrmacta.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -39,6 +40,13 @@ class SignatureAdminExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail handleConflict(IllegalStateException ex) {
         return problem(HttpStatus.CONFLICT, "Signature conflict", ex.getMessage());
+    }
+
+    /** La cérémonie est chez le fournisseur (D-SIGNATURE-LINK). */
+    @ExceptionHandler(HostedSignatureException.class)
+    ProblemDetail handleHostedSignature(HostedSignatureException ex) {
+        return problem(HttpStatus.CONFLICT, "Signature chez le fournisseur",
+                "Cette signature se fait sur le site du fournisseur.");
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {

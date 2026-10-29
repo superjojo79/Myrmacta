@@ -20,6 +20,7 @@ import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.port.out.SignatureMetricsPort;
+import be.myrmacta.domain.signature.port.out.SignedArtifactDownload;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import java.time.Clock;
 import java.time.ZoneOffset;
@@ -36,12 +37,13 @@ class DispatchSignatureOutcomesUseCaseImplTest {
     private final InMemorySignatureRepository repository = new InMemorySignatureRepository();
     private final WorkflowEnginePort engine = mock(WorkflowEnginePort.class);
     private final SignatureMetricsPort metrics = mock(SignatureMetricsPort.class);
+    private final SignedArtifactDownload artifacts = mock(SignedArtifactDownload.class);
     private DispatchSignatureOutcomesUseCaseImpl useCase;
     private int seq;
 
     @BeforeEach
     void setUp() {
-        useCase = new DispatchSignatureOutcomesUseCaseImpl(repository, engine, metrics,
+        useCase = new DispatchSignatureOutcomesUseCaseImpl(repository, engine, metrics, artifacts,
                 Clock.fixed(NOW, ZoneOffset.UTC), 3, 50);
     }
 
@@ -176,5 +178,18 @@ class DispatchSignatureOutcomesUseCaseImplTest {
         assertThat(useCase.dispatch(pending.id())).isFalse();
         assertThat(useCase.dispatch(UUID.randomUUID())).isFalse();
         verify(engine, never()).correlateMessageOnExecution(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void artifactDownloadFailureRetriesWithoutCorrelating() {
+        SignatureRequest r = closed(SignatureOutcome.SIGNED);
+        doThrow(new IllegalStateException("provider down")).when(artifacts).ensure(any());
+
+        assertThat(useCase.dispatch(r.id())).isFalse();
+
+        verify(engine, never()).correlateMessageOnExecution(anyString(), anyString(), any(), any());
+        assertThat(repository.findById(r.id()).orElseThrow().dispatchAttempts()).isEqualTo(1);
+        assertThat(repository.findById(r.id()).orElseThrow().outcomeDispatchedAt()).isNull();
+        verify(metrics).dispatchRetry();
     }
 }

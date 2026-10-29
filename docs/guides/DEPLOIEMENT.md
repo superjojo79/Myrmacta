@@ -416,7 +416,7 @@ Opt-in (TODO §72) : tant que `APP_SIGNATURE_PROVIDER=none` (défaut), aucune ro
 n'existe et un BPMN contenant un bloc de signature est **refusé au déploiement**.
 
 ```bash
-APP_SIGNATURE_PROVIDER=stub          # seul fournisseur livré : simulation
+APP_SIGNATURE_PROVIDER=stub          # stub | yousign | docusign
 APP_SIGNATURE_DEFAULT_DEADLINE=14d   # facultatif
 APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peut demander
 ```
@@ -432,9 +432,16 @@ APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peu
   le lien d'invitation est `<URL publique>/portal/#signature:<jeton>`. L'invitation part par le relais
   SMTP (cinq tentatives). Le jeton n'existe en clair que dans l'e-mail (empreinte SHA-256 en base, jamais
   journalisé) ; le portail répond toujours par le même 404 uniforme à un lien refusé.
-- **Brancher un vrai fournisseur** : implémenter le port `SignaturePort` et créer une instance du
-  connecteur `signature` (type `CALLBACK`, secret de webhook en champ mot de passe). Le fournisseur
-  appelle `/api/callbacks/{id de l'instance}` (HMAC horodaté + clé d'idempotence, comme tout callback).
+- **Yousign et DocuSign** (`APP_SIGNATURE_PROVIDER=yousign` ou `docusign`, TODO §109) : une seule
+  instance activée du connecteur `signature`. Les secrets sont des champs de cette instance, pas des
+  variables d'environnement. Yousign : environnement `sandbox` ou `production`, clé d'API, webhook
+  `YOUSIGN_HMAC` (corps brut, idempotence `event_id`). DocuSign : même choix d'environnement, clé
+  d'intégration, identifiant de l'utilisateur impersonné, clé privée RSA (PEM), compte facultatif,
+  webhook `DOCUSIGN_HMAC` (HMAC Base64, en-têtes `X-DocuSign-Signature-N`). Le signataire ouvre le
+  lien Myrmacta, puis est envoyé chez le fournisseur. L'URL de retour DocuSign est
+  `<URL publique du portail>/portal/`, sans jeton. Le webhook enregistre l'issue ; le répartiteur
+  télécharge le PDF signé et la preuve. Les appels sortants ne vont que vers les hôtes du fournisseur
+  choisi.
 - **Garde du stub** : le profil `test` est réservé aux tests automatisés ; ne jamais nommer ainsi un environnement
   de recette (il démarrerait le stub sans le second drapeau). L'e-mail d'invitation et les PDF portent la mention
   « SIMULATION » ; les PDF ont en plus la métadonnée `Subject`/`Keywords` et sont protégés contre la modification.

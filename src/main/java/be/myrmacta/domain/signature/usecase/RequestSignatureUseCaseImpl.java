@@ -16,6 +16,7 @@ import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.port.in.RequestSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.InternalSignerEmails;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignatureConflictException;
 import be.myrmacta.domain.signature.port.out.SignatureMetricsPort;
@@ -59,6 +60,7 @@ public final class RequestSignatureUseCaseImpl implements RequestSignatureUseCas
     private final SignatureNotifier notifier;
     private final SignatureMetricsPort metrics;
     private final SignatureOutcomeListener outcomeListener;
+    private final InternalSignerEmails internalEmails;
     private final Clock clock;
 
     public RequestSignatureUseCaseImpl(
@@ -72,6 +74,7 @@ public final class RequestSignatureUseCaseImpl implements RequestSignatureUseCas
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
             SignatureOutcomeListener outcomeListener,
+            InternalSignerEmails internalEmails,
             Clock clock) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
@@ -83,6 +86,7 @@ public final class RequestSignatureUseCaseImpl implements RequestSignatureUseCas
         this.notifier = Objects.requireNonNull(notifier, "notifier");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
         this.outcomeListener = Objects.requireNonNull(outcomeListener, "outcomeListener");
+        this.internalEmails = Objects.requireNonNull(internalEmails, "internalEmails");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -252,9 +256,25 @@ public final class RequestSignatureUseCaseImpl implements RequestSignatureUseCas
         return raw.filter(String.class::isInstance)
                 .map(v -> ((String) v).trim())
                 .filter(v -> !v.isEmpty() && v.length() <= MAX_USER_ID && v.chars().noneMatch(Character::isISOControl))
-                .map(userId -> new Signer(UUID.randomUUID(), tenantId, requestId, position, SignerKind.INTERNAL,
-                        definition.required(), userId, definition.name(), null, null, SignerStatus.WAITING, null, 0,
-                        null, null, 0L));
+                .flatMap(userId -> internalSigner(requestId, position, definition, userId));
+    }
+
+    /**
+     * Le stub signe dans Myrmacta et garde une adresse nulle. Un fournisseur hébergé en exige une
+     * (D-SIGNATURE-SIGNER-EMAIL) : absente ou blanche, la demande est {@code FAILED} / {@code NO_ADDRESS}.
+     */
+    private Optional<Signer> internalSigner(
+            UUID requestId, int position, SignerDefinition definition, String userId) {
+        String email = null;
+        if (port.capabilities().hostedSigningUrl()) {
+            email = internalEmails.emailOf(userId).flatMap(PortalEmails::normalize).orElse(null);
+            if (email == null) {
+                return Optional.empty();
+            }
+        }
+        return Optional.of(new Signer(UUID.randomUUID(), tenantId, requestId, position, SignerKind.INTERNAL,
+                definition.required(), userId, definition.name(), email, null, SignerStatus.WAITING, null, 0,
+                null, null, 0L));
     }
 
     static final String PDF_CONTENT_TYPE = "application/pdf";

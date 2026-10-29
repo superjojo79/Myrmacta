@@ -6,6 +6,7 @@ import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.port.in.DispatchSignatureOutcomesUseCase;
 import be.myrmacta.domain.signature.port.out.SignatureMetricsPort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.domain.signature.port.out.SignedArtifactDownload;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import java.time.Clock;
 import java.util.Map;
@@ -19,12 +20,17 @@ import java.util.UUID;
  * process (échec à l'émission) lève {@link CallbackNoMatchingInstanceException} : la demande reste non
  * répartie et est reprise au passage suivant, jusqu'à {@code maxAttempts} (alerte, puis abandon
  * consultable). {@code outcome_dispatched_at} n'est posé qu'une fois : reprise idempotente.
+ *
+ * <p>Pour un fournisseur hébergé, le PDF signé est téléchargé ici, avant la reprise du process
+ * (D-SIGNATURE-WEBHOOK). Un échec de téléchargement compte une tentative, comme une corrélation
+ * manquée, et ne reprend pas le process.
  */
 public final class DispatchSignatureOutcomesUseCaseImpl implements DispatchSignatureOutcomesUseCase {
 
     private final SignatureRequestRepository repository;
     private final WorkflowEnginePort workflowEngine;
     private final SignatureMetricsPort metrics;
+    private final SignedArtifactDownload artifacts;
     private final Clock clock;
     private final int maxAttempts;
     private final int batchSize;
@@ -33,12 +39,14 @@ public final class DispatchSignatureOutcomesUseCaseImpl implements DispatchSigna
             SignatureRequestRepository repository,
             WorkflowEnginePort workflowEngine,
             SignatureMetricsPort metrics,
+            SignedArtifactDownload artifacts,
             Clock clock,
             int maxAttempts,
             int batchSize) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.workflowEngine = Objects.requireNonNull(workflowEngine, "workflowEngine");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.artifacts = Objects.requireNonNull(artifacts, "artifacts");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.maxAttempts = maxAttempts;
         this.batchSize = batchSize;
@@ -69,6 +77,12 @@ public final class DispatchSignatureOutcomesUseCaseImpl implements DispatchSigna
 
     private boolean dispatchOne(SignatureRequest request) {
         try {
+            artifacts.ensure(request);
+        } catch (RuntimeException ex) {
+            noteRetry(request);
+            return false;
+        }
+        try {
             workflowEngine.correlateMessageOnExecution(
                     MESSAGE_NAME,
                     CORRELATION_VARIABLE,
@@ -84,16 +98,20 @@ public final class DispatchSignatureOutcomesUseCaseImpl implements DispatchSigna
             if (fresh.isPresent() && fresh.get().outcomeDispatchedAt() != null) {
                 return false;
             }
-            SignatureRequest retried = request.withDispatchAttempts(request.dispatchAttempts() + 1);
-            if (repository.updateRequest(retried)) {
-                metrics.dispatchRetry();
-                if (retried.dispatchAttempts() >= maxAttempts) {
-                    metrics.dispatchGaveUp();
-                }
-            }
+            noteRetry(request);
             return false;
         }
         return recordDispatched(request);
+    }
+
+    private void noteRetry(SignatureRequest request) {
+        SignatureRequest retried = request.withDispatchAttempts(request.dispatchAttempts() + 1);
+        if (repository.updateRequest(retried)) {
+            metrics.dispatchRetry();
+            if (retried.dispatchAttempts() >= maxAttempts) {
+                metrics.dispatchGaveUp();
+            }
+        }
     }
 
     /**

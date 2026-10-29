@@ -1,0 +1,26 @@
+# Runner GitHub Actions auto-hébergé (TODO §110). Mode d'emploi : docs/guides/GETTING-STARTED.md §19.
+#   RUNNER_TOKEN=<jeton> docker compose -f docker/ci-runner/compose.yml up -d --build
+name: myrmacta-ci-runner
+
+services:
+  ci-runner:
+    build: .
+    image: myrmacta-ci-runner
+    restart: unless-stopped
+    init: true
+    # Le runner finit proprement sur SIGINT ; laisser le temps à un job en cours de se terminer.
+    stop_signal: SIGINT
+    stop_grace_period: 2m
+    # Chromium (Playwright) manque de mémoire partagée avec les 64 Mo par défaut.
+    shm_size: 1gb
+    environment:
+      RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+      RUNNER_NAME: ${RUNNER_NAME:-myrmacta-ci}
+      RUNNER_LABELS: ${RUNNER_LABELS:-myrmacta-ci}
+    # Tout le répertoire de l'utilisateur : runner et son enregistrement, JDK et Node (_tool), ~/.m2, ~/.npm,
+    # navigateurs Playwright. Pas de socket Docker : un job ne doit pas pouvoir piloter l'hôte.
+    volumes:
+      - runner-home:/home/runner
+
+volumes:
+  runner-home:

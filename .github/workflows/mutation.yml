@@ -29,6 +29,9 @@ on:
 permissions:
   contents: read
 
+# TODO §110 : la variable de dépôt `CI_RUNNER` envoie les jobs sur le runner auto-hébergé (docker/ci-runner) ;
+# sans elle, ubuntu-latest.
+
 concurrency:
   group: mutation-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -40,7 +43,7 @@ defaults:
 jobs:
   changed-classes:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -92,7 +95,7 @@ jobs:
 
   full:
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -122,7 +125,7 @@ jobs:
 
   frontend-changed-files:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -190,7 +193,7 @@ jobs:
 
   frontend-full:
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 90
     steps:
       - name: Checkout

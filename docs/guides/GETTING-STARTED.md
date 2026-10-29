@@ -537,6 +537,52 @@ APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/
   définir à `local` ou `staging`). Le serveur écoute 127.0.0.1 mais en authentification `trust` :
   réserver à une machine ou un conteneur non partagé.
 
+## 19. CI sur un runner auto-hébergé (optionnel)
+
+Quand le compte n'a plus de minutes GitHub Actions, les workflows de `.github/workflows/` tournent tels quels sur une
+machine à vous (TODO §110) : Docker ou Podman, Linux x64 ou arm64 (Docker Desktop convient), 4 cœurs, 8 Go de
+mémoire et 20 Go de disque au moins.
+
+1. **Jeton.** Sur GitHub : dépôt → *Settings* → *Actions* → *Runners* → *New self-hosted runner*, copier la valeur
+   qui suit `--token` (valable une heure, pour un seul enregistrement).
+2. **Démarrer.**
+
+   ```bash
+   RUNNER_TOKEN=<jeton> docker compose -f docker/ci-runner/compose.yml up -d --build
+   docker compose -f docker/ci-runner/compose.yml logs -f      # attendre « Listening for Jobs »
+   ```
+
+   Le runner apparaît *Idle* dans *Settings* → *Actions* → *Runners*, avec le libellé `myrmacta-ci`. Il redémarre
+   avec la machine (`restart: unless-stopped`) et n'a plus besoin de jeton : son enregistrement vit dans le volume.
+3. **Basculer.** *Settings* → *Secrets and variables* → *Actions* → onglet *Variables* → variable de dépôt
+   `CI_RUNNER` = `myrmacta-ci`. Les push et PR suivants passent sur le runner ; une PR déjà ouverte se rejoue par
+   *Re-run all jobs* dans l'onglet *Actions*.
+4. **Revenir aux runners GitHub** : supprimer la variable `CI_RUNNER`.
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `RUNNER_TOKEN` | — | jeton de création (premier démarrage) ou de suppression (`remove`) |
+| `RUNNER_NAME` | `myrmacta-ci` | nom du runner dans GitHub |
+| `RUNNER_LABELS` | `myrmacta-ci` | libellés, séparés par des virgules ; doivent contenir la valeur de `CI_RUNNER` |
+| `RUNNER_VERSION` | dernière publiée | version téléchargée au premier démarrage ; le runner se met ensuite à jour seul |
+| `REPO_URL` | `https://github.com/superjojo79/Myrmacta` | dépôt servi |
+
+- **Désenregistrer.** *Runners* → le runner → *Remove*, copier le jeton affiché, puis :
+
+  ```bash
+  docker compose -f docker/ci-runner/compose.yml stop
+  RUNNER_TOKEN=<jeton> docker compose -f docker/ci-runner/compose.yml run --rm ci-runner remove
+  docker compose -f docker/ci-runner/compose.yml down -v      # volume compris : JDK, ~/.m2, navigateurs
+  ```
+
+- **Un job à la fois.** Les trois jobs de `ci.yml` passent l'un après l'autre (une vingtaine de minutes en tout).
+  Runner éteint : les jobs attendent en file, GitHub les annule au bout de 24 heures.
+- **Sécurité.** Tout code poussé sur le dépôt, branches des agents comprises, s'exécute sur la machine, dans le
+  conteneur. Ne pas y monter le socket Docker ni un répertoire de l'hôte ; préférer une machine sans accès à des
+  services sensibles du réseau local.
+- `ClamAvAttachmentScanIT` s'ignore sur ce runner (pas de démon Docker dans le conteneur) ; sur `ubuntu-latest`,
+  il tourne.
+
 ## Pour aller plus loin
 
 - Déploiement au-delà de ce guide (reverse-proxy, provisioning tenant, comptes Keycloak) : [docs/guides/DEPLOIEMENT.md](DEPLOIEMENT.md)

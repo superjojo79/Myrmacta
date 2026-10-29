@@ -38,6 +38,18 @@ processus, pas dans une table à part ni dans le seul concepteur de parcours :
 - L'éditeur BPMN conserve l'élément à l'enregistrement. Il n'a pas encore de champ pour le créer : on l'écrit
   dans le XML, puis on déploie.
 
+**Revue adversariale (2026-10-29, sous-agent au contexte neuf, une passe).** Aucun constat Critique, Haut
+ou Moyen. Les démarrages manuel, MCP, dossier enfant et outbox passent par `StartVariableDeclarations.bind` ;
+le catalogue est authentifié et filtré par le tenant de l'instance ; les messages ne contiennent pas la valeur.
+Quatre constats Bas, non corrigés :
+
+- la réconciliation d'un lien `RESERVED` ne revérifie pas la déclaration (déjà le choix ci-dessus) ;
+- le `dryRun` MCP ne rejoue pas l'allowlist `documentType`, qui ne s'applique qu'au démarrage effectif ;
+- un connecteur qui ajoute `inboundAttachmentsRejected` fait mourir l'événement d'outbox si le processus
+  déclare ses variables et n'a pas ce nom ;
+- chaque lecture du catalogue revalide le XML déployé (plafond multipart 25 Mo), pour un utilisateur déjà
+  authentifié.
+
 **Hors de cette décision.** Types autres que le texte, valeur par défaut, minuteur ou gabarit de notification.
 
 **Impacte :** `docs/specs/05-workflow-engine.md`, `docs/guides/GUIDE-UTILISATEUR.md` §3,

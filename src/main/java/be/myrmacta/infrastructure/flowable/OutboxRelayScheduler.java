@@ -8,7 +8,9 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.workflow.model.OutboxEvent;
 import be.myrmacta.domain.workflow.port.out.OutboxRepository;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
+import be.myrmacta.domain.workflow.StartVariableDeclarations;
 import be.myrmacta.domain.workflow.WorkflowVariables;
+import be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.config.WorkflowProperties;
 import be.myrmacta.infrastructure.observability.MdcScope;
@@ -28,6 +30,7 @@ class OutboxRelayScheduler {
     private final DossierRepository dossierRepository;
     private final WorkflowProperties properties;
     private final TenantProperties tenantProperties;
+    private final StartVariableCatalogPort startVariableCatalog;
 
     OutboxRelayScheduler(
             OutboxRepository outboxRepository,
@@ -35,13 +38,15 @@ class OutboxRelayScheduler {
             WorkflowEnginePort workflowEnginePort,
             DossierRepository dossierRepository,
             WorkflowProperties properties,
-            TenantProperties tenantProperties) {
+            TenantProperties tenantProperties,
+            StartVariableCatalogPort startVariableCatalog) {
         this.outboxRepository = outboxRepository;
         this.attachWorkflow = attachWorkflow;
         this.workflowEnginePort = workflowEnginePort;
         this.dossierRepository = dossierRepository;
         this.properties = properties;
         this.tenantProperties = tenantProperties;
+        this.startVariableCatalog = java.util.Objects.requireNonNull(startVariableCatalog, "startVariableCatalog");
     }
 
     @Scheduled(fixedDelayString = "${app.workflow.outbox.poll-delay:1s}")
@@ -61,8 +66,11 @@ class OutboxRelayScheduler {
 
     private void processOneInternal(OutboxEvent event) {
         try {
+            Map<String, Object> accepted;
             try {
                 WorkflowVariables.assertNoReservedKeys(event.payload().variables());
+                accepted = StartVariableDeclarations.bind(
+                        startVariableCatalog.findDeclared(event.payload().processKey()), event.payload().variables());
             } catch (IllegalArgumentException ex) {
                 outboxRepository.markDead(event.eventId(), ex.getMessage());
                 return;
@@ -88,7 +96,7 @@ class OutboxRelayScheduler {
                     .orElseThrow(() -> new IllegalStateException(
                             "Dossier not found: " + event.payload().dossierId()));
             Map<String, Object> variables = WorkflowVariables.withPlatformVariables(
-                    event.payload().variables(), link, dossier.fields());
+                    accepted, link, dossier.fields());
             String processInstanceId = workflowEnginePort.start(
                     link.processDefinitionKey(), link.tenantId(), link.id().toString(), variables);
             confirmAndMarkProcessed(event, link.id(), processInstanceId);

@@ -207,6 +207,16 @@ unique), ou sa liste sous l'id de la décision ou du service de décision (résu
 refuse donc un nom réservé à ces trois places, sur tous les chemins de mise en ligne d'une table :
 [§100](../decisions/100-sortie-dmn-vers-une-variable-reservee.md) (D-DMN-RESERVED-OUTPUT).
 
+### Variables de démarrage déclarées
+
+Un processus peut déclarer ses variables de démarrage par `<flowable:startVariable name label required/>` dans les
+`extensionElements` du `process` ([§111](../decisions/111-variables-de-demarrage-declarees.md), D-START-DECLARED,
+issue #187). Ailleurs (activité, couloir, participant, artefact), l'élément est refusé. Le catalogue lit le
+processus dont l'identifiant est la clé demandée. `GET /api/workflow-start-variables` les expose au dialogue,
+qui remplace alors la saisie libre. Le
+démarrage manuel, le MCP, le dossier enfant et le relais d'outbox n'acceptent que ces noms, en texte ; une
+obligatoire manquante est refusée. Sans déclaration, la saisie libre du §93 reste.
+
 ---
 
 ## Ports domaine

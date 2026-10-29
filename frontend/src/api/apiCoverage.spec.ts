@@ -27,6 +27,7 @@ import {
   getWorkflowHistory,
   getWorkflowTasks,
   getWorkflowTypeConfig,
+  listStartVariables,
   listWorkflowTypeConfigs,
   reassignWorkflowTask,
   claimWorkflowTask,
@@ -98,6 +99,7 @@ describe('api coverage', () => {
     await getWorkflowHistory('l')
     await getWorkflowTasks('l')
     await reassignWorkflowTask('l', 't', 'u')
+    await listStartVariables('wf')
     await listWorkflowTypeConfigs()
     await getWorkflowTypeConfig('wf')
     await createWorkflowTypeConfig({

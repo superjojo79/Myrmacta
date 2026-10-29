@@ -45,7 +45,9 @@ public class StartWorkflowTool {
             @McpToolParam(required = true, description = "BPMN process definition key") String processDefinitionKey,
             @McpToolParam(required = true, description = "Idempotency key (same as REST Idempotency-Key header)")
                     String idempotencyKey,
-            @McpToolParam(required = false, description = "Process variables; reserved keys (dossierId, tenantId, …) rejected")
+            @McpToolParam(required = false, description = "Process variables. Reserved keys are rejected. "
+                    + "When the deployed BPMN declares flowable:startVariable, only those names are accepted "
+                    + "and required ones must be non-blank text.")
                     Map<String, Object> variables,
             @McpToolParam(required = false, description = "Validate without starting; default false") Boolean dryRun) {
         AccessContext.User actor = accessContextFactory.currentActor();
@@ -58,6 +60,7 @@ public class StartWorkflowTool {
         Dossier dossier = getDossierUseCase.get(id, actor);
         accessPolicy.assertCanEdit(dossier, actor);
         if (Boolean.TRUE.equals(dryRun)) {
+            orchestrator.bindStartVariables(processKey, rawVariables);
             Map<String, Object> preview = new LinkedHashMap<>();
             preview.put("dryRun", true);
             preview.put("valid", true);

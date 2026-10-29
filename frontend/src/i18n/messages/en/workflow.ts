@@ -14,6 +14,10 @@ const workflow: typeof fr = {
       value: 'Value',
       add: 'Add a variable',
       remove: 'Remove the variable',
+      declaredHint: 'This workflow asks for these values. A star marks a required value.',
+      required: 'required',
+      missing: '“{label}” is required.',
+      loadError: 'Start variables could not be loaded.',
       errors: {
         invalid: 'Invalid name: letters, digits and _, not starting with a digit.',
         reserved: '“{name}” is reserved by the platform.',

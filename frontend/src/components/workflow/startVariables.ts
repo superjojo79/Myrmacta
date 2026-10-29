@@ -7,6 +7,13 @@ export interface StartVariableRow {
   value: string
 }
 
+/** TODO §111 — variable déclarée dans le BPMN déployé, lue par le dialogue. */
+export interface DeclaredStartVariable {
+  name: string
+  label: string
+  required: boolean
+}
+
 export type StartVariableError = 'invalid' | 'reserved' | 'duplicate'
 
 /** Mêmes noms que `WorkflowVariables.RESERVED` côté serveur. */
@@ -42,4 +49,20 @@ export function validateStartVariables(rows: StartVariableRow[]): {
     }
   })
   return { variables, errors }
+}
+
+/** Valeurs du formulaire déclaré. Une facultative blanche n'est pas envoyée. */
+export function collectDeclaredStartVariables(
+  declarations: DeclaredStartVariable[],
+  values: Record<string, string>,
+): { variables: Record<string, string>; missing: DeclaredStartVariable[] } {
+  const missing = declarations.filter((declaration) => declaration.required && !(values[declaration.name] ?? '').trim())
+  const variables: Record<string, string> = {}
+  if (missing.length === 0) {
+    for (const declaration of declarations) {
+      const value = (values[declaration.name] ?? '').trim()
+      if (value) variables[declaration.name] = value
+    }
+  }
+  return { variables, missing }
 }

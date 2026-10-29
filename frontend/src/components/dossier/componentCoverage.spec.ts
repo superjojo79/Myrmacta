@@ -33,6 +33,7 @@ describe('component coverage extras', () => {
     await fields.get('select').setValue('A')
     expect(fields.emitted('update:modelValue')?.length).toBeGreaterThan(0)
 
+    vi.mocked(workflowsApi.listStartVariables).mockResolvedValue([])
     vi.mocked(workflowsApi.listAllWorkflowTypeConfigs).mockResolvedValue([
       {
         id: '1',
@@ -51,6 +52,7 @@ describe('component coverage extras', () => {
     await flushPromises()
     await dialog.get('input[type="checkbox"]').setValue(true)
     await dialog.get('select').setValue('other')
+    await flushPromises()
     await dialog.get('button.primary').trigger('click')
     expect(dialog.emitted('start')?.[0]).toEqual(['other', {}])
   })

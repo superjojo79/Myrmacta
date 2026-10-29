@@ -1,5 +1,7 @@
 package be.myrmacta.domain.workflow.port.out;
 
+import be.myrmacta.domain.workflow.model.StartVariableDeclaration;
+import java.util.List;
 import java.util.Set;
 
 public interface BpmnParserPort {
@@ -48,4 +50,11 @@ public interface BpmnParserPort {
     default java.util.List<be.myrmacta.domain.precheck.model.PrecheckBlock> extractPrecheckBlocks(byte[] bpmnXml) {
         return java.util.List.of();
     }
+
+    /**
+     * TODO §111 (issue #187, D-START-DECLARED) — variables de démarrage déclarées sur le processus dont
+     * l'identifiant est {@code processDefinitionKey} ({@code flowable:startVariable}). Un fichier peut en
+     * contenir plusieurs : ce n'est pas le premier pool. Vide si ce processus n'en déclare aucune.
+     */
+    List<StartVariableDeclaration> extractStartVariables(byte[] bpmnXml, String processDefinitionKey);
 }

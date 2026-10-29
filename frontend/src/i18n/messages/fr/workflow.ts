@@ -12,6 +12,10 @@ export default {
       value: 'Valeur',
       add: 'Ajouter une variable',
       remove: 'Supprimer la variable',
+      declaredHint: 'Ce workflow demande ces valeurs. Une étoile marque une valeur obligatoire.',
+      required: 'obligatoire',
+      missing: '« {label} » est obligatoire.',
+      loadError: 'Les variables de démarrage n’ont pas pu être lues.',
       errors: {
         invalid: 'Nom invalide : lettres, chiffres et _, sans commencer par un chiffre.',
         reserved: '« {name} » est réservé par la plateforme.',

@@ -118,6 +118,7 @@ class StartWorkflowToolTest {
 
         assertThat(preview).containsEntry("dryRun", true).containsEntry("processDefinitionKey", "wf-sinistre");
         verify(orchestrator, never()).start(any(), any(), any(), any(), any());
+        verify(orchestrator).bindStartVariables("wf-sinistre", Map.of());
         verify(accessPolicy).assertCanEdit(any(), any());
     }
 

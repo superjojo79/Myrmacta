@@ -2182,6 +2182,24 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PageResponseMyWorkflowTaskResponse"
+  /api/workflow-start-variables:
+    get:
+      tags:
+      - workflow-start-variable-controller
+      operationId: list_7
+      parameters:
+      - name: processDefinitionKey
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/StartVariablesResponse"
   /api/workflow-links/{linkId}/tasks:
     get:
       tags:
@@ -2548,7 +2566,7 @@ paths:
     get:
       tags:
       - operational-report-controller
-      operationId: list_7
+      operationId: list_8
       parameters:
       - name: page
         in: query
@@ -2595,7 +2613,7 @@ paths:
     get:
       tags:
       - purge-outbox-controller
-      operationId: list_8
+      operationId: list_9
       parameters:
       - name: status
         in: query
@@ -2695,7 +2713,7 @@ paths:
     get:
       tags:
       - parcours-controller
-      operationId: list_9
+      operationId: list_10
       responses:
         "200":
           description: OK
@@ -2721,7 +2739,7 @@ paths:
     get:
       tags:
       - notification-inbox-controller
-      operationId: list_10
+      operationId: list_11
       parameters:
       - name: page
         in: query
@@ -2808,7 +2826,7 @@ paths:
     get:
       tags:
       - portal-link-admin-controller
-      operationId: list_11
+      operationId: list_12
       parameters:
       - name: dossierId
         in: path
@@ -2976,7 +2994,7 @@ paths:
     get:
       tags:
       - connector-definition-controller
-      operationId: list_12
+      operationId: list_13
       parameters:
       - name: page
         in: query
@@ -3062,7 +3080,7 @@ paths:
     get:
       tags:
       - assistant-controller
-      operationId: list_13
+      operationId: list_14
       responses:
         "200":
           description: OK
@@ -3155,7 +3173,7 @@ paths:
     get:
       tags:
       - drafts-controller
-      operationId: list_14
+      operationId: list_15
       responses:
         "200":
           description: OK
@@ -4930,6 +4948,22 @@ components:
         totalPages:
           type: integer
           format: int32
+    DeclaredVariable:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        required:
+          type: boolean
+    StartVariablesResponse:
+      type: object
+      properties:
+        variables:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeclaredVariable"
     PageResponseWorkflowTaskView:
       type: object
       properties:

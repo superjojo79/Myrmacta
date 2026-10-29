@@ -160,6 +160,31 @@ injectées, le reste des variables passées par l'appelant :
 | **Manuel — API/UI** | `POST /api/dossiers/{id}/workflows` (en-tête `Idempotency-Key` obligatoire) → `ManualStartOrchestrator.start(...)` | Depuis la fiche dossier, bouton **Démarrer workflow** (`docs/guides/GUIDE-UTILISATEUR.md` §3) |
 | **Chaînage — dossier enfant/suite** | `serviceTask` `${createChildDossierTask}` (voir §7) — crée un dossier `PARENT_CHILD` ou `SUBSEQUENT` **et** démarre son workflow via le même `ManualStartOrchestrator` | [04-dossiers.md](../specs/04-dossiers.md) §« Démarrage d'un nouveau workflow sur un dossier existant » |
 
+### Variables de démarrage déclarées (TODO §111)
+
+Pour remplacer la saisie libre du dialogue « Démarrer un workflow » par un formulaire, déclarer chaque
+variable sur le **processus** (pas sur une activité) :
+
+```xml
+<process id="autorisationRiverain" isExecutable="true">
+  <extensionElements>
+    <flowable:startVariable name="motif" label="Motif de la demande" required="true"/>
+    <flowable:startVariable name="note" label="Note" required="false"/>
+  </extensionElements>
+  …
+</process>
+```
+
+`name` est le nom de la variable de process (lettres, chiffres, `_`). `label` est le libellé montré à
+l'agent. `required` vaut `true` ou `false`. L'éditeur conserve ces éléments à l'enregistrement ; il ne
+propose pas encore de champ pour les ajouter, on les écrit dans le XML avant de déployer.
+
+Dès qu'au moins une déclaration est déployée, le démarrage manuel, l'outil MCP `start_workflow`, le
+dossier enfant (`childWorkflowVariables`) et un déclencheur passé par l'outbox n'acceptent **que** ces
+noms, en texte. Une obligatoire absente ou blanche fait échouer le démarrage (l'événement d'outbox est
+marqué mort). Une facultative blanche n'est pas posée. Sans aucune déclaration, la saisie libre reste
+possible.
+
 > **Chaîner un *nouveau* workflow sur le *même* dossier** (pas un dossier enfant) — utile pour
 > enchaîner deux processus BPMN distincts sur le même objet — n'a **pas** de `serviceTask`
 > prêt à l'emploi dans le dépôt actuel : seul `createChildDossierTask` existe, et il crée

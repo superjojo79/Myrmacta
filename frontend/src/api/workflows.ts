@@ -79,6 +79,17 @@ export async function listAllWorkflowTypeConfigs(): Promise<WorkflowTypeConfig[]
   return listAllPages((page, size) => listWorkflowTypeConfigs({ page, size }))
 }
 
+/** TODO §111 — variables déclarées sur le BPMN déployé de cette clé. Tableau vide si aucune. */
+export async function listStartVariables(
+  processDefinitionKey: string,
+): Promise<Array<{ name: string; label: string; required: boolean }>> {
+  const { data } = await axios.get<{ variables: Array<{ name: string; label: string; required: boolean }> }>(
+    '/api/workflow-start-variables',
+    { params: { processDefinitionKey } },
+  )
+  return data.variables
+}
+
 export async function getWorkflowTypeConfig(workflowKey: string): Promise<WorkflowTypeConfig> {
   const { data } = await axios.get<WorkflowTypeConfig>(`/api/workflow-type-configs/${workflowKey}`)
   return data

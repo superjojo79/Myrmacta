@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { RESERVED_START_VARIABLES, validateStartVariables } from './startVariables'
+import { collectDeclaredStartVariables, RESERVED_START_VARIABLES, validateStartVariables } from './startVariables'
 
 describe('validateStartVariables (TODO §93)', () => {
   it('construit les variables texte et ignore les lignes vides', () => {
@@ -52,5 +52,25 @@ describe('validateStartVariables (TODO §93)', () => {
     expect(validateStartVariables([{ name: 'commentaire', value: '' }]).variables).toEqual({
       commentaire: '',
     })
+  })
+})
+
+describe('collectDeclaredStartVariables (TODO §111)', () => {
+  const declarations = [
+    { name: 'motif', label: 'Motif', required: true },
+    { name: 'note', label: 'Note', required: false },
+  ]
+
+  it('envoie le texte rogné et omet une facultative blanche', () => {
+    expect(collectDeclaredStartVariables(declarations, { motif: '  travaux ', note: '  ' })).toEqual({
+      variables: { motif: 'travaux' },
+      missing: [],
+    })
+  })
+
+  it('signale une obligatoire vide et n’envoie rien', () => {
+    const result = collectDeclaredStartVariables(declarations, { motif: ' ', note: 'vue' })
+    expect(result.missing.map((item) => item.name)).toEqual(['motif'])
+    expect(result.variables).toEqual({})
   })
 })

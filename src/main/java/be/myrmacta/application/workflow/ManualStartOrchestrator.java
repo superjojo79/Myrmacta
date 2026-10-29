@@ -15,7 +15,9 @@ import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEventPublisher;
 import be.myrmacta.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import be.myrmacta.domain.workflow.DocumentTypeAllowList;
+import be.myrmacta.domain.workflow.StartVariableDeclarations;
 import be.myrmacta.domain.workflow.WorkflowVariables;
+import be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +33,7 @@ public final class ManualStartOrchestrator {
     private final IdempotencyStore idempotencyStore;
     private final WorkflowStartConfirmationPort workflowStartConfirmer;
     private final WorkflowEventPublisher eventPublisher;
+    private final StartVariableCatalogPort startVariableCatalog;
 
     public ManualStartOrchestrator(
             DossierRepository dossierRepository,
@@ -40,7 +43,8 @@ public final class ManualStartOrchestrator {
             WorkflowEnginePort workflowEnginePort,
             IdempotencyStore idempotencyStore,
             WorkflowStartConfirmationPort workflowStartConfirmer,
-            WorkflowEventPublisher eventPublisher) {
+            WorkflowEventPublisher eventPublisher,
+            StartVariableCatalogPort startVariableCatalog) {
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
         this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
@@ -49,6 +53,15 @@ public final class ManualStartOrchestrator {
         this.idempotencyStore = Objects.requireNonNull(idempotencyStore, "idempotencyStore");
         this.workflowStartConfirmer = Objects.requireNonNull(workflowStartConfirmer, "workflowStartConfirmer");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher");
+        this.startVariableCatalog = Objects.requireNonNull(startVariableCatalog, "startVariableCatalog");
+    }
+
+    /**
+     * TODO §111 (D-START-DECLARED) — mêmes règles que le démarrage, sans réserver de lien. Le {@code dryRun} MCP s'en sert.
+     */
+    public Map<String, Object> bindStartVariables(String processDefinitionKey, Map<String, Object> variables) {
+        WorkflowVariables.assertNoReservedKeys(variables);
+        return StartVariableDeclarations.bind(startVariableCatalog.findDeclared(processDefinitionKey), variables);
     }
 
     public StartResult start(
@@ -69,17 +82,19 @@ public final class ManualStartOrchestrator {
             return new StartResult(replay.get(), true);
         }
         // Revue adversariale TODO §93 (I8) : même liste blanche qu'à la complétion d'une tâche (D-TASK-FORM-DOCTYPE-SCOPE).
-        if (DocumentTypeAllowList.concerns(variables)) {
+        Map<String, Object> accepted = StartVariableDeclarations.bind(
+                startVariableCatalog.findDeclared(processDefinitionKey), variables);
+        if (DocumentTypeAllowList.concerns(accepted)) {
             DossierType type = dossierTypeRepository.findByCode(dossier.tenantId(), dossier.dossierTypeCode())
                     .orElseThrow(() -> new DossierNotFoundException(
                             "Dossier type not found: " + dossier.tenantId() + "/" + dossier.dossierTypeCode()));
-            DocumentTypeAllowList.assertAllowed(type, variables);
+            DocumentTypeAllowList.assertAllowed(type, accepted);
         }
 
         DossierWorkflowLink reserved = attachWorkflow.reserve(
                 dossierId, processDefinitionKey, "manual:" + idempotencyKey, startedBy);
         Map<String, Object> engineVariables =
-                WorkflowVariables.withPlatformVariables(variables, reserved, dossier.fields());
+                WorkflowVariables.withPlatformVariables(accepted, reserved, dossier.fields());
 
         String processInstanceId;
         try {

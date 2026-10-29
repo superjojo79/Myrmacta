@@ -129,6 +129,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 108 | [Tests de mutation (PIT et StrykerJS)](108-tests-de-mutation-pit.md) | clos | — |
 | 109 | [Fournisseurs de signature Yousign et DocuSign](109-fournisseurs-de-signature-yousign-et-docusign.md) | clos | — |
 | 110 | [Runner GitHub Actions auto-hébergé](110-runner-github-actions-auto-heberge.md) | clos | — |
+| 111 | [Variables de démarrage déclarées dans le BPMN](111-variables-de-demarrage-declarees.md) | clos | — |
 
 ## Sections de l'ancien registre
 

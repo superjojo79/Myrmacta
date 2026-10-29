@@ -37,9 +37,10 @@ et refuser un doublon de champ ouvert
 
 1. **Priorité 1 :** fournisseur de signature réel, eIDAS ([#191](https://github.com/superjojo79/FlowForge/issues/191)), à cadrer.
 2. **Exemple riverain, priorité 3 :** gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)),
-   minuteur de parcours ([#186](https://github.com/superjojo79/FlowForge/issues/186)), variables de démarrage déclarées
-   ([#187](https://github.com/superjojo79/FlowForge/issues/187)), assignation par groupe
-   ([#190](https://github.com/superjojo79/FlowForge/issues/190)).
+   minuteur de parcours ([#186](https://github.com/superjojo79/FlowForge/issues/186)), assignation par groupe
+   ([#190](https://github.com/superjojo79/FlowForge/issues/190)). Les variables de démarrage déclarées
+   ([#187](https://github.com/superjojo79/FlowForge/issues/187), [§111](docs/decisions/111-variables-de-demarrage-declarees.md))
+   sont livrées.
 3. **À trancher avant code :** dépôt initial par le portail ([#188](https://github.com/superjojo79/FlowForge/issues/188)),
    relecture des champs après le démarrage ([#189](https://github.com/superjojo79/FlowForge/issues/189)),
    exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).

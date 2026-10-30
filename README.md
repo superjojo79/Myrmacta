@@ -251,8 +251,8 @@ Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-adden
 > l'unicité d'un champ (#184), l'authentification belge (§104), la pré-vérification IA (§106,
 > désactivée par défaut), les tests de mutation (§108), les fournisseurs de signature Yousign et
 > DocuSign (#191, §109) et les variables de démarrage déclarées (#187, §111) sont livrés sur `main`.
-> Suite riverain en priorité 3 : [#185](https://github.com/superjojo79/FlowForge/issues/185) à
-> [#190](https://github.com/superjojo79/FlowForge/issues/190). Hors V1 : [#194](https://github.com/superjojo79/FlowForge/issues/194).
+> Prochain axe : la Digital Mail Room ([#217](https://github.com/superjojo79/FlowForge/issues/217)), courrier entrant multicanal routé vers
+> les services. Hors V1 : [#194](https://github.com/superjojo79/FlowForge/issues/194).
 > Détails : [ROADMAP.md](ROADMAP.md).
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).

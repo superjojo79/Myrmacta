@@ -46,7 +46,7 @@
         <poi.version>6.0.0</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
-        <spring-ai.version>2.0.1</spring-ai.version>
+        <spring-ai.version>2.0.2</spring-ai.version>
         <skip.frontend>false</skip.frontend>
         <!-- PostgreSQL embarqué (tests + mode démo/QA) — version majeure alignée sur docker-compose
              (postgres:17-alpine). Les binaires sont fournis par le BOM zonky ci-dessous. -->

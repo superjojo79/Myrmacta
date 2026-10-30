@@ -249,8 +249,8 @@ Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-adden
 
 > Projet en développement actif. Le socle, la Vague D, la pièce jointe de « Notifier » (#183),
 > l'unicité d'un champ (#184), l'authentification belge (§104), la pré-vérification IA (§106,
-> désactivée par défaut) et les tests de mutation (§108) sont livrés sur `main`.
-> Prochaine feature de priorité 1 : fournisseur de signature réel ([#191](https://github.com/superjojo79/FlowForge/issues/191)).
+> désactivée par défaut), les tests de mutation (§108), les fournisseurs de signature Yousign et
+> DocuSign (#191, §109) et les variables de démarrage déclarées (#187, §111) sont livrés sur `main`.
 > Suite riverain en priorité 3 : [#185](https://github.com/superjojo79/FlowForge/issues/185) à
 > [#190](https://github.com/superjojo79/FlowForge/issues/190). Hors V1 : [#194](https://github.com/superjojo79/FlowForge/issues/194).
 > Détails : [ROADMAP.md](ROADMAP.md).

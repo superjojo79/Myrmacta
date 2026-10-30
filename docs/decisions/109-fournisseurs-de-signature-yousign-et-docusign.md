@@ -3,7 +3,7 @@
 > **Statut :** clos · point de premier niveau
 
 **Conception (2026-10-28).** Cadrage validé le même jour (issue #191, document de travail
-`docs/ai/2026-10-28-fournisseurs-signature-yousign-docusign.md`). Le socle reste celui du
+supprimé à la clôture). Le socle reste celui du
 [§72](072-signature-electronique-socle-generique-et-stub.md).
 
 **Livraison (2026-10-28).** Les deux lots sont livrés ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247)) :

@@ -21,7 +21,7 @@ flux à leurs clients, avec une **couche low-code** pour les utilisateurs métie
 | Workflows | Flowable 8 BPMN + DMN, éditeurs intégrés, palette de briques métier, concepteur de parcours, langage d'expression borné (JSONata), incidents visibles et rejouables |
 | Documents | Modèles Thymeleaf versionnés, éditeur visuel, PDF (Flying Saucer + OpenPDF), aperçu |
 | Intégrations | Connecteurs REST, callback, webhooks, Kafka, import batch SFTP, SMTP, e-mail entrant IMAP/Graph, Azure Service Bus, stockage S3/fichiers, OAuth2 client credentials |
-| Utilisateurs | SPA Vue 3 embarquée (fr, en), portail externe pour les tiers, signature électronique (socle + stub), notifications et boîte de réception, rapports et SLA |
+| Utilisateurs | SPA Vue 3 embarquée (fr, en), portail externe pour les tiers, signature électronique (Yousign, DocuSign ou stub, [#191](https://github.com/superjojo79/FlowForge/issues/191), [§109](docs/decisions/109-fournisseurs-de-signature-yousign-et-docusign.md)), notifications et boîte de réception, rapports et SLA |
 | IA et MCP | Serveur MCP gouverné (brouillons, provenance, publication), assistant de conception (désactivé par défaut), promotion de configuration entre environnements, pré-vérification IA des dossiers (désactivée par défaut, [#211](https://github.com/superjojo79/FlowForge/issues/211), [§106](docs/decisions/106-preverification-ia-et-types-de-pieces.md)) |
 | Socle | Architecture hexagonale vérifiée par ArchUnit, OIDC en BFF, en-têtes de sécurité, antivirus ClamAV, provisioning de tenant, observabilité ECS + Micrometer, authentification belge FAS / itsme ([#210](https://github.com/superjojo79/FlowForge/issues/210), [§104](docs/decisions/104-authentification-belge-fas-et-itsme.md)), tests de mutation PIT hors `verify` ([§108](docs/decisions/108-tests-de-mutation-pit.md)) |
 
@@ -32,21 +32,21 @@ et refuser un doublon de champ ouvert
 
 ## Prochaines étapes
 
-État des issues ouvertes au 28 octobre 2026. Le détail et l'ordre réel restent la
+État des issues ouvertes au 30 octobre 2026. Le détail et l'ordre réel restent la
 [liste d'issues](https://github.com/superjojo79/FlowForge/issues).
 
-1. **Priorité 1 :** fournisseur de signature réel, eIDAS ([#191](https://github.com/superjojo79/FlowForge/issues/191)), à cadrer.
-2. **Exemple riverain, priorité 3 :** gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)),
+1. **Exemple riverain, priorité 3 :** gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)),
    minuteur de parcours ([#186](https://github.com/superjojo79/FlowForge/issues/186)), assignation par groupe
    ([#190](https://github.com/superjojo79/FlowForge/issues/190)). Les variables de démarrage déclarées
    ([#187](https://github.com/superjojo79/FlowForge/issues/187), [§111](docs/decisions/111-variables-de-demarrage-declarees.md))
    sont livrées.
-3. **À trancher avant code :** dépôt initial par le portail ([#188](https://github.com/superjojo79/FlowForge/issues/188)),
+2. **À trancher avant code :** dépôt initial par le portail ([#188](https://github.com/superjojo79/FlowForge/issues/188)),
    relecture des champs après le démarrage ([#189](https://github.com/superjojo79/FlowForge/issues/189)),
    exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
-4. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
+3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
    La double licence est choisie (PolyForm-Noncommercial-1.0.0 et commerciale sur demande) ; le registre [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
    reste ouvert le temps de la revue de l'avocat.
+4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#248](https://github.com/superjojo79/FlowForge/issues/248)).
 5. **Sans priorité :** eBox et digital mail room ([#213](https://github.com/superjojo79/FlowForge/issues/213) à [#217](https://github.com/superjojo79/FlowForge/issues/217)).
 
 ## Hors V1

@@ -35,19 +35,18 @@ et refuser un doublon de champ ouvert
 État des issues ouvertes au 30 octobre 2026. Le détail et l'ordre réel restent la
 [liste d'issues](https://github.com/superjojo79/FlowForge/issues).
 
-1. **Exemple riverain, priorité 3 :** gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)),
-   minuteur de parcours ([#186](https://github.com/superjojo79/FlowForge/issues/186)), assignation par groupe
-   ([#190](https://github.com/superjojo79/FlowForge/issues/190)). Les variables de démarrage déclarées
-   ([#187](https://github.com/superjojo79/FlowForge/issues/187), [§111](docs/decisions/111-variables-de-demarrage-declarees.md))
-   sont livrées.
-2. **À trancher avant code :** dépôt initial par le portail ([#188](https://github.com/superjojo79/FlowForge/issues/188)),
-   relecture des champs après le démarrage ([#189](https://github.com/superjojo79/FlowForge/issues/189)),
-   exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
+1. **Prochain axe, Digital Mail Room ([#217](https://github.com/superjojo79/FlowForge/issues/217)) :** tout courrier entrant (e-mail, eBox, papier scanné)
+   est enregistré, routé par DMN vers un service, rattaché à un dossier et suivi jusqu'à son échéance. Le canal
+   e-mail existe déjà (IMAP et Microsoft Graph, [§87](docs/decisions/087-d3c-d3d-e-mail-entrant-bus-azure.md)).
+   Sous-issues, dans l'ordre : assignation par groupe ([#190](https://github.com/superjojo79/FlowForge/issues/190)), échéances, rappels et escalade
+   ([#186](https://github.com/superjojo79/FlowForge/issues/186)), gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)). Canal eBox : [#215](https://github.com/superjojo79/FlowForge/issues/215), sous [#213](https://github.com/superjojo79/FlowForge/issues/213).
+   L'exemple « autorisation riverain » reste un banc d'essai : on n'en retient que les besoins génériques.
+2. **À trancher avant code :** exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
 3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
    La double licence est choisie (PolyForm-Noncommercial-1.0.0 et commerciale sur demande) ; le registre [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
    reste ouvert le temps de la revue de l'avocat.
 4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#248](https://github.com/superjojo79/FlowForge/issues/248)).
-5. **Sans priorité :** eBox et digital mail room ([#213](https://github.com/superjojo79/FlowForge/issues/213) à [#217](https://github.com/superjojo79/FlowForge/issues/217)).
+5. **Sans priorité :** envoi vers l'eBox ([#214](https://github.com/superjojo79/FlowForge/issues/214)) ; réponses reçues par l'eBox, en attente de l'ONSS et de BOSA ([#216](https://github.com/superjojo79/FlowForge/issues/216)).
 
 ## Hors V1
 

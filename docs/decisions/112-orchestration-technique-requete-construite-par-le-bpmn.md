@@ -83,7 +83,8 @@ régression chacun :
   - paramètres ajoutés après un fragment ;
   - avertissement sur `variables` dans le guide.
 
-Une seconde revue indépendante a suivi ces correctifs (voir plus bas).
+**Seconde revue indépendante** (exigée après un constat Haut) : à faire sur le commit `070752a` ; la première tentative a été
+interrompue par une limite d'usage, sans résultat.
 
 **Limites assumées.**
 - Un champ sensible n'est jamais lisible par l'expression, donc jamais envoyé par `connectorRequest`.

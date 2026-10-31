@@ -68,19 +68,33 @@ Points du registre : [§112](../decisions/112-orchestration-technique-requete-co
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| A | `http-rest` : baseUrl, chemin, requête, service seul, DELETE | en cours | — |
-| B | attribut `connectorRequest` | à faire | — |
-| C | exemple onboarding + IT + documentation | à faire | — |
-| D | revue indépendante, clôture | à faire | — |
+| A | `http-rest` : baseUrl, chemin, requête, service seul, DELETE | livré (`147b6cf`) | à ouvrir |
+| B | attribut `connectorRequest` | livré (`147b6cf`) | à ouvrir |
+| C | exemple onboarding + IT + documentation | livré (`147b6cf`) | à ouvrir |
+| D | revue indépendante, correctifs H1, M1–M4, B1–B5 | livré (`070752a`) ; seconde revue à faire | à ouvrir |
 
-Prochaine action : lot A en TDD.
+Prochaine action :
+1. faire la seconde revue indépendante sur `070752a` ;
+2. corriger ses constats éventuels ;
+3. supprimer ce document ;
+4. ouvrir la PR, avec « Closes #260 ».
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-10-31 | `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris, PostgreSQL local via `MYRMACTA_TEST_PG_URL`) | 4 025 tests, 0 échec, BUILD SUCCESS |
+| 2026-10-31 | `cd frontend && npm run lint && npm run test` | lint OK, Vitest 821/821 |
+| 2026-10-31 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e` | 149/149 |
+| 2026-10-31 | `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 
 | Constat | Sévérité | Correctif ou issue |
 |---|---|---|
+| Appels destructeurs ciblés par des champs du dossier modifiables | Haut | variables remises à null (`070752a`) ; plateforme : #263 |
+| StackOverflowError sur la regex du chemin | Moyen | `070752a` |
+| Remontée au-dessus du chemin de base (`..;`, `%2F`) | Moyen | `070752a` |
+| Instance choisie par une variable malgré `connectorRequest` | Moyen | `070752a` |
+| `connectorInput` pilotant une instance à baseUrl | Moyen | `070752a` (D-ORCH-BUILT-REQUEST-ONLY) |
+| `//`, exposants, en-têtes, fragment, doc `variables` | Bas | `070752a` |

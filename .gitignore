@@ -42,3 +42,4 @@ src/main/resources/static/**
 # Config locale getting-started (secrets dev — voir .env.example)
 .env
 data/documents/
+__pycache__/

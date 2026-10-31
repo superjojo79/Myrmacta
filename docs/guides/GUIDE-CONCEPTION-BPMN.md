@@ -738,7 +738,7 @@ racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sen
 <serviceTask id="appelIam" name="Créer le compte IAM" flowable:delegateExpression="${connectorServiceTask}"
     flowable:async="true" flowable:connectorInstanceId="7d1c…"
     flowable:connectorRequest="{'method': 'POST', 'path': '/users', 'headers': {'Content-Type': 'application/json'},
-      'body': {'username': dossier.fields.login, 'employeeNumber': dossier.fields.matriculeSirh}}"/>
+      'body': {'username': dossier.fields.login, 'employeeNumber': variables.matricule}}"/>
 ```
 
 - **Il prime sur la variable `connectorInput`**, qui est alors ignorée. Il n'est jamais lu depuis une variable, est validé au
@@ -764,9 +764,9 @@ Entrée lue par `http-rest` en rôle SERVICE :
 |---|---|
 | `method` | `GET` (défaut), `POST`, `PUT`, `DELETE`. `PATCH` : issue [#261](https://github.com/superjojo79/Myrmacta/issues/261) |
 | `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `//`, segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace, `\`, ni encodage de `/ \ . ; %` ou d'un caractère de contrôle. Peut contenir des marqueurs `{nom}` |
-| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni `.` ou `..`, ni `/`, `\` ou caractère de contrôle. 20 au plus |
+| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni faite seulement de points une fois retirés un paramètre `;x` et les espaces (`..`, `..;x`, `.. `), ni `/`, `\` ou caractère de contrôle. 20 au plus |
 | `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |
-| `headers` | En-têtes : noms conformes à RFC 7230, valeurs sans caractère de contrôle (le `Host` fourni est ignoré ; en mode OAuth2, l'`Authorization` fourni aussi) |
+| `headers` | En-têtes : noms conformes à RFC 7230, valeurs sans caractère de contrôle. Le `Host` fourni est ignoré, et en mode OAuth2 l'`Authorization` fourni aussi ; les en-têtes de cadrage et de connexion (`Transfer-Encoding`, `Content-Length`, `Connection`, `Expect`, `Upgrade`, `TE`, `Trailer`, `Keep-Alive`, `Proxy-*`) sont refusés |
 | `body` | Corps : un objet est envoyé en JSON (ajouter `Content-Type` dans `headers`), un texte tel quel. Refusé pour `GET` et `DELETE` |
 | `url` | URL absolue : **seulement** pour une instance sans `baseUrl` (comportement d'avant) ; refusée sinon |
 
@@ -774,7 +774,12 @@ Le résultat reste `connectorResult = {status, body}` : un statut HTTP en erreur
 processus le contrôle (brique « Évaluer une expression » : `connectorResult.status >= 200 and connectorResult.status < 300`)
 et route vers une validation humaine. Une panne réseau ou un délai dépassé, en revanche, fait échouer l'activité : rendre
 l'appel **asynchrone** (`flowable:async="true"`) pour qu'elle devienne un incident rejouable sans bloquer l'utilisateur qui a
-complété la tâche précédente.
+complété la tâche précédente. Rendez aussi asynchrone l'activité qui **suit** l'appel (le contrôle du statut) : un échec en
+aval, par exemple une réponse sans l'identifiant attendu ou un conflit d'écriture du dossier, relance alors cette activité et
+non l'appel, et un `POST` n'est jamais rejoué sans décision humaine.
+
+Une étape « connecteur » d'un **parcours** ne porte pas de `connectorRequest` : ne la pointez pas vers une instance à
+`baseUrl`, qui refuserait l'appel à l'exécution.
 
 ### Orchestration technique : plusieurs applications et des validations humaines
 

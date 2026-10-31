@@ -127,7 +127,12 @@ class OnboardingOrchestrationExampleIT {
         assertThat(waitingTask(instance)).isEqualTo("validationAcces");
 
         // L'IT accorde des accès étendus : ajout au groupe du profil, puis ticket matériel.
-        complete(instance, "validationAcces", Map.of("niveauAcces", "ETENDU"));
+        complete(instance, "validationAcces", Map.of("niveauAcces", "DEVELOPPEURS"));
+        // Seconde revue §112 (M-2) : le groupe vient du choix de l'IT, pas du profil de la fiche, modifiable entre-temps.
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossierId).with(rh()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fields\":{\"profilPoste\":\"DIRECTION\"}}"))
+                .andExpect(status().isOk());
         runJobs(instance);
 
         assertThat(APIS.received()).extracting(Received::line).containsExactly(
@@ -148,7 +153,7 @@ class OnboardingOrchestrationExampleIT {
         assertThat(iamBody.get("username").asString()).isEqualTo("évandenbroeck");
         JsonNode ticket = JSON.readTree(APIS.received().get(3).body());
         assertThat(ticket.get("requestedFor").asString()).isEqualTo("evdbroeck");
-        assertThat(ticket.get("profile").asString()).isEqualTo("DEVELOPPEUR");
+        assertThat(ticket.get("profile").asString()).isEqualTo("DIRECTION");
 
         JsonNode fields = dossier(dossierId).get("fields");
         assertThat(fields.get("matriculeSirh").asString()).isEqualTo("E-1001");
@@ -334,7 +339,7 @@ class OnboardingOrchestrationExampleIT {
 
     /** Exécute les appels asynchrones (un job par appel de connecteur) jusqu'à la prochaine tâche humaine ou la fin. */
     private void runJobs(String instance) {
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 40; i++) {
             List<Job> jobs = managementService.createJobQuery().processInstanceId(instance).list();
             if (jobs.isEmpty()) {
                 return;

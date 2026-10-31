@@ -507,7 +507,9 @@ class HttpRestConnectorTest {
     @Test
     void execute_baseUrl_refusesSlashesAndControlCharactersInPathParams() {
         // Revue §112 (M2) : un proxy qui décode %2F puis normalise ferait remonter l'appel au-dessus du chemin de base.
-        for (String value : List.of("../../groups/admins", "a/b", "a\\b", "a\nb", "a\u0000b")) {
+        // Seconde revue §112 (M-1) : « ..;x », « .. » suivi d'espaces ou « ... » se normalisent en « .. » chez certains serveurs.
+        for (String value : List.of("../../groups/admins", "a/b", "a\\b", "a\nb", "a\u0000b", "..;", "..;x", ".. ",
+                " .. ", "...", "   ")) {
             assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE,
                             Map.of("path", "/users/{id}", "pathParams", Map.of("id", value))))
                     .as(value)
@@ -568,7 +570,9 @@ class HttpRestConnectorTest {
                 "/a#f", "/a\\b", "/a b", "/a/{unknown}", "/a/{", "/a%zz",
                 // Revue §112 (M2, B1) : paramètres de segment, barres encodées, double encodage, // au milieu.
                 "/..;/admin", "/a/.;x/b", "/a%2F..%2F..%2Fadmin", "/a%5c..", "/a%2e", "/a%252e%252e", "/a%00",
-                "/a//b", "/a/%3B")) {
+                "/a//b", "/a/%3B",
+                // Seconde revue §112 (bas 7) : segment qui, décodé et rogné, ne contient que des points ; UTF-8 sur-long.
+                "/a/..%20", "/a/%20..", "/a/...", "/a/%C0%AE%C0%AE", "/a/%c1%9c")) {
             assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, Map.of("path", path)))
                     .as(path)
                     .isInstanceOf(IllegalArgumentException.class);
@@ -631,6 +635,20 @@ class HttpRestConnectorTest {
                             Map.of("url", "https://example.com/x", "headers", headers)))
                     .as(headers.toString())
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_framingHeadersAreRefused() {
+        // Seconde revue §112 (bas 3) : Transfer-Encoding et Content-Length ensemble rendent le cadrage ambigu.
+        for (String name : List.of("Transfer-Encoding", "content-length", "Connection", "Expect", "Upgrade", "TE",
+                "Trailer", "Keep-Alive", "Proxy-Authorization")) {
+            assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE,
+                            Map.of("url", "https://example.com/x", "headers", Map.of(name, "chunked"))))
+                    .as(name)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not allowed");
         }
         assertThat(httpSender.last).isNull();
     }

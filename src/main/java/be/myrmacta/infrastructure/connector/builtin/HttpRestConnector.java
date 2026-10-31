@@ -58,6 +58,8 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     /** Quantificateurs possessifs (revue §112, M1) : aucun retour arrière, donc aucun débordement de pile. */
     private static final Pattern PATH_TEMPLATE = Pattern.compile(
             "(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@]++|%[0-9A-Fa-f]{2}|\\{[A-Za-z][A-Za-z0-9_]{0,59}\\})*+)*+");
+    private static final Set<String> FRAMING_HEADERS = Set.of(
+            "transfer-encoding", "content-length", "connection", "expect", "upgrade", "te", "trailer", "keep-alive");
     /** RFC 7230 {@code token} : nom d'en-tête (revue §112, B3). */
     private static final Pattern HEADER_NAME = Pattern.compile("[!#$%&'*+.^_`|~0-9A-Za-z-]{1,256}");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_]{0,59})\\}");
@@ -546,9 +548,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         }
         assertNoDangerousEscapes(template);
         for (String segment : template.split("/", -1)) {
-            // Revue §112 (M2) : un serveur traite « ..;x » comme « .. » (paramètre de segment) : on le retire avant de tester.
-            String bare = segment.indexOf(';') >= 0 ? segment.substring(0, segment.indexOf(';')) : segment;
-            if (".".equals(bare) || "..".equals(bare)) {
+            if (!segment.isEmpty() && dotSegment(percentDecode(segment))) {
                 throw new IllegalArgumentException("path must not contain . or .. segments");
             }
         }
@@ -561,7 +561,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                 throw new IllegalArgumentException("pathParams has no value for {" + name + "}");
             }
             String value = scalarText(params.get(name), "pathParams." + name);
-            if (value.isEmpty() || ".".equals(value) || "..".equals(value)) {
+            if (value.isBlank() || dotSegment(value)) {
                 throw new IllegalArgumentException("pathParams." + name + " must not be empty, . or ..");
             }
             // Revue §112 (M2) : un identifiant ne contient ni barre ni contrôle ; encodé en %2F, un proxy qui décode puis
@@ -582,6 +582,32 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     }
 
     /**
+     * Revue §112 (M2, seconde revue M-1 et bas 7) : un serveur ou un proxy peut traiter comme « .. » un segment suivi d'un
+     * paramètre ({@code ..;x}), entouré d'espaces ({@code ..%20}) ou fait de trois points (IIS) : on retire le paramètre et
+     * les espaces, puis on refuse tout segment fait seulement de points.
+     */
+    private static boolean dotSegment(String decoded) {
+        int semicolon = decoded.indexOf(';');
+        String bare = (semicolon >= 0 ? decoded.substring(0, semicolon) : decoded).strip();
+        return !bare.isEmpty() && bare.chars().allMatch(c -> c == '.');
+    }
+
+    /** Décodage des {@code %XX} d'un segment (déjà validé), octet par octet en ISO-8859-1 : suffit pour repérer les points. */
+    private static String percentDecode(String segment) {
+        StringBuilder out = new StringBuilder(segment.length());
+        for (int i = 0; i < segment.length(); i++) {
+            char c = segment.charAt(i);
+            if (c == '%' && i + 2 < segment.length()) {
+                out.append((char) Integer.parseInt(segment.substring(i + 1, i + 3), 16));
+                i += 2;
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
      * Revue §112 (M2) : dans un chemin écrit tel quel, une séquence {@code %XX} ne doit pas réintroduire ce que la forme
      * refuse — barre ({@code %2F}, {@code %5C}), point ({@code %2E}, qui formerait {@code ..} une fois décodé), point-virgule,
      * pourcent (double encodage) ni caractère de contrôle. Une valeur arbitraire passe par {@code pathParams}.
@@ -589,7 +615,8 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     private static void assertNoDangerousEscapes(String template) {
         for (int i = template.indexOf('%'); i >= 0; i = template.indexOf('%', i + 1)) {
             int code = Integer.parseInt(template.substring(i + 1, i + 3), 16);
-            if (code < 0x20 || code == 0x7F || "/\\.;%".indexOf(code) >= 0) {
+            // 0xC0/0xC1 : UTF-8 sur-long (%C0%AE vaut « . » pour un décodeur laxiste).
+            if (code < 0x20 || code == 0x7F || code == 0xC0 || code == 0xC1 || "/\\.;%".indexOf(code) >= 0) {
                 throw new IllegalArgumentException("path must not contain an encoded /, \\, ., ;, % or control character");
             }
         }
@@ -819,6 +846,10 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             }
             if ("host".equalsIgnoreCase(name)) {
                 continue;
+            }
+            // Seconde revue §112 (bas 3) : les en-têtes de cadrage et de connexion appartiennent au client HTTP.
+            if (FRAMING_HEADERS.contains(name.toLowerCase(Locale.ROOT)) || name.toLowerCase(Locale.ROOT).startsWith("proxy-")) {
+                throw new IllegalArgumentException("header " + name + " is not allowed");
             }
             target.put(name, value);
         }

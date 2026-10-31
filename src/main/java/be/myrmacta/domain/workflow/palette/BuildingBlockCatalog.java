@@ -44,10 +44,11 @@ public final class BuildingBlockCatalog {
                             "Instance de connecteur (rôle service)."),
                     // TODO §112 (D-ORCH-REQUEST) — requête construite dans le BPMN, jamais par une variable saisie.
                     text("connectorRequest", "Requête", 2000,
-                            "Expression métier (JSONata borné) qui produit la requête, ex. {'method': 'POST', 'path': "
-                                    + "'/users/{id}', 'pathParams': {'id': dossier.fields.login}, 'body': {'nom': "
-                                    + "dossier.fields.nom}}. Racine : dossier, connectorResult (+ json), variables, now. "
-                                    + "Prime sur la variable connectorInput (facultatif).")),
+                            "Expression métier (JSONata borné) qui produit la requête, ex. {'method': 'PUT', 'path': "
+                                    + "'/users/{id}/groups/{g}', 'pathParams': {'id': variables.compteIam, 'g': 'devs'}}. "
+                                    + "Racine : dossier, connectorResult (+ json), variables, now. Prime sur la variable "
+                                    + "connectorInput ; connecteur obligatoire. dossier.fields et variables sont modifiables "
+                                    + "par les utilisateurs : ne pas en tirer la cible d'un PUT ou d'un DELETE (facultatif).")),
             block("notify", "Notifier",
                     "Envoie une notification par e-mail, webhook ou navigateur.",
                     BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.delegate("notificationDispatchTask"),

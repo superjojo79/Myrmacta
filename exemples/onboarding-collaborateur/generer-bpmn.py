@@ -40,7 +40,7 @@ REQ_IAM = ("{'method': 'POST', 'path': '/users', " + JSON + ",\n"
            "          'attributes': {'department': dossier.fields.departement, 'manager': dossier.fields.managerLogin}}}")
 REQ_GROUPE = ("{'method': 'PUT', 'path': '/users/{id}/groups/{groupe}',\n"
               " 'pathParams': {'id': variables.compteIam,\n"
-              "                'groupe': dossier.fields.profilPoste = 'DIRECTION' ? 'direction' : 'developpeurs'}}")
+              "                'groupe': variables.niveauAcces = 'DIRECTION' ? 'direction' : 'developpeurs'}}")
 REQ_TICKET = ("{'method': 'POST', 'path': '/tickets', " + JSON + ",\n"
               " 'body': {'category': 'HARDWARE', 'profile': dossier.fields.profilPoste,\n"
               "          'title': 'Poste de travail pour ' & dossier.fields.prenom & ' ' & dossier.fields.nom,\n"
@@ -108,7 +108,10 @@ def appel(m, col, cle, nom, connector, request, retenir, mapping_lines, etape):
     du dossier, modifiables par toute personne qui a le droit EDIT, ne servent qu'à l'affichage (revue §112, H1).
     """
     m.call(f"appel{cle}", nom, col, "main", connector, request)
+    # Frontière asynchrone juste après l'appel (seconde revue §112) : un échec en aval (réponse sans identifiant, conflit
+    # d'écriture du dossier) relance ce contrôle, pas l'appel ; un POST n'est jamais rejoué sans décision humaine.
     m.expression(f"controle{cle}", f"Contrôle : {nom.lower()}", col + 1, "main", APPEL_OK, "appelOk")
+    m.nodes[-1]["attrs"]["flowable:async"] = "true"
     m.gateway(f"resultat{cle}", "Réussi ?", col + 2, "main", default=f"flow_resultat{cle}_echec{cle}")
     m.expression(f"echec{cle}", f"Échec : {etape}", col + 2, "echec", f"'{etape}'", "etapeEnEchec")
     m.flow(f"appel{cle}", f"controle{cle}")
@@ -150,6 +153,7 @@ def build(ids):
     # la compensation supprimera. Après ce point, seules des tâches « user-question » (variables déclarées) restent.
     m.expression("razMatricule", "Réinitialiser : matricule", 4, "haut", "null", "matricule")
     m.expression("razCompteIam", "Réinitialiser : compte IAM", 5, "haut", "null", "compteIam")
+    m.expression("razLogin", "Réinitialiser : login", 6, "haut", "null", "login")
     fin_sirh = appel(m, 5, "Sirh", "Créer la fiche SIRH", ids["sirh"], REQ_SIRH,
                      [("matricule", "connectorResult.json.id")],
                      "matriculeSirh = variables.matricule", "SIRH")
@@ -162,8 +166,9 @@ def build(ids):
                  "dossier.fields.profilPoste != 'STANDARD'", "validationItRequise")
     m.gateway("aiguillageIt", "Validation IT ?", 14, "main", default="flow_aiguillageIt_accesDecides")
     m.question("validationAcces", "Valider les accès", 15, "haut", "validation-acces-onboarding",
-               "Le profil de poste demande des accès étendus. ETENDU ajoute le compte au groupe du profil dans "
-               "l'IAM ; STANDARD le laisse dans les groupes par défaut.")
+               "Le profil de poste demande des accès étendus. Choisir le groupe IAM à accorder (DEVELOPPEURS ou "
+               "DIRECTION), ou STANDARD pour s'en tenir aux groupes par défaut. C'est ce choix, et non le profil de la "
+               "fiche, qui désigne le groupe.")
     m.gateway("niveauAcces", "Niveau ?", 16, "haut", default="flow_niveauAcces_accesDecides")
     fin_groupe = appel(m, 17, "Groupe", "Ajouter au groupe IAM", ids["iam"], REQ_GROUPE, [],
                        "accesEtendus = true", "GROUPE")
@@ -216,7 +221,7 @@ def build(ids):
     # ------------------------------------------------------------ Flux
     for a, b in [("debut", "statutValidation"), ("statutValidation", "validationManager"),
                  ("validationManager", "decisionManager"), ("statutRefuse", "clotureRefus"),
-                 ("clotureRefus", "finRefus"), ("statutProvisioning", "razMatricule"), ("razMatricule", "razCompteIam"), ("razCompteIam", "appelSirh"), (fin_sirh, "appelIam"),
+                 ("clotureRefus", "finRefus"), ("statutProvisioning", "razMatricule"), ("razMatricule", "razCompteIam"), ("razCompteIam", "razLogin"), ("razLogin", "appelSirh"), (fin_sirh, "appelIam"),
                  (fin_iam, "besoinValidationIt"), ("besoinValidationIt", "aiguillageIt"),
                  ("validationAcces", "niveauAcces"), (fin_groupe, "accesDecides"), ("accesDecides", "appelTicket"),
                  (fin_ticket, "statutProvisionne"), ("statutProvisionne", "clotureDossier"),
@@ -228,7 +233,7 @@ def build(ids):
     m.flow("correction", "validationManager", low=ROW["haut"] - 30)
     m.flow("aiguillageIt", "validationAcces", "${validationItRequise == true}")
     m.flow("aiguillageIt", "accesDecides")
-    m.flow("niveauAcces", "appelGroupe", "${niveauAcces == 'ETENDU'}")
+    m.flow("niveauAcces", "appelGroupe", "${niveauAcces != 'STANDARD'}")
     m.flow("niveauAcces", "accesDecides")
     # Incident
     for a, b in [("incident", "noterIncident"), ("noterIncident", "statutIncident"),

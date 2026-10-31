@@ -300,12 +300,14 @@ public class ConnectorServiceTask implements JavaDelegate {
 }
 ```
 
-**Implémentation (TODO §112, issue #260).** `ConnectorServiceTask` lit `connectorInstanceId` (attribut littéral ou variable)
+**Implémentation (TODO §112, issue #260).** `ConnectorServiceTask` lit `connectorInstanceId` (attribut littéral ou variable ; **littéral obligatoire** avec `connectorRequest`)
 et passe au connecteur soit la variable `connectorInput`, soit, si l'activité porte l'attribut **littéral**
 `flowable:connectorRequest`, l'objet produit par cette expression métier bornée (LC2, racine de `BusinessExpressionContext` :
 champs déclarés non sensibles, `connectorResult`, variables scalaires). L'expression est validée au déploiement
 (`FlowableBpmnParserAdapter`) et revalidée à l'exécution ; un résultat qui n'est pas un objet fait échouer l'activité. Le
-résultat non vide est posé dans `connectorResult` (variable réservée). Le pseudo-code ci-dessus est celui de la conception
+résultat non vide est posé dans `connectorResult` (variable réservée). Le contexte d'appel indique au connecteur si l'entrée
+vient de `connectorRequest` (`ConnectorCallContext.requestBuiltByProcess`) : depuis un process, une instance `http-rest` à
+`baseUrl` refuse la variable `connectorInput`. Le pseudo-code ci-dessus est celui de la conception
 initiale. Contrat d'entrée de `http-rest` : [guide de conception §4](../guides/GUIDE-CONCEPTION-BPMN.md).
 Tests de référence : `ConnectorServiceTaskTest`, `FlowableBpmnParserAdapterBlockTest`, `OnboardingOrchestrationExampleIT`.
 

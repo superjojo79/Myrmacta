@@ -50,7 +50,7 @@ Décisions tranchées par l'utilisateur le 2026-10-31 :
   [#261](https://github.com/superjojo79/Myrmacta/issues/261)) : `HttpURLConnection`, retenu pour l'IP figée et la vérification
   TLS du nom d'origine, refuse cette méthode. Le changement de client HTTP mérite son propre cycle.
 - **D-ORCH-EXAMPLE** — exemple « arrivée d'un collaborateur » (identifiants techniques dans des variables remises à `null`
-  au début du provisioning, champs du dossier pour l'affichage seulement) : SIRH, IAM et ITSM ; validation du manager (approuver,
+  au début du provisioning, champs du dossier pour l'affichage seulement, groupe IAM choisi par l'IT) : SIRH, IAM et ITSM ; validation du manager (approuver,
   corriger, refuser) ; validation des accès par l'IT pour les profils sensibles ; incident technique (réessayer, abandonner) ;
   compensation par `DELETE`.
   - Les appels sont asynchrones : une panne réseau devient un incident rejouable. Un statut HTTP en erreur est routé par le
@@ -83,8 +83,22 @@ régression chacun :
   - paramètres ajoutés après un fragment ;
   - avertissement sur `variables` dans le guide.
 
-**Seconde revue indépendante** (exigée après un constat Haut) : à faire sur le commit `070752a` ; la première tentative a été
-interrompue par une limite d'usage, sans résultat.
+**Seconde revue indépendante (2026-10-31, sous-agent au contexte neuf, sur `147b6cf..4be428d`).** Aucun constat Critique ou
+Haut ; elle confirme H1, M1, M3 et M4. Corrigés, avec un test de régression chacun :
+
+- **M-1** — M2 incomplet : une valeur de `pathParams` `..;x` (ou `.. `) passait. Désormais, segment écrit ou valeur : on retire
+  le paramètre `;x` et les espaces, puis on refuse ce qui n'est fait que de points. `..%20`, `...` et l'UTF-8 sur-long
+  (`%C0%AE`) sont aussi refusés dans un chemin écrit.
+- **M-2** — dans l'exemple, le groupe IAM ajouté dépendait du champ `profilPoste`, modifiable. Le groupe est maintenant la
+  réponse de l'IT (`niveauAcces` : STANDARD, DEVELOPPEURS, DIRECTION). Test : le profil passe à DIRECTION après la validation,
+  le groupe reste `developpeurs`.
+- **Bas** :
+  - `login` remis à `null` comme les deux autres variables ;
+  - frontière asynchrone sur le contrôle qui suit chaque appel (un échec en aval ne rejoue plus le `POST`) ;
+  - en-têtes de cadrage et de connexion refusés ;
+  - fichier `__pycache__` retiré (et ignoré) ;
+  - écarts de documentation : spec 06, texte du catalogue, exemple XML du guide, README ;
+  - étape « connecteur » d'un parcours vers une instance à `baseUrl` signalée dans le guide.
 
 **Limites assumées.**
 - Un champ sensible n'est jamais lisible par l'expression, donc jamais envoyé par `connectorRequest`.
@@ -92,6 +106,10 @@ interrompue par une limite d'usage, sans résultat.
 - Réessayer rejoue la requête : l'idempotence est l'affaire de l'application appelée.
 - Sans `baseUrl`, l'en-tête d'authentification part vers l'URL fournie à l'appel (comportement d'avant, rappelé dans les
   guides).
+- Sans assignation par groupe ([#190](https://github.com/superjojo79/Myrmacta/issues/190)), toute personne qui a le droit EDIT
+  peut prendre une tâche de validation.
+- Une étape « connecteur » d'un parcours (`ParcoursCompiler`) ne porte pas `connectorRequest` : vers une instance à `baseUrl`,
+  elle échoue à l'exécution, sans contrôle à la compilation.
 
 **Impacte :**
 - `docs/guides/GUIDE-CONCEPTION-BPMN.md` §4 et §7 ;

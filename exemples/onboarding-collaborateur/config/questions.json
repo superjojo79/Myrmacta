@@ -14,9 +14,9 @@
     "schemaKey": "validation-acces-onboarding",
     "label": "Valider les accès du collaborateur",
     "fields": [
-      { "name": "niveauAcces", "label": "Niveau d'accès", "type": "SELECT", "required": true,
-        "options": ["ETENDU", "STANDARD"], "group": "Accès", "width": "HALF",
-        "helpText": "ETENDU ajoute le compte au groupe du profil (développeurs ou direction) dans l'IAM ; STANDARD le laisse dans les groupes par défaut." },
+      { "name": "niveauAcces", "label": "Accès accordés", "type": "SELECT", "required": true,
+        "options": ["STANDARD", "DEVELOPPEURS", "DIRECTION"], "group": "Accès", "width": "HALF",
+        "helpText": "STANDARD laisse le compte dans les groupes par défaut ; DEVELOPPEURS ou DIRECTION l'ajoute à ce groupe dans l'IAM. C'est ce choix, et non le profil de la fiche, qui désigne le groupe." },
       { "name": "justificationAcces", "label": "Justification", "type": "STRING", "required": false, "group": "Accès" }
     ]
   },

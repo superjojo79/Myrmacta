@@ -197,8 +197,10 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
 Livré en complément du rôle SERVICE (§48) :
 
 - **`baseUrl`** par instance : un appel ne donne plus qu'un `path` relatif (gabarit `{nom}` rempli par `pathParams`, chaque
-  valeur encodée comme un seul segment), plus `query` encodée. Avec `baseUrl`, `url` est refusée, un chemin sans `/` initial,
-  avec `//`, `..`, `?`, `#`, espace ou `\` aussi ; l'URL construite garde le schéma, l'hôte et le port de la base. Sans
+  valeur encodée comme un seul segment, sans `/`, `\` ni contrôle), plus `query` encodée. Avec `baseUrl`, `url` est refusée,
+  un chemin sans `/` initial, avec `//`, un segment `.`/`..` (même `..;x`), `?`, `#`, espace, `\` ou un encodage de
+  `/ \ . ; %` aussi ; l'URL construite garde le schéma, l'hôte et le port de la base. Depuis un process, une instance à
+  `baseUrl` n'accepte que l'entrée construite par `connectorRequest` (`ConnectorCallContext.requestBuiltByProcess`). Sans
   `baseUrl`, comportement d'avant (`url` absolue).
 - **Instance « service seul »** (`webhookEnabled = false`) : les champs du webhook ne sont plus exigés par `validate()` ni marqués
   obligatoires dans le schéma ; `WebhookController` répond 404 avant toute authentification

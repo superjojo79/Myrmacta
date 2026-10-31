@@ -181,6 +181,12 @@ class OnboardingOrchestrationExampleIT {
         // Profil STANDARD : pas de validation IT. L'ITSM répond 500 ; l'humain abandonne.
         assertThat(waitingTask(instance)).isEqualTo("traiterIncident");
         assertThat(dossier(dossierId).get("fields").get("dernierIncident").asString()).startsWith("ITSM : HTTP 500");
+        // Revue §112 (H1) : une personne qui a le droit EDIT change les identifiants affichés avant l'abandon ; la
+        // compensation supprime quand même ce que le workflow a créé, pas ce que le dossier affiche.
+        mockMvc.perform(patch("/api/dossiers/{id}/fields", dossierId).with(rh()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fields\":{\"identifiantIam\":\"u-admin\",\"matriculeSirh\":\"E-0001\"}}"))
+                .andExpect(status().isOk());
         complete(instance, "traiterIncident", Map.of("actionIncident", "ABANDONNER"));
         runJobs(instance);
 
@@ -213,6 +219,24 @@ class OnboardingOrchestrationExampleIT {
 
     @Test
     @Order(4)
+    void forgedIdentifiersInTheDossierOrTheStartVariablesNeverReachTheCompensation() throws Exception {
+        // Revue §112 (H1) : identifiants saisis dans le dossier à la création et variables posées au démarrage.
+        String dossierId = createDossier(Map.of("identifiantIam", "u-admin", "matriculeSirh", "E-0001"));
+        String instance = start(dossierId, Map.of("compteIam", "u-admin", "matricule", "E-0001"));
+        APIS.fail("POST /sirh/employees", 400, "{\"error\":\"personalEmail\"}");
+
+        complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
+        runJobs(instance);
+        assertThat(waitingTask(instance)).isEqualTo("traiterIncident");
+        complete(instance, "traiterIncident", Map.of("actionIncident", "ABANDONNER"));
+        runJobs(instance);
+
+        assertThat(APIS.received()).extracting(Received::line).containsExactly("POST /sirh/employees");
+        assertEnded(instance, "finAnnule");
+    }
+
+    @Test
+    @Order(5)
     void theServiceOnlyConnectorsHaveNoInboundWebhook() throws Exception {
         mockMvc.perform(post("/api/webhooks/{id}", CONNECTORS.get("SIRH")).header("Idempotency-Key", "k-1")
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -283,10 +307,15 @@ class OnboardingOrchestrationExampleIT {
     }
 
     private String start(String dossierId) throws Exception {
+        return start(dossierId, Map.of());
+    }
+
+    private String start(String dossierId, Map<String, Object> variables) throws Exception {
         mockMvc.perform(post("/api/dossiers/{id}/workflows", dossierId).with(rh()).with(csrf())
                         .header("Idempotency-Key", "onb-" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"processDefinitionKey\":\"onboardingCollaborateur\"}"))
+                        .content(JSON.writeValueAsString(Map.of(
+                                "processDefinitionKey", "onboardingCollaborateur", "variables", variables))))
                 .andExpect(status().isCreated());
         String instance = runtimeService.createProcessInstanceQuery()
                 .variableValueEquals("dossierId", dossierId).singleResult().getId();

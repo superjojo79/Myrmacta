@@ -429,6 +429,9 @@ connecteur `http-rest` qui ne sert qu'à appeler une API (SIRH, IAM, ITSM, ERP�
 - renseigner **`baseUrl`** (`https://rh.exemple.com/api/v2`, https, adresses internes refusées, sans identifiants, `?` ni `#`) : le
   processus ne donne plus qu'un chemin relatif (`/employees/{id}`) ; une URL absolue est refusée, et l'en-tête d'authentification
   ne part donc jamais vers un autre hôte. Changer d'environnement (recette, production) revient à changer `baseUrl`, pas le BPMN.
+  Depuis un processus, une instance avec `baseUrl` n'accepte que la requête écrite dans le BPMN (`connectorRequest`), jamais
+  une variable saisie. **Sans `baseUrl`, l'en-tête d'authentification part vers l'URL donnée à chaque appel** : réservez ce
+  mode aux appels dont l'URL est fixée par le concepteur.
 
 Méthodes acceptées : `GET`, `POST`, `PUT` et `DELETE` (sans corps pour `GET` et `DELETE`). `PATCH` n'est pas encore disponible
 ([#261](https://github.com/superjojo79/Myrmacta/issues/261)). Un exemple complet coordonne trois applications avec des validations

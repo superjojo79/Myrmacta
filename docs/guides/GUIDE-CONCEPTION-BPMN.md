@@ -743,6 +743,16 @@ racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sen
 
 - **Il prime sur la variable `connectorInput`**, qui est alors ignorée. Il n'est jamais lu depuis une variable, est validé au
   déploiement (syntaxe, fonctions permises, 2 000 caractères, sans `${`) et revalidé à l'exécution.
+- Avec `connectorRequest`, **`flowable:connectorInstanceId` doit être écrit dans le BPMN** : la requête ne part jamais vers
+  une instance choisie par une variable.
+- Appelée depuis un process, une instance **avec `baseUrl` n'accepte que `connectorRequest`** : la variable `connectorInput`
+  y est refusée. Sans `baseUrl`, elle reste acceptée, et l'en-tête d'authentification part vers l'URL qu'elle fournit.
+- **`dossier.fields` et `variables` ne sont pas des données de confiance.** Toute personne qui a le droit EDIT modifie un champ
+  du dossier ; une variable peut être posée au démarrage ou à la complétion d'une tâche qui n'est pas une `user-question`.
+  Ne désignez jamais la cible d'un `PUT` ou d'un `DELETE` par l'un d'eux sans précaution : retenez l'identifiant rendu par
+  l'application dans une variable écrite par « Évaluer une expression », remise à `null` au début de l'orchestration, après
+  la dernière tâche à formulaire libre (motif de l'exemple ci-dessous ; champs gérés par le workflow :
+  [#263](https://github.com/superjojo79/Myrmacta/issues/263)).
 - Le résultat doit être un objet : un texte, une liste ou une expression sans valeur fait échouer l'activité en la nommant.
   Une clé dont la valeur est absente (champ vide ou **sensible**) disparaît de l'objet : un champ sensible n'est jamais envoyé.
 - Les apostrophes délimitent les textes JSONata (`'POST'`) : pas besoin d'échapper des guillemets dans l'attribut XML.
@@ -753,10 +763,10 @@ Entrée lue par `http-rest` en rôle SERVICE :
 | Clé | Rôle |
 |---|---|
 | `method` | `GET` (défaut), `POST`, `PUT`, `DELETE`. `PATCH` : issue [#261](https://github.com/superjojo79/Myrmacta/issues/261) |
-| `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `..`, `?`, `#`, espace ni `\`. Peut contenir des marqueurs `{nom}` |
-| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a/../b` devient `a%2F..%2Fb`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni `.` ou `..`. 20 au plus |
+| `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `//`, segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace, `\`, ni encodage de `/ \ . ; %` ou d'un caractère de contrôle. Peut contenir des marqueurs `{nom}` |
+| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni `.` ou `..`, ni `/`, `\` ou caractère de contrôle. 20 au plus |
 | `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |
-| `headers` | En-têtes (le `Host` fourni est ignoré ; en mode OAuth2, l'`Authorization` fourni aussi) |
+| `headers` | En-têtes : noms conformes à RFC 7230, valeurs sans caractère de contrôle (le `Host` fourni est ignoré ; en mode OAuth2, l'`Authorization` fourni aussi) |
 | `body` | Corps : un objet est envoyé en JSON (ajouter `Content-Type` dans `headers`), un texte tel quel. Refusé pour `GET` et `DELETE` |
 | `url` | URL absolue : **seulement** pour une instance sans `baseUrl` (comportement d'avant) ; refusée sinon |
 
@@ -771,13 +781,15 @@ complété la tâche précédente.
 Schéma type, livré et rejoué par un test dans [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md) :
 
 1. une instance `http-rest` **par application**, « service seul » (`webhookEnabled` décoché) et avec `baseUrl` ;
-2. pour chaque appel : « Appeler un connecteur » (asynchrone, `connectorRequest`), « Évaluer une expression » sur le statut,
-   passerelle ; en cas de succès, « Enregistrer des valeurs dans le dossier » recopie les identifiants rendus
-   (`matriculeSirh = connectorResult.json.id`). L'appel suivant les relit dans `dossier.fields` : le dossier sert de journal,
-   visible par la personne qui valide ;
-3. les validations sont des `user-question` dont la réponse oriente une passerelle (approuver, corriger, refuser ; accès
-   étendus ou non) ;
-4. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur ce
+2. au début du provisioning, les variables qui retiendront les identifiants sont remises à `null` (« Évaluer une
+   expression » : `null`) ;
+3. pour chaque appel : « Appeler un connecteur » (asynchrone, `connectorRequest`), « Évaluer une expression » sur le statut,
+   passerelle ; en cas de succès, « Évaluer une expression » retient l'identifiant rendu (`matricule =
+   connectorResult.json.id`) et « Enregistrer des valeurs dans le dossier » l'**affiche** (`matriculeSirh =
+   variables.matricule`). L'appel suivant et la compensation relisent la variable, jamais le champ ;
+4. les validations sont des `user-question` dont la réponse oriente une passerelle (approuver, corriger, refuser ; accès
+   étendus ou non) : leurs variables sont déclarées, une complétion ne peut pas écraser un identifiant retenu ;
+5. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur ce
    qui a été créé.
 
 Réessayer rejoue la requête : prévoir côté application une clé d'idempotence ou une recherche préalable si un `POST` a pu

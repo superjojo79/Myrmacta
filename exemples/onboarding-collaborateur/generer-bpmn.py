@@ -36,18 +36,18 @@ REQ_SIRH = ("{'method': 'POST', 'path': '/employees', " + JSON + ",\n"
 REQ_IAM = ("{'method': 'POST', 'path': '/users', " + JSON + ",\n"
            " 'body': {'username': $replace($lowercase($substring(dossier.fields.prenom, 0, 1) & dossier.fields.nom), ' ', ''),\n"
            "          'firstName': dossier.fields.prenom, 'lastName': dossier.fields.nom,\n"
-           "          'employeeNumber': dossier.fields.matriculeSirh, 'enabled': false,\n"
+           "          'employeeNumber': variables.matricule, 'enabled': false,\n"
            "          'attributes': {'department': dossier.fields.departement, 'manager': dossier.fields.managerLogin}}}")
 REQ_GROUPE = ("{'method': 'PUT', 'path': '/users/{id}/groups/{groupe}',\n"
-              " 'pathParams': {'id': dossier.fields.identifiantIam,\n"
+              " 'pathParams': {'id': variables.compteIam,\n"
               "                'groupe': dossier.fields.profilPoste = 'DIRECTION' ? 'direction' : 'developpeurs'}}")
 REQ_TICKET = ("{'method': 'POST', 'path': '/tickets', " + JSON + ",\n"
               " 'body': {'category': 'HARDWARE', 'profile': dossier.fields.profilPoste,\n"
               "          'title': 'Poste de travail pour ' & dossier.fields.prenom & ' ' & dossier.fields.nom,\n"
-              "          'dueDate': dossier.fields.dateArrivee, 'requestedFor': dossier.fields.loginIam,\n"
+              "          'dueDate': dossier.fields.dateArrivee, 'requestedFor': variables.login,\n"
               "          'requestedBy': dossier.fields.managerLogin, 'correlationId': dossier.reference}}")
-REQ_SUPPR_IAM = "{'method': 'DELETE', 'path': '/users/{id}', 'pathParams': {'id': dossier.fields.identifiantIam}}"
-REQ_SUPPR_SIRH = "{'method': 'DELETE', 'path': '/employees/{id}', 'pathParams': {'id': dossier.fields.matriculeSirh}}"
+REQ_SUPPR_IAM = "{'method': 'DELETE', 'path': '/users/{id}', 'pathParams': {'id': variables.compteIam}}"
+REQ_SUPPR_SIRH = "{'method': 'DELETE', 'path': '/employees/{id}', 'pathParams': {'id': variables.matricule}}"
 
 APPEL_OK = "connectorResult.status >= 200 and connectorResult.status < 300"
 JOURNAL = "($exists(dossier.fields.journalCompensation) ? dossier.fields.journalCompensation & ' ; ' : '')"
@@ -100,8 +100,13 @@ class Model:
                                condition=condition, low=low))
 
 
-def appel(m, col, cle, nom, connector, request, mapping_lines, etape):
-    """Appel + contrôle du statut HTTP + recopie de la réponse ; un échec part vers le traitement d'incident."""
+def appel(m, col, cle, nom, connector, request, retenir, mapping_lines, etape):
+    """Appel + contrôle du statut HTTP + identifiants retenus + recopie au dossier ; un échec part vers l'incident.
+
+    Les identifiants rendus par une application sont retenus dans des **variables de process** écrites par le BPMN
+    (``retenir`` : variable -> expression) : ce sont elles que les appels suivants, et la compensation, relisent. Les champs
+    du dossier, modifiables par toute personne qui a le droit EDIT, ne servent qu'à l'affichage (revue §112, H1).
+    """
     m.call(f"appel{cle}", nom, col, "main", connector, request)
     m.expression(f"controle{cle}", f"Contrôle : {nom.lower()}", col + 1, "main", APPEL_OK, "appelOk")
     m.gateway(f"resultat{cle}", "Réussi ?", col + 2, "main", default=f"flow_resultat{cle}_echec{cle}")
@@ -110,11 +115,16 @@ def appel(m, col, cle, nom, connector, request, mapping_lines, etape):
     m.flow(f"controle{cle}", f"resultat{cle}")
     m.flow(f"resultat{cle}", f"echec{cle}")  # flux par défaut : statut HTTP hors 2xx
     m.flow(f"echec{cle}", "incident")
-    if mapping_lines:
-        m.mapping(f"enregistrer{cle}", "Enregistrer la réponse au dossier", col + 3, "main", mapping_lines)
-        m.flow(f"resultat{cle}", f"enregistrer{cle}", "${appelOk == true}")
-        return f"enregistrer{cle}"
-    return f"resultat{cle}"
+    precedent, condition = f"resultat{cle}", "${appelOk == true}"
+    for i, (variable, expression) in enumerate(retenir):
+        node = f"retenir{cle}{i}"
+        m.expression(node, f"Retenir {variable}", col + 3, "bas" if i == 0 else "echec", expression, variable)
+        m.nodes[-1]["sub"] = i
+        m.flow(precedent, node, condition)
+        precedent, condition = node, None
+    m.mapping(f"enregistrer{cle}", "Afficher la réponse au dossier", col + 3, "main", mapping_lines)
+    m.flow(precedent, f"enregistrer{cle}", condition)
+    return f"enregistrer{cle}"
 
 
 def build(ids):
@@ -136,10 +146,16 @@ def build(ids):
 
     # ------------------------------------------------------------ 2. Provisioning : SIRH puis IAM
     m.wf_status("statutProvisioning", "Statut : provisioning", 4, "main", "EN_PROVISIONING")
+    # Revue §112 (H1) : une variable posée au démarrage ou à la correction (formulaire libre) ne doit pas désigner ce que
+    # la compensation supprimera. Après ce point, seules des tâches « user-question » (variables déclarées) restent.
+    m.expression("razMatricule", "Réinitialiser : matricule", 4, "haut", "null", "matricule")
+    m.expression("razCompteIam", "Réinitialiser : compte IAM", 5, "haut", "null", "compteIam")
     fin_sirh = appel(m, 5, "Sirh", "Créer la fiche SIRH", ids["sirh"], REQ_SIRH,
-                     "matriculeSirh = connectorResult.json.id", "SIRH")
+                     [("matricule", "connectorResult.json.id")],
+                     "matriculeSirh = variables.matricule", "SIRH")
     fin_iam = appel(m, 9, "Iam", "Créer le compte IAM", ids["iam"], REQ_IAM,
-                    "identifiantIam = connectorResult.json.id\nloginIam = connectorResult.json.username", "IAM")
+                    [("compteIam", "connectorResult.json.id"), ("login", "connectorResult.json.username")],
+                    "identifiantIam = variables.compteIam\nloginIam = variables.login", "IAM")
 
     # ------------------------------------------------------------ 3. Validation des accès par l'IT (profils sensibles)
     m.expression("besoinValidationIt", "Profil sensible ?", 13, "main",
@@ -149,16 +165,16 @@ def build(ids):
                "Le profil de poste demande des accès étendus. ETENDU ajoute le compte au groupe du profil dans "
                "l'IAM ; STANDARD le laisse dans les groupes par défaut.")
     m.gateway("niveauAcces", "Niveau ?", 16, "haut", default="flow_niveauAcces_accesDecides")
-    fin_groupe = appel(m, 17, "Groupe", "Ajouter au groupe IAM", ids["iam"], REQ_GROUPE,
+    fin_groupe = appel(m, 17, "Groupe", "Ajouter au groupe IAM", ids["iam"], REQ_GROUPE, [],
                        "accesEtendus = true", "GROUPE")
-    # Les trois noeuds de l'appel « groupe » sont sur la ligne du haut, comme la validation qui le déclenche.
+    # Les noeuds de l'appel « groupe » sont sur la ligne du haut, comme la validation qui le déclenche.
     for n in m.nodes:
         if n["id"] in ("appelGroupe", "controleGroupe", "resultatGroupe", "enregistrerGroupe"):
             n["row"] = "haut"
     m.gateway("accesDecides", "", 21, "main")
 
     # ------------------------------------------------------------ 4. ITSM puis clôture
-    fin_ticket = appel(m, 22, "Ticket", "Commander le matériel (ITSM)", ids["itsm"], REQ_TICKET,
+    fin_ticket = appel(m, 22, "Ticket", "Commander le matériel (ITSM)", ids["itsm"], REQ_TICKET, [],
                        "ticketMateriel = connectorResult.json.number", "ITSM")
     m.wf_status("statutProvisionne", "Statut : provisionné", 26, "main", "PROVISIONNE")
     m.dossier_status("clotureDossier", "Clôturer le dossier", 27, "main", "CLOTURE")
@@ -180,14 +196,14 @@ def build(ids):
 
     # ------------------------------------------------------------ 6. Compensation : supprimer ce qui a été créé
     m.expression("aCompteIam", "Compte IAM créé ?", 13, "compensation",
-                 "$exists(dossier.fields.identifiantIam)", "compteIamCree")
+                 "$exists(variables.compteIam)", "compteIamCree")
     m.gateway("gwCompteIam", "", 14, "compensation", default="flow_gwCompteIam_compteIamTraite")
     m.call("supprimerIam", "Supprimer le compte IAM", 15, "compensation", ids["iam"], REQ_SUPPR_IAM)
     m.mapping("journalIam", "Journaliser", 16, "compensation",
               f"journalCompensation = {JOURNAL} & 'IAM supprimé : HTTP ' & $string(connectorResult.status)")
     m.gateway("compteIamTraite", "", 17, "compensation")
     m.expression("aFicheSirh", "Fiche SIRH créée ?", 18, "compensation",
-                 "$exists(dossier.fields.matriculeSirh)", "ficheSirhCreee")
+                 "$exists(variables.matricule)", "ficheSirhCreee")
     m.gateway("gwFicheSirh", "", 19, "compensation", default="flow_gwFicheSirh_ficheSirhTraitee")
     m.call("supprimerSirh", "Supprimer la fiche SIRH", 20, "compensation", ids["sirh"], REQ_SUPPR_SIRH)
     m.mapping("journalSirh", "Journaliser", 21, "compensation",
@@ -200,7 +216,7 @@ def build(ids):
     # ------------------------------------------------------------ Flux
     for a, b in [("debut", "statutValidation"), ("statutValidation", "validationManager"),
                  ("validationManager", "decisionManager"), ("statutRefuse", "clotureRefus"),
-                 ("clotureRefus", "finRefus"), ("statutProvisioning", "appelSirh"), (fin_sirh, "appelIam"),
+                 ("clotureRefus", "finRefus"), ("statutProvisioning", "razMatricule"), ("razMatricule", "razCompteIam"), ("razCompteIam", "appelSirh"), (fin_sirh, "appelIam"),
                  (fin_iam, "besoinValidationIt"), ("besoinValidationIt", "aiguillageIt"),
                  ("validationAcces", "niveauAcces"), (fin_groupe, "accesDecides"), ("accesDecides", "appelTicket"),
                  (fin_ticket, "statutProvisionne"), ("statutProvisionne", "clotureDossier"),

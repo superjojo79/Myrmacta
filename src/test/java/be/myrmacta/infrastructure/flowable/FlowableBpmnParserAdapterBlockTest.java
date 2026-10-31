@@ -249,6 +249,12 @@ class FlowableBpmnParserAdapterBlockTest {
     }
 
     @Test
+    void aConnectorRequestRequiresALiteralConnectorInstance() {
+        // Revue §112 (M3) : sinon une variable posée par un utilisateur choisirait l'instance (et ses identifiants).
+        assertRefused(service("connectorServiceTask", "flowable:connectorRequest=\"{'path': '/x'}\""), "connectorInstanceId");
+    }
+
+    @Test
     void aConnectorRequestOnAnotherServiceTaskIsRefused() {
         assertRefused(service("updateDossierStatusTask", "flowable:connectorRequest=\"{}\""), "connectorRequest");
     }

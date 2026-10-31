@@ -109,6 +109,12 @@ public final class BlockAttributeRules {
             throw new InvalidBpmnException("BPMN attributes flowable:searchCountResult and flowable:searchFirstReferenceResult on "
                     + activityId + " must name two distinct variables");
         }
+        // TODO §112 (revue M3) : la requête construite par le BPMN part vers l'instance écrite dans le BPMN, jamais vers une
+        // instance choisie par une variable de process (posable à une complétion de tâche ou au démarrage).
+        if (flowableAttributes.containsKey("connectorRequest") && !flowableAttributes.containsKey("connectorInstanceId")) {
+            throw new InvalidBpmnException("BPMN attribute flowable:connectorInstanceId is required on " + activityId
+                    + " when flowable:connectorRequest is set");
+        }
         if (flowableAttributes.containsKey("notificationAttachment") || flowableAttributes.containsKey("notificationAttachmentName")) {
             checkAttachmentCompanions(activityId, flowableAttributes);
         }

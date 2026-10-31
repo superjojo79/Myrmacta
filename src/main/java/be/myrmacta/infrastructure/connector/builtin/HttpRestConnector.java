@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.connector.builtin;
 
 import be.myrmacta.domain.connector.model.ConfigField;
 import be.myrmacta.domain.connector.model.ConfigFieldType;
+import be.myrmacta.domain.connector.model.ConnectorCallContext;
 import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorDefinition;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
@@ -54,7 +55,11 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     static final int MAX_PATH_PARAMS = 20;
     static final int MAX_QUERY_PARAMS = 50;
     static final int MAX_URL_CHARS = 8192;
-    private static final Pattern PATH_TEMPLATE = Pattern.compile("(/([A-Za-z0-9\\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2}|\\{[A-Za-z][A-Za-z0-9_]{0,59}\\})*)*");
+    /** Quantificateurs possessifs (revue §112, M1) : aucun retour arrière, donc aucun débordement de pile. */
+    private static final Pattern PATH_TEMPLATE = Pattern.compile(
+            "(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@]++|%[0-9A-Fa-f]{2}|\\{[A-Za-z][A-Za-z0-9_]{0,59}\\})*+)*+");
+    /** RFC 7230 {@code token} : nom d'en-tête (revue §112, B3). */
+    private static final Pattern HEADER_NAME = Pattern.compile("[!#$%&'*+.^_`|~0-9A-Za-z-]{1,256}");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_]{0,59})\\}");
 
     static {
@@ -439,6 +444,24 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         return List.copyOf(events);
     }
 
+    /**
+     * TODO §112 (revue M4) : appelée depuis un process, une instance à {@code baseUrl} n'accepte que l'entrée construite
+     * par l'attribut littéral {@code connectorRequest} ; la variable {@code connectorInput}, qu'un utilisateur peut poser à
+     * une complétion de tâche, ne la pilote pas (sinon : n'importe quel chemin et {@code DELETE} avec ses identifiants).
+     * Un appel direct (admin, M2M) et une instance sans {@code baseUrl} gardent le comportement d'avant.
+     */
+    @Override
+    public Map<String, Object> execute(
+            ConnectorInstanceData instance, Map<String, Object> inputParams, ConnectorCallContext context) {
+        Objects.requireNonNull(instance, "instance");
+        if (context != null && context.fromProcess() && !context.requestBuiltByProcess()
+                && stringOr(instance.config().get("baseUrl"), null) != null) {
+            throw new IllegalArgumentException("from a process, a connector with a baseUrl only accepts a request built "
+                    + "by the literal flowable:connectorRequest attribute, not the connectorInput variable");
+        }
+        return execute(instance, inputParams);
+    }
+
     @Override
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> inputParams) {
         Objects.requireNonNull(inputParams, "inputParams");
@@ -513,14 +536,19 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     }
 
     private static String expandPath(String template, Map<String, Object> params) {
-        if (!template.isEmpty() && (!template.startsWith("/") || template.startsWith("//")
+        if (template.length() > MAX_URL_CHARS) {
+            throw new IllegalArgumentException("path exceeds " + MAX_URL_CHARS + " characters");
+        }
+        if (!template.isEmpty() && (!template.startsWith("/") || template.contains("//")
                 || !PATH_TEMPLATE.matcher(template).matches())) {
             throw new IllegalArgumentException("path must be a relative path starting with a single / (letters, digits, "
-                    + "-._~!$&'()*+,;=:@, %XX escapes and {name} placeholders; no query, fragment, space or backslash)");
+                    + "-._~!$&'()*+,;=:@, %XX escapes and {name} placeholders; no //, query, fragment, space or backslash)");
         }
+        assertNoDangerousEscapes(template);
         for (String segment : template.split("/", -1)) {
-            String decoded = segment.replace("%2e", ".").replace("%2E", ".");
-            if (".".equals(decoded) || "..".equals(decoded)) {
+            // Revue §112 (M2) : un serveur traite « ..;x » comme « .. » (paramètre de segment) : on le retire avant de tester.
+            String bare = segment.indexOf(';') >= 0 ? segment.substring(0, segment.indexOf(';')) : segment;
+            if (".".equals(bare) || "..".equals(bare)) {
                 throw new IllegalArgumentException("path must not contain . or .. segments");
             }
         }
@@ -536,6 +564,11 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             if (value.isEmpty() || ".".equals(value) || "..".equals(value)) {
                 throw new IllegalArgumentException("pathParams." + name + " must not be empty, . or ..");
             }
+            // Revue §112 (M2) : un identifiant ne contient ni barre ni contrôle ; encodé en %2F, un proxy qui décode puis
+            // normalise ferait remonter l'appel au-dessus du chemin de base.
+            if (value.indexOf('/') >= 0 || value.indexOf('\\') >= 0 || value.chars().anyMatch(Character::isISOControl)) {
+                throw new IllegalArgumentException("pathParams." + name + " must not contain /, \\ or control characters");
+            }
             used.add(name);
             matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(encode(value, "")));
         }
@@ -546,6 +579,20 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             }
         }
         return out.toString();
+    }
+
+    /**
+     * Revue §112 (M2) : dans un chemin écrit tel quel, une séquence {@code %XX} ne doit pas réintroduire ce que la forme
+     * refuse — barre ({@code %2F}, {@code %5C}), point ({@code %2E}, qui formerait {@code ..} une fois décodé), point-virgule,
+     * pourcent (double encodage) ni caractère de contrôle. Une valeur arbitraire passe par {@code pathParams}.
+     */
+    private static void assertNoDangerousEscapes(String template) {
+        for (int i = template.indexOf('%'); i >= 0; i = template.indexOf('%', i + 1)) {
+            int code = Integer.parseInt(template.substring(i + 1, i + 3), 16);
+            if (code < 0x20 || code == 0x7F || "/\\.;%".indexOf(code) >= 0) {
+                throw new IllegalArgumentException("path must not contain an encoded /, \\, ., ;, % or control character");
+            }
+        }
     }
 
     /** Défense en profondeur : le chemin validé ne peut pas changer de schéma, d'hôte ni de port. */
@@ -563,8 +610,11 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         if (query.isEmpty()) {
             return url;
         }
-        StringBuilder out = new StringBuilder(url);
-        char separator = url.contains("?") ? '&' : '?';
+        int hash = url.indexOf('#');
+        String fragment = hash < 0 ? "" : url.substring(hash);
+        String base = hash < 0 ? url : url.substring(0, hash);
+        StringBuilder out = new StringBuilder(base);
+        char separator = base.contains("?") ? '&' : '?';
         for (Map.Entry<String, Object> entry : query.entrySet()) {
             if (entry.getKey() == null || entry.getKey().isBlank()) {
                 throw new IllegalArgumentException("query parameter names must not be blank");
@@ -576,7 +626,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                 separator = '&';
             }
         }
-        return out.toString();
+        return out.append(fragment).toString();
     }
 
     /** Caractères laissés tels quels dans une requête (RFC 3986, hors {@code & = + # %}) : {@code $filter} reste lisible. */
@@ -602,8 +652,9 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         return switch (value) {
             case String text -> text;
             case Boolean bool -> bool.toString();
-            case Double d when d == Math.rint(d) && !d.isInfinite() && Math.abs(d) < 1e15 -> Long.toString(d.longValue());
-            case Float f when f == Math.rint(f) && !f.isInfinite() && Math.abs(f) < 1e7 -> Long.toString(f.longValue());
+            // Revue §112 (B2) : un identifiant numérique de 16 chiffres ne s'écrit pas « 1.234E15 ».
+            case Double d when d == Math.rint(d) && !d.isInfinite() -> java.math.BigDecimal.valueOf(d).toBigInteger().toString();
+            case Float f when f == Math.rint(f) && !f.isInfinite() -> java.math.BigDecimal.valueOf(f).toBigInteger().toString();
             case java.math.BigDecimal d -> d.stripTrailingZeros().toPlainString();
             case Number n -> n.toString();
             case null -> throw new IllegalArgumentException(owner + " must not be null");
@@ -757,10 +808,19 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             throw new IllegalArgumentException("headers must be a map");
         }
         for (Map.Entry<String, Object> entry : ((Map<String, Object>) headersMap).entrySet()) {
-            if (entry.getKey() != null && "host".equalsIgnoreCase(entry.getKey())) {
+            String name = entry.getKey() == null ? "" : entry.getKey().strip();
+            // Revue §112 (B3) : nom conforme au token RFC 7230, valeur sans caractère de contrôle (un CR seul passait).
+            if (!HEADER_NAME.matcher(name).matches()) {
+                throw new IllegalArgumentException("header names must be RFC 7230 tokens");
+            }
+            String value = String.valueOf(entry.getValue());
+            if (value.chars().anyMatch(c -> (c < 0x20 && c != '\t') || c == 0x7F)) {
+                throw new IllegalArgumentException("header " + name + " contains a control character");
+            }
+            if ("host".equalsIgnoreCase(name)) {
                 continue;
             }
-            target.put(entry.getKey(), String.valueOf(entry.getValue()));
+            target.put(name, value);
         }
     }
 

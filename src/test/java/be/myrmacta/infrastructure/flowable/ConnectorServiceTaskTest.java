@@ -126,7 +126,9 @@ class ConnectorServiceTaskTest {
     private DelegateExecution requestExecution(UUID connectorId, String request, Map<String, Object> variables) {
         ServiceTask element = new ServiceTask();
         element.setId("creerCompte");
-        attribute(element, "connectorInstanceId", connectorId.toString());
+        if (connectorId != null) {
+            attribute(element, "connectorInstanceId", connectorId.toString());
+        }
         attribute(element, "connectorRequest", request);
         DelegateExecution exec = mock(DelegateExecution.class);
         Map<String, Object> all = new HashMap<>(variables);
@@ -171,7 +173,8 @@ class ConnectorServiceTaskTest {
         requestTask().execute(exec);
 
         ArgumentCaptor<Map<String, Object>> input = ArgumentCaptor.forClass(Map.class);
-        verify(executeUseCase).execute(eq(id), eq("tenant_dev"), input.capture(), eq(ConnectorCallContext.process(DOSSIER_ID)));
+        verify(executeUseCase).execute(eq(id), eq("tenant_dev"), input.capture(),
+                eq(ConnectorCallContext.processWithBuiltRequest(DOSSIER_ID)));
         assertThat(input.getValue()).containsEntry("method", "POST").containsEntry("path", "/users/{login}")
                 .doesNotContainKey("url");
         assertThat((Map<String, Object>) input.getValue().get("pathParams")).containsEntry("login", "jdupont");
@@ -207,6 +210,16 @@ class ConnectorServiceTaskTest {
         DelegateExecution exec = requestExecution(UUID.randomUUID(), "{'path': '/x'}", Map.of());
         assertThatThrownBy(() -> task.execute(exec)).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("connectorRequest");
+        verify(executeUseCase, never()).execute(any(), any(), any(), any());
+    }
+
+    @Test
+    void connectorRequest_requiresALiteralConnectorInstance() {
+        // Revue §112 (M3) : la requête construite par le BPMN ne part pas vers une instance choisie par une variable.
+        DelegateExecution exec = requestExecution(null, "{'path': '/x'}",
+                Map.of("connectorInstanceId", UUID.randomUUID().toString()));
+        assertThatThrownBy(() -> requestTask().execute(exec)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("connectorInstanceId");
         verify(executeUseCase, never()).execute(any(), any(), any(), any());
     }
 }

@@ -63,19 +63,29 @@ class ConnectorServiceTask implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) {
-        Object instanceIdVar = DeployedActivityParameters.get(execution, "connectorInstanceId");
+        String request = DeployedActivityParameters.getLiteral(execution, CONNECTOR_REQUEST);
+        // TODO §112 (revue M3) : une requête construite par le BPMN ne part que vers l'instance écrite dans le BPMN.
+        Object instanceIdVar = request != null
+                ? DeployedActivityParameters.getLiteral(execution, "connectorInstanceId")
+                : DeployedActivityParameters.get(execution, "connectorInstanceId");
         if (instanceIdVar == null) {
-            throw new IllegalArgumentException("connectorInstanceId process variable is required");
+            throw new IllegalArgumentException(request != null
+                    ? "connectorInstanceId must be a literal flowable:connectorInstanceId attribute with connectorRequest"
+                    : "connectorInstanceId process variable is required");
         }
         UUID instanceId = UUID.fromString(instanceIdVar.toString());
 
         String tenantId = tenantProperties.id();
 
-        String request = DeployedActivityParameters.getLiteral(execution, CONNECTOR_REQUEST);
-        Map<String, Object> input = request != null ? evaluateRequest(execution, request) : connectorInput(execution);
+        Map<String, Object> input = request != null
+                ? evaluateRequest(execution, request, instanceIdVar.toString())
+                : connectorInput(execution);
+        UUID dossierId = dossierId(execution);
+        ConnectorCallContext context = request != null
+                ? ConnectorCallContext.processWithBuiltRequest(dossierId)
+                : ConnectorCallContext.process(dossierId);
 
-        Map<String, Object> result = executeConnectorUseCase.execute(
-                instanceId, tenantId, input, ConnectorCallContext.process(dossierId(execution)));
+        Map<String, Object> result = executeConnectorUseCase.execute(instanceId, tenantId, input, context);
         if (result != null && !result.isEmpty()) {
             execution.setVariable("connectorResult", result);
         }
@@ -87,14 +97,15 @@ class ConnectorServiceTask implements JavaDelegate {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> evaluateRequest(DelegateExecution execution, String request) {
+    private Map<String, Object> evaluateRequest(DelegateExecution execution, String request, String instanceId) {
         String activity = execution.getCurrentActivityId();
         if (expressionEngine == null) {
             throw new IllegalStateException("connectorRequest of " + activity + " cannot be evaluated on this instance");
         }
         // Défense en profondeur : un BPMN déployé sans passer par le parseur (ressource classpath, import direct) garde les
         // mêmes règles de forme et de langage qu'au déploiement.
-        BlockAttributeRules.validate(activity, DELEGATE, Map.of(CONNECTOR_REQUEST, request));
+        BlockAttributeRules.validate(
+                activity, DELEGATE, Map.of(CONNECTOR_REQUEST, request, "connectorInstanceId", instanceId));
         Map<String, Object> context = BusinessExpressionContext.forExecution(
                 execution, getDossier, dossierTypes, tenantProperties, objectMapper).context();
         ExpressionResult result = expressionEngine.evaluate(request, context);

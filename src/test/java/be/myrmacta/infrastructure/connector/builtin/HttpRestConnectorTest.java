@@ -498,10 +498,41 @@ class HttpRestConnectorTest {
         connector.execute(BASE_URL_INSTANCE, Map.of(
                 "method", "DELETE",
                 "path", "/users/{login}/groups/{group}",
-                "pathParams", Map.of("login", "jean dupont/../admin?x=1#f", "group", 42L)));
+                "pathParams", Map.of("login", "jean dupont?x=1#f&;..", "group", 42L)));
 
         assertThat(httpSender.last.url()).isEqualTo(
-                "https://93.184.216.34/v1/users/jean%20dupont%2F..%2Fadmin%3Fx%3D1%23f/groups/42");
+                "https://93.184.216.34/v1/users/jean%20dupont%3Fx%3D1%23f%26%3B../groups/42");
+    }
+
+    @Test
+    void execute_baseUrl_refusesSlashesAndControlCharactersInPathParams() {
+        // Revue §112 (M2) : un proxy qui décode %2F puis normalise ferait remonter l'appel au-dessus du chemin de base.
+        for (String value : List.of("../../groups/admins", "a/b", "a\\b", "a\nb", "a\u0000b")) {
+            assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE,
+                            Map.of("path", "/users/{id}", "pathParams", Map.of("id", value))))
+                    .as(value)
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_baseUrl_refusesLongPathsWithoutOverflowingTheStack() {
+        // Revue §112 (M1) : la regex du gabarit ne doit jamais lever StackOverflowError.
+        String longPath = "/" + "a".repeat(100_000);
+        assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, Map.of("path", longPath)))
+                .isInstanceOf(IllegalArgumentException.class);
+        String legit = "/" + "a".repeat(5_000);
+        connector.execute(BASE_URL_INSTANCE, Map.of("path", legit));
+        assertThat(httpSender.last.url()).endsWith(legit);
+    }
+
+    @Test
+    void execute_largeIntegralNumbersAreWrittenWithoutExponent() throws Exception {
+        connector.execute(BASE_URL_INSTANCE, Map.of("path", "/e/{id}", "pathParams", Map.of("id", 1234567890123456.0),
+                "query", Map.of("n", 9007199254740991.0)));
+
+        assertThat(httpSender.last.url()).endsWith("/e/1234567890123456?n=9007199254740991");
     }
 
     @Test
@@ -534,7 +565,10 @@ class HttpRestConnectorTest {
     @Test
     void execute_baseUrl_refusesPathsThatCouldLeaveTheBase() {
         for (String path : List.of("employees", "//evil.example.org/x", "/a/../b", "/a/%2e%2E/b", "/./a", "/a?x=1",
-                "/a#f", "/a\\b", "/a b", "/a/{unknown}", "/a/{", "/a%zz")) {
+                "/a#f", "/a\\b", "/a b", "/a/{unknown}", "/a/{", "/a%zz",
+                // Revue §112 (M2, B1) : paramètres de segment, barres encodées, double encodage, // au milieu.
+                "/..;/admin", "/a/.;x/b", "/a%2F..%2F..%2Fadmin", "/a%5c..", "/a%2e", "/a%252e%252e", "/a%00",
+                "/a//b", "/a/%3B")) {
             assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, Map.of("path", path)))
                     .as(path)
                     .isInstanceOf(IllegalArgumentException.class);
@@ -566,6 +600,53 @@ class HttpRestConnectorTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("baseUrl");
         assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_fromAProcess_aBaseUrlInstanceOnlyAcceptsARequestBuiltByTheBpmn() throws Exception {
+        // Revue §112 (M4) : la variable connectorInput peut venir d'une complétion de tâche ; elle ne pilote pas une
+        // instance à baseUrl. Un appel direct (admin, M2M) et une requête construite par connectorRequest passent.
+        Map<String, Object> input = Map.of("method", "DELETE", "path", "/users/{id}", "pathParams", Map.of("id", "x"));
+        assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, input,
+                        be.myrmacta.domain.connector.model.ConnectorCallContext.process(UUID.randomUUID())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("connectorRequest");
+        assertThat(httpSender.last).isNull();
+
+        connector.execute(BASE_URL_INSTANCE, input,
+                be.myrmacta.domain.connector.model.ConnectorCallContext.processWithBuiltRequest(UUID.randomUUID()));
+        assertThat(httpSender.last.method()).isEqualTo("DELETE");
+        connector.execute(BASE_URL_INSTANCE, input, be.myrmacta.domain.connector.model.ConnectorCallContext.direct());
+        // Sans baseUrl : comportement d'avant, la variable reste acceptée.
+        connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/x"),
+                be.myrmacta.domain.connector.model.ConnectorCallContext.process(null));
+    }
+
+    @Test
+    void execute_headersMustBeWellFormed() {
+        // Revue §112 (B3) : un nom d'en-tête hors RFC 7230 ou une valeur avec caractère de contrôle est refusé.
+        for (Map<String, Object> headers : List.<Map<String, Object>>of(Map.of("X-A", "v\rInjected: 1"),
+                Map.of("X A", "v"), Map.of("X-\nA", "v"), Map.of("", "v"))) {
+            assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE,
+                            Map.of("url", "https://example.com/x", "headers", headers)))
+                    .as(headers.toString())
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_hostHeaderIsIgnoredWhateverItsSpacing() throws Exception {
+        connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/x", "headers", Map.of("Host ", "evil")));
+
+        assertThat(httpSender.last.headers()).containsEntry("Host", "example.com").doesNotContainKey("Host ");
+    }
+
+    @Test
+    void execute_queryIsInsertedBeforeAFragment() throws Exception {
+        connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/x?a=1#frag", "query", Map.of("b", "2")));
+
+        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/x?a=1&b=2#frag");
     }
 
     @Test

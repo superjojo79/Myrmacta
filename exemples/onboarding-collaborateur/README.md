@@ -13,8 +13,10 @@ humaines (formulaires de tâche) décident de la suite. Le flux est entièrement
    a déjà été créé (compensation par `DELETE`).
 
 Chaque requête est écrite dans le BPMN (`flowable:connectorRequest`, expression JSONata bornée) à partir des champs du dossier.
-Chaque réponse utile est recopiée dans le dossier : la personne qui valide voit les identifiants créés et le dernier
-incident sur la fiche.
+Les identifiants rendus par les applications sont **retenus dans des variables de process** écrites par le BPMN : ce sont
+elles que les appels suivants et la compensation relisent. Ils sont aussi **affichés** dans le dossier : la personne qui
+valide voit les identifiants créés et le dernier incident sur la fiche. Un champ du dossier se modifie par toute personne
+qui a le droit EDIT : il ne désigne jamais la cible d'un `PUT` ou d'un `DELETE`.
 
 ## Contenu
 
@@ -50,20 +52,24 @@ Pour chaque appel, le motif est le même :
 
 1. « Appeler un connecteur » en **asynchrone**, avec la requête construite dans le BPMN ;
 2. « Évaluer une expression » : `connectorResult.status >= 200 and connectorResult.status < 300` ;
-3. une passerelle : en cas de succès, « Enregistrer des valeurs dans le dossier » (ex.
-   `matriculeSirh = connectorResult.json.id`), sinon `etapeEnEchec` puis l'incident.
+3. une passerelle : en cas de succès, « Évaluer une expression » retient l'identifiant (`matricule =
+   connectorResult.json.id`) puis « Enregistrer des valeurs dans le dossier » l'affiche (`matriculeSirh =
+   variables.matricule`) ; sinon `etapeEnEchec` puis l'incident.
 
-L'appel suivant relit `dossier.fields.matriculeSirh` : c'est ainsi qu'un identifiant passe d'une application à l'autre.
+L'appel suivant relit `variables.matricule` : c'est ainsi qu'un identifiant passe d'une application à l'autre. Au début du
+provisioning, juste après l'approbation, `matricule` et `compteIam` sont remis à `null`. Une valeur posée au démarrage ou à
+la correction (formulaire libre) ne peut donc pas désigner ce que la compensation supprimera. Ensuite, il ne reste que des
+tâches `user-question`, dont les variables sont déclarées.
 
 ## Les requêtes
 
 | Étape | Requête produite par `connectorRequest` | Réponse recopiée |
 |---|---|---|
 | SIRH | `POST /employees`, corps : identité, fonction, département, date d'arrivée, manager, référence du dossier | `matriculeSirh = json.id` |
-| IAM | `POST /users`, corps : login calculé, nom, `employeeNumber = matriculeSirh`, compte désactivé | `identifiantIam = json.id`, `loginIam = json.username` |
-| Groupe | `PUT /users/{id}/groups/{groupe}`, `id = identifiantIam`, groupe `developpeurs` ou `direction` | `accesEtendus = true` |
-| ITSM | `POST /tickets`, corps : profil, titre, échéance, `requestedFor = loginIam`, référence du dossier | `ticketMateriel = json.number` |
-| Compensation | `DELETE /users/{id}` puis `DELETE /employees/{id}`, seulement si l'identifiant existe | `journalCompensation` |
+| IAM | `POST /users`, corps : login calculé, nom, `employeeNumber = variables.matricule`, compte désactivé | `identifiantIam = json.id`, `loginIam = json.username` |
+| Groupe | `PUT /users/{id}/groups/{groupe}`, `id = variables.compteIam`, groupe `developpeurs` ou `direction` | `accesEtendus = true` |
+| ITSM | `POST /tickets`, corps : profil, titre, échéance, `requestedFor = variables.login`, référence du dossier | `ticketMateriel = json.number` |
+| Compensation | `DELETE /users/{id}` puis `DELETE /employees/{id}`, seulement si `variables.compteIam` / `variables.matricule` existe | `journalCompensation` |
 
 Les chemins sont relatifs à la `baseUrl` de chaque connecteur. Les valeurs de `pathParams` sont encodées : un identifiant qui
 contiendrait `/` ou `..` ne peut pas sortir de son segment. Changer d'environnement (recette, production) revient à changer
@@ -111,9 +117,10 @@ contre un faux SIRH, un faux IAM et un faux ITSM locaux :
 | Cas | Parcours | Contrôlé |
 |---|---|---|
 | O1 | Corriger, puis approuver ; profil développeur, accès étendus | Aucun appel avant l'approbation ; 4 appels dans l'ordre ; matricule SIRH transmis à l'IAM ; en-tête propre à chaque application ; champs « Provisioning » remplis ; dossier clôturé |
-| O2 | IAM en 503 puis réessayer ; ITSM en 500 puis abandonner | Incident noté au dossier ; second appel IAM réussi ; `DELETE` IAM puis SIRH, sans corps ; journal de compensation |
+| O2 | IAM en 503 puis réessayer ; ITSM en 500 ; identifiants du dossier modifiés ; abandonner | Incident noté au dossier ; second appel IAM réussi ; `DELETE` IAM puis SIRH sur les identifiants créés, sans corps ; journal de compensation |
 | O3 | Refuser | Aucun appel |
-| O4 | Webhook d'un connecteur « service seul » | `404` |
+| O4 | Identifiants forgés dans le dossier et dans les variables de démarrage, SIRH en 400, abandonner | Aucun `DELETE` |
+| O5 | Webhook d'un connecteur « service seul » | `404` |
 
 ```bash
 ./mvnw test -Dtest=OnboardingOrchestrationExampleIT -Dskip.frontend=true

@@ -25,12 +25,20 @@ Décisions tranchées par l'utilisateur le 2026-10-31 :
   - Un résultat qui n'est pas un objet fait échouer l'activité.
   - Écartés : gabarits `{dossierField:x}` sans structure ni calcul ; statu quo.
   - Catalogue des briques en version 6. Aucun nouvel outil MCP : `list_bpmn_building_blocks` et `deploy_workflow` le portent.
+  - Avec `connectorRequest`, `flowable:connectorInstanceId` doit être littéral (déploiement et exécution) : la requête ne
+    part jamais vers une instance choisie par une variable (revue, M3).
+- **D-ORCH-BUILT-REQUEST-ONLY** (revue, M4) — appelée depuis un process, une instance `http-rest` avec `baseUrl` n'accepte que
+  l'entrée construite par `connectorRequest` (`ConnectorCallContext.requestBuiltByProcess`). La variable `connectorInput`,
+  posable à une complétion de tâche, ne la pilote pas : sinon n'importe quel chemin, `DELETE` compris, avec les identifiants
+  de l'instance. Les appels directs (admin, M2M) et les instances sans `baseUrl` gardent le comportement d'avant.
 - **D-ORCH-BASEURL** — champ `baseUrl` par instance `http-rest`.
   - Format : https public (garde SSRF D-44), sans identifiants, requête ni fragment.
   - Avec `baseUrl`, l'appel donne `path` (gabarit `{nom}`), `pathParams` (chaque valeur encodée comme un seul segment, ni
     vide ni `.` ou `..`, 20 au plus) et `query` (encodée, 50 au plus). `url` est refusée.
-  - Un chemin sans `/` initial, ou avec `//`, `..` (y compris `%2e`), `?`, `#`, espace ou `\` est refusé. L'URL finale garde
-    le schéma, l'hôte et le port de la base, et ne dépasse pas 8 192 caractères.
+  - Un chemin sans `/` initial, ou avec `//`, un segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace ou `\` est refusé,
+    de même qu'un encodage de `/ \ . ; %` ou d'un caractère de contrôle. Une valeur de `pathParams` ne contient ni `/`, ni
+    `\`, ni caractère de contrôle. L'URL finale garde le schéma, l'hôte et le port de la base, et ne dépasse pas
+    8 192 caractères ; la longueur est contrôlée avant toute expression régulière (quantificateurs possessifs).
   - Sans `baseUrl`, rien ne change.
 - **D-ORCH-SERVICE-ONLY** — champ `webhookEnabled` (case cochée par défaut).
   - Faux : les champs du webhook ne sont plus exigés. Ils deviennent facultatifs dans le schéma ; le serveur les exige quand
@@ -41,7 +49,8 @@ Décisions tranchées par l'utilisateur le 2026-10-31 :
 - **D-ORCH-DELETE** — méthode `DELETE`, sans corps comme `GET`. **PATCH reporté** (issue
   [#261](https://github.com/superjojo79/Myrmacta/issues/261)) : `HttpURLConnection`, retenu pour l'IP figée et la vérification
   TLS du nom d'origine, refuse cette méthode. Le changement de client HTTP mérite son propre cycle.
-- **D-ORCH-EXAMPLE** — exemple « arrivée d'un collaborateur » : SIRH, IAM et ITSM ; validation du manager (approuver,
+- **D-ORCH-EXAMPLE** — exemple « arrivée d'un collaborateur » (identifiants techniques dans des variables remises à `null`
+  au début du provisioning, champs du dossier pour l'affichage seulement) : SIRH, IAM et ITSM ; validation du manager (approuver,
   corriger, refuser) ; validation des accès par l'IT pour les profils sensibles ; incident technique (réessayer, abandonner) ;
   compensation par `DELETE`.
   - Les appels sont asynchrones : une panne réseau devient un incident rejouable. Un statut HTTP en erreur est routé par le
@@ -54,10 +63,34 @@ multi-arguments de `URI`, qui prend des composants décodés : `%2F` redevenait 
 donc sortir de son segment ou de son paramètre, pour `http-rest` comme pour les webhooks sortants. L'URL garde désormais les
 composants bruts (test de régression `OutboundUrlGuardTest.resolveSafe_keepsPercentEncodingOnPinnedUrl`).
 
+**Revue indépendante (2026-10-31, sous-agent au contexte neuf).** Aucun constat Critique. Corrigés, avec un test de
+régression chacun :
+
+- **H1** — l'exemple et le guide faisaient cibler les `DELETE` et `PUT` par des champs du dossier, modifiables par toute
+  personne qui a le droit EDIT : une personne RH pouvait faire supprimer le compte IAM d'un administrateur à l'abandon. Les
+  identifiants sont désormais retenus dans des variables écrites par le BPMN ; le guide §4 avertit que `dossier.fields` et
+  `variables` ne sont pas des données de confiance. Test : `OnboardingOrchestrationExampleIT` (champs et variables de
+  démarrage forgés, champs modifiés avant l'abandon). Une protection par la plateforme est à arbitrer
+  ([#263](https://github.com/superjojo79/Myrmacta/issues/263)).
+- **M1** — `StackOverflowError` sur l'expression régulière du chemin à partir d'environ 1 700 caractères.
+- **M2** — remontée au-dessus du chemin de base par `..;`, `%2F` ou une valeur de `pathParams` contenant `/`.
+- **M3** — instance de connecteur choisie par une variable malgré `connectorRequest`.
+- **M4** — une variable `connectorInput` pilotant une instance à `baseUrl` (D-ORCH-BUILT-REQUEST-ONLY).
+- **B1 à B5** :
+  - `//` au milieu du chemin ;
+  - grands entiers écrits en notation scientifique ;
+  - en-têtes : nom hors RFC 7230, CR seul dans une valeur, `"Host "` ;
+  - paramètres ajoutés après un fragment ;
+  - avertissement sur `variables` dans le guide.
+
+Une seconde revue indépendante a suivi ces correctifs (voir plus bas).
+
 **Limites assumées.**
 - Un champ sensible n'est jamais lisible par l'expression, donc jamais envoyé par `connectorRequest`.
 - Un seul `connectorResult` : on recopie dans le dossier (ou une variable) ce qu'un appel suivant doit relire.
 - Réessayer rejoue la requête : l'idempotence est l'affaire de l'application appelée.
+- Sans `baseUrl`, l'en-tête d'authentification part vers l'URL fournie à l'appel (comportement d'avant, rappelé dans les
+  guides).
 
 **Impacte :**
 - `docs/guides/GUIDE-CONCEPTION-BPMN.md` §4 et §7 ;

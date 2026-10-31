@@ -1,9 +1,9 @@
-# §113 — Groupes d'utilisateurs et assignation par groupe
+# §114 — Groupes d'utilisateurs et assignation par groupe
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 En cours : issue [#190](https://github.com/superjojo79/Myrmacta/issues/190), lot 2 de la Digital Mail Room
-([§112](112-digital-mail-room-courrier-dossier-et-fils.md)). Ce point complète le [§92](092-assignation-des-taches-m-assigner-et-annuaire.md)
+([§113](113-digital-mail-room-courrier-dossier-et-fils.md)). Ce point complète le [§92](092-assignation-des-taches-m-assigner-et-annuaire.md)
 (« M'assigner », annuaire local).
 
 **D-GROUP-SOURCE** (tranché par l'utilisateur, 2026-10-31) — les deux sources de groupes coexistent :

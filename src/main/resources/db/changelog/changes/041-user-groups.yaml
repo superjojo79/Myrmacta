@@ -3,7 +3,7 @@ databaseChangeLog:
       id: 041-user-groups
       author: flowforge
       comment: >-
-        TODO §113 (issue #190, D-GROUP-SOURCE) — groupes d'utilisateurs (services). user_group : code stable, libellé, groupe
+        TODO §114 (issue #190, D-GROUP-SOURCE) — groupes d'utilisateurs (services). user_group : code stable, libellé, groupe
         d'IdP repris facultatif. user_group_member : membres listés, sujets OIDC de l'annuaire (known_user). known_user.idp_groups :
         groupes portés par le jeton à la dernière connexion, comme roles.
       changes:

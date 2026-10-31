@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
-/** TODO §113 (D-GROUP-SOURCE) — un groupe : code stable, libellé lisible, groupe d'IdP repris facultatif, membres bornés. */
+/** TODO §114 (D-GROUP-SOURCE) — un groupe : code stable, libellé lisible, groupe d'IdP repris facultatif, membres bornés. */
 class UserGroupTest {
 
     private static UserGroup group(String code, String label, String idpGroup, Set<String> members) {

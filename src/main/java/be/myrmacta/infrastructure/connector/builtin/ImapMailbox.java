@@ -56,7 +56,7 @@ interface ImapMailbox {
             String authenticationResults,
             List<InboundAttachment> attachments,
             int attachmentsSkipped,
-            /** En-têtes de fil (TODO §112, D-MAILROOM-THREAD), {@link MailThread#NONE} hors fil. */
+            /** En-têtes de fil (TODO §113, D-MAILROOM-THREAD), {@link MailThread#NONE} hors fil. */
             MailThread thread) {
 
         public Mail {

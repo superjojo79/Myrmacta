@@ -4,7 +4,7 @@ import be.myrmacta.domain.user.model.UserGroup;
 import java.util.List;
 import java.util.Optional;
 
-/** TODO §113 — groupes d'utilisateurs du tenant, avec leurs membres listés. */
+/** TODO §114 — groupes d'utilisateurs du tenant, avec leurs membres listés. */
 public interface UserGroupRepository {
 
     /** Tous les groupes du tenant, triés par code. */

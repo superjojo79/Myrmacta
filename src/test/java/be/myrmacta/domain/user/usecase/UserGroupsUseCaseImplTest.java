@@ -21,7 +21,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** TODO §113 (D-GROUP-SOURCE) — administration des groupes et appartenance effective, locale ou par l'IdP. */
+/** TODO §114 (D-GROUP-SOURCE) — administration des groupes et appartenance effective, locale ou par l'IdP. */
 class UserGroupsUseCaseImplTest {
 
     private static final String TENANT = "tenant_dev";

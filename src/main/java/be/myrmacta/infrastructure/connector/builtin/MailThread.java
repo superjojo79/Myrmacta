@@ -8,7 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * TODO §112 (D-MAILROOM-THREAD) — en-têtes qui rattachent un e-mail entrant à un fil : {@code In-Reply-To}, {@code References}
+ * TODO §113 (D-MAILROOM-THREAD) — en-têtes qui rattachent un e-mail entrant à un fil : {@code In-Reply-To}, {@code References}
  * (RFC 5322 §3.6.4) et, côté Microsoft Graph, {@code conversationId}. Ils viennent de l'expéditeur : bornés en longueur et en
  * nombre, réduits à des identifiants {@code <…>} sans espace ni caractère de contrôle. Ils ne prouvent rien seuls : le
  * rattachement à un dossier exige aussi un expéditeur attesté (D-INTEG-MAIL-SENDER).

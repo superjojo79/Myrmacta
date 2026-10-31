@@ -12,7 +12,7 @@ public final class RecordUserLoginUseCaseImpl implements RecordUserLoginUseCase 
 
     static final int MAX_DISPLAY_NAME_LENGTH = 200;
     static final int MAX_EMAIL_LENGTH = 320;
-    /** TODO §113 — groupes d'IdP gardés par connexion, et longueur de chacun (au-delà : écarté). */
+    /** TODO §114 — groupes d'IdP gardés par connexion, et longueur de chacun (au-delà : écarté). */
     static final int MAX_IDP_GROUPS = 100;
     static final int MAX_IDP_GROUP_CHARS = 256;
 

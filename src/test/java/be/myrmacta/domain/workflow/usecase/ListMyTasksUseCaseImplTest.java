@@ -171,7 +171,7 @@ class ListMyTasksUseCaseImplTest {
         assertThat(result.content().getFirst().formKey()).isEqualTo("dossier-fields");
     }
 
-    /** TODO §113 (D-GROUP-ASSIGN) — « Tâches » montre aussi les tâches libres des groupes du membre, s'il peut modifier le dossier. */
+    /** TODO §114 (D-GROUP-ASSIGN) — « Tâches » montre aussi les tâches libres des groupes du membre, s'il peut modifier le dossier. */
     @Test
     void list_includesTheFreeTasksOfTheUsersGroups_onlyOnDossiersHeCanEdit() {
         Instant created = Instant.parse("2026-10-31T10:00:00Z");

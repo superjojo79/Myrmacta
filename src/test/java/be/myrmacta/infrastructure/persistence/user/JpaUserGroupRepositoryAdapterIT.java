@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-/** TODO §113 — groupes et membres listés, par tenant, sans doublon. */
+/** TODO §114 — groupes et membres listés, par tenant, sans doublon. */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
 class JpaUserGroupRepositoryAdapterIT {

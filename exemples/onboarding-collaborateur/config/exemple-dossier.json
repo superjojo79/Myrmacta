@@ -1,0 +1,14 @@
+{
+  "dossierTypeCode": "ONBOARDING_COLLABORATEUR",
+  "label": "Arrivée — Élise Van den Broeck — 2026-12-01",
+  "fields": {
+    "prenom": "Élise",
+    "nom": "Van den Broeck",
+    "emailPersonnel": "elise.vdb@example.org",
+    "dateArrivee": "2026-12-01",
+    "fonction": "Développeuse Java",
+    "departement": "IT",
+    "managerLogin": "m.lambert",
+    "profilPoste": "DEVELOPPEUR"
+  }
+}

@@ -5,7 +5,7 @@ import be.myrmacta.domain.user.model.UserGroup;
 import java.util.List;
 import java.util.Set;
 
-/** TODO §113 (D-GROUP-SOURCE) — administration des groupes et appartenance effective d'un utilisateur. */
+/** TODO §114 (D-GROUP-SOURCE) — administration des groupes et appartenance effective d'un utilisateur. */
 public interface UserGroupsUseCase {
 
     List<UserGroup> list();

@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-/** TODO §113 (issue #190) — groupes d'utilisateurs (services) et annuaire local, réservés à l'administrateur du tenant. */
+/** TODO §114 (issue #190) — groupes d'utilisateurs (services) et annuaire local, réservés à l'administrateur du tenant. */
 export interface UserGroupMember {
   userId: string
   displayName: string

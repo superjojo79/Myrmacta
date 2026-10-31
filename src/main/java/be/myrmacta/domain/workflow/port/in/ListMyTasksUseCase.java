@@ -10,7 +10,7 @@ public interface ListMyTasksUseCase {
     PageResult<MyWorkflowTask> listMine(String assigneeId, PageQuery query);
 
     /**
-     * TODO §113 (D-GROUP-ASSIGN) — tâches de l'utilisateur, plus les tâches libres de ses groupes sur les dossiers qu'il peut
+     * TODO §114 (D-GROUP-ASSIGN) — tâches de l'utilisateur, plus les tâches libres de ses groupes sur les dossiers qu'il peut
      * modifier (il peut alors les prendre, §92).
      */
     default PageResult<MyWorkflowTask> listMine(AccessContext.User actor, PageQuery query) {

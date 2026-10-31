@@ -1,0 +1,65 @@
+{
+  "code": "COURRIER",
+  "label": "Courrier entrant",
+  "workflowKey": "triCourrier",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "canal",
+      "label": "Canal",
+      "type": "SELECT",
+      "required": true,
+      "defaultValue": "EMAIL",
+      "options": ["EMAIL", "PAPIER", "EBOX"],
+      "group": "Réception",
+      "width": "HALF",
+      "searchable": true,
+      "helpText": "Canal par lequel le courrier est arrivé. Le connecteur e-mail laisse la valeur par défaut."
+    },
+    {
+      "name": "expediteur",
+      "label": "Expéditeur",
+      "type": "STRING",
+      "required": true,
+      "group": "Réception",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "objet",
+      "label": "Objet",
+      "type": "STRING",
+      "required": true,
+      "group": "Réception",
+      "width": "FULL",
+      "searchable": true
+    },
+    {
+      "name": "texte",
+      "label": "Texte du message",
+      "type": "STRING",
+      "required": false,
+      "group": "Contenu",
+      "width": "FULL"
+    },
+    {
+      "name": "service",
+      "label": "Service destinataire",
+      "type": "STRING",
+      "required": false,
+      "group": "Routage",
+      "width": "HALF",
+      "searchable": true,
+      "helpText": "Renseigné par le routage (lot 2) ou par l'opérateur de tri."
+    },
+    {
+      "name": "echeance",
+      "label": "Échéance",
+      "type": "DATE",
+      "required": false,
+      "group": "Routage",
+      "width": "HALF"
+    }
+  ]
+}

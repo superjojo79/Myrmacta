@@ -131,6 +131,8 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 110 | [Runner GitHub Actions auto-hébergé](110-runner-github-actions-auto-heberge.md) | clos | — |
 | 111 | [Variables de démarrage déclarées dans le BPMN](111-variables-de-demarrage-declarees.md) | clos | — |
 | 112 | [Orchestration technique : requête construite par le BPMN, `http-rest` « service seul » avec URL de base](112-orchestration-technique-requete-construite-par-le-bpmn.md) | clos | — |
+| 113 | [Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows](113-digital-mail-room-courrier-dossier-et-fils.md) | ouvert | — |
+| 114 | [Groupes d'utilisateurs et assignation par groupe](114-groupes-d-utilisateurs-et-assignation-par-groupe.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

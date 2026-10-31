@@ -1,0 +1,23 @@
+{
+  "_commentaire": "Exemple NON créé sur l'instance : choisir la boîte et son secret. À créer dans Admin → Connecteurs (ou avec l'outil MCP define_connector_instance). Un message sans objet est rangé dans « Myrmacta-rejected », car un champ mappé ne peut pas être vide. trustedAuthservId : l'identifiant que VOTRE serveur de réception écrit en tête de l'en-tête Authentication-Results ; sans lui, aucun expéditeur n'est attesté et une réponse ne pourra pas rejoindre son fil (lot 3).",
+  "name": "Boîte courrier générique",
+  "connectorType": "imap-inbound",
+  "enabled": true,
+  "config": {
+    "host": "imap.example.com",
+    "security": "SSL",
+    "username": "courrier@example.com",
+    "password": "<secret>",
+    "pollSeconds": 60,
+    "maxAttachments": 10,
+    "trustedAuthservId": "mx.example.com",
+    "processKey": "triCourrier",
+    "dossierTypeCode": "COURRIER",
+    "mapping": {
+      "fields": {
+        "expediteur": "$.from",
+        "objet": "$.subject"
+      }
+    }
+  }
+}

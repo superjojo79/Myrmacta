@@ -1,0 +1,49 @@
+{
+  "processDefinitionKey": "triCourrier",
+  "label": "Tri du courrier entrant",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "DRAFT",
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "RECU",
+      "label": "Reçu",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "A_TRIER",
+      "label": "À trier",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "ROUTE",
+      "label": "Routé vers un service",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "RATTACHE",
+      "label": "Rattaché à un dossier",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "TRAITE",
+      "label": "Traité",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "CLASSE",
+      "label": "Classé sans suite",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ]
+}

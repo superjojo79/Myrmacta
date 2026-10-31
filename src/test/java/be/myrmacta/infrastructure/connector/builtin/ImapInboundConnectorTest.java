@@ -148,6 +148,33 @@ class ImapInboundConnectorTest {
     }
 
     @Test
+    void theThreadHeadersReachTheProcessAndTheMapping() {
+        Map<String, Object> c = config();
+        c.put("mapping", Map.of("fields", Map.of("objet", "$.subject", "texte", "$.body", "expediteur", "$.from",
+                "messageId", "$.messageId", "enReponseA", "$.inReplyTo")));
+        inbox.add(new ImapMailbox.Mail("<id@x>", "client@example.org", "Client", "RE: courrier", Instant.parse("2026-10-01T10:00:00Z"),
+                "Merci", false, "mx.example.com; dmarc=pass header.from=example.org", List.of(), 0,
+                MailThread.of("<sent-1@myrmacta.example>", "<first@example.org> <sent-1@myrmacta.example>", "AAQkConv1=")));
+
+        var event = events(instance(c)).getFirst();
+
+        assertThat(event.dossierFields()).containsEntry("messageId", "<id@x>").containsEntry("enReponseA", "<sent-1@myrmacta.example>");
+        assertThat(event.variables())
+                .containsEntry("mailInReplyTo", "<sent-1@myrmacta.example>")
+                .containsEntry("mailReferences", "<first@example.org> <sent-1@myrmacta.example>")
+                .containsEntry("mailConversationId", "AAQkConv1=");
+    }
+
+    @Test
+    void aMessageOutsideAnyThreadCarriesNoThreadVariable() {
+        inbox.add(mail("Nouvelle demande", "Bonjour", false, List.of()));
+
+        var event = events(instance(config())).getFirst();
+
+        assertThat(event.variables()).doesNotContainKeys("mailInReplyTo", "mailReferences", "mailConversationId");
+    }
+
+    @Test
     void theDossierReferenceInTheSubjectCorrelatesTheMessage() {
         inbox.add(mail("RE: [DOS-2026-0042] Votre demande", "Merci", false, List.of()));
         var event = events(instance(config())).getFirst();

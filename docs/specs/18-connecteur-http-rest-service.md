@@ -207,7 +207,17 @@ Livré en complément du rôle SERVICE (§48) :
   obligatoires dans le schéma ; `WebhookController` répond 404 avant toute authentification
   (`ConnectorInstanceData.acceptsWebhooks`). Absent ou vrai : comportement d'avant (D-CAPABILITY-SCOPE reste au niveau du type ;
   ce drapeau ne coupe que l'entrée).
-- **`DELETE`**, sans corps. `PATCH` attend un autre client HTTP que `HttpURLConnection` : issue #261.
+- **`DELETE`**, sans corps. **`PATCH`**, avec corps comme `POST` et `PUT` (TODO §115).
+
+## Implémentation — PATCH (TODO §115, issue #261)
+
+`http-rest` envoie `PATCH` par Apache HttpClient 5 (version gérée par Spring Boot). L'URL garde le nom d'hôte d'origine :
+le SNI et la vérification du certificat sont ceux du client. Le résolveur DNS ne renvoie que l'adresse déjà choisie par
+`OutboundUrlGuard` (D-44), et seulement pour ce nom. Une redirection n'est pas suivie. Le délai borne la connexion et la
+lecture du corps. Les jetons OAuth2, et ceux d'IMAP, de Graph et du bus Azure qui réutilisent le même envoi, passent par
+ce client. Les webhooks sortants restent sur `HttpURLConnection`.
+
+Tests de référence : `HttpRestConnectorTest.execute_methodPatch_sendsPatchWithBody`, `PinnedHttpClientTest`.
 - Correctif trouvé en chemin : `OutboundUrlGuard.PinnedEndpoint.requestUrl()` reconstruisait l'URL à partir des composants
   **décodés** (`%2F` redevenait `/`, `%26` `&`) ; elle garde désormais les composants bruts.
 

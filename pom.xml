@@ -160,6 +160,13 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
+        <!-- TODO §115 (D-HTTP-PATCH) — appels http-rest. HttpURLConnection refuse PATCH.
+             Version gérée par Spring Boot, licence Apache-2.0. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
         <!-- Construction des records domaine (@Builder) — décision n° 17 -->
         <dependency>
             <groupId>org.projectlombok</groupId>

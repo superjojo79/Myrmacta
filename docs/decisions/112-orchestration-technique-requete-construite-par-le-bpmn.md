@@ -46,9 +46,9 @@ Décisions tranchées par l'utilisateur le 2026-10-31 :
   - `WebhookController` répond alors 404 avant toute authentification ; le SPA n'affiche pas d'URL d'entrée.
   - La capacité reste une propriété du type (D-CAPABILITY-SCOPE, [§48](048-activation-du-connecteur-http-rest-en-role.md)) :
     ce drapeau ne coupe que l'entrée.
-- **D-ORCH-DELETE** — méthode `DELETE`, sans corps comme `GET`. **PATCH reporté** (issue
+- **D-ORCH-DELETE** — méthode `DELETE`, sans corps comme `GET`. **PATCH reporté** à ce cycle (issue
   [#261](https://github.com/superjojo79/Myrmacta/issues/261)) : `HttpURLConnection`, retenu pour l'IP figée et la vérification
-  TLS du nom d'origine, refuse cette méthode. Le changement de client HTTP mérite son propre cycle.
+  TLS du nom d'origine, refuse cette méthode. Livré ensuite par le [§115](115-methode-patch-du-connecteur-http-rest.md).
 - **D-ORCH-EXAMPLE** — exemple « arrivée d'un collaborateur » (identifiants techniques dans des variables remises à `null`
   au début du provisioning, champs du dossier pour l'affichage seulement, groupe IAM choisi par l'IT) : SIRH, IAM et ITSM ; validation du manager (approuver,
   corriger, refuser) ; validation des accès par l'IT pour les profils sensibles ; incident technique (réessayer, abandonner) ;

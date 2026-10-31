@@ -71,7 +71,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         this.inbound = Objects.requireNonNull(inbound, "inbound");
         this.mailbox = Objects.requireNonNull(mailbox, "mailbox");
         this.tokenProvider = new OAuth2TokenProvider(
-                outboundUrlGuard, objectMapper, connectorProperties, HttpRestConnector.urlConnectionSender(), clock);
+                outboundUrlGuard, objectMapper, connectorProperties, PinnedHttpClient.sender(), clock);
     }
 
     @Override

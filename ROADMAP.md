@@ -32,7 +32,8 @@ et refuser un doublon de champ ouvert
 Depuis le 31 octobre, un workflow peut orchestrer plusieurs API REST : requête construite dans le BPMN, connecteurs « service
 seul » avec URL de base, `DELETE` ; exemple « arrivée d'un collaborateur » avec validations humaines et compensation
 ([#260](https://github.com/superjojo79/Myrmacta/issues/260), [§112](docs/decisions/112-orchestration-technique-requete-construite-par-le-bpmn.md)).
-`PATCH` suit ([#261](https://github.com/superjojo79/Myrmacta/issues/261)).
+`http-rest` accepte `PATCH`
+([#261](https://github.com/superjojo79/Myrmacta/issues/261), [§115](docs/decisions/115-methode-patch-du-connecteur-http-rest.md)).
 
 ## Prochaines étapes
 

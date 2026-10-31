@@ -244,7 +244,7 @@ class HttpRestConnectorTest {
 
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://hooks.example.com/hook"));
 
-        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/hook");
+        assertTarget("https://hooks.example.com/hook");
         assertThat(httpSender.last.headers()).containsEntry("Host", "hooks.example.com");
         assertThat(lookups).hasValue(1);
     }
@@ -294,6 +294,17 @@ class HttpRestConnectorTest {
     }
 
     @Test
+    void execute_methodPatch_sendsPatchWithBody() throws Exception {
+        httpSender.stub(204, "");
+
+        connector.execute(SERVICE_INSTANCE, Map.of(
+                "url", "https://example.com/hook", "method", "patch", "body", Map.of("k", "v")));
+
+        assertThat(httpSender.last.method()).isEqualTo("PATCH");
+        assertThat(new String(httpSender.last.body(), StandardCharsets.UTF_8)).contains("\"k\"");
+    }
+
+    @Test
     void execute_methodIsCaseInsensitive() throws Exception {
         httpSender.stub(200, "ok");
 
@@ -305,9 +316,9 @@ class HttpRestConnectorTest {
     @Test
     void execute_unsupportedMethod_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(
-                        SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "PATCH")))
+                        SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "TRACE")))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("PATCH");
+                .hasMessageContaining("TRACE");
 
         assertThat(httpSender.last).isNull();
     }
@@ -481,7 +492,7 @@ class HttpRestConnectorTest {
     void execute_baseUrl_joinsRelativePath() throws Exception {
         connector.execute(BASE_URL_INSTANCE, Map.of("method", "POST", "path", "/employees", "body", Map.of("a", 1)));
 
-        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/v1/employees");
+        assertTarget("https://api.example.com/v1/employees");
         assertThat(httpSender.last.headers()).containsEntry("Host", "api.example.com")
                 .containsEntry("Authorization", "Bearer t");
     }
@@ -490,7 +501,7 @@ class HttpRestConnectorTest {
     void execute_baseUrl_withoutPath_callsBaseUrl() throws Exception {
         connector.execute(BASE_URL_INSTANCE, Map.of());
 
-        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/v1");
+        assertTarget("https://api.example.com/v1");
     }
 
     @Test
@@ -500,8 +511,7 @@ class HttpRestConnectorTest {
                 "path", "/users/{login}/groups/{group}",
                 "pathParams", Map.of("login", "jean dupont?x=1#f&;..", "group", 42L)));
 
-        assertThat(httpSender.last.url()).isEqualTo(
-                "https://93.184.216.34/v1/users/jean%20dupont%3Fx%3D1%23f%26%3B../groups/42");
+        assertTarget("https://api.example.com/v1/users/jean%20dupont%3Fx%3D1%23f%26%3B../groups/42");
     }
 
     @Test
@@ -527,6 +537,7 @@ class HttpRestConnectorTest {
         String legit = "/" + "a".repeat(5_000);
         connector.execute(BASE_URL_INSTANCE, Map.of("path", legit));
         assertThat(httpSender.last.url()).endsWith(legit);
+        assertThat(httpSender.last.pinnedAddress().getHostAddress()).isEqualTo("93.184.216.34");
     }
 
     @Test
@@ -535,6 +546,7 @@ class HttpRestConnectorTest {
                 "query", Map.of("n", 9007199254740991.0)));
 
         assertThat(httpSender.last.url()).endsWith("/e/1234567890123456?n=9007199254740991");
+        assertThat(httpSender.last.pinnedAddress().getHostAddress()).isEqualTo("93.184.216.34");
     }
 
     @Test
@@ -545,15 +557,14 @@ class HttpRestConnectorTest {
         query.put("tag", List.of("x", "y z"));
         connector.execute(BASE_URL_INSTANCE, Map.of("path", "/vendors", "query", query));
 
-        assertThat(httpSender.last.url()).isEqualTo(
-                "https://93.184.216.34/v1/vendors?$filter=Name%20eq%20'A%26B'&top=5&tag=x&tag=y%20z");
+        assertTarget("https://api.example.com/v1/vendors?$filter=Name%20eq%20'A%26B'&top=5&tag=x&tag=y%20z");
     }
 
     @Test
     void execute_queryAppendedToLegacyUrlWithExistingQuery() throws Exception {
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook?a=1", "query", Map.of("b", "2")));
 
-        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/hook?a=1&b=2");
+        assertTarget("https://example.com/hook?a=1&b=2");
     }
 
     @Test
@@ -664,7 +675,7 @@ class HttpRestConnectorTest {
     void execute_queryIsInsertedBeforeAFragment() throws Exception {
         connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/x?a=1#frag", "query", Map.of("b", "2")));
 
-        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/x?a=1&b=2#frag");
+        assertTarget("https://example.com/x?a=1&b=2#frag");
     }
 
     @Test
@@ -718,6 +729,12 @@ class HttpRestConnectorTest {
     private static ConnectorInstanceData instance(Map<String, Object> config) {
         return new ConnectorInstanceData(
                 UUID.randomUUID(), "tenant_dev", "http", "http-rest", true, new HashMap<>(config));
+    }
+
+    /** L'URL garde le nom d'hôte ; l'adresse figée est celle que le client doit joindre (D-HTTP-PATCH). */
+    private void assertTarget(String url) {
+        assertThat(httpSender.last.url()).isEqualTo(url);
+        assertThat(httpSender.last.pinnedAddress().getHostAddress()).isEqualTo("93.184.216.34");
     }
 
     private static final class RecordingHttpSender implements HttpRestConnector.HttpSender {

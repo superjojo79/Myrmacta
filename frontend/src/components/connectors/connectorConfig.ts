@@ -81,13 +81,22 @@ const INGRESS_BY_TYPE: Record<string, { kind: ConnectorIngress['kind']; path: st
   'flowable-callback': { kind: 'callback', path: '/api/callbacks' },
 }
 
+/** TODO §112 : une instance « service seul » (`webhookEnabled` faux) n'a pas d'URL d'entrée — le serveur répond 404. */
+function webhookDisabled(config: Record<string, unknown> | undefined): boolean {
+  const value = config?.webhookEnabled
+  return value === false || (typeof value === 'string' && value.trim().toLowerCase() === 'false')
+}
+
 export function ingressUrlFor(
-  connector: { id: string; connectorType: string },
+  connector: { id: string; connectorType: string; config?: Record<string, unknown> },
   origin: string,
   apiBase = '',
 ): ConnectorIngress | null {
   const mapping = INGRESS_BY_TYPE[connector.connectorType]
   if (!mapping || !connector.id) {
+    return null
+  }
+  if (mapping.kind === 'webhook' && webhookDisabled(connector.config)) {
     return null
   }
   const originClean = origin.replace(/\/$/, '')

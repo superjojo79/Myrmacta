@@ -2,8 +2,8 @@
 
 Le courrier entrant d'une organisation (e-mail aujourd'hui ; PDF numérisés et eBox ensuite) est **enregistré** comme un dossier
 numéroté, puis **trié** et rattaché au bon dossier métier. Issue [#217](https://github.com/superjojo79/Myrmacta/issues/217),
-décisions [§112](../../docs/decisions/112-digital-mail-room-courrier-dossier-et-fils.md) et
-[§113](../../docs/decisions/113-groupes-d-utilisateurs-et-assignation-par-groupe.md).
+décisions [§113](../../docs/decisions/113-digital-mail-room-courrier-dossier-et-fils.md) et
+[§114](../../docs/decisions/114-groupes-d-utilisateurs-et-assignation-par-groupe.md).
 
 Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une entité à part. Il bénéficie de tout ce qu'a un dossier :
 - numéro d'ordre ;

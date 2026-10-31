@@ -6,7 +6,7 @@
              xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://myrmacta/exemples">
-  <!-- Tri du courrier entrant (#217, lot 2b, §112 D-MAILROOM-ROUTE). Entrées préparées, table de routage, brique de routage :
+  <!-- Tri du courrier entrant (#217, lot 2b, §113 D-MAILROOM-ROUTE). Entrées préparées, table de routage, brique de routage :
        le courrier est routé vers un dossier métier, ou part à la file de tri du groupe COURRIER. Un courrier naît DRAFT (créé
        par un connecteur) : le process l'ouvre puis le met en cours lui-même. La première étape est asynchrone : un courrier
        routé traverse tout le process sans s'arrêter, et le routage tourne ainsi dans un job, après la confirmation du

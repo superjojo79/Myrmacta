@@ -16,7 +16,7 @@ import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 import org.springframework.stereotype.Component;
 
 /**
- * TODO §113 (D-GROUP-LINK) — une tâche créée sans assigné ni candidat reçoit comme candidat le groupe destinataire de son lien
+ * TODO §114 (D-GROUP-LINK) — une tâche créée sans assigné ni candidat reçoit comme candidat le groupe destinataire de son lien
  * de workflow, s'il en a un. Une tâche qui déclare un assigné ou un {@code candidateGroups} littéral garde sa déclaration.
  */
 @Component

@@ -9,6 +9,6 @@ public interface RecordUserLoginUseCase {
         record(userId, name, email, roles, Set.of());
     }
 
-    /** Idem, avec les groupes portés par le jeton (TODO §113, D-GROUP-SOURCE) : bornés, les valeurs illisibles sont écartées. */
+    /** Idem, avec les groupes portés par le jeton (TODO §114, D-GROUP-SOURCE) : bornés, les valeurs illisibles sont écartées. */
     void record(String userId, String name, String email, Set<String> roles, Set<String> idpGroups);
 }

@@ -9,7 +9,7 @@ export type MockOpts = {
   freeTask?: boolean
   /** TODO §94 : une étape du lien est en incident (job en dead letter). */
   withIncident?: boolean
-  /** TODO §113 : « Tâches » contient une tâche libre d'un groupe de l'utilisateur. */
+  /** TODO §114 : « Tâches » contient une tâche libre d'un groupe de l'utilisateur. */
   groupTask?: boolean
 }
 
@@ -962,7 +962,7 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       updatedAt: '2026-08-19T10:00:00Z',
     },
   ]
-  // TODO §113 : groupes d'utilisateurs (administration du tenant), en mémoire.
+  // TODO §114 : groupes d'utilisateurs (administration du tenant), en mémoire.
   let userGroups: Array<{ code: string; label: string; idpGroup: string | null; members: Array<{ userId: string; displayName: string }> }> = [
     { code: 'COMPTABILITE', label: 'Comptabilité', idpGroup: '/services/compta', members: [] },
   ]

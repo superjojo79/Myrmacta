@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * TODO §113 (D-GROUP-LINK) — groupe destinataire d'un process, porté par son lien de workflow : ses tâches créées sans assigné
+ * TODO §114 (D-GROUP-LINK) — groupe destinataire d'un process, porté par son lien de workflow : ses tâches créées sans assigné
  * ni candidat reçoivent ce groupe comme candidat. Posé par la plateforme seule (routage, réaffectation).
  */
 public interface WorkflowLinkGroupRepository {

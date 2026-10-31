@@ -1,4 +1,4 @@
-# §112 — Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows
+# §113 — Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
@@ -37,7 +37,7 @@ Précisions de conception du lot 2b (2026-10-31) :
   « Calcul » (JSONata, §40) : canal, domaine de l'expéditeur, etc.
 - **Sorties de la table**, lues par la brique `routeMailTask` :
   - `routageAction` : `OUVRIR` ou `TRIER` ;
-  - `routageService` : code d'un groupe, §113 ;
+  - `routageService` : code d'un groupe, §114 ;
   - `routageTypeDossier` et `routageProcessus` ;
   - `routageDelaiJours`, facultatif ; la brique l'écrit dans le champ `echeance`, que le lot 4 exploitera.
 - **Paramètre littéral de la brique.** `groupeTri` désigne le groupe de la file de tri.

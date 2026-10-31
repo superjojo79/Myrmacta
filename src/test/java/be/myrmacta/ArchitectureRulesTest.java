@@ -131,7 +131,7 @@ class ArchitectureRulesTest {
             // sensible du dossier courant (R8), la passe à la requête et ne la renvoie jamais (seuls un nombre et une
             // référence sortent).
             "be.myrmacta.domain.dossier.usecase.SearchSimilarDossiersUseCaseImpl",
-            // TODO §112 (D-MAILROOM-ROUTE) : la brique « Router le courrier » copie, côté serveur, les champs NON sensibles du
+            // TODO §113 (D-MAILROOM-ROUTE) : la brique « Router le courrier » copie, côté serveur, les champs NON sensibles du
             // courrier vers le dossier métier qu'elle crée (même nom), et prend l'objet comme libellé. Aucune valeur n'est
             // renvoyée à un navigateur ni journalisée.
             "be.myrmacta.infrastructure.flowable.RouteMailDelegate",

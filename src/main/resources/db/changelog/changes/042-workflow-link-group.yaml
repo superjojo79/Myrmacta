@@ -3,7 +3,7 @@ databaseChangeLog:
       id: 042-workflow-link-group
       author: flowforge
       comment: >-
-        TODO §113 (D-GROUP-LINK) — groupe destinataire d'un process, porté par son lien de workflow. Ses tâches créées sans
+        TODO §114 (D-GROUP-LINK) — groupe destinataire d'un process, porté par son lien de workflow. Ses tâches créées sans
         assigné ni candidat reçoivent ce groupe comme candidat. Posé par la plateforme seule (routage du courrier, réaffectation).
         Supprimé avec le lien.
       changes:

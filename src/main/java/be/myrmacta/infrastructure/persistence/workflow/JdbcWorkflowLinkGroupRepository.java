@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** TODO §113 (D-GROUP-LINK) — table {@code workflow_link_group} (changeset 042). */
+/** TODO §114 (D-GROUP-LINK) — table {@code workflow_link_group} (changeset 042). */
 @Component
 class JdbcWorkflowLinkGroupRepository implements WorkflowLinkGroupRepository {
 

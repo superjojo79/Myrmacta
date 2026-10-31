@@ -42,7 +42,7 @@ class KnownUserJpaEntity {
     @Column(nullable = false, columnDefinition = "json")
     private List<String> roles = List.of();
 
-    /** TODO §113 — groupes du jeton à la dernière connexion. */
+    /** TODO §114 — groupes du jeton à la dernière connexion. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "idp_groups", nullable = false, columnDefinition = "json")
     private List<String> idpGroups = List.of();

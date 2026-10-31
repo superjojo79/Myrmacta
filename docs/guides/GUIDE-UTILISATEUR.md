@@ -199,7 +199,8 @@ depuis le bouton **Éditer** en face de chaque config workflow sur l'écran **Ad
    choisie (le diagramme réellement en cours d'exécution est rechargé automatiquement).
 2. **Palette d'édition** (`bpmn-js`) — glisser-déposer des éléments BPMN standard (tâches,
    passerelles, événements) **et**, dans le groupe **« Briques métier »** (icônes marquées d'un point
-   bleu), treize briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur,
+   bleu), treize briques prêtes à l'emploi : générer / joindre un document, appeler un connecteur (avec, au besoin,
+   la **requête** construite par une expression à partir du dossier et de la réponse précédente : guide de conception §4),
    notifier (e-mail avec, au besoin, le PDF produit en **pièce jointe** : champ « Pièce jointe (e-mail) » =
    `variable:generatedDocumentId`, après « Joindre le document » — guide de conception §6c), créer un dossier enfant, changer le statut du dossier ou du workflow, décision DMN,
    **évaluer une expression** (calcul ou condition sur les champs du dossier, voir le guide de conception §3sexies),
@@ -411,7 +412,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 
 | Type | Rôle (`capability`) | Champs de config (formulaire généré) |
 |---|---|---|
-| `http-rest` | trigger **et** service (`BOTH`) | `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode`, `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `authMode` et champs `oauth*` (authentification OAuth2, voir ci-dessous), `mapping` (optionnel) |
+| `http-rest` | trigger **et** service (`BOTH`) | `webhookEnabled` (case cochée par défaut ; décochée = instance « service seul », voir ci-dessous), `baseUrl` (optionnel, appels SERVICE), `webhookAuthType` (liste HMAC / token), `webhookSecret`, `processKey`, `dossierTypeCode` (ces quatre-là exigés seulement si le webhook est actif), `authHeaderValue` (optionnel, mot de passe — appels SERVICE), `authMode` et champs `oauth*` (authentification OAuth2, voir ci-dessous), `mapping` (optionnel) |
 | `flowable-signal` | trigger **et** service | `signalName`, `processKey`, `dossierTypeCode`, `mapping` (optionnel) |
 | `scheduler` | trigger | `cronExpression`, `processKey`, `dossierTypeCode` |
 | `flowable-callback` | callback | `webhookAuthType`, `webhookSecret`, `messageName`, `correlationVariableName`, `correlationValuePath`, `mapping` (optionnel) |
@@ -420,6 +421,22 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
 | `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
+
+**Appeler une application depuis un processus : instance « service seul » et URL de base (TODO §112, issue #260).** Pour un
+connecteur `http-rest` qui ne sert qu'à appeler une API (SIRH, IAM, ITSM, ERP…) :
+
+- décocher **`webhookEnabled`** : le secret de webhook, `processKey` et `dossierTypeCode` ne sont plus demandés, aucune URL webhook
+  n'est affichée et le webhook entrant de cette instance répond `404`, même si un ancien secret est resté ;
+- renseigner **`baseUrl`** (`https://rh.exemple.com/api/v2`, https, adresses internes refusées, sans identifiants, `?` ni `#`) : le
+  processus ne donne plus qu'un chemin relatif (`/employees/{id}`) ; une URL absolue est refusée, et l'en-tête d'authentification
+  ne part donc jamais vers un autre hôte. Changer d'environnement (recette, production) revient à changer `baseUrl`, pas le BPMN.
+  Depuis un processus, une instance avec `baseUrl` n'accepte que la requête écrite dans le BPMN (`connectorRequest`), jamais
+  une variable saisie. **Sans `baseUrl`, l'en-tête d'authentification part vers l'URL donnée à chaque appel** : réservez ce
+  mode aux appels dont l'URL est fixée par le concepteur.
+
+Méthodes acceptées : `GET`, `POST`, `PUT` et `DELETE` (sans corps pour `GET` et `DELETE`). `PATCH` n'est pas encore disponible
+([#261](https://github.com/superjojo79/Myrmacta/issues/261)). Un exemple complet coordonne trois applications avec des validations
+humaines : [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md).
 
 **Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir
 `authMode = OAUTH2_CLIENT_CREDENTIALS` : Myrmacta obtient lui-même le jeton d'accès, le garde en mémoire et le renouvelle avant son
@@ -468,7 +485,8 @@ Après création, l'écran affiche aussi l'URL d'entrée HTTP quand le type en a
 | `flowable-callback` | `POST https://{hôte}/{tenantId}/api/callbacks/{id}` — **URL callback** |
 
 Le préfixe `{tenantId}` est celui du reverse-proxy (chemin du tenant, décision n° 14) ; s'il
-n'y en a pas, le chemin commence à `/api/…`. Un bouton **Copier** recopie l'URL (sans le mot
+n'y en a pas, le chemin commence à `/api/…`. Une instance `http-rest` « service seul » (`webhookEnabled` décoché) n'affiche pas
+d'URL webhook. Un bouton **Copier** recopie l'URL (sans le mot
 `POST`). Les autres types (`smtp`, `document-storage`, `scheduler`, `flowable-signal`) n'ont
 pas d'endpoint HTTP entrant.
 
@@ -507,7 +525,7 @@ toutes les `pollSeconds` secondes (30 au minimum).
   « RE: [DOS-2026-0042] … » est ajoutée à ce dossier ; une référence inconnue (faute de frappe) crée un nouveau dossier plutôt que de perdre le message.
 - **Contenu** : `mapping` associe des champs du dossier ou des variables du processus à l'objet (`$.subject`), au texte (`$.body`, texte brut, 20 000 caractères),
   à l'expéditeur (`$.from`, `$.fromName`), à la date (`$.sentAt`). Les variables `mailMessageId`, `mailFrom` et `mailSubject` sont toujours posées.
-- **Fil de discussion** (TODO §112) : les en-têtes `In-Reply-To` et `References`, et le `conversationId` de Microsoft Graph, sont lus et bornés : identifiants
+- **Fil de discussion** (TODO §113) : les en-têtes `In-Reply-To` et `References`, et le `conversationId` de Microsoft Graph, sont lus et bornés : identifiants
   `<…>` seulement, 250 caractères chacun, les 10 références les plus récentes. Le processus voit `mailInReplyTo`, `mailReferences` (séparées par une espace) et
   `mailConversationId` quand ils existent. Ils sont aussi disponibles pour `mapping` (`$.inReplyTo`, `$.references`, `$.conversationId`), mais ne les mappez pas sur
   un champ du dossier : vides pour un nouveau message, ils feraient refuser celui-ci. Ils ne rattachent encore rien seuls.
@@ -618,7 +636,7 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   [docs/guides/GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du
   bouton nu — édition des champs du dossier, ou choix d'un document à générer parmi ceux autorisés
   pour son type (§1). Une tâche sans formulaire déclaré garde le bouton **Compléter** habituel.
-  **Tâches de groupe** (TODO §113) : une tâche sans assigné destinée à l'un de vos groupes (« Groupes d'utilisateurs » ci-dessous) y figure aussi, marquée
+  **Tâches de groupe** (TODO §114) : une tâche sans assigné destinée à l'un de vos groupes (« Groupes d'utilisateurs » ci-dessous) y figure aussi, marquée
   « À prendre », si vous pouvez modifier son dossier. **Prendre** vous l'assigne : elle quitte alors la liste des autres
   membres. Une tâche sans assigné qui n'est destinée à aucun de vos groupes n'y figure pas : la prendre avec **M'assigner**
   depuis la fiche dossier (§3).
@@ -631,7 +649,7 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   L'objectif de conformité tenant (défaut 95 %), les alertes de franchissement et l'export
   BI se configurent dans **Admin → Types**.
 
-### Groupes d'utilisateurs (Admin → Groupes, `TENANT_ADMIN`) — TODO §113
+### Groupes d'utilisateurs (Admin → Groupes, `TENANT_ADMIN`) — TODO §114
 
 Un groupe représente un service (RH, comptabilité, juridique…). Ses membres voient ses tâches libres dans **Tâches**.
 
@@ -644,7 +662,7 @@ Un groupe représente un service (RH, comptabilité, juridique…). Ses membres 
   Keycloak, claim `groups` chez Microsoft Entra ID. L'appartenance est celle de la **dernière connexion** de l'utilisateur.
   Chez Entra, la claim porte les identifiants (GUID) des groupes : c'est cette valeur qu'il faut saisir.
 - **Qui reçoit une tâche de groupe :**
-  - le groupe que la table de routage de la mail room a choisi (TODO §112), posé à l'exécution sur le process qu'elle
+  - le groupe que la table de routage de la mail room a choisi (TODO §113), posé à l'exécution sur le process qu'elle
     démarre ;
   - ou un groupe nommé par le diagramme (`candidateGroups` littéral, le code du groupe).
 - **Prendre une tâche :** il faut toujours le droit de modifier le dossier (§3). Être membre du groupe rend la tâche

@@ -34,7 +34,7 @@ export const useTasksStore = defineStore('tasks', () => {
     await refresh()
   }
 
-  /** TODO §113 — prendre une tâche libre de l'un de ses groupes (« M'assigner », §92), puis recharger la liste. */
+  /** TODO §114 — prendre une tâche libre de l'un de ses groupes (« M'assigner », §92), puis recharger la liste. */
   async function take(task: MyWorkflowTask): Promise<void> {
     if (!task.linkId) return
     await claimWorkflowTask(task.linkId, task.taskId)

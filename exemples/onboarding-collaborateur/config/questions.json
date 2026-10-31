@@ -1,0 +1,33 @@
+[
+  {
+    "schemaKey": "validation-manager-onboarding",
+    "label": "Valider l'arrivée du collaborateur",
+    "fields": [
+      { "name": "decisionManager", "label": "Décision", "type": "SELECT", "required": true,
+        "options": ["APPROUVER", "CORRIGER", "REFUSER"], "group": "Décision", "width": "HALF",
+        "helpText": "APPROUVER lance la création dans le SIRH, l'IAM et l'ITSM. CORRIGER renvoie la fiche aux RH. REFUSER clôture la demande sans rien créer." },
+      { "name": "commentaireManager", "label": "Commentaire", "type": "STRING", "required": false, "group": "Décision",
+        "helpText": "Ce qu'il faut corriger, ou le motif du refus." }
+    ]
+  },
+  {
+    "schemaKey": "validation-acces-onboarding",
+    "label": "Valider les accès du collaborateur",
+    "fields": [
+      { "name": "niveauAcces", "label": "Accès accordés", "type": "SELECT", "required": true,
+        "options": ["STANDARD", "DEVELOPPEURS", "DIRECTION"], "group": "Accès", "width": "HALF",
+        "helpText": "STANDARD laisse le compte dans les groupes par défaut ; DEVELOPPEURS ou DIRECTION l'ajoute à ce groupe dans l'IAM. C'est ce choix, et non le profil de la fiche, qui désigne le groupe." },
+      { "name": "justificationAcces", "label": "Justification", "type": "STRING", "required": false, "group": "Accès" }
+    ]
+  },
+  {
+    "schemaKey": "incident-technique-onboarding",
+    "label": "Incident technique pendant le provisioning",
+    "fields": [
+      { "name": "actionIncident", "label": "Action", "type": "SELECT", "required": true,
+        "options": ["REESSAYER", "ABANDONNER"], "group": "Incident", "width": "HALF",
+        "helpText": "REESSAYER rejoue l'appel en échec (champ « Dernier incident technique » de la fiche). ABANDONNER supprime ce qui a déjà été créé dans l'IAM et le SIRH, puis clôture la demande." },
+      { "name": "noteIncident", "label": "Note", "type": "STRING", "required": false, "group": "Incident" }
+    ]
+  }
+]

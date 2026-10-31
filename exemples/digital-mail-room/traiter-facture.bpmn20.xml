@@ -7,7 +7,7 @@
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://myrmacta/exemples">
   <!-- Dossier métier ouvert par le routage. La tâche ne nomme aucun groupe : elle reçoit le service choisi par la table de
-       routage, porté par le lien de workflow (§113 D-GROUP-LINK). -->
+       routage, porté par le lien de workflow (§114 D-GROUP-LINK). -->
   <process id="traiterFacture" name="Traiter une facture fournisseur" isExecutable="true">
     <startEvent id="debut" name="Facture reçue"/>
     <userTask id="traiterFactureTache" name="Traiter la facture"><documentation>Vérifier la facture jointe au courrier lié, l'encoder puis terminer la tâche.</documentation></userTask>

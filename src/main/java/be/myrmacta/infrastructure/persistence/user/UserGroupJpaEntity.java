@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-/** TODO §113 — groupe d'utilisateurs et ses membres listés (changeset 041). */
+/** TODO §114 — groupe d'utilisateurs et ses membres listés (changeset 041). */
 @Entity
 @Table(
         name = "user_group",

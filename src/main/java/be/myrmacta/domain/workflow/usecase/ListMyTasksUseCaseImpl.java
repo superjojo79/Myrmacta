@@ -51,7 +51,7 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
         this.accessPolicy = null;
     }
 
-    /** TODO §113 (D-GROUP-ASSIGN) — avec les groupes de l'utilisateur et la vérification d'édition des dossiers. */
+    /** TODO §114 (D-GROUP-ASSIGN) — avec les groupes de l'utilisateur et la vérification d'édition des dossiers. */
     public ListMyTasksUseCaseImpl(
             String tenantId,
             WorkflowTaskInboxPort inboxPort,

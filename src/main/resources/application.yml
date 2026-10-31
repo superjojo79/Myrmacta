@@ -211,7 +211,7 @@ app:
     cookie:
       secure: true   # false en local HTTP (profil / override)
     oidc:
-      # TODO §113 : claim du jeton qui porte les groupes de l'utilisateur (groupes d'un service repris par un groupe Myrmacta).
+      # TODO §114 : claim du jeton qui porte les groupes de l'utilisateur (groupes d'un service repris par un groupe Myrmacta).
       groups-claim: ${APP_SECURITY_OIDC_GROUPS_CLAIM:groups}
     headers:
       enabled: ${APP_SECURITY_HEADERS_ENABLED:true}

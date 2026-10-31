@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * TODO §113 (issue #190, D-GROUP-ASSIGN) — « Tâches » par groupe, par la vraie chaîne HTTP et sécurité : un membre listé et un
+ * TODO §114 (issue #190, D-GROUP-ASSIGN) — « Tâches » par groupe, par la vraie chaîne HTTP et sécurité : un membre listé et un
  * membre venu de la claim de l'IdP voient la tâche libre du groupe et peuvent la prendre ; un non-membre ne la voit pas ; une
  * fois prise, elle sort de la liste des autres membres.
  */

@@ -57,7 +57,7 @@ public record FieldDefinition(
 
     public static final int MAX_EXPRESSION_CHARS = 2000;
 
-    /** TODO §112 — vrai si une valeur par défaut est déclarée, sans exposer la valeur (elle peut être sensible). */
+    /** TODO §113 — vrai si une valeur par défaut est déclarée, sans exposer la valeur (elle peut être sensible). */
     public boolean hasDefaultValue() {
         return defaultValue != null;
     }

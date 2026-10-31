@@ -11,7 +11,7 @@ public interface WorkflowTaskInboxPort {
     PageResult<ActiveTaskSnapshot> findActiveAssignedTo(String assigneeId, PageQuery query);
 
     /**
-     * TODO §113 (D-GROUP-ASSIGN) — tâches actives assignées à l'utilisateur, ou libres et candidates pour l'un de ses
+     * TODO §114 (D-GROUP-ASSIGN) — tâches actives assignées à l'utilisateur, ou libres et candidates pour l'un de ses
      * groupes ({@code assigneeId} nul). Sans groupe : comme {@link #findActiveAssignedTo}.
      */
     PageResult<ActiveTaskSnapshot> findActiveForUser(String userId, Set<String> groups, PageQuery query);

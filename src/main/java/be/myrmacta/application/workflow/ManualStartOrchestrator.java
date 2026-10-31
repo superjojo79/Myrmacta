@@ -59,7 +59,7 @@ public final class ManualStartOrchestrator {
         this.linkGroups = null;
     }
 
-    /** TODO §113 (D-GROUP-LINK) — avec le registre des groupes destinataires des liens. */
+    /** TODO §114 (D-GROUP-LINK) — avec le registre des groupes destinataires des liens. */
     public ManualStartOrchestrator(
             DossierRepository dossierRepository,
             DossierTypeRepository dossierTypeRepository,
@@ -101,7 +101,7 @@ public final class ManualStartOrchestrator {
     }
 
     /**
-     * TODO §113 (D-GROUP-LINK) — idem, et le process reçoit {@code assignedGroup} comme groupe destinataire, posé sur le lien
+     * TODO §114 (D-GROUP-LINK) — idem, et le process reçoit {@code assignedGroup} comme groupe destinataire, posé sur le lien
      * entre la réservation et le démarrage du moteur (la première tâche naît pendant le démarrage). {@code null} : aucun.
      */
     public StartResult start(

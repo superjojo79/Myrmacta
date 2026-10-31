@@ -225,6 +225,8 @@ runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 | 2026-10-31 | lot 2a — tests ciblés (domaine, persistance, `UserGroupAdminApiTest`, `GroupTasksApiTest`) | vert : 33 unitaires, 9 intégration ; `GroupTasksApiTest` rouge sans le branchement des groupes |
 | 2026-10-31 | lot 2a — `cd frontend && npm run lint && npm run test` | vert : 135 fichiers, 831 tests |
 | 2026-10-31 | lot 2a — Playwright `pilotage-groupes` + `pilotage-taches` | vert : 13 tests |
+| 2026-10-31 | lot 2a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 021 tests, 0 échec, 0 erreur, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 2a — `cd frontend && npx playwright test` (suite complète) | vert : 152 tests |
 
 ## Revue de clôture
 

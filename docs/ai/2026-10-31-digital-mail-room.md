@@ -186,7 +186,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | #267 |
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
-| 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | en cours | |
+| 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | à ouvrir |
 | 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeance…}` dans un minuteur | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
@@ -268,7 +268,7 @@ minuteur ; calendrier ouvrable plus tard) :
 - API `/api/dossier-types/{code}/deadline`, panneau « Échéance » ; exemple : groupe DIRECTION_FINANCIERE, champ
   `echeance` de FACTURE, `config/echeance-facture.json`.
 
-Prochaine action : preuves du lot 4a, PR, puis lot 4b. Calendrier de jours ouvrables : issue #270
+Prochaine action : PR du lot 4a, puis lot 4b. Calendrier de jours ouvrables : issue #270
 (D-DEADLINE-CALENDAR). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
@@ -297,6 +297,10 @@ runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 | 2026-10-31 | lot 3b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 095 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-10-31 | lot 3b — `npm run lint && npm run test` puis `npx playwright test` | vert : 841 Vitest ; Playwright 154/155 (`E2E-BASE-2`, même flake qu'au lot 2c, sous charge du `verify` ; 3/3 seul) |
 | 2026-10-31 | lot 3b — `scripts/check-docs.sh` | vert |
+| 2026-10-31 | lot 4a — `EvaluateDeadlinesUseCaseImplTest`, `DossierTypeDeadlineApiTest`, `RouteMailDelegateTest`, `MailRoomExampleIT` | vert : 6 + 2 + 6 + 3 ; rappel pris une fois, puis la tâche Flowable passe de COMPTABILITE à DIRECTION_FINANCIERE avec la note |
+| 2026-10-31 | lot 4a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 103 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 4a — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
+| 2026-10-31 | lot 4a — `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

@@ -91,44 +91,107 @@ nouveaux points à partir de §112
     - guides utilisateur (registre, file de tri, groupes), conception BPMN (briques) et déploiement ;
     - `.env*.example` si une variable apparaît ;
     - `identifiants.md`, openapi.
-- Validé par l'utilisateur le :
+- Validé par l'utilisateur le : 2026-10-31 (CI GitHub remplacée par les preuves locales tant que le runner est en panne)
 
 ## Questions ouvertes
 
 | Question | Options | Recommandation | Statut (ouverte, reportée, hypothèse, tranchée → §N) |
 |---|---|---|---|
-| Représentation du courrier | Dossier d'un type dédié ; entité `mailroom` dédiée ; pas d'objet courrier | Dossier dédié | Tranchée par l'utilisateur le 2026-10-31 (dossier dédié + fils e-mail) ; registre à la conception |
+| Représentation du courrier | Dossier d'un type dédié ; entité `mailroom` dédiée ; pas d'objet courrier | Dossier dédié | Tranchée le 2026-10-31 (dossier dédié + fils e-mail) → §112 |
 | Réponse dans un fil connu | Nouveau courrier rattaché ; ajout au courrier existant ; reroutage | Nouveau courrier rattaché | Tranchée le 2026-10-31, avec un statut lisible et sans complexifier les BPMN |
 | Réaction du workflow à une réponse | Plateforme seule ; sous-process modélisé ; workflow séparé | Plateforme + brique optionnelle | Tranchée le 2026-10-31 : les trois, au choix et combinables |
 | Canaux de la première livraison | E-mail + PDF sans OCR ; e-mail seul ; tout, OCR compris | E-mail + PDF sans OCR | Tranchée le 2026-10-31 : OCR dans un lot ultérieur, eBox en feature séparée |
-| Groupes | Locaux ; claim IdP ; les deux | Locaux | Tranchée le 2026-10-31 : les deux |
+| Groupes | Locaux ; claim IdP ; les deux | Locaux | Tranchée le 2026-10-31 : les deux → §113 |
 | Échéances | Plateforme ; minuteurs BPMN (#186) ; plus tard | Plateforme | Tranchée le 2026-10-31 : les deux au choix |
 | MCP | Lecture ; lecture + actions ; rien | Lecture | Tranchée le 2026-10-31 : lecture + actions, avec `security-review` |
-| Fils initiés par un e-mail sortant | Enregistrer le Message-ID des envois de « Notifier » ; ne suivre que les fils entrants | Enregistrer | Hypothèse : `SmtpEmailAdapter` ne garde aujourd'hui aucun Message-ID |
-| Corrélation du message vers les process | Tous les process du dossier qui l'attendent ; seulement le principal | Tous ceux qui l'attendent | Hypothèse, à vérifier contre l'API Flowable 8 à la conception |
+| Fils initiés par un e-mail sortant | Enregistrer le Message-ID des envois de « Notifier » ; ne suivre que les fils entrants | Enregistrer | Tranchée à la conception → §112 D-MAILROOM-THREAD |
+| Corrélation du message vers les process | Tous les process du dossier qui l'attendent ; seulement le principal | Tous ceux qui l'attendent | Tranchée à la conception → §112 D-MAILROOM-REACT (requête vérifiée dans `FlowableWorkflowEngineAdapter`) |
 | Rôle de l'opérateur de tri | Rôle existant (`DOSSIER_MANAGER` sur le type « courrier ») ; nouveau rôle | Rôle existant + ACL du type | Hypothèse |
-| Dépôt SFTP de PDF | Nouveau connecteur TRIGGER « dossier surveillé » ; étendre `batch-import` | Nouveau connecteur | Hypothèse, à vérifier contre `batch-import` |
+| Dépôt SFTP de PDF | Nouveau connecteur TRIGGER « dossier surveillé » ; étendre `batch-import` | Nouveau connecteur | Reportée à la conception du lot 5 |
 
 ## Conception
 
-Sans objet tant que le cadrage n'est pas validé.
+Décisions : [§112](../decisions/112-digital-mail-room-courrier-dossier-et-fils.md) (D-MAILROOM-MODEL, -ROUTE, -THREAD, -REACT),
+[§113](../decisions/113-groupes-d-utilisateurs-et-assignation-par-groupe.md) (D-GROUP-SOURCE, -ASSIGN). Les points du registre
+pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écrivent à la conception de leur lot.
+
+- Faits vérifiés dans le code :
+  - **Connecteurs et dossiers :**
+    - `ConnectorTriggerRuntimeImpl.handle` crée le dossier, ou le retrouve par référence, puis rattache les pièces
+      (`AttachInboundFilesUseCase`, ClamAV). Il démarre le process par l'outbox (`TriggerOutboxPayload`).
+    - Un connecteur e-mail sait donc déjà créer un dossier « courrier » et démarrer le process de tri, à condition d'être
+      configuré avec `dossierTypeCode` et `processKey` (`InboundMailRouting.fields`).
+  - **En-têtes des e-mails :**
+    - `ImapMailbox.Mail` ne porte ni `In-Reply-To` ni `References`. `AngusImapMailbox.header(message, name)` sait les lire.
+    - Graph lit `internetMessageHeaders` (`HttpGraphMailbox.MESSAGE_SELECT`) mais pas `conversationId`.
+  - **Envois :** `SmtpEmailAdapter` ne garde aucun Message-ID.
+  - **Corrélation de messages :** `FlowableWorkflowEngineAdapter.correlate` interroge les exécutions par
+    `messageEventSubscriptionName` et `processVariableValueEquals`, puis appelle `messageEventReceived`. Aujourd'hui il
+    refuse plusieurs correspondances : la mail room en voudra plusieurs (D-MAILROOM-REACT).
+  - **BPMN :**
+    - `createChildDossierTask` lit des paramètres littéraux ; c'est le modèle de la brique de routage.
+    - `BpmnExpressionSurfaceScanner` refuse tout `${…}` hors `delegateExpression` allowlisté et `conditionExpression`.
+      Pas de minuteur à expression aujourd'hui.
+    - Un `candidateGroups` littéral est accepté (`assertSafeUserTask`). Aucune assignation de groupe n'existe à l'exécution.
+  - **Tâches :** « Tâches » ne liste que `taskAssignee` (`FlowableWorkflowTaskInboxAdapter`,
+    `WorkflowTaskController.mine`). Les tâches libres sont visibles des éditeurs, dossier par dossier (§92).
+  - **Annuaire :** `KnownUser` stocke les rôles du dernier jeton (`RecordUserLoginUseCaseImpl`), pas de groupes.
+  - **Liste des dossiers :** elle filtre déjà par `dossierTypeCode` et par champ (`f.<champ>`) dans l'API et le SPA
+    (`listDossiers`). Le registre peut s'y appuyer.
+  - **Numérotation :** `DossierReferenceGenerator` préfixe par type.
+  - **Jobs :** des jobs planifiés existent (`SlaAlertJob`, verrou de la spec 36). Ce sont les modèles du job d'échéances.
+- Composants touchés :
+  - **Lot 1 :**
+    - `ImapMailbox.Mail` et Graph : `inReplyTo`, `references` (bornés), `conversationId`. Exposés au mapping et en variables.
+    - Paquet `exemples/digital-mail-room/` : type `COURRIER` (canal, expéditeur, objet, reçu le, Message-ID, service,
+      échéance), `workflow-config` (statuts du courrier), process de tri minimal (enregistrer, « Trier le courrier »),
+      connecteur IMAP d'exemple.
+  - **Lot 2a (#190) :**
+    - Domaine `user` : groupes locaux, appartenances, claim de groupes au login.
+    - Changesets. API d'administration des groupes. Écran d'administration.
+    - « Tâches » étendu aux tâches des groupes du membre.
+  - **Lot 2b :**
+    - Délégué `routeMailTask` (allowlist et palette), table DMN d'exemple.
+    - Assignation de groupe (`addCandidateGroup`). File de tri.
+    - Réaffectation vers un groupe (API et SPA). Trace (statuts de workflow et historique).
+  - **Lot 3 :**
+    - Table d'index des Message-ID (reçus et envoyés). Message-ID généré pour « Notifier ».
+    - Détection du fil dans `InboundMailRouting`, avant `referencePattern`.
+    - Délégué de rattachement : pièces vers le dossier du fil, lien `LINKED`, avertissement de la personne assignée,
+      corrélation `courrierRecu` vers toutes les exécutions abonnées.
+    - Workflow « réponse » déclaré par type de dossier. Brique « Attendre un courrier ».
+- Scénarios de test, par critère du cadrage :
+  1. Intégration : un e-mail GreenMail avec deux pièces donne un dossier `COURRIER` numéroté, ses champs mappés, ses pièces
+     scannées, et le process de tri démarré. Unitaire : `In-Reply-To` et `References` bornés en nombre et en longueur.
+  2. Intégration : une règle DMN inconnue ou une valeur hors catalogue envoie le courrier à la file de tri. La réaffectation
+     trace qui, quand, d'où et vers où. Chaîne HTTP : un non-membre ne réaffecte pas (403).
+  3. Intégration : une réponse `In-Reply-To` attestée produit un courrier lié au fil, sans routage. Ses pièces vont dans le
+     dossier du fil. Deux exécutions en attente reprennent toutes les deux. Un workflow « réponse » déclaré démarre.
+  4. Intégration : la même réponse sans attestation donne un nouveau courrier, avec `mailThreadIgnored`, et le dossier du fil
+     est intact.
+  5. Chaîne HTTP et sécurité : un membre d'un groupe local et un membre venu de la claim voient la tâche du groupe et peuvent
+     la prendre ; un non-membre ne la voit pas. Playwright : écran des groupes, et « Tâches » avec les tâches de groupe.
+  6. Lot 4, à écrire avec son point du registre.
+  7. Lot 5, à écrire avec son point du registre.
+  8. Lot 6 : chaque outil MCP refuse sans ACL, trace la provenance, et traverse la chaîne HTTP.
+  9. Lot 7 : le script de démo rejoue le scénario sur une base vide.
 
 ## Lots
 
-Découpage provisoire, à confirmer à la conception :
-
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | Type « courrier », numéro d'ordre, canal e-mail vers le courrier, registre (vue) | à faire | |
-| 2 | Groupes locaux + claim (#190), table DMN de routage, process de tri modèle, file de tri, réaffectation, trace | à faire | |
-| 3 | Fils de discussion : détection, rattachement, trois modes de réaction, brique « Attendre un courrier », statuts | à faire | |
-| 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) | à faire | |
-| 5 | Canal PDF (dépôt manuel et SFTP surveillé) | à faire | |
-| 6 | MCP lecture + actions, `security-review` | à faire | |
-| 7 | Démo reproductible, spec 49, guides | à faire | |
+| 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | à faire | |
+| 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | à faire | |
+| 2b | Brique de routage `routeMailTask`, table DMN, file de tri, réaffectation vers un groupe, trace (§112 D-MAILROOM-ROUTE) | à faire | |
+| 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
+| 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
+| 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
+| 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
+| 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
 
-Prochaine action : validation du cadrage par l'utilisateur, puis conception (faits vérifiés, points du registre).
+Prochaine action : lot 1, en TDD. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves
 

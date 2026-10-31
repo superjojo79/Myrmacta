@@ -1,0 +1,69 @@
+# §112 — Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows
+
+> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+
+En cours (issue [#217](https://github.com/superjojo79/Myrmacta/issues/217)). Cadrage validé par l'utilisateur le
+2026-10-31. Les canaux de la première livraison sont l'e-mail et les PDF déjà numérisés. L'eBox est une feature
+séparée (#213 à #216), et l'OCR viendra dans un lot ultérieur.
+
+**D-MAILROOM-MODEL** (tranché par l'utilisateur, 2026-10-31) — un courrier entrant est un **dossier** d'un type dédié,
+pas une entité nouvelle :
+
+- Il reçoit un numéro d'ordre par `DossierReferenceGenerator`.
+- Il réutilise les pièces, ClamAV, la rétention, l'ACL par type et l'audit (`DossierWorkflowLink`).
+- Le registre du courrier est la liste des dossiers de ce type.
+- La mail room est livrée comme un **paquet de configuration** (`exemples/digital-mail-room/`) : type « courrier »,
+  table DMN de routage, process de tri, connecteurs d'exemple. La plateforme n'y ajoute que ce qu'une configuration ne
+  sait pas faire : fils, groupes, échéances, dépôt de fichiers, outils MCP.
+- Écarté : un domaine `mailroom` avec sa propre table, qui aurait refait pièces, antivirus, rétention, ACL et audit.
+- Écarté : pas d'objet courrier du tout, puisqu'il n'y aurait alors ni registre ni file de tri.
+
+**D-MAILROOM-ROUTE** (conception, 2026-10-31) — le process de tri appelle une table DMN (`type="dmn"`, déjà
+autorisée). Il passe ensuite le résultat à une brique de routage, dont le délégué est écrit par la plateforme :
+
+- La table renvoie le groupe destinataire, l'action (ouvrir un dossier, alimenter un dossier existant, trier à la main),
+  le type de dossier et le process à démarrer, et une échéance facultative.
+- Le délégué vérifie chaque valeur contre les catalogues : type de dossier actif, process déployé, groupe existant. Une
+  valeur inconnue envoie le courrier dans la file de tri, sans faire échouer le process.
+- Pour ouvrir un dossier métier, il reprend le chemin de `createChildDossierTask` : relation idempotente, puis démarrage
+  par `ManualStartOrchestrator`. Le lien est `LINKED` du courrier vers le dossier métier.
+- Pourquoi un délégué : `createChildDossierTask` ne lit que des paramètres littéraux, et une expression dans le BPMN est
+  refusée (§57, §69). Une branche par service dans le BPMN ne tiendrait pas à l'échelle.
+
+**D-MAILROOM-THREAD** (tranché par l'utilisateur, 2026-10-31) — chaque message reçu reste un courrier, avec son propre
+numéro.
+
+- Une réponse à un fil connu est liée au courrier d'origine. Elle ne repasse pas par le routage, et ses pièces vont dans
+  le dossier métier du fil.
+- Le fil se reconnaît, dans cet ordre :
+  1. `In-Reply-To`, puis `References`, comparés aux Message-ID déjà reçus **et envoyés** ;
+  2. `conversationId` côté Microsoft Graph ;
+  3. la référence dans l'objet (`referencePattern`, §87), en secours.
+- La règle d'expéditeur authentifié du §87 (D-INTEG-MAIL-SENDER) s'applique aussi aux en-têtes : une réponse non attestée
+  devient un nouveau courrier, avec le signalement `mailThreadIgnored`, et ne touche pas au dossier du fil.
+- Les Message-ID reçus et envoyés sont enregistrés dans une table d'index par tenant. Aujourd'hui `SmtpEmailAdapter` ne garde
+  aucun Message-ID : les envois de « Notifier » en recevront un, généré par la plateforme.
+- Statuts du courrier, lisibles dans le registre et sur le dossier métier : reçu, à trier, routé, rattaché, traité,
+  classé. Ce sont des statuts de workflow (`workflow-config`), pas de nouveaux statuts de dossier.
+
+**D-MAILROOM-REACT** (tranché par l'utilisateur, 2026-10-31) — quand une réponse arrive sur un dossier dont un process
+tourne déjà, trois réactions se choisissent et se combinent :
+
+1. **Toujours :** la réponse est rangée, le courrier passe à « rattaché », le dossier affiche « nouveau courrier » et la
+   personne assignée est prévenue (boîte de réception, §27).
+2. **Si un process attend :** le message `courrierRecu` est corrélé à **toutes** les exécutions du dossier abonnées à ce
+   message. Elles l'attendent soit par la brique « Attendre un courrier » (événement intermédiaire de message, avec un délai
+   en bordure), soit par un sous-process événementiel modélisé. La requête est celle de `FlowableWorkflowEngineAdapter`
+   (`messageEventSubscriptionName` et `processVariableValueEquals("dossierId", …)`, puis `messageEventReceived`). Personne
+   n'attend : rien d'autre ne se passe, ce n'est pas une erreur.
+3. **Si le type de dossier en déclare un :** un workflow « réponse » démarre sur le même dossier.
+
+**Reste à trancher à la conception de leur lot :**
+
+- échéances et minuteurs à expression (#186) : l'allowlist refuse tout `${…}` dans un minuteur (§69) ;
+- outils MCP d'action ;
+- dépôt SFTP de PDF ;
+- OCR.
+
+**Impacte :** nouvelle spec `docs/specs/49-digital-mail-room.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
+`docs/guides/GUIDE-CONCEPTION-BPMN.md`, `openapi/openapi.yaml`, nouveaux changesets, `exemples/digital-mail-room/`.

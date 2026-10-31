@@ -299,13 +299,19 @@ class MailRoomExampleIT {
                 example.get("connectorType").asString(), true, config);
     }
 
-    /** Le courrier créé pour cet objet : le relais de l'outbox démarre le tri en arrière-plan, qui peut déjà être fini. */
+    /**
+     * Le courrier créé pour cet objet : le relais de l'outbox démarre le tri en arrière-plan, qui peut déjà être fini. On attend
+     * aussi que le relais ait fini : il démarre le process (le job devient visible) PUIS confirme le lien dans une seconde
+     * transaction qui modifie le dossier. Exécuter le job entre les deux ferait échouer l'un des deux sur le verrou optimiste ;
+     * en production, l'exécuteur asynchrone réessaie le job, ici coupé.
+     */
     private String awaitMailDossier(String subject) throws Exception {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
         while (Instant.now().isBefore(deadline)) {
             var started = historyService.createHistoricProcessInstanceQuery().processDefinitionKey("triCourrier")
                     .variableValueEquals("mailSubject", subject).singleResult();
-            if (started != null) {
+            Integer pending = jdbc.queryForObject("select count(*) from outbox_event where status = 'PENDING'", Integer.class);
+            if (started != null && pending != null && pending == 0) {
                 return (String) historyService.createHistoricVariableInstanceQuery().processInstanceId(started.getId())
                         .variableName("dossierId").singleResult().getValue();
             }

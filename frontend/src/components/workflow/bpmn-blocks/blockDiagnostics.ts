@@ -111,6 +111,7 @@ const RESERVED_RESULT_NAMES = new Set([
   'notificationWebhookConfigId', 'notificationAttachment', 'notificationAttachmentName', 'childDossierTypeCode',
   'childDossierLabel', 'workflowProcessKey', 'relationType', 'targetDossierStatus', 'targetWorkflowStatus',
   'formula', 'formulaResult', 'fieldMapping', 'searchCriteria', 'searchCountResult', 'searchFirstReferenceResult',
+  'echeance', 'echeanceRappel', 'echeanceDepassee', 'champEcheance', 'delaiJours', 'rappelJours',
 ])
 
 function searchCriteriaProblem(raw: string): string | undefined {

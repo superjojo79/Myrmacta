@@ -204,6 +204,17 @@ class MailRoomExampleIT {
                 .variableValueEquals("dossierId", child.get("id").asString()).singleResult();
         assertThat(replyProcess).isNotNull();
         assertThat(runtimeService.getVariable(replyProcess.getId(), "courrierId")).isEqualTo(reply);
+        // TODO §115 (D-DEADLINE-TIMER) : course « traitée ou échue » — le minuteur porte ${echeanceDepassee} (J+10, lendemain 00:00 UTC).
+        String replyDeadline = LocalDate.now(ZoneOffset.UTC).plusDays(10).toString();
+        assertThat(runtimeService.getVariable(replyProcess.getId(), "echeance")).isEqualTo(replyDeadline);
+        var timer = managementService.createTimerJobQuery().processInstanceId(replyProcess.getId()).singleResult();
+        assertThat(timer.getDuedate().toInstant())
+                .isEqualTo(LocalDate.parse(replyDeadline).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant());
+        managementService.executeJob(managementService.moveTimerToExecutableJob(timer.getId()).getId());
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(replyProcess.getId()).count()).isZero();
+        assertThat(historyService.createHistoricActivityInstanceQuery().processInstanceId(replyProcess.getId())
+                .activityId("finEchue").count()).isEqualTo(1);
+        assertThat(read(get("/api/dossiers/{id}", child.get("id").asString())).get("status").asString()).isEqualTo("CLOTURE");
 
         deliver(new ImapMailbox.Mail("<x300@autre.example>", "quelquun@autre.example", "Autre", "RE: Facture 2026-300 (autre)",
                 Instant.parse("2026-10-31T09:00:00Z"), "Je m'immisce.", false, "mx.example.com; dmarc=pass header.from=autre.example",

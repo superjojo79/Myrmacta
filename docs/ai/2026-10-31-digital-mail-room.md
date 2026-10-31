@@ -186,8 +186,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | #267 |
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
-| 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | à ouvrir |
-| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeance…}` dans un minuteur | à faire | |
+| 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
+| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | en cours | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
@@ -268,7 +268,18 @@ minuteur ; calendrier ouvrable plus tard) :
 - API `/api/dossier-types/{code}/deadline`, panneau « Échéance » ; exemple : groupe DIRECTION_FINANCIERE, champ
   `echeance` de FACTURE, `config/echeance-facture.json`.
 
-Prochaine action : PR du lot 4a, puis lot 4b. Calendrier de jours ouvrables : issue #270
+Fait dans le lot 4b :
+- brique « Calculer une échéance » (`computeDeadlineTask`, littérale seulement) ; palette 17 → 18 briques ;
+- variables réservées `echeance`, `echeanceRappel`, `echeanceDepassee` (serveur et copie du SPA) ;
+- scanner : `timeDate` = `${echeanceRappel}` ou `${echeanceDepassee}` admis, toute autre forme refusée ; §115 précisé
+  (noms fixes plutôt qu'un préfixe libre) ;
+- exemple : `traiterReponse` fait la course « traitée ou échue » à 10 jours.
+
+Appris pendant le lot 4b :
+- Flowable accepte une chaîne ISO 8601 renvoyée par l'expression d'un `timeDate` ; le minuteur se crée avec cet instant
+  exact (vérifié par `MailRoomExampleIT`).
+
+Prochaine action : preuves du lot 4b, PR (ferme #186), puis lot 5 (canal PDF). Calendrier de jours ouvrables : issue #270
 (D-DEADLINE-CALENDAR). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 

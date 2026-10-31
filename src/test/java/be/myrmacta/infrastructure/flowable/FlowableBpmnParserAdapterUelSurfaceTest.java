@@ -81,6 +81,36 @@ class FlowableBpmnParserAdapterUelSurfaceTest {
                 + BEAN + "</timeDuration></timerEventDefinition></intermediateCatchEvent>"));
     }
 
+    /** TODO §115 (D-DEADLINE-TIMER) — un minuteur peut porter, nue, l'une des deux variables d'échéance réservées. */
+    @ParameterizedTest(name = "timeDate {0}")
+    @ValueSource(strings = {"${echeanceDepassee}", "${echeanceRappel}", " ${echeanceDepassee} "})
+    void deadlineTimer_isAccepted(String value) {
+        assertThat(parse(process("<intermediateCatchEvent id=\"wait\"><timerEventDefinition><timeDate>" + value
+                + "</timeDate></timerEventDefinition></intermediateCatchEvent>"))).isEqualTo("testProcess");
+    }
+
+    /** Ni autre variable, ni appel de méthode, ni durée : la seule forme admise est le nom nu dans un {@code timeDate}. */
+    @ParameterizedTest(name = "timer {0}")
+    @ValueSource(strings = {
+            "<timeDate>${echeance}</timeDate>",
+            "<timeDate>${echeanceAutre}</timeDate>",
+            "<timeDate>${echeanceDepassee.toString()}</timeDate>",
+            "<timeDate>${connectorServiceTask}</timeDate>",
+            "<timeDate>#{echeanceDepassee}</timeDate>",
+            "<timeDate>${echeanceDepassee}${echeanceRappel}</timeDate>",
+            "<timeDuration>${echeanceDepassee}</timeDuration>",
+            "<timeCycle>${echeanceRappel}</timeCycle>",
+    })
+    void otherTimerExpressions_areRejected(String definition) {
+        assertRejected(process("<intermediateCatchEvent id=\"wait\"><timerEventDefinition>" + definition
+                + "</timerEventDefinition></intermediateCatchEvent>"));
+    }
+
+    @Test
+    void deadlineVariableOutsideATimer_isRejected() {
+        assertRejected(process("<userTask id=\"wait\"><documentation>${echeanceDepassee}</documentation></userTask>"));
+    }
+
     @Test
     void callActivityCalledElementExpression_isRejected() {
         assertRejected(process("<callActivity id=\"wait\" calledElement=\"" + BEAN + "\"/>"));

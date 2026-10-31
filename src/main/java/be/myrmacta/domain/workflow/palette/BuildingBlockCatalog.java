@@ -90,6 +90,19 @@ public final class BuildingBlockCatalog {
                     "En tête du tri : une réponse à un e-mail connu rejoint le dossier de son fil (lien, pièces, avertissement, "
                             + "message courrierRecu) ; sinon le courrier poursuit vers le routage.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("attachToThreadTask")),
+            // TODO §115 (D-DEADLINE-TIMER) — écrit echeance, echeanceRappel et echeanceDepassee, que portent les minuteurs.
+            block("compute-deadline", "Calculer une échéance",
+                    "Calcule l'échéance depuis un champ date du dossier ou un délai, et pose les variables echeanceRappel et "
+                            + "echeanceDepassee qu'un minuteur peut porter (${echeanceDepassee}).",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("computeDeadlineTask"),
+                    text("champEcheance", "Champ échéance", 64,
+                            "Champ date du dossier qui porte l'échéance (ex. echeance). Vide : le délai seul.", false),
+                    new BlockParameter("delaiJours", "Délai (jours)", ParameterType.INTEGER, ParameterBinding.ATTRIBUTE, false,
+                            null, List.of(), 4, 0, 3650,
+                            "Jours calendaires depuis aujourd'hui, utilisés si le champ est absent ou vide."),
+                    new BlockParameter("rappelJours", "Rappel (jours avant)", ParameterType.INTEGER, ParameterBinding.ATTRIBUTE,
+                            false, null, List.of(), 3, 0, 365,
+                            "echeanceRappel tombe ce nombre de jours avant l'échéance (0 = le jour même).")),
             block("set-dossier-status", "Changer le statut du dossier",
                     "Modifie le statut du dossier courant.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("updateDossierStatusTask"),

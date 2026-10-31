@@ -59,7 +59,7 @@ listeners script, types Flowable built-in (`mail`/`http`/`shell`), et tout
 `${notificationDispatchTask}`, `${createChildDossierTask}`, `${updateDossierStatusTask}`,
 `${updateWorkflowLinkStatusTask}`). Payload interdit → `InvalidBpmnException` / HTTP 400.
 
-**Expressions `${…}` / `#{…}` : deux emplacements seulement (TODO §69).** Le moteur Flowable évalue
+**Expressions `${…}` / `#{…}` : trois emplacements seulement (TODO §69, §115).** Le moteur Flowable évalue
 en expression (UEL) bien plus d'attributs qu'il n'y paraît — nom, documentation, `formKey`,
 échéance, priorité, catégorie d'un `userTask`, timers, `calledElement` d'un `callActivity`,
 multi-instance, `skipExpression`… — et une expression peut y invoquer un bean Spring. Le backend
@@ -68,7 +68,9 @@ refuse donc **toute** expression dans le document BPMN, sauf :
 - `flowable:delegateExpression` d'une valeur de l'allowlist ci-dessus ;
 - le texte d'une `conditionExpression` de flux, limité à une comparaison simple entre
   variables et littéraux (`${decision == 'approve'}`, `${montant > 1000}` — ni point, ni
-  parenthèse, ni appel).
+  parenthèse, ni appel) ;
+- le `timeDate` d'un minuteur, s'il vaut exactement `${echeanceRappel}` ou `${echeanceDepassee}`, les variables
+  réservées posées par la brique « Calculer une échéance » (§« Échéance et minuteur »).
 
 Tous les autres attributs sont des **littéraux** : nom de tâche fixe, `formKey` fixe
 (`user-question:avis`), timer `PT48H` et non `${delai}`, multi-instance par
@@ -430,10 +432,10 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Dix-sept briques, chacune = **un seul
+palette, le panneau, la validation au déploiement et les agents. Dix-huit briques, chacune = **un seul
 élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
 quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies), dix-sept avec
-« Router le courrier » et « Rattacher au fil » (TODO §113) :
+« Router le courrier » et « Rattacher au fil » (TODO §113), dix-huit avec « Calculer une échéance » (TODO §115) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -444,6 +446,7 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
 | Rattacher au fil | `serviceTask` | `${attachToThreadTask}` |
 | Router le courrier | `serviceTask` | `${routeMailTask}` |
+| Calculer une échéance | `serviceTask` | `${computeDeadlineTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
@@ -778,6 +781,38 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
     statut refusé…). Le rattachement a lieu dans tous les cas.
   - Exemple : [`traiter-reponse.bpmn20.xml`](../../exemples/digital-mail-room/traiter-reponse.bpmn20.xml) et
     [`config/reponse-facture.json`](../../exemples/digital-mail-room/config/reponse-facture.json).
+
+### Échéance et minuteur — course « traité ou échu » (TODO §115, lot 4b)
+
+Deux mécanismes, au choix ou ensemble :
+
+- **Échéance de la plateforme** (lot 4a) : le type de dossier désigne un champ date ; un job rappelle puis escalade, sans
+  rien modéliser (GUIDE-UTILISATEUR, « Échéance »).
+- **Minuteur dans le process** (D-DEADLINE-TIMER) : pour qu'un process réagisse lui-même à l'échéance.
+  - La brique **Calculer une échéance** (`${computeDeadlineTask}`) prend des paramètres littéraux :
+    - `champEcheance` : un champ date non sensible du dossier, relu au moment de l'exécution ;
+    - `delaiJours` : aujourd'hui + N jours, utilisé si le champ est absent ou vide ;
+    - `rappelJours` : nombre de jours avant l'échéance (0 par défaut).
+  - Elle pose trois variables réservées : `echeance` (`AAAA-MM-JJ`), `echeanceRappel` (`rappelJours` avant, 00:00 UTC) et
+    `echeanceDepassee` (lendemain de l'échéance, 00:00 UTC : le jour même est encore dans les temps).
+  - Sans date ni délai, la brique échoue : un incident est visible en supervision.
+  - Un minuteur porte ensuite `${echeanceDepassee}` ou `${echeanceRappel}` dans son `timeDate`, et rien d'autre. Ni
+    `timeDuration`, ni `timeCycle`, ni autre variable, ni appel de méthode.
+  - Ces variables sont réservées : ni un démarrage ni une complétion de tâche ne peut les poser, donc repousser le
+    minuteur.
+  - Exemple, pris de [`traiter-reponse.bpmn20.xml`](../../exemples/digital-mail-room/traiter-reponse.bpmn20.xml) :
+
+  ```xml
+  <serviceTask id="calculerEcheance" flowable:delegateExpression="${computeDeadlineTask}" flowable:delaiJours="10"/>
+  <userTask id="traiterReponseTache" name="Traiter la réponse"/>
+  <boundaryEvent id="reponseEchue" attachedToRef="traiterReponseTache" cancelActivity="true">
+    <timerEventDefinition><timeDate>${echeanceDepassee}</timeDate></timerEventDefinition>
+  </boundaryEvent>
+  ```
+
+  - Interrompant (`cancelActivity="true"`), le minuteur retire la tâche et suit sa branche. Non interrompant, avec
+    `${echeanceRappel}`, il ouvre une tâche de relance à côté de la tâche principale.
+  - Jours calendaires (jours ouvrables : issue #270).
 
 ## 4. Instancier / appeler un service externe
 
@@ -1120,6 +1155,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${aiPrecheckTask}` | pré-vérification IA du dossier, **asynchrone** (§3nonies) | attributs littéraux `precheckPieces`, `precheckFields`, `precheckQuestions`, `precheckRules`, `precheckResult` ; `dossierId` (réservée), variables posées avant (règles) | la variable nommée par `precheckResult` (comptes déterministes) ; exécution et constats dans `precheck_run` |
+| `${computeDeadlineTask}` | calcule une échéance pour un minuteur (§« Échéance et minuteur ») | attributs littéraux `champEcheance` (champ date non sensible), `delaiJours`, `rappelJours` ; `dossierId` (réservée) | `echeance`, `echeanceRappel`, `echeanceDepassee` (réservées) |
 | `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier ; champ d'échéance du dossier métier (§115) |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 

@@ -42,14 +42,20 @@ types qui ont un réglage :
   ignorée.
 - Sans groupe d'escalade, ou si le groupe a été supprimé depuis, l'escalade se limite à la note.
 
-**D-DEADLINE-TIMER** (tranché par l'utilisateur, 2026-10-31 ; lot 4b) — un minuteur BPMN peut porter une échéance
-calculée :
+**D-DEADLINE-TIMER** (tranché par l'utilisateur, 2026-10-31 ; précisé à la conception du lot 4b) — un minuteur BPMN peut
+porter une échéance calculée :
 
-- La brique **« Calculer une échéance »** lit un champ date du dossier, ou un nombre de jours, applique un décalage, puis
-  écrit des variables de process au préfixe `echeance` (par exemple `echeance` et `echeanceRappel`, en ISO 8601).
-- Un `timeDate` ou un `timeDuration` peut alors valoir `${echeance…}` :
-  - seul un nom de variable nu, au préfixe `echeance`, est accepté au déploiement ;
-  - aucune autre expression n'est admise, ce qui exclut l'accès à un bean Spring (§69).
+- La brique **« Calculer une échéance »** (`computeDeadlineTask`) lit, en paramètres littéraux, un champ date non sensible
+  du dossier (`champEcheance`) ou un délai (`delaiJours`, repli si le champ est vide), et un rappel (`rappelJours`).
+- Elle écrit trois variables **réservées** (`WorkflowVariables`) : `echeance` (date), `echeanceRappel` et
+  `echeanceDepassee` (instants ISO 8601, 00:00 UTC ; dépassée = lendemain de l'échéance, comme D-DEADLINE-ESCALATE).
+  Réservées, elles ne peuvent être posées ni au démarrage ni par une complétion de tâche, qui repousserait le minuteur.
+- Le `timeDate` d'un minuteur peut valoir **exactement** `${echeanceRappel}` ou `${echeanceDepassee}` :
+  - c'est la troisième exception à la règle « aucune expression » (§69) ;
+  - un nom nu ne peut ni appeler une méthode ni désigner un bean (aucun bean ne porte ces noms) ;
+  - `timeDuration`, `timeCycle`, toute autre variable et toute autre forme restent refusés.
+  - Le préfixe libre `echeance…` envisagé au cadrage est écarté : deux noms fixes suffisent et se réservent.
+- Sans date ni délai, la brique échoue : un incident vaut mieux qu'un minuteur qui ne se déclenche jamais.
 - Le minuteur en bordure d'une tâche fait la course « traité ou échu » de l'issue #186.
 
 **D-DEADLINE-CALENDAR** (tranché par l'utilisateur, 2026-10-31) — le calendrier de jours ouvrables (week-ends, jours

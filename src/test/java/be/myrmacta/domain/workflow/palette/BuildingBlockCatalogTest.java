@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheSeventeenBlocksWithUniqueIds() {
+    void containsTheEighteenBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "route-mail", "attach-to-thread", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
+                "route-mail", "attach-to-thread", "compute-deadline", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
                 "ai-precheck", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());
@@ -117,7 +117,7 @@ class BuildingBlockCatalogTest {
     @Test
     void newAttributeBlocksBindAsPlainFlowableAttributes() {
         for (String id : List.of("generate-document", "call-connector", "notify", "create-child-dossier",
-                "route-mail", "set-dossier-status", "set-workflow-status")) {
+                "route-mail", "compute-deadline", "set-dossier-status", "set-workflow-status")) {
             assertThat(block(id).parameters()).allSatisfy(p -> assertThat(p.binding()).isEqualTo(ParameterBinding.ATTRIBUTE));
         }
         assertThat(param("dmn-decision", "decisionTableReferenceKey").binding()).isEqualTo(ParameterBinding.FIELD_ELEMENT);

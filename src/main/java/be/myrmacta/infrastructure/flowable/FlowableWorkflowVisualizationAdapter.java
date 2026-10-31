@@ -233,7 +233,7 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
                 candidateGroups);
     }
 
-    /** TODO §113 — groupes candidats d'une tâche (une page de tâches actives : quelques lectures). */
+    /** TODO §114 — groupes candidats d'une tâche (une page de tâches actives : quelques lectures). */
     private List<String> candidateGroups(String taskId) {
         return taskService.getIdentityLinksForTask(taskId).stream()
                 .filter(link -> IdentityLinkType.CANDIDATE.equals(link.getType()) && link.getGroupId() != null)

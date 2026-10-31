@@ -7,7 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** TODO §113 — {@link UserGroupRepository} sur les tables {@code user_group} et {@code user_group_member}. */
+/** TODO §114 — {@link UserGroupRepository} sur les tables {@code user_group} et {@code user_group_member}. */
 @Component
 class JpaUserGroupRepositoryAdapter implements UserGroupRepository {
 

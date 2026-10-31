@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="routageCourrierDefinitions" name="Routage du courrier entrant"
              namespace="http://myrmacta/exemples">
-  <!-- Table de routage de la mail room (#217, §112 D-MAILROOM-ROUTE). Première règle qui correspond (FIRST). Aucune règle :
+  <!-- Table de routage de la mail room (#217, §113 D-MAILROOM-ROUTE). Première règle qui correspond (FIRST). Aucune règle :
        le courrier va à la file de tri. Entrées préparées par le process de tri (variables nues, §61). -->
   <decision id="routageCourrier" name="Routage du courrier entrant">
     <decisionTable id="routageCourrierTable" hitPolicy="FIRST">

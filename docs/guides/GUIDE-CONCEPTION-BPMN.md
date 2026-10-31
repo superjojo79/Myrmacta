@@ -692,7 +692,7 @@ l'avis du modèle**. Spécification : [spec 48](../specs/48-preverification-ia.m
 - Exemple complet : `exemples/autorisation-riverain/autorisation-riverain-preverification.bpmn20.xml` (généré par
   `generer-bpmn.py`).
 
-## 3decies. Router le courrier entrant (TODO §112, issue #217)
+## 3decies. Router le courrier entrant (TODO §113, issue #217)
 
 La brique **Router le courrier** (`${routeMailTask}`) suit une table de décision DMN dans le process de tri d'une mail room.
 Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../exemples/digital-mail-room/tri-courrier.bpmn20.xml).
@@ -757,6 +757,80 @@ Variables lues par `connectorServiceTask` :
 
 Variable écrite : `connectorResult` (`Map<String, Object>`, uniquement si le résultat n'est pas
 vide) — à lire dans les tâches suivantes du même processus.
+
+### Construire la requête dans le BPMN : `flowable:connectorRequest` (TODO §112, issue #260)
+
+`connectorInput` ne vient que d'une variable : posée au démarrage ou à la complétion d'une tâche, donc par un utilisateur.
+Pour appeler une API avec des données du dossier ou la réponse d'un appel précédent, la brique « Appeler un connecteur »
+accepte un attribut **littéral** `flowable:connectorRequest` : une expression métier bornée (JSONata, même langage, même
+racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sensibles, `connectorResult` avec `json`,
+`variables`, `now`) qui produit **un objet**, passé tel quel au connecteur.
+
+```xml
+<serviceTask id="appelIam" name="Créer le compte IAM" flowable:delegateExpression="${connectorServiceTask}"
+    flowable:async="true" flowable:connectorInstanceId="7d1c…"
+    flowable:connectorRequest="{'method': 'POST', 'path': '/users', 'headers': {'Content-Type': 'application/json'},
+      'body': {'username': dossier.fields.login, 'employeeNumber': variables.matricule}}"/>
+```
+
+- **Il prime sur la variable `connectorInput`**, qui est alors ignorée. Il n'est jamais lu depuis une variable, est validé au
+  déploiement (syntaxe, fonctions permises, 2 000 caractères, sans `${`) et revalidé à l'exécution.
+- Avec `connectorRequest`, **`flowable:connectorInstanceId` doit être écrit dans le BPMN** : la requête ne part jamais vers
+  une instance choisie par une variable.
+- Appelée depuis un process, une instance **avec `baseUrl` n'accepte que `connectorRequest`** : la variable `connectorInput`
+  y est refusée. Sans `baseUrl`, elle reste acceptée, et l'en-tête d'authentification part vers l'URL qu'elle fournit.
+- **`dossier.fields` et `variables` ne sont pas des données de confiance.** Toute personne qui a le droit EDIT modifie un champ
+  du dossier ; une variable peut être posée au démarrage ou à la complétion d'une tâche qui n'est pas une `user-question`.
+  Ne désignez jamais la cible d'un `PUT` ou d'un `DELETE` par l'un d'eux sans précaution : retenez l'identifiant rendu par
+  l'application dans une variable écrite par « Évaluer une expression », remise à `null` au début de l'orchestration, après
+  la dernière tâche à formulaire libre (motif de l'exemple ci-dessous ; champs gérés par le workflow :
+  [#263](https://github.com/superjojo79/Myrmacta/issues/263)).
+- Le résultat doit être un objet : un texte, une liste ou une expression sans valeur fait échouer l'activité en la nommant.
+  Une clé dont la valeur est absente (champ vide ou **sensible**) disparaît de l'objet : un champ sensible n'est jamais envoyé.
+- Les apostrophes délimitent les textes JSONata (`'POST'`) : pas besoin d'échapper des guillemets dans l'attribut XML.
+  Un retour à la ligne est permis (zone de texte multiligne dans l'éditeur).
+
+Entrée lue par `http-rest` en rôle SERVICE :
+
+| Clé | Rôle |
+|---|---|
+| `method` | `GET` (défaut), `POST`, `PUT`, `DELETE`. `PATCH` : issue [#261](https://github.com/superjojo79/Myrmacta/issues/261) |
+| `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `//`, segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace, `\`, ni encodage de `/ \ . ; %` ou d'un caractère de contrôle. Peut contenir des marqueurs `{nom}` |
+| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni faite seulement de points une fois retirés un paramètre `;x` et les espaces (`..`, `..;x`, `.. `), ni `/`, `\` ou caractère de contrôle. 20 au plus |
+| `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |
+| `headers` | En-têtes : noms conformes à RFC 7230, valeurs sans caractère de contrôle. Le `Host` fourni est ignoré, et en mode OAuth2 l'`Authorization` fourni aussi ; les en-têtes de cadrage et de connexion (`Transfer-Encoding`, `Content-Length`, `Connection`, `Expect`, `Upgrade`, `TE`, `Trailer`, `Keep-Alive`, `Proxy-*`) sont refusés |
+| `body` | Corps : un objet est envoyé en JSON (ajouter `Content-Type` dans `headers`), un texte tel quel. Refusé pour `GET` et `DELETE` |
+| `url` | URL absolue : **seulement** pour une instance sans `baseUrl` (comportement d'avant) ; refusée sinon |
+
+Le résultat reste `connectorResult = {status, body}` : un statut HTTP en erreur **ne fait pas échouer** l'activité. Le
+processus le contrôle (brique « Évaluer une expression » : `connectorResult.status >= 200 and connectorResult.status < 300`)
+et route vers une validation humaine. Une panne réseau ou un délai dépassé, en revanche, fait échouer l'activité : rendre
+l'appel **asynchrone** (`flowable:async="true"`) pour qu'elle devienne un incident rejouable sans bloquer l'utilisateur qui a
+complété la tâche précédente. Rendez aussi asynchrone l'activité qui **suit** l'appel (le contrôle du statut) : un échec en
+aval, par exemple une réponse sans l'identifiant attendu ou un conflit d'écriture du dossier, relance alors cette activité et
+non l'appel, et un `POST` n'est jamais rejoué sans décision humaine.
+
+Une étape « connecteur » d'un **parcours** ne porte pas de `connectorRequest` : ne la pointez pas vers une instance à
+`baseUrl`, qui refuserait l'appel à l'exécution.
+
+### Orchestration technique : plusieurs applications et des validations humaines
+
+Schéma type, livré et rejoué par un test dans [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md) :
+
+1. une instance `http-rest` **par application**, « service seul » (`webhookEnabled` décoché) et avec `baseUrl` ;
+2. au début du provisioning, les variables qui retiendront les identifiants sont remises à `null` (« Évaluer une
+   expression » : `null`) ;
+3. pour chaque appel : « Appeler un connecteur » (asynchrone, `connectorRequest`), « Évaluer une expression » sur le statut,
+   passerelle ; en cas de succès, « Évaluer une expression » retient l'identifiant rendu (`matricule =
+   connectorResult.json.id`) et « Enregistrer des valeurs dans le dossier » l'**affiche** (`matriculeSirh =
+   variables.matricule`). L'appel suivant et la compensation relisent la variable, jamais le champ ;
+4. les validations sont des `user-question` dont la réponse oriente une passerelle (approuver, corriger, refuser ; accès
+   étendus ou non) : leurs variables sont déclarées, une complétion ne peut pas écraser un identifiant retenu ;
+5. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur ce
+   qui a été créé.
+
+Réessayer rejoue la requête : prévoir côté application une clé d'idempotence ou une recherche préalable si un `POST` a pu
+aboutir malgré une réponse en erreur.
 
 Avec `document-storage`, `RETRIEVE`, `EXISTS` et `DELETE` n'acceptent que ce que le connecteur a stocké (`STORE`) pour le
 dossier du process, dans ce workflow ou un autre du même dossier. Une pièce du dossier se lit par les pièces jointes, pas
@@ -870,7 +944,7 @@ Un `userTask` sans `assignee` reste non assignée jusqu'à une action explicite 
 suivi du dossier (`docs/guides/GUIDE-UTILISATEUR.md` §3), ou **Prendre** dans `/tasks` pour une tâche de groupe. Rien à écrire
 dans le diagramme pour ce mécanisme.
 
-**Groupes (TODO §113).**
+**Groupes (TODO §114).**
 
 - **Groupe candidat littéral.** Un `userTask` peut nommer un groupe candidat littéral, `flowable:candidateGroups="COMPTABILITE"`
   (code d'un groupe d'**Admin → Groupes**). Une expression y est refusée.
@@ -983,7 +1057,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${updateWorkflowLinkStatusTask}` | change le statut métier de l'exécution courante (`DossierWorkflowLink.status`, validé contre `WorkflowTypeConfig.statusDefinitions`) | `dossierWorkflowLinkId` (réservée), `targetWorkflowStatus` (code déclaré dans la config workflow) | — |
 | `${documentGenerationTask}` | génère un PDF depuis un template | `documentType`, `documentVariant`?, `documentLocale`?, + toute variable utile au template | `generatedDocumentId` |
 | `${attachGeneratedDocumentTask}` | rattache le PDF généré au dossier (`DossierElement`) | `dossierId` (réservée), `generatedDocumentId` | — |
-| `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? | `connectorResult`? |
+| `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? ou attribut littéral `connectorRequest` (expression qui produit l'entrée, prime sur `connectorInput` — §4) | `connectorResult`? |
 | `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |

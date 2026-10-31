@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.connector.builtin;
 
 import be.myrmacta.domain.connector.model.ConfigField;
 import be.myrmacta.domain.connector.model.ConfigFieldType;
+import be.myrmacta.domain.connector.model.ConnectorCallContext;
 import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorDefinition;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
@@ -47,7 +48,21 @@ import tools.jackson.databind.ObjectMapper;
 public class HttpRestConnector implements ConnectorDefinition, TriggerConnector, ServiceConnector {
 
     private static final String STATIC_HEADER = "STATIC_HEADER";
-    private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT");
+    /** TODO §112 (D-ORCH-DELETE) : DELETE sans corps ; PATCH attend un autre client HTTP (issue #261). */
+    private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
+    private static final Set<String> BODYLESS_METHODS = Set.of("GET", "DELETE");
+    /** TODO §112 — bornes d'une requête construite par le process (D-ORCH-BASEURL). */
+    static final int MAX_PATH_PARAMS = 20;
+    static final int MAX_QUERY_PARAMS = 50;
+    static final int MAX_URL_CHARS = 8192;
+    /** Quantificateurs possessifs (revue §112, M1) : aucun retour arrière, donc aucun débordement de pile. */
+    private static final Pattern PATH_TEMPLATE = Pattern.compile(
+            "(?:/(?:[A-Za-z0-9\\-._~!$&'()*+,;=:@]++|%[0-9A-Fa-f]{2}|\\{[A-Za-z][A-Za-z0-9_]{0,59}\\})*+)*+");
+    private static final Set<String> FRAMING_HEADERS = Set.of(
+            "transfer-encoding", "content-length", "connection", "expect", "upgrade", "te", "trailer", "keep-alive");
+    /** RFC 7230 {@code token} : nom d'en-tête (revue §112, B3). */
+    private static final Pattern HEADER_NAME = Pattern.compile("[!#$%&'*+.^_`|~0-9A-Za-z-]{1,256}");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_]{0,59})\\}");
 
     static {
         // Same as WebhookRestAdapter (D-44 / TODO §57 M3): allow setting the restricted Host
@@ -132,10 +147,29 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     public List<ConfigField> getConfigSchema() {
         return List.of(
                 new ConfigField(
+                        "webhookEnabled",
+                        "Inbound webhook enabled",
+                        ConfigFieldType.BOOLEAN,
+                        false,
+                        "true",
+                        List.of(),
+                        "Uncheck for a SERVICE-only instance (outbound calls only): the webhook fields below are then "
+                                + "not required and the inbound webhook of this instance answers 404."),
+                new ConfigField(
+                        "baseUrl",
+                        "Base URL (SERVICE calls)",
+                        ConfigFieldType.URL,
+                        false,
+                        null,
+                        List.of(),
+                        "https base URL of the called API, e.g. https://hr.example.com/api/v2. When set, a call gives a "
+                                + "relative path (with encoded pathParams and query) and an absolute url is refused: the "
+                                + "authentication header never leaves this host."),
+                new ConfigField(
                         "webhookAuthType",
                         "Webhook auth",
                         ConfigFieldType.SELECT,
-                        true,
+                        false,
                         WebhookAuthType.HMAC_SHA256.name(),
                         List.of(
                                 WebhookAuthType.HMAC_SHA256.name(),
@@ -148,27 +182,27 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                         "webhookSecret",
                         "Webhook secret",
                         ConfigFieldType.PASSWORD,
-                        true,
+                        false,
                         null,
                         List.of(),
                         "HMAC or shared token secret -- at least " + WebhookSecretPolicy.MIN_LENGTH
-                                + " characters"),
+                                + " characters. Required when the inbound webhook is enabled."),
                 new ConfigField(
                         "processKey",
                         "Process key",
                         ConfigFieldType.STRING,
-                        true,
+                        false,
                         null,
                         List.of(),
-                        null),
+                        "Required when the inbound webhook is enabled."),
                 new ConfigField(
                         "dossierTypeCode",
                         "Dossier type",
                         ConfigFieldType.STRING,
-                        true,
+                        false,
                         null,
                         List.of(),
-                        null),
+                        "Required when the inbound webhook is enabled."),
                 new ConfigField(
                         "authHeaderValue",
                         "Authorization header value",
@@ -275,6 +309,52 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         if (config == null) {
             throw new ConnectorValidationException("config is required");
         }
+        validateBaseUrl(config.get("baseUrl"));
+        if (webhookEnabled(config)) {
+            validateWebhook(config);
+        }
+        validateOutboundAuth(config);
+    }
+
+    /** TODO §112 (D-ORCH-SERVICE-ONLY) : absent = vrai (comportement d'avant) ; seul un faux explicite le coupe. */
+    private static boolean webhookEnabled(Map<String, Object> config) {
+        Object value = config.get(ConnectorInstanceData.WEBHOOK_ENABLED);
+        if (value == null || value instanceof Boolean) {
+            return !Boolean.FALSE.equals(value);
+        }
+        String text = String.valueOf(value).strip().toLowerCase(Locale.ROOT);
+        return switch (text) {
+            case "", "true" -> true;
+            case "false" -> false;
+            default -> throw new ConnectorValidationException("webhookEnabled must be true or false");
+        };
+    }
+
+    /** TODO §112 (D-ORCH-BASEURL) : https public (garde SSRF), sans identifiants, requête ni fragment. */
+    private void validateBaseUrl(Object raw) {
+        if (raw == null || String.valueOf(raw).isBlank()) {
+            return;
+        }
+        String text = String.valueOf(raw).strip();
+        URI uri;
+        try {
+            uri = new URI(text);
+        } catch (java.net.URISyntaxException ex) {
+            throw new ConnectorValidationException("baseUrl is not a valid URL");
+        }
+        if (uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null
+                || uri.getHost() == null) {
+            throw new ConnectorValidationException("baseUrl must be scheme://host[:port][/path], without credentials, "
+                    + "query or fragment");
+        }
+        try {
+            outboundUrlGuard.assertSafe(text);
+        } catch (IllegalArgumentException ex) {
+            throw new ConnectorValidationException("baseUrl is not an acceptable https endpoint");
+        }
+    }
+
+    private static void validateWebhook(Map<String, Object> config) {
         Object authType = config.get("webhookAuthType");
         if (authType == null) {
             throw new ConnectorValidationException("webhookAuthType is required");
@@ -291,7 +371,6 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         WebhookSecretPolicy.validate(requireString(config, "webhookSecret"));
         requireString(config, "processKey");
         requireString(config, "dossierTypeCode");
-        validateOutboundAuth(config);
     }
 
     private void validateOutboundAuth(Map<String, Object> config) {
@@ -367,18 +446,33 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         return List.copyOf(events);
     }
 
+    /**
+     * TODO §112 (revue M4) : appelée depuis un process, une instance à {@code baseUrl} n'accepte que l'entrée construite
+     * par l'attribut littéral {@code connectorRequest} ; la variable {@code connectorInput}, qu'un utilisateur peut poser à
+     * une complétion de tâche, ne la pilote pas (sinon : n'importe quel chemin et {@code DELETE} avec ses identifiants).
+     * Un appel direct (admin, M2M) et une instance sans {@code baseUrl} gardent le comportement d'avant.
+     */
+    @Override
+    public Map<String, Object> execute(
+            ConnectorInstanceData instance, Map<String, Object> inputParams, ConnectorCallContext context) {
+        Objects.requireNonNull(instance, "instance");
+        if (context != null && context.fromProcess() && !context.requestBuiltByProcess()
+                && stringOr(instance.config().get("baseUrl"), null) != null) {
+            throw new IllegalArgumentException("from a process, a connector with a baseUrl only accepts a request built "
+                    + "by the literal flowable:connectorRequest attribute, not the connectorInput variable");
+        }
+        return execute(instance, inputParams);
+    }
+
     @Override
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> inputParams) {
         Objects.requireNonNull(inputParams, "inputParams");
-        Object url = inputParams.get("url");
-        if (!(url instanceof String urlString)) {
-            throw new IllegalArgumentException("url is required");
-        }
         String method = parseMethod(inputParams);
         Object body = inputParams.get("body");
-        if (body != null && "GET".equals(method)) {
-            throw new IllegalArgumentException("GET does not support a body");
+        if (body != null && BODYLESS_METHODS.contains(method)) {
+            throw new IllegalArgumentException(method + " does not support a body");
         }
+        String urlString = targetUrl(instance.config(), inputParams);
 
         OutboundUrlGuard.PinnedEndpoint pinned = outboundUrlGuard.resolveSafe(urlString);
         byte[] requestBody = body == null ? new byte[0] : serializeBody(body).getBytes(StandardCharsets.UTF_8);
@@ -399,6 +493,214 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             throw new IllegalStateException("http-rest response exceeds maxResponseBytes");
         }
         return Map.of("status", response.status(), "body", response.body());
+    }
+
+    /**
+     * TODO §112 (D-ORCH-BASEURL) — URL appelée. Sans {@code baseUrl} : {@code url} absolue (comportement d'avant), plus
+     * {@code query}. Avec {@code baseUrl} : {@code url} refusée ; {@code path} relatif (gabarit {@code /a/{x}} dont chaque
+     * {@code {x}} reçoit {@code pathParams.x} encodé comme <b>un seul segment</b>), puis {@code query} encodée. Le chemin ne
+     * peut ni changer d'hôte ni remonter ({@code ..}) : l'en-tête d'authentification ne quitte pas l'hôte de base.
+     */
+    private static String targetUrl(Map<String, Object> config, Map<String, Object> input) {
+        String baseUrl = stringOr(config.get("baseUrl"), null);
+        Object url = input.get("url");
+        Object path = input.get("path");
+        Map<String, Object> pathParams = optionalMap(input.get("pathParams"), "pathParams", MAX_PATH_PARAMS);
+        Map<String, Object> query = optionalMap(input.get("query"), "query", MAX_QUERY_PARAMS);
+        String target;
+        if (baseUrl == null) {
+            if (path != null || !pathParams.isEmpty()) {
+                throw new IllegalArgumentException("path requires the connector's baseUrl");
+            }
+            if (!(url instanceof String urlString)) {
+                throw new IllegalArgumentException("url is required");
+            }
+            target = urlString;
+        } else {
+            if (url != null) {
+                throw new IllegalArgumentException("url is not accepted when the connector has a baseUrl; give a path");
+            }
+            if (path != null && !(path instanceof String)) {
+                throw new IllegalArgumentException("path must be a string");
+            }
+            String base = baseUrl.strip();
+            while (base.endsWith("/")) {
+                base = base.substring(0, base.length() - 1);
+            }
+            target = base + expandPath(path == null ? "" : (String) path, pathParams);
+            assertSameOrigin(base, target);
+        }
+        target = appendQuery(target, query);
+        if (target.length() > MAX_URL_CHARS) {
+            throw new IllegalArgumentException("http-rest URL exceeds " + MAX_URL_CHARS + " characters");
+        }
+        return target;
+    }
+
+    private static String expandPath(String template, Map<String, Object> params) {
+        if (template.length() > MAX_URL_CHARS) {
+            throw new IllegalArgumentException("path exceeds " + MAX_URL_CHARS + " characters");
+        }
+        if (!template.isEmpty() && (!template.startsWith("/") || template.contains("//")
+                || !PATH_TEMPLATE.matcher(template).matches())) {
+            throw new IllegalArgumentException("path must be a relative path starting with a single / (letters, digits, "
+                    + "-._~!$&'()*+,;=:@, %XX escapes and {name} placeholders; no //, query, fragment, space or backslash)");
+        }
+        assertNoDangerousEscapes(template);
+        for (String segment : template.split("/", -1)) {
+            if (!segment.isEmpty() && dotSegment(percentDecode(segment))) {
+                throw new IllegalArgumentException("path must not contain . or .. segments");
+            }
+        }
+        java.util.regex.Matcher matcher = PLACEHOLDER.matcher(template);
+        StringBuilder out = new StringBuilder();
+        java.util.Set<String> used = new java.util.HashSet<>();
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            if (!params.containsKey(name)) {
+                throw new IllegalArgumentException("pathParams has no value for {" + name + "}");
+            }
+            String value = scalarText(params.get(name), "pathParams." + name);
+            if (value.isBlank() || dotSegment(value)) {
+                throw new IllegalArgumentException("pathParams." + name + " must not be empty, . or ..");
+            }
+            // Revue §112 (M2) : un identifiant ne contient ni barre ni contrôle ; encodé en %2F, un proxy qui décode puis
+            // normalise ferait remonter l'appel au-dessus du chemin de base.
+            if (value.indexOf('/') >= 0 || value.indexOf('\\') >= 0 || value.chars().anyMatch(Character::isISOControl)) {
+                throw new IllegalArgumentException("pathParams." + name + " must not contain /, \\ or control characters");
+            }
+            used.add(name);
+            matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(encode(value, "")));
+        }
+        matcher.appendTail(out);
+        for (String name : params.keySet()) {
+            if (!used.contains(name)) {
+                throw new IllegalArgumentException("pathParams." + name + " has no {" + name + "} placeholder in path");
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * Revue §112 (M2, seconde revue M-1 et bas 7) : un serveur ou un proxy peut traiter comme « .. » un segment suivi d'un
+     * paramètre ({@code ..;x}), entouré d'espaces ({@code ..%20}) ou fait de trois points (IIS) : on retire le paramètre et
+     * les espaces, puis on refuse tout segment fait seulement de points.
+     */
+    private static boolean dotSegment(String decoded) {
+        int semicolon = decoded.indexOf(';');
+        String bare = (semicolon >= 0 ? decoded.substring(0, semicolon) : decoded).strip();
+        return !bare.isEmpty() && bare.chars().allMatch(c -> c == '.');
+    }
+
+    /** Décodage des {@code %XX} d'un segment (déjà validé), octet par octet en ISO-8859-1 : suffit pour repérer les points. */
+    private static String percentDecode(String segment) {
+        StringBuilder out = new StringBuilder(segment.length());
+        for (int i = 0; i < segment.length(); i++) {
+            char c = segment.charAt(i);
+            if (c == '%' && i + 2 < segment.length()) {
+                out.append((char) Integer.parseInt(segment.substring(i + 1, i + 3), 16));
+                i += 2;
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * Revue §112 (M2) : dans un chemin écrit tel quel, une séquence {@code %XX} ne doit pas réintroduire ce que la forme
+     * refuse — barre ({@code %2F}, {@code %5C}), point ({@code %2E}, qui formerait {@code ..} une fois décodé), point-virgule,
+     * pourcent (double encodage) ni caractère de contrôle. Une valeur arbitraire passe par {@code pathParams}.
+     */
+    private static void assertNoDangerousEscapes(String template) {
+        for (int i = template.indexOf('%'); i >= 0; i = template.indexOf('%', i + 1)) {
+            int code = Integer.parseInt(template.substring(i + 1, i + 3), 16);
+            // 0xC0/0xC1 : UTF-8 sur-long (%C0%AE vaut « . » pour un décodeur laxiste).
+            if (code < 0x20 || code == 0x7F || code == 0xC0 || code == 0xC1 || "/\\.;%".indexOf(code) >= 0) {
+                throw new IllegalArgumentException("path must not contain an encoded /, \\, ., ;, % or control character");
+            }
+        }
+    }
+
+    /** Défense en profondeur : le chemin validé ne peut pas changer de schéma, d'hôte ni de port. */
+    private static void assertSameOrigin(String base, String target) {
+        URI baseUri = URI.create(base);
+        URI targetUri = URI.create(target);
+        if (!Objects.equals(baseUri.getScheme(), targetUri.getScheme())
+                || !Objects.equals(baseUri.getRawAuthority(), targetUri.getRawAuthority())
+                || targetUri.getRawUserInfo() != null) {
+            throw new IllegalArgumentException("path must stay on the connector's baseUrl");
+        }
+    }
+
+    private static String appendQuery(String url, Map<String, Object> query) {
+        if (query.isEmpty()) {
+            return url;
+        }
+        int hash = url.indexOf('#');
+        String fragment = hash < 0 ? "" : url.substring(hash);
+        String base = hash < 0 ? url : url.substring(0, hash);
+        StringBuilder out = new StringBuilder(base);
+        char separator = base.contains("?") ? '&' : '?';
+        for (Map.Entry<String, Object> entry : query.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank()) {
+                throw new IllegalArgumentException("query parameter names must not be blank");
+            }
+            List<?> values = entry.getValue() instanceof List<?> list ? list : java.util.Collections.singletonList(entry.getValue());
+            for (Object value : values) {
+                out.append(separator).append(encode(entry.getKey(), QUERY_SAFE)).append('=')
+                        .append(encode(scalarText(value, "query." + entry.getKey()), QUERY_SAFE));
+                separator = '&';
+            }
+        }
+        return out.append(fragment).toString();
+    }
+
+    /** Caractères laissés tels quels dans une requête (RFC 3986, hors {@code & = + # %}) : {@code $filter} reste lisible. */
+    private static final String QUERY_SAFE = "$!'()*,;:@/";
+
+    /** Encodage pour-cent strict : non réservés RFC 3986 plus {@code extraSafe} ; UTF-8 ; espace en {@code %20}. */
+    private static String encode(String value, String extraSafe) {
+        StringBuilder out = new StringBuilder();
+        for (byte b : value.getBytes(StandardCharsets.UTF_8)) {
+            char c = (char) (b & 0xFF);
+            boolean unreserved = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                    || c == '-' || c == '.' || c == '_' || c == '~';
+            if (b >= 0 && (unreserved || extraSafe.indexOf(c) >= 0)) {
+                out.append(c);
+            } else {
+                out.append('%').append(String.format("%02X", b & 0xFF));
+            }
+        }
+        return out.toString();
+    }
+
+    private static String scalarText(Object value, String owner) {
+        return switch (value) {
+            case String text -> text;
+            case Boolean bool -> bool.toString();
+            // Revue §112 (B2) : un identifiant numérique de 16 chiffres ne s'écrit pas « 1.234E15 ».
+            case Double d when d == Math.rint(d) && !d.isInfinite() -> java.math.BigDecimal.valueOf(d).toBigInteger().toString();
+            case Float f when f == Math.rint(f) && !f.isInfinite() -> java.math.BigDecimal.valueOf(f).toBigInteger().toString();
+            case java.math.BigDecimal d -> d.stripTrailingZeros().toPlainString();
+            case Number n -> n.toString();
+            case null -> throw new IllegalArgumentException(owner + " must not be null");
+            default -> throw new IllegalArgumentException(owner + " must be a text, number or boolean");
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> optionalMap(Object value, String name, int max) {
+        if (value == null) {
+            return Map.of();
+        }
+        if (!(value instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(name + " must be a map");
+        }
+        if (map.size() > max) {
+            throw new IllegalArgumentException(name + " has more than " + max + " entries");
+        }
+        return (Map<String, Object>) map;
     }
 
     private static final Pattern HOST_PATTERN =
@@ -533,10 +835,23 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             throw new IllegalArgumentException("headers must be a map");
         }
         for (Map.Entry<String, Object> entry : ((Map<String, Object>) headersMap).entrySet()) {
-            if (entry.getKey() != null && "host".equalsIgnoreCase(entry.getKey())) {
+            String name = entry.getKey() == null ? "" : entry.getKey().strip();
+            // Revue §112 (B3) : nom conforme au token RFC 7230, valeur sans caractère de contrôle (un CR seul passait).
+            if (!HEADER_NAME.matcher(name).matches()) {
+                throw new IllegalArgumentException("header names must be RFC 7230 tokens");
+            }
+            String value = String.valueOf(entry.getValue());
+            if (value.chars().anyMatch(c -> (c < 0x20 && c != '\t') || c == 0x7F)) {
+                throw new IllegalArgumentException("header " + name + " contains a control character");
+            }
+            if ("host".equalsIgnoreCase(name)) {
                 continue;
             }
-            target.put(entry.getKey(), String.valueOf(entry.getValue()));
+            // Seconde revue §112 (bas 3) : les en-têtes de cadrage et de connexion appartiennent au client HTTP.
+            if (FRAMING_HEADERS.contains(name.toLowerCase(Locale.ROOT)) || name.toLowerCase(Locale.ROOT).startsWith("proxy-")) {
+                throw new IllegalArgumentException("header " + name + " is not allowed");
+            }
+            target.put(name, value);
         }
     }
 
@@ -555,7 +870,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
                                     .verify(request.tlsHostname(), session));
                 }
                 request.headers().forEach(connection::setRequestProperty);
-                if (!"GET".equals(request.method())) {
+                if ("POST".equals(request.method()) || "PUT".equals(request.method())) {
                     connection.setDoOutput(true);
                     try (OutputStream output = connection.getOutputStream()) {
                         output.write(request.body() == null ? new byte[0] : request.body());

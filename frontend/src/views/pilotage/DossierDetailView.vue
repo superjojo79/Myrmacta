@@ -76,7 +76,7 @@ const canLink = canEditDossier
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
 // D-ASSIGN-CLAIM : prendre une tâche libre exige le même droit que la terminer (EDIT).
 const canClaim = canEditDossier
-/** TODO §113 — groupes vers lesquels un éditeur peut réaffecter une tâche ; chargés une fois, s'il peut modifier le dossier. */
+/** TODO §114 — groupes vers lesquels un éditeur peut réaffecter une tâche ; chargés une fois, s'il peut modifier le dossier. */
 const groupOptions = ref<UserGroupOption[]>([])
 watch(
   canEditDossier,

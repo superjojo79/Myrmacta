@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** TODO §113 (issue #190, D-GROUP-SOURCE) — administration des groupes d'utilisateurs, réservée à l'administrateur du tenant. */
+/** TODO §114 (issue #190, D-GROUP-SOURCE) — administration des groupes d'utilisateurs, réservée à l'administrateur du tenant. */
 @RestController
 @RequestMapping("/api/user-groups")
 @PreAuthorize("hasRole('TENANT_ADMIN')")

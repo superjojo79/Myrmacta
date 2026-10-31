@@ -8,7 +8,7 @@ import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Annuaire local des utilisateurs (D-ASSIGN-DIR) et groupes (TODO §113, D-GROUP-SOURCE). */
+/** Annuaire local des utilisateurs (D-ASSIGN-DIR) et groupes (TODO §114, D-GROUP-SOURCE). */
 @Configuration
 class UserDirectoryConfig {
 

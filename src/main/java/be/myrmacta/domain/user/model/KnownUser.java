@@ -14,7 +14,7 @@ public record KnownUser(
         String displayName,
         String email,
         Set<String> roles,
-        /** Groupes portés par le jeton à la dernière connexion (TODO §113, D-GROUP-SOURCE). */
+        /** Groupes portés par le jeton à la dernière connexion (TODO §114, D-GROUP-SOURCE). */
         Set<String> idpGroups,
         Instant lastLoginAt) {
 

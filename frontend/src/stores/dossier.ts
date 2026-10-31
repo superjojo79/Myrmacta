@@ -302,7 +302,7 @@ export const useDossierStore = defineStore('dossier', () => {
     await loadVisualization(linkId)
   }
 
-  /** TODO §113 — la note de trace s'ajoute aux éléments du dossier : on recharge aussi la liste. */
+  /** TODO §114 — la note de trace s'ajoute aux éléments du dossier : on recharge aussi la liste. */
   async function reassignToGroup(linkId: string, taskId: string, groupCode: string): Promise<void> {
     await reassignWorkflowTaskToGroup(linkId, taskId, groupCode)
     await loadVisualization(linkId)

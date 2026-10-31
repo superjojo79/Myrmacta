@@ -57,7 +57,7 @@ export async function claimWorkflowTask(linkId: string, taskId: string): Promise
   await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/claim`)
 }
 
-/** TODO §113 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier) ; tracé dans le dossier. */
+/** TODO §114 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier) ; tracé dans le dossier. */
 export async function reassignWorkflowTaskToGroup(linkId: string, taskId: string, groupCode: string): Promise<void> {
   await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/reassign-group`, { groupCode })
 }

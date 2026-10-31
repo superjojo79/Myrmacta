@@ -38,7 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * TODO §112 (D-MAILROOM-ROUTE) — brique « Router le courrier ». Lit la décision de la table de routage (variables
+ * TODO §113 (D-MAILROOM-ROUTE) — brique « Router le courrier ». Lit la décision de la table de routage (variables
  * {@code routageAction}, {@code routageService}, {@code routageTypeDossier}, {@code routageProcessus},
  * {@code routageDelaiJours}) et :
  *

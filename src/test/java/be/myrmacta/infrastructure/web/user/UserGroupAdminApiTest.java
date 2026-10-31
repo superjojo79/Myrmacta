@@ -25,7 +25,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/** TODO §113 (issue #190) — administration des groupes par la vraie chaîne HTTP et sécurité. */
+/** TODO §114 (issue #190) — administration des groupes par la vraie chaîne HTTP et sécurité. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(OidcClientTestConfiguration.class)

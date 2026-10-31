@@ -122,7 +122,7 @@ describe('TaskList', () => {
     expect(wrapper.emitted('complete')?.[0]).toEqual(['t1', {}])
   })
 
-  it('shows the candidate groups and lets an editor reassign the task to another group (TODO §113)', async () => {
+  it('shows the candidate groups and lets an editor reassign the task to another group (TODO §114)', async () => {
     const wrapper = mount(TaskList, {
       props: {
         tasks: [

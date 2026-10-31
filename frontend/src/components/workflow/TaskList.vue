@@ -15,7 +15,7 @@ const props = defineProps<{
   /** Noms affichés par identifiant d'utilisateur (annuaire local), quand ils sont connus. */
   assigneeNames?: Record<string, string>
   totalPages?: number
-  /** TODO §113 — groupes vers lesquels un éditeur peut réaffecter une tâche (code, libellé). */
+  /** TODO §114 — groupes vers lesquels un éditeur peut réaffecter une tâche (code, libellé). */
   groupOptions?: { code: string; label: string }[]
 }>()
 

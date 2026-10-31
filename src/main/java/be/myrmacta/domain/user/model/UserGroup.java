@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * TODO §113 (D-GROUP-SOURCE) — groupe d'utilisateurs (un service : RH, comptabilité…). Ses membres sont listés ici, ou
+ * TODO §114 (D-GROUP-SOURCE) — groupe d'utilisateurs (un service : RH, comptabilité…). Ses membres sont listés ici, ou
  * viennent du groupe {@code idpGroup} porté par le jeton OIDC (claim de groupes enregistrée à la connexion). Le code est
  * la valeur posée comme groupe candidat d'une tâche (D-GROUP-ASSIGN).
  */

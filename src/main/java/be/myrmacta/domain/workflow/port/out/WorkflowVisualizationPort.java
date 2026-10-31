@@ -28,7 +28,7 @@ public interface WorkflowVisualizationPort {
     void claimTask(String processInstanceId, String taskId, String userId, String tenantId);
 
     /**
-     * TODO §113 (D-GROUP-REASSIGN) — retire l'assigné et les groupes candidats de la tâche, puis la rend candidate pour
+     * TODO §114 (D-GROUP-REASSIGN) — retire l'assigné et les groupes candidats de la tâche, puis la rend candidate pour
      * {@code groupCode} seul. Renvoie l'état d'avant, pour la trace.
      */
     TaskGroupReassignment reassignTaskToGroup(String processInstanceId, String taskId, String groupCode, String tenantId);

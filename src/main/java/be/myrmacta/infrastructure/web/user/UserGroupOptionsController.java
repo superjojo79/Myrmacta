@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * TODO §113 (D-GROUP-REASSIGN) — codes et libellés des groupes, pour choisir à qui réaffecter une tâche. Lisible par tout
+ * TODO §114 (D-GROUP-REASSIGN) — codes et libellés des groupes, pour choisir à qui réaffecter une tâche. Lisible par tout
  * utilisateur connecté : ni membres, ni groupe d'IdP repris (réservés à l'administration).
  */
 @RestController

@@ -92,7 +92,7 @@ public class KnownUserRecordingSuccessHandler implements AuthenticationSuccessHa
         delegate.onAuthenticationSuccess(request, response, authentication);
     }
 
-    /** TODO §113 (D-GROUP-SOURCE) — groupes de la claim configurée : liste de textes, ou un seul texte. Bornés par le cas d'usage. */
+    /** TODO §114 (D-GROUP-SOURCE) — groupes de la claim configurée : liste de textes, ou un seul texte. Bornés par le cas d'usage. */
     private Set<String> groups(OidcUser user) {
         Object claim = user.getClaims().get(groupsClaim);
         if (claim instanceof String single) {

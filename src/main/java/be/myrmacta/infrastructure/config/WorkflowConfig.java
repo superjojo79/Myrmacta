@@ -193,7 +193,7 @@ public class WorkflowConfig {
                 knownUserRepository);
     }
 
-    /** TODO §113 (D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe, tracé dans le dossier. */
+    /** TODO §114 (D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe, tracé dans le dossier. */
     @Bean
     be.myrmacta.domain.workflow.usecase.ReassignTaskToGroupUseCaseImpl reassignTaskToGroupUseCase(
             TenantProperties tenantProperties,

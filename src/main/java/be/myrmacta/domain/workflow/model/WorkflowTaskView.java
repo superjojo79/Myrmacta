@@ -11,7 +11,7 @@ public record WorkflowTaskView(
         String taskDefinitionKey,
         Instant createTime,
         String formKey,
-        /** Groupes candidats de la tâche (TODO §113), triés ; vide si aucun. */
+        /** Groupes candidats de la tâche (TODO §114), triés ; vide si aucun. */
         List<String> candidateGroups
 ) {
     public WorkflowTaskView {
@@ -19,7 +19,7 @@ public record WorkflowTaskView(
         candidateGroups = candidateGroups == null ? List.of() : List.copyOf(candidateGroups);
     }
 
-    /** Convenience for callers built before {@code candidateGroups} existed (TODO §113). */
+    /** Convenience for callers built before {@code candidateGroups} existed (TODO §114). */
     public WorkflowTaskView(String taskId, String name, String assignee, String taskDefinitionKey, Instant createTime, String formKey) {
         this(taskId, name, assignee, taskDefinitionKey, createTime, formKey, List.of());
     }

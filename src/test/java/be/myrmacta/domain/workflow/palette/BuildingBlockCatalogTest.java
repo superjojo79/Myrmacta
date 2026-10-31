@@ -83,7 +83,17 @@ class BuildingBlockCatalogTest {
         assertThat(blocks.stream().flatMap(b -> b.parameters().stream()).filter(BlockParameter::multiline)
                 .map(BlockParameter::name).distinct().toList())
                 .containsExactlyInAnyOrder("notificationBody", "formula", "fieldMapping", "searchCriteria", "precheckPieces",
-                        "precheckQuestions", "precheckRules");
+                        "precheckQuestions", "precheckRules", "connectorRequest");
+    }
+
+    @Test
+    void callConnectorOffersAnOptionalRequestExpression() {
+        // TODO §112 (D-ORCH-REQUEST) : la requête se construit dans le BPMN, bornée comme une formule (2 000 caractères).
+        BlockParameter request = param("call-connector", "connectorRequest");
+        assertThat(request.required()).isFalse();
+        assertThat(request.multiline()).isTrue();
+        assertThat(request.maxLength()).isEqualTo(2000);
+        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(6);
     }
 
     @Test

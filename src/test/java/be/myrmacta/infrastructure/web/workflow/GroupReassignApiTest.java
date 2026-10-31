@@ -29,7 +29,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * TODO §113 (issue #217, lot 2c, D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe par la vraie chaîne HTTP et
+ * TODO §114 (issue #217, lot 2c, D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe par la vraie chaîne HTTP et
  * sécurité : un éditeur du dossier le peut, la tâche suivante suit le nouveau groupe, une note trace le changement ; un
  * utilisateur sans droit d'édition est refusé, un groupe inconnu aussi.
  */

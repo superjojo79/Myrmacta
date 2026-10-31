@@ -38,7 +38,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/** TODO §113 (D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe : éditeur du dossier, groupe connu, trace dans le dossier. */
+/** TODO §114 (D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe : éditeur du dossier, groupe connu, trace dans le dossier. */
 class ReassignTaskToGroupUseCaseImplTest {
 
     private static final String TENANT = "tenant_dev";

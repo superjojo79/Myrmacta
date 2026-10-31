@@ -135,7 +135,7 @@ class WorkflowLinkVisualizationController {
     }
 
     /**
-     * TODO §113 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier). {@code @Transactional} :
+     * TODO §114 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier). {@code @Transactional} :
      * tâche, groupe du lien et note de trace changent ensemble.
      */
     @PostMapping("/tasks/{taskId}/reassign-group")

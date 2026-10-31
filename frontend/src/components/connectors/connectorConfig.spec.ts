@@ -185,6 +185,30 @@ describe('ingressUrlFor', () => {
     })
   })
 
+  it('returns null for a service-only http-rest instance (webhookEnabled false)', () => {
+    expect(
+      ingressUrlFor(
+        { id: 'c-1', connectorType: 'http-rest', config: { webhookEnabled: false } },
+        origin,
+        tenantBase,
+      ),
+    ).toBeNull()
+    expect(
+      ingressUrlFor(
+        { id: 'c-1', connectorType: 'http-rest', config: { webhookEnabled: 'false' } },
+        origin,
+        tenantBase,
+      ),
+    ).toBeNull()
+    expect(
+      ingressUrlFor(
+        { id: 'c-1', connectorType: 'http-rest', config: { webhookEnabled: true } },
+        origin,
+        tenantBase,
+      )?.url,
+    ).toBe('https://example.com/acme/api/webhooks/c-1')
+  })
+
   it('returns null for types without an HTTP ingress endpoint', () => {
     expect(ingressUrlFor({ id: 's1', connectorType: 'smtp' }, origin, tenantBase)).toBeNull()
     expect(

@@ -86,7 +86,7 @@ describe('api coverage', () => {
     expect(axios.delete).toHaveBeenCalled()
   })
 
-  it('covers the reassignment of a task to a group (TODO §113)', async () => {
+  it('covers the reassignment of a task to a group (TODO §114)', async () => {
     await reassignWorkflowTaskToGroup('l', 't', 'JURIDIQUE')
     expect(axios.post).toHaveBeenCalledWith('/api/workflow-links/l/tasks/t/reassign-group', { groupCode: 'JURIDIQUE' })
   })

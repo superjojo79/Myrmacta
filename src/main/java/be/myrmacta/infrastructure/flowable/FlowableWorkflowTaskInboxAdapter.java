@@ -28,7 +28,7 @@ class FlowableWorkflowTaskInboxAdapter implements WorkflowTaskInboxPort {
     }
 
     /**
-     * TODO §113 (D-GROUP-ASSIGN) — assignée à l'utilisateur, OU candidate pour l'un de ses groupes. Une requête « candidat » de
+     * TODO §114 (D-GROUP-ASSIGN) — assignée à l'utilisateur, OU candidate pour l'un de ses groupes. Une requête « candidat » de
      * Flowable ne rend que les tâches sans assigné : une tâche prise par un collègue sort de la liste.
      */
     @Override

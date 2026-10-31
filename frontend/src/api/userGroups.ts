@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-/** TODO §113 (issue #190) — groupes d'utilisateurs (services) et annuaire local, réservés à l'administrateur du tenant. */
+/** TODO §114 (issue #190) — groupes d'utilisateurs (services) et annuaire local, réservés à l'administrateur du tenant. */
 export interface UserGroupMember {
   userId: string
   displayName: string
@@ -59,7 +59,7 @@ export async function listUserDirectory(): Promise<DirectoryUser[]> {
   return data
 }
 
-/** TODO §113 (D-GROUP-REASSIGN) — codes et libellés des groupes, lisibles par tout utilisateur connecté. */
+/** TODO §114 (D-GROUP-REASSIGN) — codes et libellés des groupes, lisibles par tout utilisateur connecté. */
 export interface UserGroupOption {
   code: string
   label: string

@@ -1,4 +1,4 @@
-// E2E « pilotage » — groupes d'utilisateurs et tâches de groupe (TODO §113, issue #190).
+// E2E « pilotage » — groupes d'utilisateurs et tâches de groupe (TODO §114, issue #190).
 import { expect, test } from '@playwright/test'
 import { createAndOpenDossier, mockSession, openApp } from './support/pilotage'
 

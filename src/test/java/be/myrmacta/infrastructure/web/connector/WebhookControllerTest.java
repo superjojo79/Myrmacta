@@ -309,6 +309,24 @@ class WebhookControllerTest {
     }
 
     @Test
+    void receive_serviceOnlyInstanceReturns404EvenWithAValidSecret() throws Exception {
+        // TODO §112 (D-ORCH-SERVICE-ONLY) : webhook coupé, même si un ancien secret valide est resté en configuration.
+        ConnectorInstanceData serviceOnly = new ConnectorInstanceData(INSTANCE_ID, "tenant_dev", "SIRH", "http-rest", true,
+                Map.of("webhookEnabled", false, "webhookAuthType", "SHARED_SECRET_TOKEN", "webhookSecret", "secret"));
+        when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.of(serviceOnly));
+
+        mockMvc.perform(post("/api/webhooks/{instanceId}", INSTANCE_ID)
+                        .header("Idempotency-Key", "idem-svc")
+                        .header("X-Webhook-Token", "secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound());
+
+        verify(runtime, never()).onIncomingEvent(any(), any());
+        verify(idempotencyStore, never()).beginOrGetCompleted(any(), any());
+    }
+
+    @Test
     void receive_unknownInstanceReturns404() throws Exception {
         when(instances.findByIdAndTenantId(INSTANCE_ID, "tenant_dev")).thenReturn(Optional.empty());
 

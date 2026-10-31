@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
@@ -170,6 +171,19 @@ class MailRoomExampleIT {
                 .anySatisfy(identity -> assertThat(identity.getGroupId()).isEqualTo("COMPTABILITE"));
         assertThat(taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("traiterFactureTache").count())
                 .isEqualTo(1);
+        // Mode 3 (D-MAILROOM-REPLY-WORKFLOW, DOSSIER_ENFANT) : un dossier « réponse » enfant de la facture, avec son workflow.
+        JsonNode child = null;
+        for (JsonNode relation : read(get("/api/dossiers/{id}/relations", invoiceId))) {
+            if ("PARENT_CHILD".equals(relation.get("type").asString())) {
+                child = relation.get("relatedDossier");
+            }
+        }
+        assertThat(child).isNotNull();
+        assertThat(child.get("dossierTypeCode").asString()).isEqualTo("REPONSE_FACTURE");
+        var replyProcess = runtimeService.createProcessInstanceQuery().processDefinitionKey("traiterReponse")
+                .variableValueEquals("dossierId", child.get("id").asString()).singleResult();
+        assertThat(replyProcess).isNotNull();
+        assertThat(runtimeService.getVariable(replyProcess.getId(), "courrierId")).isEqualTo(reply);
 
         deliver(new ImapMailbox.Mail("<x300@autre.example>", "quelquun@autre.example", "Autre", "RE: Facture 2026-300 (autre)",
                 Instant.parse("2026-10-31T09:00:00Z"), "Je m'immisce.", false, "mx.example.com; dmarc=pass header.from=autre.example",
@@ -202,7 +216,7 @@ class MailRoomExampleIT {
                             .content(JSON.writeValueAsString(group)))
                     .andExpect(status().isCreated());
         }
-        for (String type : List.of("config/type-dossier.json", "config/type-facture.json")) {
+        for (String type : List.of("config/type-dossier.json", "config/type-facture.json", "config/type-reponse-facture.json")) {
             JsonNode body = JSON.readTree(EXAMPLE.resolve(type).toFile());
             mockMvc.perform(post("/api/dossier-types").with(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                             .content(JSON.writeValueAsString(body)))
@@ -212,7 +226,8 @@ class MailRoomExampleIT {
                             .content("{\"subjectUserId\":\"" + OPERATOR + "\",\"permission\":\"EDIT\"}"))
                     .andExpect(status().isNoContent());
         }
-        for (String workflow : List.of("config/workflow-config.json", "config/workflow-config-facture.json")) {
+        for (String workflow : List.of("config/workflow-config.json", "config/workflow-config-facture.json",
+                "config/workflow-config-reponse.json")) {
             // Forme MCP (processDefinitionKey) ; l'API REST attend workflowKey.
             ObjectNode config = (ObjectNode) JSON.readTree(EXAMPLE.resolve(workflow).toFile());
             config.set("workflowKey", config.remove("processDefinitionKey"));
@@ -224,12 +239,17 @@ class MailRoomExampleIT {
                                 "application/xml", Files.readAllBytes(EXAMPLE.resolve("routage-courrier.dmn"))))
                         .with(admin).with(csrf()))
                 .andExpect(status().isCreated());
-        for (String bpmn : List.of("traiter-facture.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
+        for (String bpmn : List.of("traiter-facture.bpmn20.xml", "traiter-reponse.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
             mockMvc.perform(multipart("/api/workflow-bpmn-deployments").file(new MockMultipartFile("file", bpmn,
                                     "application/xml", Files.readAllBytes(EXAMPLE.resolve(bpmn))))
                             .with(admin).with(csrf()))
                     .andExpect(status().isCreated());
         }
+        ObjectNode reply = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/reponse-facture.json").toFile());
+        reply.remove("_commentaire");
+        mockMvc.perform(put("/api/dossier-types/{code}/reply-workflow", "FACTURE").with(admin).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(reply)))
+                .andExpect(status().isOk());
         configured = true;
     }
 

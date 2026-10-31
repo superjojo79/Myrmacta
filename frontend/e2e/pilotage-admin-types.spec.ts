@@ -326,3 +326,66 @@ test('E2E-RET-3 non-admin does not see Types admin nav', async ({ page }) => {
   await openApp(page)
   await expect(page.getByRole('link', { name: 'Types' })).toHaveCount(0)
 })
+
+test('E2E-MAILROOM-REPLY-1 admin declares, then removes, the reply workflow of a type', async ({ page }) => {
+  const calls: Array<{ method: string; body: unknown }> = []
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM/reply-workflow', async (route) => {
+    const method = route.request().method()
+    if (method === 'GET') {
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    calls.push({ method, body: method === 'PUT' ? route.request().postDataJSON() : null })
+    if (method === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ dossierTypeCode: 'CLAIM', ...(route.request().postDataJSON() as object) }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('type-edit-fields').click()
+  const panel = page.getByTestId('reply-workflow-panel')
+  await expect(panel.getByTestId('reply-workflow-mode')).toHaveValue('')
+  await panel.getByTestId('reply-workflow-mode').selectOption('SUR_DOSSIER')
+  await expect(panel.getByTestId('reply-workflow-child-type')).toHaveCount(0)
+  await panel.getByTestId('reply-workflow-key').selectOption('otherWorkflow')
+  await panel.getByTestId('reply-workflow-save').click()
+  await expect(panel.getByTestId('reply-workflow-saved')).toBeVisible()
+  await panel.getByTestId('reply-workflow-mode').selectOption('')
+  await panel.getByTestId('reply-workflow-save').click()
+  await expect
+    .poll(() => calls)
+    .toEqual([
+      { method: 'PUT', body: { mode: 'SUR_DOSSIER', workflowKey: 'otherWorkflow', childTypeCode: null } },
+      { method: 'DELETE', body: null },
+    ])
+})
+
+test('E2E-MAILROOM-REPLY-2 a refused reply workflow shows the server message', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM/reply-workflow', async (route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ title: 'Bad Request', status: 400, detail: 'Unknown child dossier type: X' }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('type-edit-fields').click()
+  const panel = page.getByTestId('reply-workflow-panel')
+  await panel.getByTestId('reply-workflow-mode').selectOption('DOSSIER_ENFANT')
+  await panel.getByTestId('reply-workflow-key').selectOption('otherWorkflow')
+  await panel.getByTestId('reply-workflow-save').click()
+  await expect(panel.getByTestId('reply-workflow-error')).toHaveText('Unknown child dossier type: X')
+})

@@ -428,6 +428,9 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       body: JSON.stringify(CLAIM_TYPE),
     })
   })
+  await page.route('**/api/dossier-types/*/reply-workflow', async (route) => {
+    await route.fulfill({ status: 204, body: '' })
+  })
   await page.route('**/api/dossiers**', async (route) => {
     const url = route.request().url()
     const method = route.request().method()

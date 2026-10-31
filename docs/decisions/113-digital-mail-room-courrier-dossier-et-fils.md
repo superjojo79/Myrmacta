@@ -98,6 +98,25 @@ Précisions de conception du lot 3a (2026-10-31) :
 - **Les variables de fil sont posées par la plateforme.** Les variables `mail*` posées par le connecteur ne sont plus
   remplaçables par un mapping de connecteur.
 - **Reporté au lot 3b :** le workflow « réponse » déclaré par le type de dossier (mode 3).
+**D-MAILROOM-REPLY-WORKFLOW** (tranché par l'utilisateur, lot 3b, 2026-10-31) — le mode 3 bute sur une règle existante : un
+seul workflow actif par dossier (`AttachWorkflowUseCaseImpl.reserve`, index unique en base). Cette règle ne change pas. Le type
+de dossier choisit l'un de deux modes :
+
+- **`SUR_DOSSIER`** : le workflow « réponse » démarre sur le dossier du fil, seulement si aucun process n'y est actif (par
+  exemple un dossier traité mais pas clôturé, qu'une réponse relance). Si un process tourne, les modes 1 et 2 suffisent.
+- **`DOSSIER_ENFANT`** : chaque réponse rattachée crée un dossier enfant du dossier du fil (`PARENT_CHILD`), du type
+  déclaré, où le workflow « réponse » démarre, en parallèle du process métier.
+
+Commun aux deux modes :
+
+- Le workflow reçoit `courrierId` et `courrierReference`. S'il déclare ses variables de démarrage (§111), il doit déclarer
+  ces deux-là.
+- **Vérifications** : process déployé, configuration de workflow qui accepte le statut du dossier, type enfant actif sans
+  champ obligatoire inconnu. Elles ont lieu avant toute écriture. Si l'une échoue, le workflow n'est pas démarré : la raison
+  va dans `filReponseMotif`, et le rattachement, lui, a bien eu lieu.
+- **Stockage** : le réglage est rangé à part (table `dossier_type_reply_workflow`, API
+  `/api/dossier-types/{code}/reply-workflow`), sans toucher au modèle `DossierType`, que 43 endroits construisent.
+- **Limite connue** : la promotion de configuration entre environnements ne transporte pas encore ce réglage.
 
 **D-MAILROOM-REACT** (tranché par l'utilisateur, 2026-10-31) — quand une réponse arrive sur un dossier dont un process
 tourne déjà, trois réactions se choisissent et se combinent :

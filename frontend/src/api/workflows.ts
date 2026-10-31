@@ -57,6 +57,11 @@ export async function claimWorkflowTask(linkId: string, taskId: string): Promise
   await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/claim`)
 }
 
+/** TODO §113 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier) ; tracé dans le dossier. */
+export async function reassignWorkflowTaskToGroup(linkId: string, taskId: string, groupCode: string): Promise<void> {
+  await axios.post(`/api/workflow-links/${linkId}/tasks/${taskId}/reassign-group`, { groupCode })
+}
+
 /** Utilisateurs connus pouvant modifier le dossier du lien (D-ASSIGN-DIR) — TA/WA. */
 export async function listAssignableUsers(linkId: string): Promise<AssignableUser[]> {
   const { data } = await axios.get<AssignableUser[]>(`/api/workflow-links/${linkId}/assignable-users`)

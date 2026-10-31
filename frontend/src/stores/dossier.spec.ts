@@ -312,6 +312,21 @@ describe('dossier store', () => {
     expect(store.tasks[0].assignee).toBe('me')
   })
 
+  it('reassignToGroup sends the task to the group then reloads the tasks and the elements (the trace note)', async () => {
+    vi.mocked(workflowsApi.reassignWorkflowTaskToGroup).mockResolvedValue(undefined)
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({ bpmnXml: '<xml/>', activeIds: [], completedIds: [], failedIds: [] })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([{ taskId: 't1', name: 'Trier', assignee: null, taskDefinitionKey: 'k', createTime: null, candidateGroups: ['JURIDIQUE'] }]),
+    )
+    const store = useDossierStore()
+
+    await store.reassignToGroup('link-1', 't1', 'JURIDIQUE')
+
+    expect(workflowsApi.reassignWorkflowTaskToGroup).toHaveBeenCalledWith('link-1', 't1', 'JURIDIQUE')
+    expect(store.tasks[0].candidateGroups).toEqual(['JURIDIQUE'])
+  })
+
   describe('incidents (TODO §94)', () => {
     const incident = {
       jobId: 'job-1',

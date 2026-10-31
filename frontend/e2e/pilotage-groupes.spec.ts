@@ -1,6 +1,6 @@
 // E2E « pilotage » — groupes d'utilisateurs et tâches de groupe (TODO §113, issue #190).
 import { expect, test } from '@playwright/test'
-import { mockSession, openApp } from './support/pilotage'
+import { createAndOpenDossier, mockSession, openApp } from './support/pilotage'
 
 test('E2E-GROUP-1 a member takes the free task of his group from the inbox, then can complete it', async ({ page }) => {
   await mockSession(page, { roles: ['DOSSIER_MANAGER'], groupTask: true })
@@ -41,4 +41,18 @@ test('E2E-GROUP-3 a manager has no access to the groups screen', async ({ page }
   await mockSession(page, { roles: ['DOSSIER_MANAGER'] })
   await openApp(page)
   await expect(page.getByRole('link', { name: 'Groupes' })).toHaveCount(0)
+})
+
+test('E2E-GROUP-4 a dossier editor reassigns a free task to another group from the dossier page', async ({ page }) => {
+  await mockSession(page, { withActiveLink: true, roles: ['DOSSIER_MANAGER'], freeTask: true })
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await expect(page.getByTestId('task-groups')).toContainText('Mail room')
+  await page.getByTestId('reassign-group-select').selectOption('JURIDIQUE')
+  const reassign = page.waitForRequest(
+    (r) => r.method() === 'POST' && /\/tasks\/task-1\/reassign-group$/.test(new URL(r.url()).pathname),
+  )
+  await page.getByTestId('reassign-group').click()
+  expect((await reassign).postDataJSON()).toEqual({ groupCode: 'JURIDIQUE' })
+  await expect(page.getByTestId('task-groups')).toContainText('Service juridique')
 })

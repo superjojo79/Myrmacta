@@ -182,8 +182,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 |---|---|---|---|
 | 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | livré | #262 |
 | 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | livré | #264 |
-| 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | à ouvrir |
-| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | à faire | |
+| 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | #266 |
+| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | en cours | |
 | 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
@@ -227,7 +227,12 @@ Appris pendant le lot 2b :
 - `DRAFT` ne mène qu'à `OUVERT` : le passage « en cours » du démarrage ne s'applique pas à un dossier créé par un
   connecteur, d'où les deux premières étapes du tri.
 
-Prochaine action : preuves complètes du lot 2b, PR, puis lot 2c (réaffectation vers un groupe et trace). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Fait dans le lot 2c (§113 D-GROUP-REASSIGN) :
+- `ReassignTaskToGroupUseCase` et `POST .../tasks/{taskId}/reassign-group`, avec une note de trace dans le dossier.
+- `GET /api/user-group-options` ; la liste des tâches d'un lien expose `candidateGroups`.
+- Fiche dossier : groupe de la tâche, choix « Réaffecter au groupe… » pour les éditeurs.
+
+Prochaine action : preuves complètes du lot 2c, PR, puis lot 3 (fils de discussion). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves

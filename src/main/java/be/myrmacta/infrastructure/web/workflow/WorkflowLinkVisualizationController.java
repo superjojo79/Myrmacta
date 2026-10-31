@@ -10,6 +10,7 @@ import be.myrmacta.domain.workflow.port.in.GetWorkflowHistoryUseCase;
 import be.myrmacta.domain.workflow.port.in.GetWorkflowLinkDossierUseCase;
 import be.myrmacta.domain.workflow.port.in.GetWorkflowTasksUseCase;
 import be.myrmacta.domain.workflow.port.in.ListAssignableUsersUseCase;
+import be.myrmacta.domain.workflow.port.in.ReassignTaskToGroupUseCase;
 import be.myrmacta.domain.workflow.port.in.ReassignWorkflowTaskUseCase;
 import be.myrmacta.infrastructure.web.ListSorts;
 import be.myrmacta.infrastructure.web.PageQueryParser;
@@ -39,6 +40,7 @@ class WorkflowLinkVisualizationController {
     private final ReassignWorkflowTaskUseCase reassignUseCase;
     private final ClaimWorkflowTaskUseCase claimUseCase;
     private final ListAssignableUsersUseCase assignableUsersUseCase;
+    private final ReassignTaskToGroupUseCase reassignToGroupUseCase;
     private final AccessContextFactory accessContextFactory;
 
     WorkflowLinkVisualizationController(
@@ -49,6 +51,7 @@ class WorkflowLinkVisualizationController {
             ReassignWorkflowTaskUseCase reassignUseCase,
             ClaimWorkflowTaskUseCase claimUseCase,
             ListAssignableUsersUseCase assignableUsersUseCase,
+            ReassignTaskToGroupUseCase reassignToGroupUseCase,
             AccessContextFactory accessContextFactory) {
         this.getDiagramUseCase = getDiagramUseCase;
         this.getHistoryUseCase = getHistoryUseCase;
@@ -57,6 +60,7 @@ class WorkflowLinkVisualizationController {
         this.reassignUseCase = reassignUseCase;
         this.claimUseCase = claimUseCase;
         this.assignableUsersUseCase = assignableUsersUseCase;
+        this.reassignToGroupUseCase = reassignToGroupUseCase;
         this.accessContextFactory = accessContextFactory;
     }
 
@@ -129,6 +133,26 @@ class WorkflowLinkVisualizationController {
         claimUseCase.claim(linkId, taskId, accessContextFactory.user(authentication));
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * TODO §113 (D-GROUP-REASSIGN) — réaffecter la tâche à un autre groupe (éditeurs du dossier). {@code @Transactional} :
+     * tâche, groupe du lien et note de trace changent ensemble.
+     */
+    @PostMapping("/tasks/{taskId}/reassign-group")
+    @Transactional
+    ResponseEntity<Void> reassignToGroup(
+            @PathVariable UUID linkId,
+            @PathVariable String taskId,
+            @RequestBody ReassignTaskToGroupRequest request,
+            Authentication authentication) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body is required");
+        }
+        reassignToGroupUseCase.reassign(linkId, taskId, request.groupCode(), accessContextFactory.user(authentication));
+        return ResponseEntity.noContent().build();
+    }
+
+    record ReassignTaskToGroupRequest(String groupCode) {}
 
     /** Utilisateurs connus pouvant modifier le dossier du lien (D-ASSIGN-DIR) — TA/WA. */
     @GetMapping("/assignable-users")

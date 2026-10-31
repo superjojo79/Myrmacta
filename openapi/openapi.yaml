@@ -482,6 +482,32 @@ paths:
       responses:
         "200":
           description: OK
+  /api/workflow-links/{linkId}/tasks/{taskId}/reassign-group:
+    post:
+      tags:
+      - workflow-link-visualization-controller
+      operationId: reassignToGroup
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReassignTaskToGroupRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
   /api/workflow-links/{linkId}/tasks/{taskId}/claim:
     post:
       tags:
@@ -2533,6 +2559,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/DirectoryUserResponse"
+  /api/user-group-options:
+    get:
+      tags:
+      - user-group-options-controller
+      operationId: listUserGroupOptions
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserGroupOptionResponse"
   /api/task-question-schemas/{schemaKey}/runtime:
     get:
       tags:
@@ -3944,6 +3984,11 @@ components:
       properties:
         assigneeId:
           type: string
+    ReassignTaskToGroupRequest:
+      type: object
+      properties:
+        groupCode:
+          type: string
     BpmnDeploymentResultResponse:
       type: object
       properties:
@@ -5179,6 +5224,10 @@ components:
           format: date-time
         formKey:
           type: string
+        candidateGroups:
+          type: array
+          items:
+            type: string
     IncidentResponse:
       type: object
       properties:
@@ -5434,6 +5483,13 @@ components:
         displayName:
           type: string
         email:
+          type: string
+    UserGroupOptionResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
           type: string
     PageResponseTaskQuestionSchemaResponse:
       type: object

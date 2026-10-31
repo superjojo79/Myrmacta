@@ -22,6 +22,7 @@ import {
   getWorkflowTasks,
   reassignWorkflowTask,
   claimWorkflowTask,
+  reassignWorkflowTaskToGroup,
   listAssignableUsers,
 } from '@/api/workflows'
 import { completeTask } from '@/api/tasks'
@@ -301,6 +302,13 @@ export const useDossierStore = defineStore('dossier', () => {
     await loadVisualization(linkId)
   }
 
+  /** TODO §113 — la note de trace s'ajoute aux éléments du dossier : on recharge aussi la liste. */
+  async function reassignToGroup(linkId: string, taskId: string, groupCode: string): Promise<void> {
+    await reassignWorkflowTaskToGroup(linkId, taskId, groupCode)
+    await loadVisualization(linkId)
+    await loadElementsPage(elementsPage.value)
+  }
+
   async function loadAssignableUsers(linkId: string): Promise<void> {
     assignableUsers.value = await listAssignableUsers(linkId)
   }
@@ -344,6 +352,7 @@ export const useDossierStore = defineStore('dossier', () => {
     complete,
     reassign,
     claim,
+    reassignToGroup,
     assignableUsers,
     loadAssignableUsers,
     loadVisualization,

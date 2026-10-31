@@ -58,3 +58,14 @@ export async function listUserDirectory(): Promise<DirectoryUser[]> {
   const { data } = await axios.get<DirectoryUser[]>(`${base}/directory`)
   return data
 }
+
+/** TODO §113 (D-GROUP-REASSIGN) — codes et libellés des groupes, lisibles par tout utilisateur connecté. */
+export interface UserGroupOption {
+  code: string
+  label: string
+}
+
+export async function listUserGroupOptions(): Promise<UserGroupOption[]> {
+  const { data } = await axios.get<UserGroupOption[]>('/api/user-group-options')
+  return data
+}

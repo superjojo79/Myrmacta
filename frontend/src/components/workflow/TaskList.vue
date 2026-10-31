@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { ref } from 'vue'
 import type { WorkflowTaskView } from '@/api/types'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
@@ -14,6 +15,8 @@ const props = defineProps<{
   /** Noms affichés par identifiant d'utilisateur (annuaire local), quand ils sont connus. */
   assigneeNames?: Record<string, string>
   totalPages?: number
+  /** TODO §113 — groupes vers lesquels un éditeur peut réaffecter une tâche (code, libellé). */
+  groupOptions?: { code: string; label: string }[]
 }>()
 
 const page = defineModel<number>('page', { default: 0 })
@@ -22,9 +25,21 @@ const emit = defineEmits<{
   complete: [taskId: string, variables?: Record<string, unknown>]
   reassign: [taskId: string]
   claim: [taskId: string]
+  reassignGroup: [taskId: string, groupCode: string]
 }>()
 
 const { t } = useI18n()
+
+const selectedGroup = ref<Record<string, string>>({})
+
+function groupLabels(codes: string[] | undefined): string {
+  return (codes ?? []).map((code) => props.groupOptions?.find((option) => option.code === code)?.label ?? code).join(', ')
+}
+
+function reassignGroup(taskId: string) {
+  const code = selectedGroup.value[taskId]
+  if (code) emit('reassignGroup', taskId, code)
+}
 
 function assigneeLabel(assignee: string | null): string {
   if (!assignee) return '—'
@@ -42,6 +57,9 @@ function assigneeLabel(assignee: string | null): string {
         <div>
           <strong>{{ task.name || task.taskId }}</strong>
           <span class="task-list__meta">{{ t('workflow.tasks.assignee', { name: assigneeLabel(task.assignee) }) }}</span>
+          <span v-if="task.candidateGroups?.length" class="task-list__meta" data-testid="task-groups">
+            {{ t('workflow.tasks.groups', { groups: groupLabels(task.candidateGroups) }) }}
+          </span>
         </div>
         <div class="task-list__actions">
           <component
@@ -75,6 +93,25 @@ function assigneeLabel(assignee: string | null): string {
           >
             {{ t('workflow.tasks.reassign') }}
           </button>
+          <template v-if="canClaim && groupOptions?.length">
+            <select
+              v-model="selectedGroup[task.taskId]"
+              :aria-label="t('workflow.tasks.groupChoice')"
+              data-testid="reassign-group-select"
+            >
+              <option value="">{{ t('workflow.tasks.groupChoice') }}</option>
+              <option
+                v-for="option in groupOptions.filter((o) => !(task.candidateGroups ?? []).includes(o.code))"
+                :key="option.code"
+                :value="option.code"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+            <button type="button" data-testid="reassign-group" @click="reassignGroup(task.taskId)">
+              {{ t('workflow.tasks.reassignGroup') }}
+            </button>
+          </template>
         </div>
       </li>
     </ul>
@@ -101,7 +138,9 @@ function assigneeLabel(assignee: string | null): string {
 }
 .task-list__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
+  align-items: center;
 }
 button {
   border: 1px solid #b7b7ba;

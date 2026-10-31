@@ -108,6 +108,7 @@ const pilotage: typeof fr = {
       complete: 'Unable to complete',
       reassign: 'Unable to reassign',
       claim: 'Unable to take the task',
+      reassignGroup: 'Unable to reassign the task',
       assignableUsers: 'User list unavailable',
     },
   },

@@ -3,6 +3,7 @@ package be.myrmacta.domain.workflow.port.out;
 import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.ActivityHistoryEntry;
+import be.myrmacta.domain.workflow.model.TaskGroupReassignment;
 import be.myrmacta.domain.workflow.model.WorkflowDiagramView;
 import be.myrmacta.domain.workflow.model.WorkflowTaskView;
 
@@ -25,4 +26,10 @@ public interface WorkflowVisualizationPort {
      * si quelqu'un d'autre l'a prise, y compris dans une course entre deux prises simultanées.
      */
     void claimTask(String processInstanceId, String taskId, String userId, String tenantId);
+
+    /**
+     * TODO §113 (D-GROUP-REASSIGN) — retire l'assigné et les groupes candidats de la tâche, puis la rend candidate pour
+     * {@code groupCode} seul. Renvoie l'état d'avant, pour la trace.
+     */
+    TaskGroupReassignment reassignTaskToGroup(String processInstanceId, String taskId, String groupCode, String tenantId);
 }

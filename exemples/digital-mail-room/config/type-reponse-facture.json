@@ -1,0 +1,17 @@
+{
+  "code": "REPONSE_FACTURE",
+  "label": "Réponse à une facture",
+  "workflowKey": "traiterReponse",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "suite",
+      "label": "Suite donnée",
+      "type": "STRING",
+      "required": false,
+      "group": "Réponse",
+      "width": "FULL"
+    }
+  ]
+}

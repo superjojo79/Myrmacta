@@ -430,9 +430,10 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Quinze briques, chacune = **un seul
+palette, le panneau, la validation au déploiement et les agents. Dix-sept briques, chacune = **un seul
 élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
-quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies) :
+quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies), dix-sept avec
+« Router le courrier » et « Rattacher au fil » (TODO §113) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -441,8 +442,8 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Appeler un connecteur | `serviceTask` | `${connectorServiceTask}` |
 | Notifier | `serviceTask` | `${notificationDispatchTask}` |
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
-| Router le courrier | `serviceTask` | `${attachToThreadTask}` | rattache une réponse au dossier de son fil (§« Rattacher une réponse à son fil ») | variables `mail*` posées par le connecteur ; `dossierId` (réservée) | `filResultat` (`RATTACHE` ou `NOUVEAU`), `filDossierId`, `filDossierReference`, `filMotif` ; lien, pièces copiées, message `courrierRecu` au dossier du fil |
-| `${routeMailTask}` |
+| Rattacher au fil | `serviceTask` | `${attachToThreadTask}` |
+| Router le courrier | `serviceTask` | `${routeMailTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
@@ -724,7 +725,7 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
 - **Ouvrir le courrier.** Un courrier créé par un connecteur naît `DRAFT` : ouvrez-le (`OUVERT`), puis mettez-le en cours
   (`EN_COURS`) avant de pouvoir le clôturer.
 
-### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lot 3a)
+### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lots 3a et 3b)
 
 - **Rattacher au fil.** La brique **Rattacher au fil** (`${attachToThreadTask}`, sans paramètre) se place en tête du tri, avant
   la table de routage.
@@ -758,6 +759,23 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   Sans attente modélisée, rien ne se perd : la réponse est rangée dans le dossier, et ses participants sont prévenus.
 - **E-mails envoyés.** Les e-mails de « Notifier » partis d'un dossier sont inscrits dans l'index par leur Message-ID : une
   réponse du destinataire rejoint ce dossier.
+- **Workflow « réponse » du type (lot 3b, D-MAILROOM-REPLY-WORKFLOW).** Le type du dossier du fil peut déclarer un process
+  à lancer à chaque réponse rattachée (Admin → Types de dossier, panneau « Workflow réponse », ou
+  `PUT /api/dossier-types/{code}/reply-workflow`). Un dossier ne porte qu'un workflow actif à la fois : on choisit donc l'un
+  de deux modes.
+  - **`SUR_DOSSIER`** : le process démarre sur le dossier du fil, seulement si aucun process n'y tourne (un dossier traité,
+    pas encore clôturé, que la réponse relance). Si un process tourne, il faut modéliser l'attente `courrierRecu` ci-dessus.
+  - **`DOSSIER_ENFANT`** : chaque réponse ouvre un dossier enfant (`PARENT_CHILD`, libellé « Réponse <référence> ») du type
+    déclaré, où le process démarre, en parallèle du process métier. Le type enfant ne doit pas avoir de champ obligatoire
+    sans valeur par défaut, et la configuration du workflow doit accepter le statut `OUVERT`.
+  - **Le process reçoit** `courrierId` et `courrierReference`. S'il déclare ses variables de démarrage (§111), il doit
+    déclarer ces deux-là.
+  - **Variables posées dans le tri, après un rattachement :** `filReponseWorkflow` vaut `AUCUN` (le type n'en déclare pas),
+    `DEMARRE_SUR_DOSSIER`, `DEMARRE_SUR_ENFANT` (avec
+    `filReponseDossierId`) ou `NON` (avec la raison dans `filReponseMotif` : process non déployé, process déjà actif,
+    statut refusé…). Le rattachement a lieu dans tous les cas.
+  - Exemple : [`traiter-reponse.bpmn20.xml`](../../exemples/digital-mail-room/traiter-reponse.bpmn20.xml) et
+    [`config/reponse-facture.json`](../../exemples/digital-mail-room/config/reponse-facture.json).
 
 ## 4. Instancier / appeler un service externe
 

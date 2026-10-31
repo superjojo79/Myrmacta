@@ -1,0 +1,6 @@
+{
+  "_commentaire": "Workflow « réponse » du type FACTURE (PUT /api/dossier-types/FACTURE/reply-workflow) : chaque réponse rattachée ouvre un dossier enfant REPONSE_FACTURE où démarre traiterReponse, en parallèle du traitement de la facture.",
+  "mode": "DOSSIER_ENFANT",
+  "workflowKey": "traiterReponse",
+  "childTypeCode": "REPONSE_FACTURE"
+}

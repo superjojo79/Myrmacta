@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 044-dossier-type-reply-workflow
+      author: flowforge
+      comment: >-
+        TODO §113 (D-MAILROOM-REPLY-WORKFLOW) — workflow « réponse » d'un type de dossier : mode (SUR_DOSSIER si aucun process
+        actif, ou DOSSIER_ENFANT), clé du workflow, type du dossier enfant. Un réglage par type au plus. Rangé à part du type.
+      changes:
+        - createTable:
+            tableName: dossier_type_reply_workflow
+            columns:
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: dossier_type_code, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: mode, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: workflow_key, type: varchar(255), constraints: {nullable: false}}
+              - column: {name: child_type_code, type: varchar(64)}
+        - addPrimaryKey:
+            tableName: dossier_type_reply_workflow
+            columnNames: tenant_id, dossier_type_code
+            constraintName: pk_dossier_type_reply_workflow

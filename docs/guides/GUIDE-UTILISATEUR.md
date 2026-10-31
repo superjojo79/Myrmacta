@@ -138,6 +138,17 @@ une minuscule, puis lettres, chiffres ou `_` ; une clé invalide ou en double bl
 **sensible** n'est jamais lu par une pré-vérification automatique. Retirer un type ne supprime aucune pièce : celles de ce
 type redeviennent *Non classées*.
 
+**Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
+un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :
+
+- **Aucun workflow** (défaut) : la réponse est rangée dans le dossier, et ses participants sont prévenus ;
+- **Sur le dossier (si aucun process actif)** : le process choisi démarre sur ce dossier, seulement si aucun process n'y tourne déjà ;
+- **Dans un dossier enfant** : chaque réponse ouvre un dossier enfant du **type enfant** choisi, où le process démarre.
+
+Le bouton **Enregistrer la réponse** valide le réglage. Un process sans configuration de workflow, ou un type
+enfant inconnu, est refusé avec un message. Ce réglage n'est pas encore transporté par la promotion de configuration
+entre environnements : il faut le reposer sur l'environnement cible.
+
 ### Rétention (conformité RGPD)
 
 En haut du même écran **Admin → Types**, deux réglages distincts de la politique de rétention :

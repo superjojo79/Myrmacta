@@ -225,6 +225,34 @@ class FlowableBpmnParserAdapterBlockTest {
         assertRefused("<serviceTask id=\"act\" flowable:type=\"dmn\" flowable:formula=\"1\"/>", "formula");
     }
 
+    // ---- TODO §112 (D-ORCH-REQUEST) : la requête d'un connecteur construite dans le BPMN ---------------------------------
+
+    private static String connectorRequest(String expression) {
+        return service("connectorServiceTask", "flowable:connectorInstanceId=\"" + UUID.randomUUID()
+                + "\" flowable:connectorRequest=\"" + expression + "\"");
+    }
+
+    @Test
+    void aValidConnectorRequestIsAccepted() {
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(connectorRequest(
+                        "{'method': 'POST', 'path': '/users/{id}', 'pathParams': {'id': dossier.fields.login},&#10;"
+                                + " 'body': {'name': dossier.fields.nom}}"))))
+                .isEqualTo("testProcess");
+    }
+
+    @Test
+    void anInvalidConnectorRequestIsRefusedAtDeploymentWithTheActivity() {
+        assertRefused(connectorRequest("{'method': }"), "connectorRequest");
+        assertRefused(connectorRequest("{'method': }"), "act");
+        assertRefused(connectorRequest("$eval('1')"), "$eval");
+        assertRefused(connectorRequest("${x}"), "connectorRequest");
+    }
+
+    @Test
+    void aConnectorRequestOnAnotherServiceTaskIsRefused() {
+        assertRefused(service("updateDossierStatusTask", "flowable:connectorRequest=\"{}\""), "connectorRequest");
+    }
+
     // ---- TODO §78 (D3b) : la brique « Enregistrer des valeurs dans le dossier » ------------------------------------------
 
     private static String mapping(String lines) {

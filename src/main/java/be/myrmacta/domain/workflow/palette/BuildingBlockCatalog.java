@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
@@ -41,7 +41,13 @@ public final class BuildingBlockCatalog {
                     "Appelle une instance de connecteur configurée en rôle service.",
                     BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.delegate("connectorServiceTask"),
                     reference("connectorInstanceId", "Connecteur", true, "connectorInstances",
-                            "Instance de connecteur (rôle service). Les données envoyées restent la variable connectorInput.")),
+                            "Instance de connecteur (rôle service)."),
+                    // TODO §112 (D-ORCH-REQUEST) — requête construite dans le BPMN, jamais par une variable saisie.
+                    text("connectorRequest", "Requête", 2000,
+                            "Expression métier (JSONata borné) qui produit la requête, ex. {'method': 'POST', 'path': "
+                                    + "'/users/{id}', 'pathParams': {'id': dossier.fields.login}, 'body': {'nom': "
+                                    + "dossier.fields.nom}}. Racine : dossier, connectorResult (+ json), variables, now. "
+                                    + "Prime sur la variable connectorInput (facultatif).")),
             block("notify", "Notifier",
                     "Envoie une notification par e-mail, webhook ou navigateur.",
                     BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.delegate("notificationDispatchTask"),

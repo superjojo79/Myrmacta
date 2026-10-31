@@ -130,6 +130,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 109 | [Fournisseurs de signature Yousign et DocuSign](109-fournisseurs-de-signature-yousign-et-docusign.md) | clos | — |
 | 110 | [Runner GitHub Actions auto-hébergé](110-runner-github-actions-auto-heberge.md) | clos | — |
 | 111 | [Variables de démarrage déclarées dans le BPMN](111-variables-de-demarrage-declarees.md) | clos | — |
+| 112 | [Orchestration technique : requête construite par le BPMN, `http-rest` « service seul » avec URL de base](112-orchestration-technique-requete-construite-par-le-bpmn.md) | clos | — |
 
 ## Sections de l'ancien registre
 

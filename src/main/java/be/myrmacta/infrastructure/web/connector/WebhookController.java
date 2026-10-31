@@ -88,6 +88,9 @@ class WebhookController {
         ConnectorInstanceData instance = instances
                 .findByIdAndTenantId(instanceId, tenantProperties.id())
                 .filter(ConnectorInstanceData::enabled)
+                // TODO §112 (D-ORCH-SERVICE-ONLY) : une instance « service seul » n'a pas de webhook entrant — même
+                // réponse qu'une instance inconnue, avant toute authentification.
+                .filter(ConnectorInstanceData::acceptsWebhooks)
                 .orElseThrow(() -> new WebhookEndpointNotFoundException(instanceId));
 
         WebhookAuthType authType = authType(instance.config());

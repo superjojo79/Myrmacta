@@ -305,9 +305,9 @@ class HttpRestConnectorTest {
     @Test
     void execute_unsupportedMethod_throwsWithoutCallingHttpClient() {
         assertThatThrownBy(() -> connector.execute(
-                        SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "DELETE")))
+                        SERVICE_INSTANCE, Map.of("url", "https://example.com/hook", "method", "PATCH")))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("DELETE");
+                .hasMessageContaining("PATCH");
 
         assertThat(httpSender.last).isNull();
     }
@@ -448,6 +448,172 @@ class HttpRestConnectorTest {
         assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("maxResponseBytes");
+    }
+
+    // --- TODO §112 (issue #260) : orchestration technique ---
+
+    private static final ConnectorInstanceData BASE_URL_INSTANCE = new ConnectorInstanceData(
+            UUID.randomUUID(), "tenant_dev", "sirh", "http-rest", true,
+            Map.of("baseUrl", "https://api.example.com/v1/", "webhookEnabled", false, "authHeaderValue", "Bearer t"));
+
+    @Test
+    void execute_delete_isSupportedWithoutBody() throws Exception {
+        httpSender.stub(204, "");
+
+        Map<String, Object> result =
+                connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/users/1", "method", "delete"));
+
+        assertThat(httpSender.last.method()).isEqualTo("DELETE");
+        assertThat(httpSender.last.body()).isEmpty();
+        assertThat(result.get("status")).isEqualTo(204);
+    }
+
+    @Test
+    void execute_bodyOnDelete_throwsWithoutCallingHttpClient() {
+        assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE,
+                        Map.of("url", "https://example.com/users/1", "method", "DELETE", "body", Map.of("a", 1))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("DELETE");
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_baseUrl_joinsRelativePath() throws Exception {
+        connector.execute(BASE_URL_INSTANCE, Map.of("method", "POST", "path", "/employees", "body", Map.of("a", 1)));
+
+        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/v1/employees");
+        assertThat(httpSender.last.headers()).containsEntry("Host", "api.example.com")
+                .containsEntry("Authorization", "Bearer t");
+    }
+
+    @Test
+    void execute_baseUrl_withoutPath_callsBaseUrl() throws Exception {
+        connector.execute(BASE_URL_INSTANCE, Map.of());
+
+        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/v1");
+    }
+
+    @Test
+    void execute_baseUrl_pathParamsAreEncodedAsOneSegment() throws Exception {
+        connector.execute(BASE_URL_INSTANCE, Map.of(
+                "method", "DELETE",
+                "path", "/users/{login}/groups/{group}",
+                "pathParams", Map.of("login", "jean dupont/../admin?x=1#f", "group", 42L)));
+
+        assertThat(httpSender.last.url()).isEqualTo(
+                "https://93.184.216.34/v1/users/jean%20dupont%2F..%2Fadmin%3Fx%3D1%23f/groups/42");
+    }
+
+    @Test
+    void execute_queryParametersAreEncoded() throws Exception {
+        Map<String, Object> query = new java.util.LinkedHashMap<>();
+        query.put("$filter", "Name eq 'A&B'");
+        query.put("top", 5.0);
+        query.put("tag", List.of("x", "y z"));
+        connector.execute(BASE_URL_INSTANCE, Map.of("path", "/vendors", "query", query));
+
+        assertThat(httpSender.last.url()).isEqualTo(
+                "https://93.184.216.34/v1/vendors?$filter=Name%20eq%20'A%26B'&top=5&tag=x&tag=y%20z");
+    }
+
+    @Test
+    void execute_queryAppendedToLegacyUrlWithExistingQuery() throws Exception {
+        connector.execute(SERVICE_INSTANCE, Map.of("url", "https://example.com/hook?a=1", "query", Map.of("b", "2")));
+
+        assertThat(httpSender.last.url()).isEqualTo("https://93.184.216.34/hook?a=1&b=2");
+    }
+
+    @Test
+    void execute_baseUrl_refusesAbsoluteUrl() {
+        assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, Map.of("url", "https://evil.example.org/x")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("baseUrl");
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_baseUrl_refusesPathsThatCouldLeaveTheBase() {
+        for (String path : List.of("employees", "//evil.example.org/x", "/a/../b", "/a/%2e%2E/b", "/./a", "/a?x=1",
+                "/a#f", "/a\\b", "/a b", "/a/{unknown}", "/a/{", "/a%zz")) {
+            assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE, Map.of("path", path)))
+                    .as(path)
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_baseUrl_refusesDotSegmentOrEmptyPathParam() {
+        for (Object value : List.of("..", ".", "")) {
+            assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE,
+                            Map.of("path", "/users/{id}", "pathParams", Map.of("id", value))))
+                    .as(String.valueOf(value))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE,
+                        Map.of("path", "/users/{id}", "pathParams", Map.of("id", Map.of("a", 1)))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> connector.execute(BASE_URL_INSTANCE,
+                        Map.of("path", "/users", "pathParams", Map.of("id", "1"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("id");
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void execute_withoutBaseUrl_refusesPath() {
+        assertThatThrownBy(() -> connector.execute(SERVICE_INSTANCE, Map.of("path", "/employees")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("baseUrl");
+        assertThat(httpSender.last).isNull();
+    }
+
+    @Test
+    void validate_serviceOnly_doesNotRequireWebhookFields() {
+        connector.validate(Map.of("webhookEnabled", false, "baseUrl", "https://api.example.com/v1"));
+        connector.validate(Map.of("webhookEnabled", "false"));
+    }
+
+    @Test
+    void validate_webhookEnabledByDefault_stillRequiresWebhookFields() {
+        assertThatThrownBy(() -> connector.validate(Map.of("baseUrl", "https://api.example.com")))
+                .isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("webhookAuthType");
+        assertThatThrownBy(() -> connector.validate(Map.of("webhookEnabled", true)))
+                .isInstanceOf(ConnectorValidationException.class);
+    }
+
+    @Test
+    void validate_rejectsUnsafeOrAmbiguousBaseUrl() {
+        for (String url : List.of("http://api.example.com", "https://127.0.0.1/x", "https://api.example.com/v1?a=1",
+                "https://api.example.com/v1#f", "https://user:pw@api.example.com", "ftp://api.example.com",
+                "not a url")) {
+            assertThatThrownBy(() -> connector.validate(Map.of("webhookEnabled", false, "baseUrl", url)))
+                    .as(url)
+                    .isInstanceOf(ConnectorValidationException.class)
+                    .hasMessageContaining("baseUrl");
+        }
+    }
+
+    @Test
+    void validate_rejectsUnknownWebhookEnabledValue() {
+        assertThatThrownBy(() -> connector.validate(Map.of("webhookEnabled", "maybe")))
+                .isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("webhookEnabled");
+    }
+
+    @Test
+    void configSchema_declaresBaseUrlAndWebhookEnabled() {
+        assertThat(connector.getConfigSchema()).filteredOn(f -> f.name().equals("baseUrl"))
+                .singleElement().satisfies(f -> {
+                    assertThat(f.type()).isEqualTo(ConfigFieldType.URL);
+                    assertThat(f.required()).isFalse();
+                });
+        assertThat(connector.getConfigSchema()).filteredOn(f -> f.name().equals("webhookEnabled"))
+                .singleElement().satisfies(f -> {
+                    assertThat(f.type()).isEqualTo(ConfigFieldType.BOOLEAN);
+                    assertThat(f.defaultValue()).isEqualTo("true");
+                });
     }
 
     private static ConnectorInstanceData instance(Map<String, Object> config) {

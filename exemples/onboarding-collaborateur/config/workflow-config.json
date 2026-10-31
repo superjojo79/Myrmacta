@@ -1,0 +1,15 @@
+{
+  "processDefinitionKey": "onboardingCollaborateur",
+  "label": "Arrivée d'un collaborateur",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": ["OUVERT", "EN_COURS", "CLOTURE"],
+  "statusDefinitions": [
+    { "code": "EN_VALIDATION", "label": "En validation par le manager", "initial": true, "outcome": "NONE" },
+    { "code": "EN_PROVISIONING", "label": "Création des comptes en cours", "initial": false, "outcome": "NONE" },
+    { "code": "EN_INCIDENT", "label": "Incident technique à traiter", "initial": false, "outcome": "NONE" },
+    { "code": "PROVISIONNE", "label": "Collaborateur provisionné", "initial": false, "outcome": "COMPLETED" },
+    { "code": "REFUSE", "label": "Refusé par le manager", "initial": false, "outcome": "CANCELLED" },
+    { "code": "ANNULE", "label": "Abandonné, créations annulées", "initial": false, "outcome": "CANCELLED" }
+  ],
+  "_xml": "onboarding-collaborateur.bpmn20.xml"
+}

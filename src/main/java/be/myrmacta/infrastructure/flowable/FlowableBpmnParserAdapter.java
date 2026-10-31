@@ -58,6 +58,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
 
     /** TODO §75 — la syntaxe d'une formule (brique « Évaluer une expression ») est une règle de forme : refusée au parseur. */
     private static final String EXPRESSION_DELEGATE = "businessExpressionTask";
+    private static final String CONNECTOR_DELEGATE = "connectorServiceTask";
 
     private final ExpressionEnginePort expressionEngine;
 
@@ -158,18 +159,22 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
 
     /** TODO §75 — la formule d'une brique « Évaluer une expression » doit être valide (syntaxe et constructions permises). */
     private void assertBusinessExpression(FlowElement element) {
-        if (!EXPRESSION_DELEGATE.equals(blockDelegate(element))) {
+        String delegate = blockDelegate(element);
+        // TODO §112 (D-ORCH-REQUEST) : la requête d'un connecteur est une expression du même langage, même contrôle.
+        String attribute = EXPRESSION_DELEGATE.equals(delegate) ? "formula"
+                : CONNECTOR_DELEGATE.equals(delegate) ? "connectorRequest" : null;
+        if (attribute == null) {
             return;
         }
-        String formula = flowableAttributes(element).get("formula");
-        if (formula == null) {
-            return; // déjà refusé par BlockAttributeRules (attribut obligatoire)
+        String expression = flowableAttributes(element).get(attribute);
+        if (expression == null) {
+            return; // formule : déjà refusée par BlockAttributeRules (obligatoire) ; requête : facultative
         }
         try {
-            expressionEngine.validate(formula.strip());
+            expressionEngine.validate(expression.strip());
         } catch (InvalidExpressionException e) {
             throw new InvalidBpmnException(
-                    "BPMN attribute flowable:formula on " + element.getId() + " is invalid: " + e.getMessage());
+                    "BPMN attribute flowable:" + attribute + " on " + element.getId() + " is invalid: " + e.getMessage());
         }
     }
 

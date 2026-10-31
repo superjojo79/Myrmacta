@@ -726,6 +726,63 @@ Variables lues par `connectorServiceTask` :
 Variable écrite : `connectorResult` (`Map<String, Object>`, uniquement si le résultat n'est pas
 vide) — à lire dans les tâches suivantes du même processus.
 
+### Construire la requête dans le BPMN : `flowable:connectorRequest` (TODO §112, issue #260)
+
+`connectorInput` ne vient que d'une variable : posée au démarrage ou à la complétion d'une tâche, donc par un utilisateur.
+Pour appeler une API avec des données du dossier ou la réponse d'un appel précédent, la brique « Appeler un connecteur »
+accepte un attribut **littéral** `flowable:connectorRequest` : une expression métier bornée (JSONata, même langage, même
+racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sensibles, `connectorResult` avec `json`,
+`variables`, `now`) qui produit **un objet**, passé tel quel au connecteur.
+
+```xml
+<serviceTask id="appelIam" name="Créer le compte IAM" flowable:delegateExpression="${connectorServiceTask}"
+    flowable:async="true" flowable:connectorInstanceId="7d1c…"
+    flowable:connectorRequest="{'method': 'POST', 'path': '/users', 'headers': {'Content-Type': 'application/json'},
+      'body': {'username': dossier.fields.login, 'employeeNumber': dossier.fields.matriculeSirh}}"/>
+```
+
+- **Il prime sur la variable `connectorInput`**, qui est alors ignorée. Il n'est jamais lu depuis une variable, est validé au
+  déploiement (syntaxe, fonctions permises, 2 000 caractères, sans `${`) et revalidé à l'exécution.
+- Le résultat doit être un objet : un texte, une liste ou une expression sans valeur fait échouer l'activité en la nommant.
+  Une clé dont la valeur est absente (champ vide ou **sensible**) disparaît de l'objet : un champ sensible n'est jamais envoyé.
+- Les apostrophes délimitent les textes JSONata (`'POST'`) : pas besoin d'échapper des guillemets dans l'attribut XML.
+  Un retour à la ligne est permis (zone de texte multiligne dans l'éditeur).
+
+Entrée lue par `http-rest` en rôle SERVICE :
+
+| Clé | Rôle |
+|---|---|
+| `method` | `GET` (défaut), `POST`, `PUT`, `DELETE`. `PATCH` : issue [#261](https://github.com/superjojo79/Myrmacta/issues/261) |
+| `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `..`, `?`, `#`, espace ni `\`. Peut contenir des marqueurs `{nom}` |
+| `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a/../b` devient `a%2F..%2Fb`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni `.` ou `..`. 20 au plus |
+| `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |
+| `headers` | En-têtes (le `Host` fourni est ignoré ; en mode OAuth2, l'`Authorization` fourni aussi) |
+| `body` | Corps : un objet est envoyé en JSON (ajouter `Content-Type` dans `headers`), un texte tel quel. Refusé pour `GET` et `DELETE` |
+| `url` | URL absolue : **seulement** pour une instance sans `baseUrl` (comportement d'avant) ; refusée sinon |
+
+Le résultat reste `connectorResult = {status, body}` : un statut HTTP en erreur **ne fait pas échouer** l'activité. Le
+processus le contrôle (brique « Évaluer une expression » : `connectorResult.status >= 200 and connectorResult.status < 300`)
+et route vers une validation humaine. Une panne réseau ou un délai dépassé, en revanche, fait échouer l'activité : rendre
+l'appel **asynchrone** (`flowable:async="true"`) pour qu'elle devienne un incident rejouable sans bloquer l'utilisateur qui a
+complété la tâche précédente.
+
+### Orchestration technique : plusieurs applications et des validations humaines
+
+Schéma type, livré et rejoué par un test dans [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md) :
+
+1. une instance `http-rest` **par application**, « service seul » (`webhookEnabled` décoché) et avec `baseUrl` ;
+2. pour chaque appel : « Appeler un connecteur » (asynchrone, `connectorRequest`), « Évaluer une expression » sur le statut,
+   passerelle ; en cas de succès, « Enregistrer des valeurs dans le dossier » recopie les identifiants rendus
+   (`matriculeSirh = connectorResult.json.id`). L'appel suivant les relit dans `dossier.fields` : le dossier sert de journal,
+   visible par la personne qui valide ;
+3. les validations sont des `user-question` dont la réponse oriente une passerelle (approuver, corriger, refuser ; accès
+   étendus ou non) ;
+4. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur ce
+   qui a été créé.
+
+Réessayer rejoue la requête : prévoir côté application une clé d'idempotence ou une recherche préalable si un `POST` a pu
+aboutir malgré une réponse en erreur.
+
 Avec `document-storage`, `RETRIEVE`, `EXISTS` et `DELETE` n'acceptent que ce que le connecteur a stocké (`STORE`) pour le
 dossier du process, dans ce workflow ou un autre du même dossier. Une pièce du dossier se lit par les pièces jointes, pas
 par ce connecteur (TODO §101).
@@ -943,7 +1000,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${updateWorkflowLinkStatusTask}` | change le statut métier de l'exécution courante (`DossierWorkflowLink.status`, validé contre `WorkflowTypeConfig.statusDefinitions`) | `dossierWorkflowLinkId` (réservée), `targetWorkflowStatus` (code déclaré dans la config workflow) | — |
 | `${documentGenerationTask}` | génère un PDF depuis un template | `documentType`, `documentVariant`?, `documentLocale`?, + toute variable utile au template | `generatedDocumentId` |
 | `${attachGeneratedDocumentTask}` | rattache le PDF généré au dossier (`DossierElement`) | `dossierId` (réservée), `generatedDocumentId` | — |
-| `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? | `connectorResult`? |
+| `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? ou attribut littéral `connectorRequest` (expression qui produit l'entrée, prime sur `connectorInput` — §4) | `connectorResult`? |
 | `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |

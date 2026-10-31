@@ -29,6 +29,10 @@ Depuis le 23 octobre, l'exemple riverain peut joindre le PDF à « Notifier »
 ([#183](https://github.com/superjojo79/FlowForge/issues/183), [§96](docs/decisions/096-piece-jointe-de-la-brique-notifier.md))
 et refuser un doublon de champ ouvert
 ([#184](https://github.com/superjojo79/FlowForge/issues/184), [§102](docs/decisions/102-unicite-d-un-champ-de-dossier.md)).
+Depuis le 31 octobre, un workflow peut orchestrer plusieurs API REST : requête construite dans le BPMN, connecteurs « service
+seul » avec URL de base, `DELETE` ; exemple « arrivée d'un collaborateur » avec validations humaines et compensation
+([#260](https://github.com/superjojo79/Myrmacta/issues/260), [§112](docs/decisions/112-orchestration-technique-requete-construite-par-le-bpmn.md)).
+`PATCH` suit ([#261](https://github.com/superjojo79/Myrmacta/issues/261)).
 
 ## Prochaines étapes
 

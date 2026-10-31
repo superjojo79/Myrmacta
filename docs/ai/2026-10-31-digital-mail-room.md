@@ -185,7 +185,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | #266 |
 | 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | #267 |
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
-| 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | en cours | |
+| 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | à ouvrir |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
@@ -258,7 +258,7 @@ Appris pendant le lot 3b :
 - La règle « un seul workflow actif par dossier » rend le mode 3 impossible tel quel sur un dossier en cours de
   traitement : d'où les deux modes.
 
-Prochaine action : preuves complètes du lot 3b, PR, puis lot 4. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Prochaine action : PR du lot 3b, puis lot 4 (échéances, point du registre à écrire). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves
@@ -282,6 +282,10 @@ runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 | 2026-10-31 | lot 3a — tests ciblés (`MailRoomExampleIT` ×3, `AttachToThreadDelegateTest`, relais, runtime, connecteur IMAP) | vert : 77 tests |
 | 2026-10-31 | lot 3a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 088 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-10-31 | lot 3a — `npm run lint && npm run test` puis `npx playwright test` | vert : 837 Vitest, 153 Playwright |
+| 2026-10-31 | lot 3b — `AttachToThreadDelegateTest`, `DossierTypeReplyWorkflowApiTest`, `MailRoomExampleIT` | vert : 7 + 2 + 3 tests ; la réponse ouvre un dossier enfant `REPONSE_FACTURE` où `traiterReponse` tourne |
+| 2026-10-31 | lot 3b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 095 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 3b — `npm run lint && npm run test` puis `npx playwright test` | vert : 841 Vitest ; Playwright 154/155 (`E2E-BASE-2`, même flake qu'au lot 2c, sous charge du `verify` ; 3/3 seul) |
+| 2026-10-31 | lot 3b — `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

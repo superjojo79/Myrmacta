@@ -14,7 +14,7 @@ Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une en
 
 Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Dossiers → filtre « Type : Courrier entrant »).
 
-État : **lots 1 à 4a** de la feature.
+État : **lots 1 à 4b** de la feature.
 
 - **Ce que fait déjà l'exemple :**
   - un e-mail devient un courrier, avec ses pièces ;
@@ -29,12 +29,13 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     - un expéditeur non attesté, ou d'un autre domaine, n'entre pas dans le fil : son courrier est routé comme un nouveau ;
   - le type « facture » déclare un **workflow réponse** (`config/reponse-facture.json`, mode `DOSSIER_ENFANT`) : chaque
     réponse rattachée ouvre un dossier enfant « réponse à la facture », où le process `traiterReponse` démarre, sans
-    toucher au process de la facture ;
+    toucher au process de la facture. Ce process fait la course « traitée ou échue » : la brique « Calculer une
+    échéance » pose l'échéance à 10 jours, et un minuteur `${echeanceDepassee}` en bordure de la tâche clôture la réponse au
+    statut « échue » si personne ne l'a traitée ;
   - le type « facture » déclare une **échéance** (`config/echeance-facture.json`) : le routage y écrit le délai de la
     table (30 jours) ; les personnes qui ont la tâche sont rappelées 5 jours avant ; le lendemain du terme, la tâche passe
     au groupe DIRECTION_FINANCIERE, avec une note dans le dossier.
 - **Ce qui viendra :**
-  - le minuteur BPMN à expression, « traité ou échu » (lot 4b) ;
   - les PDF déposés (lot 5) ;
   - les outils MCP (lot 6).
 
@@ -48,7 +49,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
 | `routage-courrier.dmn` | Table de routage `routageCourrier` (entrées `canal`, `domaineExpediteur`) |
 | `tri-courrier.bpmn20.xml` | Processus `triCourrier` : ouvrir le courrier, « Rattacher au fil », sinon préparer les entrées, table, « Router le courrier », puis routé ou « Trier le courrier » |
 | `config/type-facture.json`, `config/workflow-config-facture.json`, `traiter-facture.bpmn20.xml` | Dossier métier « facture » ouvert par le routage, et son process `traiterFacture` (attend `courrierRecu` pendant le traitement) |
-| `config/type-reponse-facture.json`, `config/workflow-config-reponse.json`, `traiter-reponse.bpmn20.xml` | Dossier enfant « réponse à la facture » et son process `traiterReponse` (une tâche, puis clôture) |
+| `config/type-reponse-facture.json`, `config/workflow-config-reponse.json`, `traiter-reponse.bpmn20.xml` | Dossier enfant « réponse à la facture » et son process `traiterReponse` (échéance à 10 jours, tâche, minuteur « échue », clôture) |
 | `config/reponse-facture.json` | Workflow réponse du type FACTURE (corps de `PUT /api/dossier-types/FACTURE/reply-workflow`, sans `_commentaire`) |
 | `config/echeance-facture.json` | Échéance du type FACTURE : champ `echeance`, rappel J-5, escalade à DIRECTION_FINANCIERE (corps de `PUT /api/dossier-types/FACTURE/deadline`, sans `_commentaire`) |
 | `config/connecteur-imap.exemple.json` | Connecteur `imap-inbound` vers une boîte générique (**non créé**) |
@@ -79,4 +80,4 @@ service, le type de dossier, le process et le délai.
   dans la boîte après lui avoir donné un objet.
 - **Canal :** il vaut `EMAIL` par défaut. Les autres canaux le poseront eux-mêmes.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job.
+Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ».

@@ -135,6 +135,9 @@ class ArchitectureRulesTest {
             // courrier vers le dossier métier qu'elle crée (même nom), et prend l'objet comme libellé. Aucune valeur n'est
             // renvoyée à un navigateur ni journalisée.
             "be.myrmacta.infrastructure.flowable.RouteMailDelegate",
+            // TODO §115 (D-DEADLINE-TIMER) : la brique « Calculer une échéance » lit un seul champ DATE non sensible désigné par
+            // la brique et en tire des instants de minuteur ; la valeur n'est ni renvoyée à un navigateur ni journalisée.
+            "be.myrmacta.infrastructure.flowable.ComputeDeadlineDelegate",
             // TODO §104 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
             // comparer au NRN vérifié par FAS ou itsme ; la valeur n'est jamais renvoyée au tiers ni journalisée.
             "be.myrmacta.domain.workflow.portal.PortalIdentityFieldValue",

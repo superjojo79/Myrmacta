@@ -1066,3 +1066,12 @@ D-DEADLINE-ESCALATE).
 - Tests : `EvaluateDeadlinesUseCaseImplTest`, `DossierTypeDeadlineApiTest`, `MailRoomExampleIT` (rappel, puis
   escalade réelle d'une tâche Flowable).
 - Limite : la promotion de configuration ne transporte pas encore ce réglage.
+- **Minuteur à expression (lot 4b, D-DEADLINE-TIMER).**
+  - La brique « Calculer une échéance » (`ComputeDeadlineDelegate`, `computeDeadlineTask`, paramètres littéraux
+    seulement) relit un champ date non sensible du dossier, ou applique `delaiJours`.
+  - Elle pose les variables réservées `echeance`, `echeanceRappel` et `echeanceDepassee`.
+  - `BpmnExpressionSurfaceScanner` admet ces deux derniers noms, nus, dans le `timeDate` d'un minuteur, et rien d'autre.
+  - Tests :
+    - `ComputeDeadlineDelegateTest` ;
+    - `FlowableBpmnParserAdapterUelSurfaceTest` (formes admises et refusées) ;
+    - `MailRoomExampleIT` (le minuteur `${echeanceDepassee}` du process `traiterReponse` clôture la réponse échue).

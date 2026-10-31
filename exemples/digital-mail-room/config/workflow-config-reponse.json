@@ -19,6 +19,12 @@
       "label": "Traitée",
       "initial": false,
       "outcome": "COMPLETED"
+    },
+    {
+      "code": "ECHUE",
+      "label": "Échue sans traitement",
+      "initial": false,
+      "outcome": "FAILED"
     }
   ]
 }

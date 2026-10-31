@@ -204,6 +204,17 @@ class MailRoomExampleIT {
                 .variableValueEquals("dossierId", child.get("id").asString()).singleResult();
         assertThat(replyProcess).isNotNull();
         assertThat(runtimeService.getVariable(replyProcess.getId(), "courrierId")).isEqualTo(reply);
+        // TODO §115 (D-DEADLINE-TIMER) : course « traitée ou échue » — le minuteur porte ${echeanceDepassee} (J+10, lendemain 00:00 UTC).
+        String replyDeadline = LocalDate.now(ZoneOffset.UTC).plusDays(10).toString();
+        assertThat(runtimeService.getVariable(replyProcess.getId(), "echeance")).isEqualTo(replyDeadline);
+        var timer = managementService.createTimerJobQuery().processInstanceId(replyProcess.getId()).singleResult();
+        assertThat(timer.getDuedate().toInstant())
+                .isEqualTo(LocalDate.parse(replyDeadline).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant());
+        managementService.executeJob(managementService.moveTimerToExecutableJob(timer.getId()).getId());
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(replyProcess.getId()).count()).isZero();
+        assertThat(historyService.createHistoricActivityInstanceQuery().processInstanceId(replyProcess.getId())
+                .activityId("finEchue").count()).isEqualTo(1);
+        assertThat(read(get("/api/dossiers/{id}", child.get("id").asString())).get("status").asString()).isEqualTo("CLOTURE");
 
         deliver(new ImapMailbox.Mail("<x300@autre.example>", "quelquun@autre.example", "Autre", "RE: Facture 2026-300 (autre)",
                 Instant.parse("2026-10-31T09:00:00Z"), "Je m'immisce.", false, "mx.example.com; dmarc=pass header.from=autre.example",
@@ -288,13 +299,19 @@ class MailRoomExampleIT {
                 example.get("connectorType").asString(), true, config);
     }
 
-    /** Le courrier créé pour cet objet : le relais de l'outbox démarre le tri en arrière-plan, qui peut déjà être fini. */
+    /**
+     * Le courrier créé pour cet objet : le relais de l'outbox démarre le tri en arrière-plan, qui peut déjà être fini. On attend
+     * aussi que le relais ait fini : il démarre le process (le job devient visible) PUIS confirme le lien dans une seconde
+     * transaction qui modifie le dossier. Exécuter le job entre les deux ferait échouer l'un des deux sur le verrou optimiste ;
+     * en production, l'exécuteur asynchrone réessaie le job, ici coupé.
+     */
     private String awaitMailDossier(String subject) throws Exception {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
         while (Instant.now().isBefore(deadline)) {
             var started = historyService.createHistoricProcessInstanceQuery().processDefinitionKey("triCourrier")
                     .variableValueEquals("mailSubject", subject).singleResult();
-            if (started != null) {
+            Integer pending = jdbc.queryForObject("select count(*) from outbox_event where status = 'PENDING'", Integer.class);
+            if (started != null && pending != null && pending == 0) {
                 return (String) historyService.createHistoricVariableInstanceQuery().processInstanceId(started.getId())
                         .variableName("dossierId").singleResult().getValue();
             }

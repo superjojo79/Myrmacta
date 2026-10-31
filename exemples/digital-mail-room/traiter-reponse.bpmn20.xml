@@ -7,29 +7,51 @@
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://myrmacta/exemples">
   <!-- Workflow « réponse » (§113 D-MAILROOM-REPLY-WORKFLOW, mode DOSSIER_ENFANT) : démarre dans un dossier enfant de la facture
-       à chaque réponse rattachée au fil, avec les variables courrierId et courrierReference. -->
+       à chaque réponse rattachée au fil, avec les variables courrierId et courrierReference.
+       Course « traitée ou échue » (§115 D-DEADLINE-TIMER) : « Calculer l'échéance » pose echeanceDepassee (10 jours), que porte
+       le minuteur en bordure de la tâche ; échu, le minuteur interrompt la tâche et clôture la réponse au statut ECHUE. -->
   <process id="traiterReponse" name="Traiter la réponse d'un fournisseur" isExecutable="true">
     <startEvent id="debut" name="Réponse reçue"/>
+    <serviceTask id="calculerEcheance" name="Calculer l'échéance" flowable:delegateExpression="${computeDeadlineTask}" flowable:delaiJours="10"/>
     <userTask id="traiterReponseTache" name="Traiter la réponse"><documentation>Le courrier (variable courrierReference) répond au fil de la facture parente ; ses pièces sont dans la facture. Décider de la suite, puis terminer la tâche.</documentation></userTask>
     <serviceTask id="statutTraitee" name="Statut : traitée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="TRAITEE"/>
     <serviceTask id="clotureReponse" name="Clôturer la réponse" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
     <endEvent id="fin" name="Réponse traitée"/>
-    <sequenceFlow id="flow_debut_traiter" sourceRef="debut" targetRef="traiterReponseTache"/>
+    <boundaryEvent id="reponseEchue" name="Échéance dépassée" attachedToRef="traiterReponseTache" cancelActivity="true">
+      <timerEventDefinition><timeDate>${echeanceDepassee}</timeDate></timerEventDefinition>
+    </boundaryEvent>
+    <serviceTask id="statutEchue" name="Statut : échue" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="ECHUE"/>
+    <serviceTask id="clotureEchue" name="Clôturer la réponse échue" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
+    <endEvent id="finEchue" name="Réponse échue"/>
+    <sequenceFlow id="flow_debut_calcul" sourceRef="debut" targetRef="calculerEcheance"/>
+    <sequenceFlow id="flow_calcul_traiter" sourceRef="calculerEcheance" targetRef="traiterReponseTache"/>
+    <sequenceFlow id="flow_echue_statut" sourceRef="reponseEchue" targetRef="statutEchue"/>
+    <sequenceFlow id="flow_statut_echue_cloture" sourceRef="statutEchue" targetRef="clotureEchue"/>
+    <sequenceFlow id="flow_cloture_echue_fin" sourceRef="clotureEchue" targetRef="finEchue"/>
     <sequenceFlow id="flow_traiter_statut" sourceRef="traiterReponseTache" targetRef="statutTraitee"/>
     <sequenceFlow id="flow_statut_cloture" sourceRef="statutTraitee" targetRef="clotureReponse"/>
     <sequenceFlow id="flow_cloture_fin" sourceRef="clotureReponse" targetRef="fin"/>
   </process>
   <bpmndi:BPMNDiagram id="diagram_traiterReponse">
     <bpmndi:BPMNPlane id="plane_traiterReponse" bpmnElement="traiterReponse">
-      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="80" y="122" width="36" height="36"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_traiterReponseTache" bpmnElement="traiterReponseTache"><omgdc:Bounds x="170" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutTraitee" bpmnElement="statutTraitee"><omgdc:Bounds x="340" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_clotureReponse" bpmnElement="clotureReponse"><omgdc:Bounds x="510" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="680" y="122" width="36" height="36"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="edge_flow_debut_traiter" bpmnElement="flow_debut_traiter"><omgdi:waypoint x="116" y="140"/><omgdi:waypoint x="170" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_traiter_statut" bpmnElement="flow_traiter_statut"><omgdi:waypoint x="290" y="140"/><omgdi:waypoint x="340" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statut_cloture" bpmnElement="flow_statut_cloture"><omgdi:waypoint x="460" y="140"/><omgdi:waypoint x="510" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_cloture_fin" bpmnElement="flow_cloture_fin"><omgdi:waypoint x="630" y="140"/><omgdi:waypoint x="680" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="60" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_calculerEcheance" bpmnElement="calculerEcheance"><omgdc:Bounds x="140" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_traiterReponseTache" bpmnElement="traiterReponseTache"><omgdc:Bounds x="310" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_reponseEchue" bpmnElement="reponseEchue"><omgdc:Bounds x="352" y="162" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutTraitee" bpmnElement="statutTraitee"><omgdc:Bounds x="480" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureReponse" bpmnElement="clotureReponse"><omgdc:Bounds x="650" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="820" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutEchue" bpmnElement="statutEchue"><omgdc:Bounds x="480" y="240" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureEchue" bpmnElement="clotureEchue"><omgdc:Bounds x="650" y="240" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_finEchue" bpmnElement="finEchue"><omgdc:Bounds x="820" y="262" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_flow_debut_calcul" bpmnElement="flow_debut_calcul"><omgdi:waypoint x="96" y="140"/><omgdi:waypoint x="140" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_calcul_traiter" bpmnElement="flow_calcul_traiter"><omgdi:waypoint x="260" y="140"/><omgdi:waypoint x="310" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_traiter_statut" bpmnElement="flow_traiter_statut"><omgdi:waypoint x="430" y="140"/><omgdi:waypoint x="480" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statut_cloture" bpmnElement="flow_statut_cloture"><omgdi:waypoint x="600" y="140"/><omgdi:waypoint x="650" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_cloture_fin" bpmnElement="flow_cloture_fin"><omgdi:waypoint x="770" y="140"/><omgdi:waypoint x="820" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_echue_statut" bpmnElement="flow_echue_statut"><omgdi:waypoint x="370" y="198"/><omgdi:waypoint x="370" y="280"/><omgdi:waypoint x="480" y="280"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statut_echue_cloture" bpmnElement="flow_statut_echue_cloture"><omgdi:waypoint x="600" y="280"/><omgdi:waypoint x="650" y="280"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_cloture_echue_fin" bpmnElement="flow_cloture_echue_fin"><omgdi:waypoint x="770" y="280"/><omgdi:waypoint x="820" y="280"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>

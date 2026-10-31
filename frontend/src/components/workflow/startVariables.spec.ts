@@ -33,6 +33,9 @@ describe('validateStartVariables (TODO §93)', () => {
       'dossierFields',
       'connectorResult',
       'generatedDocumentId',
+      'echeance',
+      'echeanceRappel',
+      'echeanceDepassee',
     ])
     const rows = RESERVED_START_VARIABLES.map((name) => ({ name, value: 'x' }))
     expect(Object.values(validateStartVariables(rows).errors)).toEqual(

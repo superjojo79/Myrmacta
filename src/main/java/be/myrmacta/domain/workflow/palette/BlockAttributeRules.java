@@ -33,7 +33,7 @@ public final class BlockAttributeRules {
      * exécutable. Tous leurs paramètres obligatoires doivent donc figurer dans le BPMN.
      */
     private static final Set<String> LITERAL_ONLY_DELEGATES =
-            Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask", "aiPrecheckTask");
+            Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask", "aiPrecheckTask", "computeDeadlineTask");
 
     /** TODO §102 (lot B, R4) — noms de variables écrites par la brique « Rechercher des dossiers ». */
     private static final Set<String> RESULT_VARIABLE_PARAMETERS =

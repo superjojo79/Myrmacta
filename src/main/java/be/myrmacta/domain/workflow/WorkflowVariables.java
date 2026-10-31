@@ -51,8 +51,21 @@ public final class WorkflowVariables {
      */
     public static final String GENERATED_DOCUMENT_ID = "generatedDocumentId";
 
+    /**
+     * TODO §115 (D-DEADLINE-TIMER) — échéance écrite par la brique « Calculer une échéance » seulement : la date
+     * ({@code AAAA-MM-JJ}), l'instant du rappel et l'instant où elle est dépassée (lendemain, 00:00 UTC), seuls noms qu'un
+     * minuteur peut porter ({@code ${echeanceRappel}}, {@code ${echeanceDepassee}}). Réservées : sinon une complétion de
+     * tâche pourrait repousser le minuteur, donc l'escalade.
+     */
+    public static final String ECHEANCE = "echeance";
+
+    public static final String ECHEANCE_RAPPEL = "echeanceRappel";
+
+    public static final String ECHEANCE_DEPASSEE = "echeanceDepassee";
+
     private static final Set<String> RESERVED = Set.of(
-            DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT, GENERATED_DOCUMENT_ID);
+            DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT, GENERATED_DOCUMENT_ID, ECHEANCE,
+            ECHEANCE_RAPPEL, ECHEANCE_DEPASSEE);
 
     /**
      * Business (non-platform) variable names already claimed by another task form kind —

@@ -1,6 +1,7 @@
 package be.myrmacta.infrastructure.flowable;
 
 import be.myrmacta.domain.workflow.AllowedBpmnDelegates;
+import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.model.InvalidBpmnException;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayDeque;
@@ -24,13 +25,14 @@ import javax.xml.stream.XMLStreamReader;
  * {@code FlowableBpmnUelSurfaceGapTest} ({@code name}/{@code formKey} invoquent une méthode d'un
  * bean Spring vivant). Chercher la prochaine surface attribut par attribut reproduirait l'erreur
  * de H1-bis ; la règle est donc inversée : <strong>aucun</strong> {@code ${…}} / {@code #{…}} nulle
- * part (attribut ou texte, tout espace de noms, y compris l'alias {@code activiti:}), sauf aux deux
+ * part (attribut ou texte, tout espace de noms, y compris l'alias {@code activiti:}), sauf aux trois
  * seuls endroits déjà validés par une règle dédiée et réellement utilisés par les BPMN livrés :
  *
  * <ul>
  *   <li>un attribut {@code delegateExpression} dont la valeur est dans {@link AllowedBpmnDelegates} ;
  *   <li>le texte d'un élément {@code conditionExpression}, revalidé ici par la même grammaire sûre
- *       ({@link FlowableBpmnParserAdapter#assertSafeConditionExpression}).
+ *       ({@link FlowableBpmnParserAdapter#assertSafeConditionExpression}) ;
+ *   <li>le texte d'un {@code timeDate} de minuteur égal à {@code ${echeanceRappel}} ou {@code ${echeanceDepassee}} (TODO §115).
  * </ul>
  *
  * <p>Un attribut {@code class} (instanciation d'une classe arbitraire par le moteur) est refusé
@@ -52,6 +54,15 @@ final class BpmnExpressionSurfaceScanner {
     private static final String CONDITION_EXPRESSION = "conditionExpression";
     private static final String CLASS_ATTRIBUTE = "class";
     private static final Set<String> SCRIPT_LANGUAGE_ATTRIBUTES = Set.of("language", "scriptFormat");
+    private static final String TIME_DATE = "timeDate";
+    private static final String TIMER_EVENT_DEFINITION = "timerEventDefinition";
+    /**
+     * TODO §115 (D-DEADLINE-TIMER) — seules expressions admises dans un minuteur : le nom nu d'une variable réservée écrite par
+     * la brique « Calculer une échéance ». Un nom nu ne peut ni appeler une méthode ni désigner un bean (aucun bean ne porte ces
+     * noms), et une complétion de tâche ne peut pas les forger (WorkflowVariables).
+     */
+    private static final Set<String> DEADLINE_TIMER_VALUES = Set.of(
+            "${" + WorkflowVariables.ECHEANCE_RAPPEL + "}", "${" + WorkflowVariables.ECHEANCE_DEPASSEE + "}");
 
     private BpmnExpressionSurfaceScanner() {}
 
@@ -87,7 +98,7 @@ final class BpmnExpressionSurfaceScanner {
                 }
                 case XMLStreamConstants.END_ELEMENT -> {
                     Frame frame = stack.pop();
-                    assertSafeText(frame);
+                    assertSafeText(frame, stack.peek());
                 }
                 default -> {
                     // comments, processing instructions: never evaluated by the engine
@@ -112,13 +123,17 @@ final class BpmnExpressionSurfaceScanner {
         throw new InvalidBpmnException("BPMN expression is not allowed: " + owner + " @" + name);
     }
 
-    private static void assertSafeText(Frame frame) {
+    private static void assertSafeText(Frame frame, Frame parent) {
         String text = frame.text.toString();
         if (!containsExpression(text)) {
             return;
         }
         if (CONDITION_EXPRESSION.equals(frame.element)) {
             FlowableBpmnParserAdapter.assertSafeConditionExpression(frame.owner, text);
+            return;
+        }
+        if (TIME_DATE.equals(frame.element) && parent != null && TIMER_EVENT_DEFINITION.equals(parent.element)
+                && DEADLINE_TIMER_VALUES.contains(text.strip())) {
             return;
         }
         throw new InvalidBpmnException("BPMN expression is not allowed: " + frame.owner + " text");

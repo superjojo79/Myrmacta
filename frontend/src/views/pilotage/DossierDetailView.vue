@@ -17,6 +17,7 @@ import LinkDossierDialog from '@/components/dossier/LinkDossierDialog.vue'
 import BpmnViewer from '@/components/workflow/BpmnViewer.vue'
 import IncidentBanner from '@/components/workflow/IncidentBanner.vue'
 import TaskList from '@/components/workflow/TaskList.vue'
+import { listUserGroupOptions, type UserGroupOption } from '@/api/userGroups'
 import HistoryTimeline from '@/components/workflow/HistoryTimeline.vue'
 import StartWorkflowDialog from '@/components/workflow/StartWorkflowDialog.vue'
 import DossierPurgeRequestButton from '@/components/dossier/DossierPurgeRequestButton.vue'
@@ -75,6 +76,23 @@ const canLink = canEditDossier
 const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
 // D-ASSIGN-CLAIM : prendre une tâche libre exige le même droit que la terminer (EDIT).
 const canClaim = canEditDossier
+/** TODO §114 — groupes vers lesquels un éditeur peut réaffecter une tâche ; chargés une fois, s'il peut modifier le dossier. */
+const groupOptions = ref<UserGroupOption[]>([])
+watch(
+  canEditDossier,
+  (editable) => {
+    if (editable && groupOptions.value.length === 0) {
+      void listUserGroupOptions()
+        .then((options) => {
+          groupOptions.value = options
+        })
+        .catch(() => {
+          groupOptions.value = []
+        })
+    }
+  },
+  { immediate: true },
+)
 const assigneeNames = computed(() =>
   Object.fromEntries(assignableUsers.value.map((candidate) => [candidate.userId, candidate.displayName])),
 )
@@ -231,6 +249,16 @@ async function onClaim(taskId: string) {
   }
 }
 
+async function onReassignGroup(taskId: string, groupCode: string) {
+  if (!linkId.value) return
+  actionError.value = null
+  try {
+    await store.reassignToGroup(linkId.value, taskId, groupCode)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('dossierDetail.errors.reassignGroup')
+  }
+}
+
 async function openReassign(taskId: string) {
   reassignTaskId.value = taskId
   reassignUserId.value = ''
@@ -351,11 +379,13 @@ async function confirmReassign() {
       :can-claim="canClaim"
       :current-user-id="user?.id"
       :assignee-names="assigneeNames"
+      :group-options="groupOptions"
       :page="tasksPage"
       :total-pages="tasksTotalPages"
       @complete="onComplete"
       @reassign="openReassign"
       @claim="onClaim"
+      @reassign-group="onReassignGroup"
       @update:page="store.loadTasksPage($event)"
     />
 

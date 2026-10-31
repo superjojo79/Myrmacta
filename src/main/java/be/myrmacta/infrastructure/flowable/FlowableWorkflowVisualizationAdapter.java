@@ -1,5 +1,8 @@
 package be.myrmacta.infrastructure.flowable;
 
+import org.flowable.identitylink.api.IdentityLinkType;
+import org.flowable.identitylink.api.IdentityLink;
+import be.myrmacta.domain.workflow.model.TaskGroupReassignment;
 import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.ActivityHistoryEntry;
@@ -124,7 +127,7 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
                 .asc()
                 .listPage(query.offset(), query.size())
                 .stream()
-                .map(FlowableWorkflowVisualizationAdapter::toTaskView)
+                .map(task -> toTaskView(task, candidateGroups(task.getId())))
                 .toList();
         return PageResult.of(content, query.page(), query.size(), total);
     }
@@ -157,6 +160,25 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
         } catch (FlowableTaskAlreadyClaimedException ex) {
             throw new WorkflowTaskAlreadyAssignedException("Workflow task already assigned: " + taskId);
         }
+    }
+
+    @Override
+    public TaskGroupReassignment reassignTaskToGroup(String processInstanceId, String taskId, String groupCode, String tenantId) {
+        assertTaskOnInstance(processInstanceId, taskId, tenantId);
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        List<String> previousGroups = taskService.getIdentityLinksForTask(taskId).stream()
+                .filter(link -> IdentityLinkType.CANDIDATE.equals(link.getType()) && link.getGroupId() != null)
+                .map(IdentityLink::getGroupId)
+                .sorted()
+                .toList();
+        for (String previous : previousGroups) {
+            taskService.deleteCandidateGroup(taskId, previous);
+        }
+        if (task.getAssignee() != null) {
+            taskService.unclaim(taskId);
+        }
+        taskService.addCandidateGroup(taskId, groupCode);
+        return new TaskGroupReassignment(task.getName(), previousGroups, task.getAssignee());
     }
 
     private ProcessReference requireProcess(String processInstanceId, String tenantId) {
@@ -200,14 +222,24 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
                 activity.getDurationInMillis());
     }
 
-    private static WorkflowTaskView toTaskView(Task task) {
+    private static WorkflowTaskView toTaskView(Task task, List<String> candidateGroups) {
         return new WorkflowTaskView(
                 task.getId(),
                 task.getName(),
                 task.getAssignee(),
                 task.getTaskDefinitionKey(),
                 toInstant(task.getCreateTime()),
-                task.getFormKey());
+                task.getFormKey(),
+                candidateGroups);
+    }
+
+    /** TODO §114 — groupes candidats d'une tâche (une page de tâches actives : quelques lectures). */
+    private List<String> candidateGroups(String taskId) {
+        return taskService.getIdentityLinksForTask(taskId).stream()
+                .filter(link -> IdentityLinkType.CANDIDATE.equals(link.getType()) && link.getGroupId() != null)
+                .map(IdentityLink::getGroupId)
+                .sorted()
+                .toList();
     }
 
     private static Instant toInstant(Date date) {

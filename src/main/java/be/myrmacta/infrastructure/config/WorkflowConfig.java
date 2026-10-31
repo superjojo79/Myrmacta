@@ -193,6 +193,22 @@ public class WorkflowConfig {
                 knownUserRepository);
     }
 
+    /** TODO §114 (D-GROUP-REASSIGN) — réaffecter une tâche à un autre groupe, tracé dans le dossier. */
+    @Bean
+    be.myrmacta.domain.workflow.usecase.ReassignTaskToGroupUseCaseImpl reassignTaskToGroupUseCase(
+            TenantProperties tenantProperties,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository,
+            DossierAccessPolicy dossierAccessPolicy,
+            WorkflowVisualizationPort visualizationPort,
+            UserGroupsUseCase userGroups,
+            be.myrmacta.domain.workflow.port.out.WorkflowLinkGroupRepository linkGroups,
+            DossierElementRepository elementRepository) {
+        return new be.myrmacta.domain.workflow.usecase.ReassignTaskToGroupUseCaseImpl(
+                tenantProperties.id(), linkRepository, dossierRepository, dossierAccessPolicy, visualizationPort, userGroups, linkGroups,
+                elementRepository, java.time.Clock.systemUTC());
+    }
+
     /** TODO §94 — échecs des jobs du moteur rattachés aux dossiers (lecture, rejeu, supervision). */
     @Bean
     be.myrmacta.domain.workflow.usecase.WorkflowIncidentsUseCaseImpl workflowIncidentsUseCase(

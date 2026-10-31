@@ -121,4 +121,38 @@ describe('TaskList', () => {
 
     expect(wrapper.emitted('complete')?.[0]).toEqual(['t1', {}])
   })
+
+  it('shows the candidate groups and lets an editor reassign the task to another group (TODO §114)', async () => {
+    const wrapper = mount(TaskList, {
+      props: {
+        tasks: [
+          { taskId: 't1', name: 'Trier', assignee: null, taskDefinitionKey: 'k', createTime: null, candidateGroups: ['COURRIER'] },
+        ],
+        canClaim: true,
+        groupOptions: [
+          { code: 'COURRIER', label: 'Mail room' },
+          { code: 'JURIDIQUE', label: 'Service juridique' },
+        ],
+      },
+    })
+    expect(wrapper.get('[data-testid="task-groups"]').text()).toContain('Mail room')
+    const select = wrapper.get('[data-testid="reassign-group-select"]')
+    expect(select.findAll('option').map((option) => option.text())).toEqual(['Réaffecter au groupe…', 'Service juridique'])
+    await wrapper.get('[data-testid="reassign-group"]').trigger('click')
+    expect(wrapper.emitted('reassignGroup')).toBeUndefined()
+    await select.setValue('JURIDIQUE')
+    await wrapper.get('[data-testid="reassign-group"]').trigger('click')
+    expect(wrapper.emitted('reassignGroup')?.[0]).toEqual(['t1', 'JURIDIQUE'])
+  })
+
+  it('offers no group reassignment to someone who cannot edit the dossier', () => {
+    const wrapper = mount(TaskList, {
+      props: {
+        tasks: [{ taskId: 't1', name: 'Trier', assignee: null, taskDefinitionKey: 'k', createTime: null }],
+        canClaim: false,
+        groupOptions: [{ code: 'JURIDIQUE', label: 'Service juridique' }],
+      },
+    })
+    expect(wrapper.find('[data-testid="reassign-group-select"]').exists()).toBe(false)
+  })
 })

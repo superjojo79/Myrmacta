@@ -319,6 +319,8 @@ export interface WorkflowTaskView {
   taskDefinitionKey: string | null
   createTime: string | null
   formKey?: string | null
+  /** TODO §114 — groupes candidats de la tâche, triés. */
+  candidateGroups?: string[]
 }
 
 export interface ActivityHistoryEntry {

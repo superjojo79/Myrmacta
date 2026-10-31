@@ -107,6 +107,7 @@ export default {
       complete: 'Complétion impossible',
       reassign: 'Réassignation impossible',
       claim: 'Prise de la tâche impossible',
+      reassignGroup: 'Réaffectation impossible',
       assignableUsers: 'Liste des utilisateurs indisponible',
     },
   },

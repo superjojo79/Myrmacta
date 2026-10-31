@@ -31,6 +31,7 @@ import {
   listWorkflowTypeConfigs,
   reassignWorkflowTask,
   claimWorkflowTask,
+  reassignWorkflowTaskToGroup,
   listAssignableUsers,
   updateWorkflowTypeConfig,
 } from './workflows'
@@ -83,6 +84,11 @@ describe('api coverage', () => {
     await grantDossierTypeAcl('C', 'u', 'EDIT')
     await revokeDossierTypeAcl('C', 'u')
     expect(axios.delete).toHaveBeenCalled()
+  })
+
+  it('covers the reassignment of a task to a group (TODO §114)', async () => {
+    await reassignWorkflowTaskToGroup('l', 't', 'JURIDIQUE')
+    expect(axios.post).toHaveBeenCalledWith('/api/workflow-links/l/tasks/t/reassign-group', { groupCode: 'JURIDIQUE' })
   })
 
   it('covers task claim and assignable users (D-ASSIGN-CLAIM / D-ASSIGN-DIR)', async () => {

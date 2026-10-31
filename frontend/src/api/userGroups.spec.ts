@@ -5,6 +5,7 @@ import {
   createUserGroup,
   deleteUserGroup,
   listUserDirectory,
+  listUserGroupOptions,
   listUserGroups,
   removeUserGroupMember,
   updateUserGroup,
@@ -44,5 +45,11 @@ describe('userGroups api', () => {
     await removeUserGroupMember('RH', 'a/b|c')
     expect(axios.put).toHaveBeenCalledWith('/api/user-groups/RH/members/a%2Fb%7Cc')
     expect(axios.delete).toHaveBeenCalledWith('/api/user-groups/RH/members/a%2Fb%7Cc')
+  })
+
+  it('lists the group options readable by any signed-in user', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: [{ code: 'RH', label: 'Ressources humaines' }] })
+    expect(await listUserGroupOptions()).toEqual([{ code: 'RH', label: 'Ressources humaines' }])
+    expect(axios.get).toHaveBeenCalledWith('/api/user-group-options')
   })
 })

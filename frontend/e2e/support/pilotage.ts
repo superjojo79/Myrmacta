@@ -169,7 +169,15 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       assignee: opts.freeTask ? null : 'user-1',
       taskDefinitionKey: 'review',
       createTime: '2026-08-12T00:00:00Z',
-    } as { taskId: string; name: string; assignee: string | null; taskDefinitionKey: string; createTime: string },
+      candidateGroups: opts.freeTask ? ['COURRIER'] : [],
+    } as {
+      taskId: string
+      name: string
+      assignee: string | null
+      taskDefinitionKey: string
+      createTime: string
+      candidateGroups?: string[]
+    },
   ]
   let elements: Array<Record<string, unknown>> = []
 
@@ -755,6 +763,17 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
       return
     }
+    if (url.includes('/reassign-group') && route.request().method() === 'POST') {
+      // Miroir de D-GROUP-REASSIGN (TODO §114) : éditeurs du dossier seulement ; la tâche redevient libre pour ce groupe.
+      if (!canEdit) {
+        await route.fulfill({ status: 403, contentType: 'application/json', body: '{"status":403}' })
+        return
+      }
+      const { groupCode } = route.request().postDataJSON() as { groupCode: string }
+      tasks = tasks.map((task) => ({ ...task, assignee: null, candidateGroups: [groupCode] }))
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
     if (url.includes('/reassign') && route.request().method() === 'POST') {
       const { assigneeId } = route.request().postDataJSON() as { assigneeId: string }
       tasks = tasks.map((task) => ({ ...task, assignee: assigneeId }))
@@ -962,6 +981,16 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       updatedAt: '2026-08-19T10:00:00Z',
     },
   ]
+  await page.route(/\/api\/user-group-options(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { code: 'COURRIER', label: 'Mail room' },
+        { code: 'JURIDIQUE', label: 'Service juridique' },
+      ]),
+    })
+  })
   // TODO §114 : groupes d'utilisateurs (administration du tenant), en mémoire.
   let userGroups: Array<{ code: string; label: string; idpGroup: string | null; members: Array<{ userId: string; displayName: string }> }> = [
     { code: 'COMPTABILITE', label: 'Comptabilité', idpGroup: '/services/compta', members: [] },

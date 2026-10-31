@@ -304,6 +304,11 @@ Toujours sur la fiche dossier :
     déroulante. La liste ne propose que les utilisateurs **déjà connectés au moins une fois** à
     l'application et qui **peuvent modifier ce dossier** (inutile d'assigner une tâche à quelqu'un
     qui ne pourrait pas la terminer). Un utilisateur qui n'apparaît pas doit d'abord se connecter.
+  - **Réaffecter au groupe** (TODO §114) — tout utilisateur qui peut modifier le dossier choisit un autre groupe pour la tâche
+    (le groupe actuel s'affiche sous la tâche). La tâche redevient libre et n'est plus destinée qu'à ce groupe. Les tâches
+    suivantes du même workflow iront aussi à ce groupe. Une **note** s'ajoute aux éléments du dossier : qui, quand, de quel
+    groupe (et de quel assigné) vers lequel. C'est le geste de la file de tri de la mail room : renvoyer un courrier au
+    service compétent.
 - **Historique** — frise chronologique des événements du dossier.
 - **Étapes en échec** (TODO §94) — bandeau rouge au-dessus du diagramme quand une étape automatique
   (e-mail, connecteur, génération…) a échoué ; l'étape est aussi marquée en erreur dans le diagramme.

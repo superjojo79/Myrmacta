@@ -187,7 +187,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
 | 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
-| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | en cours | |
+| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | à ouvrir |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
@@ -279,7 +279,9 @@ Appris pendant le lot 4b :
 - Flowable accepte une chaîne ISO 8601 renvoyée par l'expression d'un `timeDate` ; le minuteur se crée avec cet instant
   exact (vérifié par `MailRoomExampleIT`).
 
-Prochaine action : preuves du lot 4b, PR (ferme #186), puis lot 5 (canal PDF). Calendrier de jours ouvrables : issue #270
+Prochaine action : PR du lot 4b (ferme #186), puis lot 5 (canal PDF). Arbitrages de l'utilisateur pour le lot 5
+(2026-10-31) : index du partenaire en JSON compagnon ET en CSV par lot, au choix dans le connecteur ; écran « Déposer »
+pour le dépôt manuel (un courrier PAPIER par PDF, même tri que l'e-mail). Calendrier de jours ouvrables : issue #270
 (D-DEADLINE-CALENDAR). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
@@ -312,6 +314,9 @@ runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 | 2026-10-31 | lot 4a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 103 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-10-31 | lot 4a — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
 | 2026-10-31 | lot 4a — `scripts/check-docs.sh` | vert |
+| 2026-10-31 | lot 4b — `ComputeDeadlineDelegateTest`, `FlowableBpmnParserAdapterUelSurfaceTest`, catalogue, `MailRoomExampleIT` | vert : 5 + 36 + 12 + 3 ; le minuteur `${echeanceDepassee}` de `traiterReponse` se crée à J+11 00:00 UTC et clôture la réponse « échue » |
+| 2026-10-31 | lot 4b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | rouge deux fois : `BuildingBlockApiTest` (17 → 18 briques), puis `MailRoomExampleIT` instable (job du tri exécuté entre le démarrage et la confirmation du lien par le relais ; le test attend désormais la fin du relais) ; puis vert : 4 121 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 4b — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
 
 ## Revue de clôture
 

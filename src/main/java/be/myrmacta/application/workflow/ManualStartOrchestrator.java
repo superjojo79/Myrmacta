@@ -13,6 +13,7 @@ import be.myrmacta.domain.workflow.model.WorkflowStartedEvent;
 import be.myrmacta.domain.workflow.port.out.IdempotencyStore;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEventPublisher;
+import be.myrmacta.domain.workflow.port.out.WorkflowLinkGroupRepository;
 import be.myrmacta.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import be.myrmacta.domain.workflow.DocumentTypeAllowList;
 import be.myrmacta.domain.workflow.StartVariableDeclarations;
@@ -34,6 +35,7 @@ public final class ManualStartOrchestrator {
     private final WorkflowStartConfirmationPort workflowStartConfirmer;
     private final WorkflowEventPublisher eventPublisher;
     private final StartVariableCatalogPort startVariableCatalog;
+    private final WorkflowLinkGroupRepository linkGroups;
 
     public ManualStartOrchestrator(
             DossierRepository dossierRepository,
@@ -54,6 +56,31 @@ public final class ManualStartOrchestrator {
         this.workflowStartConfirmer = Objects.requireNonNull(workflowStartConfirmer, "workflowStartConfirmer");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher");
         this.startVariableCatalog = Objects.requireNonNull(startVariableCatalog, "startVariableCatalog");
+        this.linkGroups = null;
+    }
+
+    /** TODO §114 (D-GROUP-LINK) — avec le registre des groupes destinataires des liens. */
+    public ManualStartOrchestrator(
+            DossierRepository dossierRepository,
+            DossierTypeRepository dossierTypeRepository,
+            DossierWorkflowLinkRepository linkRepository,
+            AttachWorkflowUseCase attachWorkflow,
+            WorkflowEnginePort workflowEnginePort,
+            IdempotencyStore idempotencyStore,
+            WorkflowStartConfirmationPort workflowStartConfirmer,
+            WorkflowEventPublisher eventPublisher,
+            StartVariableCatalogPort startVariableCatalog,
+            WorkflowLinkGroupRepository linkGroups) {
+        this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
+        this.dossierTypeRepository = Objects.requireNonNull(dossierTypeRepository, "dossierTypeRepository");
+        this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
+        this.attachWorkflow = Objects.requireNonNull(attachWorkflow, "attachWorkflow");
+        this.workflowEnginePort = Objects.requireNonNull(workflowEnginePort, "workflowEnginePort");
+        this.idempotencyStore = Objects.requireNonNull(idempotencyStore, "idempotencyStore");
+        this.workflowStartConfirmer = Objects.requireNonNull(workflowStartConfirmer, "workflowStartConfirmer");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher");
+        this.startVariableCatalog = Objects.requireNonNull(startVariableCatalog, "startVariableCatalog");
+        this.linkGroups = Objects.requireNonNull(linkGroups, "linkGroups");
     }
 
     /**
@@ -70,6 +97,23 @@ public final class ManualStartOrchestrator {
             Map<String, Object> variables,
             String idempotencyKey,
             String startedBy) {
+        return start(dossierId, processDefinitionKey, variables, idempotencyKey, startedBy, null);
+    }
+
+    /**
+     * TODO §114 (D-GROUP-LINK) — idem, et le process reçoit {@code assignedGroup} comme groupe destinataire, posé sur le lien
+     * entre la réservation et le démarrage du moteur (la première tâche naît pendant le démarrage). {@code null} : aucun.
+     */
+    public StartResult start(
+            UUID dossierId,
+            String processDefinitionKey,
+            Map<String, Object> variables,
+            String idempotencyKey,
+            String startedBy,
+            String assignedGroup) {
+        if (assignedGroup != null && linkGroups == null) {
+            throw new IllegalStateException("assigning a group needs the link group store");
+        }
         if (startedBy == null || startedBy.isBlank()) {
             throw new IllegalArgumentException("startedBy is required");
         }
@@ -95,6 +139,9 @@ public final class ManualStartOrchestrator {
                 dossierId, processDefinitionKey, "manual:" + idempotencyKey, startedBy);
         Map<String, Object> engineVariables =
                 WorkflowVariables.withPlatformVariables(accepted, reserved, dossier.fields());
+        if (assignedGroup != null) {
+            linkGroups.assign(reserved.tenantId(), reserved.id(), assignedGroup);
+        }
 
         String processInstanceId;
         try {

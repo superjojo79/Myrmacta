@@ -27,6 +27,7 @@ import be.myrmacta.domain.workflow.port.out.IdempotencyStore;
 import be.myrmacta.domain.workflow.port.out.StartVariableCatalogPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEventPublisher;
+import be.myrmacta.domain.workflow.port.out.WorkflowLinkGroupRepository;
 import be.myrmacta.domain.workflow.port.out.WorkflowStartConfirmationPort;
 import java.time.Instant;
 import java.util.List;
@@ -100,6 +101,45 @@ class ManualStartOrchestratorTest {
         // TX2 (confirm + idempotency + onStart) est déléguée à un seul appel transactionnel.
         verify(workflowStartConfirmer).confirm(dossier, reserved, "proc-1", PROCESS, "idem-1");
         verify(eventPublisher).publish(any());
+    }
+
+    /** TODO §114 (D-GROUP-LINK) — le groupe destinataire est posé sur le lien AVANT le démarrage : la première tâche le voit. */
+    @Test
+    void start_withAGroupRecordsItOnTheLinkBeforeTheEngineStarts() {
+        WorkflowLinkGroupRepository linkGroups = mock(WorkflowLinkGroupRepository.class);
+        ManualStartOrchestrator withGroups = new ManualStartOrchestrator(
+                dossierRepository,
+                dossierTypeRepository,
+                linkRepository,
+                attachWorkflow,
+                workflowEnginePort,
+                idempotencyStore,
+                workflowStartConfirmer,
+                eventPublisher,
+                startVariableCatalog,
+                linkGroups);
+        UUID dossierId = UUID.randomUUID();
+        DossierWorkflowLink reserved = reservedLink(dossierId);
+        when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier(dossierId)));
+        when(idempotencyStore.findLinkId(TENANT, dossierId, "idem-1")).thenReturn(Optional.empty());
+        when(attachWorkflow.reserve(eq(dossierId), eq(PROCESS), anyString(), eq("workflow"))).thenReturn(reserved);
+        when(workflowEnginePort.start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap())).thenReturn("proc-1");
+        when(linkRepository.findById(reserved.id())).thenReturn(Optional.of(reserved.withProcessInstance("proc-1")));
+
+        withGroups.start(dossierId, PROCESS, Map.of(), "idem-1", "workflow", "COMPTABILITE");
+
+        var order = org.mockito.Mockito.inOrder(linkGroups, workflowEnginePort);
+        order.verify(linkGroups).assign(TENANT, reserved.id(), "COMPTABILITE");
+        order.verify(workflowEnginePort).start(eq(PROCESS), eq(TENANT), eq(reserved.id().toString()), anyMap());
+    }
+
+    @Test
+    void start_withAGroupButNoGroupStoreIsRefusedBeforeAnyReservation() {
+        UUID dossierId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> orchestrator.start(dossierId, PROCESS, Map.of(), "idem-1", "workflow", "COMPTABILITE"))
+                .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(attachWorkflow, workflowEnginePort);
     }
 
     @Test

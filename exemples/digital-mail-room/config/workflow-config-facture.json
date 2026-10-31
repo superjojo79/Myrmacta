@@ -1,0 +1,24 @@
+{
+  "processDefinitionKey": "traiterFacture",
+  "label": "Traiter une facture fournisseur",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "A_TRAITER",
+      "label": "À traiter",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "TRAITEE",
+      "label": "Traitée",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ]
+}

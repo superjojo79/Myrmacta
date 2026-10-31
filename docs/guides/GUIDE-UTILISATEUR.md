@@ -661,8 +661,10 @@ Un groupe représente un service (RH, comptabilité, juridique…). Ses membres 
   claim lue se configure avec `APP_SECURITY_OIDC_GROUPS_CLAIM`, `groups` par défaut : mapper « Group Membership » chez
   Keycloak, claim `groups` chez Microsoft Entra ID. L'appartenance est celle de la **dernière connexion** de l'utilisateur.
   Chez Entra, la claim porte les identifiants (GUID) des groupes : c'est cette valeur qu'il faut saisir.
-- **Qui reçoit une tâche de groupe :** pour l'instant, un diagramme désigne le groupe par un `candidateGroups` littéral sur
-  la tâche (le code du groupe). La brique de routage de la mail room le posera à l'exécution (§113).
+- **Qui reçoit une tâche de groupe :**
+  - le groupe que la table de routage de la mail room a choisi (TODO §113), posé à l'exécution sur le process qu'elle
+    démarre ;
+  - ou un groupe nommé par le diagramme (`candidateGroups` littéral, le code du groupe).
 - **Prendre une tâche :** il faut toujours le droit de modifier le dossier (§3). Être membre du groupe rend la tâche
   visible, ça ne donne pas de droit sur le dossier.
 

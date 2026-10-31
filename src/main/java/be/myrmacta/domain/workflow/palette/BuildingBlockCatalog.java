@@ -78,6 +78,13 @@ public final class BuildingBlockCatalog {
                             "Clé du process à démarrer sur le dossier enfant."),
                     enumSingle("relationType", "Type de lien", true, List.of("PARENT_CHILD", "SUBSEQUENT"),
                             "Lien créé entre le dossier courant et l'enfant.")),
+            // TODO §113 (D-MAILROOM-ROUTE) — lit la décision de la table de routage (variables routage*).
+            block("route-mail", "Router le courrier",
+                    "Après la table de routage : ouvre le dossier métier lié et y démarre son process pour le service désigné, "
+                            + "ou envoie le courrier à la file de tri.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("routeMailTask"),
+                    text("groupeTri", "Groupe de la file de tri", 64,
+                            "Code du groupe qui trie à la main ce que la table ne reconnaît pas (ex. COURRIER).", true)),
             block("set-dossier-status", "Changer le statut du dossier",
                     "Modifie le statut du dossier courant.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("updateDossierStatusTask"),

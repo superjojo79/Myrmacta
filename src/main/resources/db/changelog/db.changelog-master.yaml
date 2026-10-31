@@ -81,3 +81,5 @@ databaseChangeLog:
       file: db/changelog/changes/040-dossier-precheck.yaml
   - include:
       file: db/changelog/changes/041-user-groups.yaml
+  - include:
+      file: db/changelog/changes/042-workflow-link-group.yaml

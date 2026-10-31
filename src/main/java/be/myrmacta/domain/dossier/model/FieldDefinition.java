@@ -56,6 +56,11 @@ public record FieldDefinition(
     public static final Set<String> WIDTHS = Set.of("FULL", "HALF");
 
     public static final int MAX_EXPRESSION_CHARS = 2000;
+
+    /** TODO §113 — vrai si une valeur par défaut est déclarée, sans exposer la valeur (elle peut être sensible). */
+    public boolean hasDefaultValue() {
+        return defaultValue != null;
+    }
     public static final int MAX_GROUP_FIELDS = 20;
     public static final int DEFAULT_MAX_ROWS = 100;
     public static final int HARD_MAX_ROWS = 500;

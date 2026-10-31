@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://myrmacta/exemples">
+  <!-- Dossier métier ouvert par le routage. La tâche ne nomme aucun groupe : elle reçoit le service choisi par la table de
+       routage, porté par le lien de workflow (§114 D-GROUP-LINK). -->
+  <process id="traiterFacture" name="Traiter une facture fournisseur" isExecutable="true">
+    <startEvent id="debut" name="Facture reçue"/>
+    <userTask id="traiterFactureTache" name="Traiter la facture"><documentation>Vérifier la facture jointe au courrier lié, l'encoder puis terminer la tâche.</documentation></userTask>
+    <serviceTask id="statutTraitee" name="Statut : traitée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="TRAITEE"/>
+    <serviceTask id="clotureFacture" name="Clôturer la facture" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
+    <endEvent id="fin" name="Facture traitée"/>
+    <sequenceFlow id="flow_debut_traiter" sourceRef="debut" targetRef="traiterFactureTache"/>
+    <sequenceFlow id="flow_traiter_statut" sourceRef="traiterFactureTache" targetRef="statutTraitee"/>
+    <sequenceFlow id="flow_statut_cloture" sourceRef="statutTraitee" targetRef="clotureFacture"/>
+    <sequenceFlow id="flow_cloture_fin" sourceRef="clotureFacture" targetRef="fin"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram_traiterFacture">
+    <bpmndi:BPMNPlane id="plane_traiterFacture" bpmnElement="traiterFacture">
+      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="80" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_traiterFactureTache" bpmnElement="traiterFactureTache"><omgdc:Bounds x="170" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutTraitee" bpmnElement="statutTraitee"><omgdc:Bounds x="340" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureFacture" bpmnElement="clotureFacture"><omgdc:Bounds x="510" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="680" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_flow_debut_traiter" bpmnElement="flow_debut_traiter"><omgdi:waypoint x="116" y="140"/><omgdi:waypoint x="170" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_traiter_statut" bpmnElement="flow_traiter_statut"><omgdi:waypoint x="290" y="140"/><omgdi:waypoint x="340" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statut_cloture" bpmnElement="flow_statut_cloture"><omgdi:waypoint x="460" y="140"/><omgdi:waypoint x="510" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_cloture_fin" bpmnElement="flow_cloture_fin"><omgdi:waypoint x="630" y="140"/><omgdi:waypoint x="680" y="140"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

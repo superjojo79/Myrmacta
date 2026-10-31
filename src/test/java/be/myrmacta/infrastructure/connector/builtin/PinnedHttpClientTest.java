@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -231,6 +232,78 @@ class PinnedHttpClientTest {
     }
 
     @Test
+    void responseExactlyAtTheBoundIsAccepted() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/exact", exchange -> {
+            byte[] out = "abcd".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, out.length);
+            exchange.getResponseBody().write(out);
+            exchange.close();
+        });
+        server.start();
+
+        HttpRestConnector.HttpCallResponse response = PinnedHttpClient.sender().send(request(
+                "http://pinned.invalid:" + server.getAddress().getPort() + "/exact",
+                "GET",
+                null,
+                4,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(2)));
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("abcd");
+    }
+
+    @Test
+    void callerHeaderOtherThanHostReachesTheServer() throws Exception {
+        AtomicReference<String> trace = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/vendors", exchange -> {
+            trace.set(exchange.getRequestHeaders().getFirst("X-Trace"));
+            byte[] out = "ok".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, out.length);
+            exchange.getResponseBody().write(out);
+            exchange.close();
+        });
+        server.start();
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Host", "pinned.invalid");
+        headers.put("X-Trace", "abc");
+
+        PinnedHttpClient.sender().send(request(
+                "http://pinned.invalid:" + server.getAddress().getPort() + "/vendors",
+                "PATCH",
+                null,
+                1_000,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(2),
+                headers));
+
+        assertThat(trace).hasValue("abc");
+    }
+
+    @Test
+    void responseWithoutABodyIsEmpty() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/none", exchange -> {
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+        server.start();
+
+        HttpRestConnector.HttpCallResponse response = PinnedHttpClient.sender().send(request(
+                "http://pinned.invalid:" + server.getAddress().getPort() + "/none",
+                "PATCH",
+                null,
+                1_000,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(2)));
+
+        assertThat(response.status()).isEqualTo(204);
+        assertThat(response.body()).isEmpty();
+    }
+
+    @Test
     void readTimeoutBoundsTheBody() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/stall", exchange -> {
@@ -337,12 +410,24 @@ class PinnedHttpClientTest {
 
     private static HttpRestConnector.HttpCallRequest request(
             String url, String method, byte[] body, long max, Duration connect, Duration read) throws Exception {
+        return request(url, method, body, max, connect, read, Map.of("Host", "pinned.invalid"));
+    }
+
+    private static HttpRestConnector.HttpCallRequest request(
+            String url,
+            String method,
+            byte[] body,
+            long max,
+            Duration connect,
+            Duration read,
+            Map<String, String> headers)
+            throws Exception {
         return new HttpRestConnector.HttpCallRequest(
                 url,
                 InetAddress.getByName("127.0.0.1"),
                 method,
                 body,
-                java.util.Map.of("Host", "pinned.invalid"),
+                headers,
                 connect,
                 read,
                 "pinned.invalid",

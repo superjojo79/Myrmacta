@@ -1,4 +1,4 @@
-# §115 — Méthode PATCH du connecteur http-rest
+# §116 — Méthode PATCH du connecteur http-rest
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 

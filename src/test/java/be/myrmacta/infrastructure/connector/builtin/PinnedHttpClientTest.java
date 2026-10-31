@@ -37,7 +37,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
-/** TODO §115 (D-HTTP-PATCH) — le client joint l'adresse figée, pas un second DNS, et n'envoie pas PATCH à une redirection. */
+/** TODO §116 (D-HTTP-PATCH) — le client joint l'adresse figée, pas un second DNS, et n'envoie pas PATCH à une redirection. */
 class PinnedHttpClientTest {
 
     private HttpServer server;

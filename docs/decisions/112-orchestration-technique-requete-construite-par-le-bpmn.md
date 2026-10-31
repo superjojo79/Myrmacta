@@ -48,7 +48,7 @@ Décisions tranchées par l'utilisateur le 2026-10-31 :
     ce drapeau ne coupe que l'entrée.
 - **D-ORCH-DELETE** — méthode `DELETE`, sans corps comme `GET`. **PATCH reporté** à ce cycle (issue
   [#261](https://github.com/superjojo79/Myrmacta/issues/261)) : `HttpURLConnection`, retenu pour l'IP figée et la vérification
-  TLS du nom d'origine, refuse cette méthode. Livré ensuite par le [§115](115-methode-patch-du-connecteur-http-rest.md).
+  TLS du nom d'origine, refuse cette méthode. Livré ensuite par le [§116](116-methode-patch-du-connecteur-http-rest.md).
 - **D-ORCH-EXAMPLE** — exemple « arrivée d'un collaborateur » (identifiants techniques dans des variables remises à `null`
   au début du provisioning, champs du dossier pour l'affichage seulement, groupe IAM choisi par l'IT) : SIRH, IAM et ITSM ; validation du manager (approuver,
   corriger, refuser) ; validation des accès par l'IT pour les profils sensibles ; incident technique (réessayer, abandonner) ;

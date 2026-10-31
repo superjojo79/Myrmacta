@@ -85,3 +85,7 @@ databaseChangeLog:
       file: db/changelog/changes/042-workflow-link-group.yaml
   - include:
       file: db/changelog/changes/043-mail-message-index.yaml
+  - include:
+      file: db/changelog/changes/044-dossier-type-reply-workflow.yaml
+  - include:
+      file: db/changelog/changes/045-dossier-deadline.yaml

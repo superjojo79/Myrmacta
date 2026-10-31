@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
 public class HttpRestConnector implements ConnectorDefinition, TriggerConnector, ServiceConnector {
 
     private static final String STATIC_HEADER = "STATIC_HEADER";
-    /** TODO §115 (D-HTTP-PATCH) : PATCH avec corps, comme POST et PUT. GET et DELETE restent sans corps (§112). */
+    /** TODO §116 (D-HTTP-PATCH) : PATCH avec corps, comme POST et PUT. GET et DELETE restent sans corps (§112). */
     private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     private static final Set<String> BODYLESS_METHODS = Set.of("GET", "DELETE");
     /** TODO §112 — bornes d'une requête construite par le process (D-ORCH-BASEURL). */

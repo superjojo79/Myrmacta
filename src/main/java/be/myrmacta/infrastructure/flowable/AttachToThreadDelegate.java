@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.flowable;
 
+import be.myrmacta.application.workflow.ManualStartOrchestrator;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
@@ -7,23 +8,34 @@ import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DossierRelation;
+import be.myrmacta.domain.dossier.model.DossierStatus;
+import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.DuplicateDossierRelationException;
 import be.myrmacta.domain.dossier.model.ElementType;
+import be.myrmacta.domain.dossier.model.FieldDefinition;
 import be.myrmacta.domain.dossier.model.RelationType;
 import be.myrmacta.domain.dossier.port.in.CreateDossierRelationUseCase;
+import be.myrmacta.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierRelationRepository;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
+import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.mailroom.model.MailIndexEntry;
+import be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting;
 import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
+import be.myrmacta.domain.mailroom.port.out.ReplyWorkflowSettings;
 import be.myrmacta.domain.notification.model.NotificationChannel;
 import be.myrmacta.domain.notification.model.NotificationEvent;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.workflow.WorkflowVariables;
+import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
+import be.myrmacta.domain.workflow.port.out.WorkflowDeploymentPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
+import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
+import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,6 +64,9 @@ class AttachToThreadDelegate implements JavaDelegate {
     static final String THREAD_DOSSIER_ID = "filDossierId";
     static final String THREAD_DOSSIER_REFERENCE = "filDossierReference";
     static final String REASON = "filMotif";
+    static final String REPLY_WORKFLOW = "filReponseWorkflow";
+    static final String REPLY_DOSSIER_ID = "filReponseDossierId";
+    static final String REPLY_REASON = "filReponseMotif";
     static final int MAX_COPIED_PIECES = 20;
 
     private static final AccessContext SYSTEM = AccessContext.system("flowable-delegate");
@@ -68,6 +83,13 @@ class AttachToThreadDelegate implements JavaDelegate {
     private final SendNotificationUseCase notifications;
     private final WorkflowEnginePort engine;
     private final TenantProperties tenantProperties;
+    private final ReplyWorkflowSettings replySettings;
+    private final WorkflowDeploymentPort deployments;
+    private final WorkflowTypeConfigRepository workflowConfigs;
+    private final DossierTypeRepository types;
+    private final ChildDossierRelationConfirmer childConfirmer;
+    private final ManualStartOrchestrator orchestrator;
+    private final UpdateDossierStatusUseCase updateStatus;
 
     AttachToThreadDelegate(
             MailMessageIndex index,
@@ -81,7 +103,14 @@ class AttachToThreadDelegate implements JavaDelegate {
             WorkflowParticipantPort participants,
             SendNotificationUseCase notifications,
             WorkflowEnginePort engine,
-            TenantProperties tenantProperties) {
+            TenantProperties tenantProperties,
+            ReplyWorkflowSettings replySettings,
+            WorkflowDeploymentPort deployments,
+            WorkflowTypeConfigRepository workflowConfigs,
+            DossierTypeRepository types,
+            ChildDossierRelationConfirmer childConfirmer,
+            ManualStartOrchestrator orchestrator,
+            UpdateDossierStatusUseCase updateStatus) {
         this.index = Objects.requireNonNull(index, "index");
         this.dossiers = Objects.requireNonNull(dossiers, "dossiers");
         this.relations = Objects.requireNonNull(relations, "relations");
@@ -94,6 +123,13 @@ class AttachToThreadDelegate implements JavaDelegate {
         this.notifications = Objects.requireNonNull(notifications, "notifications");
         this.engine = Objects.requireNonNull(engine, "engine");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
+        this.replySettings = Objects.requireNonNull(replySettings, "replySettings");
+        this.deployments = Objects.requireNonNull(deployments, "deployments");
+        this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
+        this.types = Objects.requireNonNull(types, "types");
+        this.childConfirmer = Objects.requireNonNull(childConfirmer, "childConfirmer");
+        this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
+        this.updateStatus = Objects.requireNonNull(updateStatus, "updateStatus");
     }
 
     @Override
@@ -136,6 +172,78 @@ class AttachToThreadDelegate implements JavaDelegate {
         execution.setVariable(RESULT, "RATTACHE");
         execution.setVariable(THREAD_DOSSIER_ID, target.id().toString());
         execution.setVariable(THREAD_DOSSIER_REFERENCE, target.reference());
+        startReplyWorkflow(execution, tenantId, mail, target, idempotencyKey);
+    }
+
+    /**
+     * Mode 3 (D-MAILROOM-REPLY-WORKFLOW) — le workflow « réponse » du type du dossier du fil, s'il en déclare un. Toutes les
+     * vérifications avant la première écriture : un refus laisse le rattachement fait et dit pourquoi ({@code filReponseMotif}).
+     */
+    private void startReplyWorkflow(DelegateExecution execution, String tenantId, Dossier mail, Dossier target, String idempotencyKey) {
+        Optional<ReplyWorkflowSetting> found = replySettings.find(tenantId, target.dossierTypeCode());
+        if (found.isEmpty()) {
+            execution.setVariable(REPLY_WORKFLOW, "AUCUN");
+            return;
+        }
+        ReplyWorkflowSetting setting = found.get();
+        Map<String, Object> variables = Map.of("courrierId", mail.id().toString(), "courrierReference", mail.reference());
+        if (deployments.findDeploymentInfo(tenantId, setting.workflowKey()).isEmpty()) {
+            replyNotStarted(execution, "process non déployé : " + setting.workflowKey());
+            return;
+        }
+        Optional<WorkflowTypeConfig> config = workflowConfigs.findByWorkflowKey(tenantId, setting.workflowKey());
+        if (config.isEmpty()) {
+            replyNotStarted(execution, "configuration de workflow absente : " + setting.workflowKey());
+            return;
+        }
+        if (setting.mode() == ReplyWorkflowSetting.Mode.SUR_DOSSIER) {
+            if (links.findActiveByDossierId(target.id()).isPresent()) {
+                replyNotStarted(execution, "un process est déjà actif sur " + target.reference());
+                return;
+            }
+            if (!config.get().allowsDossierStatus(target.status())) {
+                replyNotStarted(execution, "statut " + target.status() + " refusé par " + setting.workflowKey());
+                return;
+            }
+            orchestrator.start(target.id(), setting.workflowKey(), variables, idempotencyKey + ":reponse", "workflow");
+            execution.setVariable(REPLY_WORKFLOW, "DEMARRE_SUR_DOSSIER");
+            return;
+        }
+        Optional<DossierType> childType = types.findByCode(tenantId, setting.childTypeCode());
+        if (childType.isEmpty() || !childType.get().active()) {
+            replyNotStarted(execution, "type enfant inconnu ou inactif : " + setting.childTypeCode());
+            return;
+        }
+        for (FieldDefinition definition : childType.get().fieldDefinitions()) {
+            boolean unconditional = definition.requiredWhen() == null || definition.requiredWhen().isBlank();
+            if (definition.required() && unconditional && !definition.hasDefaultValue()) {
+                replyNotStarted(execution, "champ obligatoire du type enfant : " + definition.name());
+                return;
+            }
+        }
+        if (!config.get().allowsDossierStatus(DossierStatus.OUVERT)) {
+            replyNotStarted(execution, "statut OUVERT refusé par " + setting.workflowKey());
+            return;
+        }
+        String childKey = idempotencyKey + ":reponse";
+        UUID child;
+        try {
+            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(), "Réponse " + mail.reference(), Map.of(),
+                    RelationType.PARENT_CHILD, childKey);
+        } catch (DuplicateDossierRelationException race) {
+            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(), "Réponse " + mail.reference(), Map.of(),
+                    RelationType.PARENT_CHILD, childKey);
+        }
+        dossiers.findById(child).filter(dossier -> dossier.status() == DossierStatus.DRAFT).ifPresent(draft -> updateStatus.update(
+                new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(draft.id(), DossierStatus.OUVERT, "workflow", null), SYSTEM));
+        orchestrator.start(child, setting.workflowKey(), variables, childKey, "workflow");
+        execution.setVariable(REPLY_WORKFLOW, "DEMARRE_SUR_ENFANT");
+        execution.setVariable(REPLY_DOSSIER_ID, child.toString());
+    }
+
+    private static void replyNotStarted(DelegateExecution execution, String reason) {
+        execution.setVariable(REPLY_WORKFLOW, "NON");
+        execution.setVariable(REPLY_REASON, reason);
     }
 
     /** In-Reply-To, puis References de la plus récente à la plus ancienne, puis conversationId. */

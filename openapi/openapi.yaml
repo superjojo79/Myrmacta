@@ -349,6 +349,114 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/DossierElementView"
+  /api/dossier-types/{code}/reply-workflow:
+    get:
+      tags:
+      - dossier-type-reply-workflow-controller
+      operationId: getReplyWorkflow
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReplyWorkflowResponse"
+    put:
+      tags:
+      - dossier-type-reply-workflow-controller
+      operationId: setReplyWorkflow
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyWorkflowRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReplyWorkflowResponse"
+    delete:
+      tags:
+      - dossier-type-reply-workflow-controller
+      operationId: clearReplyWorkflow
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/dossier-types/{code}/deadline:
+    get:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: getDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeadlineResponse"
+    put:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: setDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeadlineRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeadlineResponse"
+    delete:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: clearDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/dmn-decision-drafts/{decisionKey}:
     get:
       tags:
@@ -3865,6 +3973,54 @@ components:
           additionalProperties: {}
         downloadable:
           type: boolean
+    ReplyWorkflowRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+          - SUR_DOSSIER
+          - DOSSIER_ENFANT
+        workflowKey:
+          type: string
+        childTypeCode:
+          type: string
+    ReplyWorkflowResponse:
+      type: object
+      properties:
+        dossierTypeCode:
+          type: string
+        mode:
+          type: string
+          enum:
+          - SUR_DOSSIER
+          - DOSSIER_ENFANT
+        workflowKey:
+          type: string
+        childTypeCode:
+          type: string
+    DeadlineRequest:
+      type: object
+      properties:
+        fieldName:
+          type: string
+        reminderDays:
+          type: integer
+          format: int32
+        escalationGroup:
+          type: string
+    DeadlineResponse:
+      type: object
+      properties:
+        dossierTypeCode:
+          type: string
+        fieldName:
+          type: string
+        reminderDays:
+          type: integer
+          format: int32
+        escalationGroup:
+          type: string
     SaveDmnDraftRequest:
       type: object
       properties:

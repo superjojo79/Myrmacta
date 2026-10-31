@@ -83,3 +83,65 @@ export async function grantDossierTypeAcl(
 export async function revokeDossierTypeAcl(code: string, userId: string): Promise<void> {
   await axios.delete(`/api/dossier-types/${code}/acl/${userId}`)
 }
+
+/** TODO §113 (D-MAILROOM-REPLY-WORKFLOW) — workflow « réponse » d'un type : ce qui démarre quand une réponse rejoint un dossier. */
+export type ReplyWorkflowMode = 'SUR_DOSSIER' | 'DOSSIER_ENFANT'
+
+export interface ReplyWorkflow {
+  dossierTypeCode: string
+  mode: ReplyWorkflowMode
+  workflowKey: string
+  childTypeCode: string | null
+}
+
+function replyWorkflowPath(code: string): string {
+  return `/api/dossier-types/${encodeURIComponent(code)}/reply-workflow`
+}
+
+/** `null` quand le type n'en déclare pas (réponse 204). */
+export async function getReplyWorkflow(code: string): Promise<ReplyWorkflow | null> {
+  const { data, status } = await axios.get<ReplyWorkflow | ''>(replyWorkflowPath(code))
+  return status === 204 || !data ? null : data
+}
+
+export async function setReplyWorkflow(
+  code: string,
+  payload: { mode: ReplyWorkflowMode; workflowKey: string; childTypeCode: string | null },
+): Promise<ReplyWorkflow> {
+  const { data } = await axios.put<ReplyWorkflow>(replyWorkflowPath(code), payload)
+  return data
+}
+
+export async function clearReplyWorkflow(code: string): Promise<void> {
+  await axios.delete(replyWorkflowPath(code))
+}
+
+/** TODO §115 (D-DEADLINE-FIELD) — échéance d'un type : champ DATE, rappel J-n, groupe d'escalade. */
+export interface DeadlineSetting {
+  dossierTypeCode: string
+  fieldName: string
+  reminderDays: number
+  escalationGroup: string | null
+}
+
+function deadlinePath(code: string): string {
+  return `/api/dossier-types/${encodeURIComponent(code)}/deadline`
+}
+
+/** `null` quand le type n'en déclare pas (réponse 204). */
+export async function getDeadline(code: string): Promise<DeadlineSetting | null> {
+  const { data, status } = await axios.get<DeadlineSetting | ''>(deadlinePath(code))
+  return status === 204 || !data ? null : data
+}
+
+export async function setDeadline(
+  code: string,
+  payload: { fieldName: string; reminderDays: number; escalationGroup: string | null },
+): Promise<DeadlineSetting> {
+  const { data } = await axios.put<DeadlineSetting>(deadlinePath(code), payload)
+  return data
+}
+
+export async function clearDeadline(code: string): Promise<void> {
+  await axios.delete(deadlinePath(code))
+}

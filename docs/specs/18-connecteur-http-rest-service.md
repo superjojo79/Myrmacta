@@ -207,9 +207,9 @@ Livré en complément du rôle SERVICE (§48) :
   obligatoires dans le schéma ; `WebhookController` répond 404 avant toute authentification
   (`ConnectorInstanceData.acceptsWebhooks`). Absent ou vrai : comportement d'avant (D-CAPABILITY-SCOPE reste au niveau du type ;
   ce drapeau ne coupe que l'entrée).
-- **`DELETE`**, sans corps. **`PATCH`**, avec corps comme `POST` et `PUT` (TODO §115).
+- **`DELETE`**, sans corps. **`PATCH`**, avec corps comme `POST` et `PUT` (TODO §116).
 
-## Implémentation — PATCH (TODO §115, issue #261)
+## Implémentation — PATCH (TODO §116, issue #261)
 
 `http-rest` envoie `PATCH` par Apache HttpClient 5 (version gérée par Spring Boot). L'URL garde le nom d'hôte d'origine :
 le SNI et la vérification du certificat sont ceux du client. Le résolveur DNS ne renvoie que l'adresse déjà choisie par

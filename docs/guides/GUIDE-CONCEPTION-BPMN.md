@@ -430,9 +430,10 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Quinze briques, chacune = **un seul
+palette, le panneau, la validation au déploiement et les agents. Dix-sept briques, chacune = **un seul
 élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
-quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies) :
+quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies), dix-sept avec
+« Router le courrier » et « Rattacher au fil » (TODO §113) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -441,8 +442,8 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Appeler un connecteur | `serviceTask` | `${connectorServiceTask}` |
 | Notifier | `serviceTask` | `${notificationDispatchTask}` |
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
-| Router le courrier | `serviceTask` | `${attachToThreadTask}` | rattache une réponse au dossier de son fil (§« Rattacher une réponse à son fil ») | variables `mail*` posées par le connecteur ; `dossierId` (réservée) | `filResultat` (`RATTACHE` ou `NOUVEAU`), `filDossierId`, `filDossierReference`, `filMotif` ; lien, pièces copiées, message `courrierRecu` au dossier du fil |
-| `${routeMailTask}` |
+| Rattacher au fil | `serviceTask` | `${attachToThreadTask}` |
+| Router le courrier | `serviceTask` | `${routeMailTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
@@ -712,6 +713,8 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   - crée le dossier métier lié au courrier (`LINKED`), avec les champs du courrier qui portent le même nom ;
   - l'ouvre, puis y démarre le process avec le groupe `routageService` comme destinataire ;
   - renseigne les champs `service` et `echeance` du courrier, si son type les déclare ;
+  - écrit la même échéance dans le champ date que le type du dossier métier désigne comme échéance (TODO §115), ce qui
+    déclenche le rappel et l'escalade de la plateforme ;
   - pose `routageResultat = ROUTE`, `dossierMetierId` et `dossierMetierReference`.
 - **Sinon** : aucune règle, action `TRIER`, ou valeur hors catalogue (groupe inconnu, type inactif, process non déployé,
   délai invalide, champ obligatoire du type cible absent du courrier).
@@ -724,7 +727,7 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
 - **Ouvrir le courrier.** Un courrier créé par un connecteur naît `DRAFT` : ouvrez-le (`OUVERT`), puis mettez-le en cours
   (`EN_COURS`) avant de pouvoir le clôturer.
 
-### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lot 3a)
+### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lots 3a et 3b)
 
 - **Rattacher au fil.** La brique **Rattacher au fil** (`${attachToThreadTask}`, sans paramètre) se place en tête du tri, avant
   la table de routage.
@@ -758,6 +761,23 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   Sans attente modélisée, rien ne se perd : la réponse est rangée dans le dossier, et ses participants sont prévenus.
 - **E-mails envoyés.** Les e-mails de « Notifier » partis d'un dossier sont inscrits dans l'index par leur Message-ID : une
   réponse du destinataire rejoint ce dossier.
+- **Workflow « réponse » du type (lot 3b, D-MAILROOM-REPLY-WORKFLOW).** Le type du dossier du fil peut déclarer un process
+  à lancer à chaque réponse rattachée (Admin → Types de dossier, panneau « Workflow réponse », ou
+  `PUT /api/dossier-types/{code}/reply-workflow`). Un dossier ne porte qu'un workflow actif à la fois : on choisit donc l'un
+  de deux modes.
+  - **`SUR_DOSSIER`** : le process démarre sur le dossier du fil, seulement si aucun process n'y tourne (un dossier traité,
+    pas encore clôturé, que la réponse relance). Si un process tourne, il faut modéliser l'attente `courrierRecu` ci-dessus.
+  - **`DOSSIER_ENFANT`** : chaque réponse ouvre un dossier enfant (`PARENT_CHILD`, libellé « Réponse <référence> ») du type
+    déclaré, où le process démarre, en parallèle du process métier. Le type enfant ne doit pas avoir de champ obligatoire
+    sans valeur par défaut, et la configuration du workflow doit accepter le statut `OUVERT`.
+  - **Le process reçoit** `courrierId` et `courrierReference`. S'il déclare ses variables de démarrage (§111), il doit
+    déclarer ces deux-là.
+  - **Variables posées dans le tri, après un rattachement :** `filReponseWorkflow` vaut `AUCUN` (le type n'en déclare pas),
+    `DEMARRE_SUR_DOSSIER`, `DEMARRE_SUR_ENFANT` (avec
+    `filReponseDossierId`) ou `NON` (avec la raison dans `filReponseMotif` : process non déployé, process déjà actif,
+    statut refusé…). Le rattachement a lieu dans tous les cas.
+  - Exemple : [`traiter-reponse.bpmn20.xml`](../../exemples/digital-mail-room/traiter-reponse.bpmn20.xml) et
+    [`config/reponse-facture.json`](../../exemples/digital-mail-room/config/reponse-facture.json).
 
 ## 4. Instancier / appeler un service externe
 
@@ -830,7 +850,7 @@ Entrée lue par `http-rest` en rôle SERVICE :
 
 | Clé | Rôle |
 |---|---|
-| `method` | `GET` (défaut), `POST`, `PUT`, `PATCH`, `DELETE`. `PATCH` porte un corps, comme `POST` et `PUT` (TODO §115) |
+| `method` | `GET` (défaut), `POST`, `PUT`, `PATCH`, `DELETE`. `PATCH` porte un corps, comme `POST` et `PUT` (TODO §116) |
 | `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `//`, segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace, `\`, ni encodage de `/ \ . ; %` ou d'un caractère de contrôle. Peut contenir des marqueurs `{nom}` |
 | `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni faite seulement de points une fois retirés un paramètre `;x` et les espaces (`..`, `..;x`, `.. `), ni `/`, `\` ou caractère de contrôle. 20 au plus |
 | `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |
@@ -1100,7 +1120,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${aiPrecheckTask}` | pré-vérification IA du dossier, **asynchrone** (§3nonies) | attributs littéraux `precheckPieces`, `precheckFields`, `precheckQuestions`, `precheckRules`, `precheckResult` ; `dossierId` (réservée), variables posées avant (règles) | la variable nommée par `precheckResult` (comptes déterministes) ; exécution et constats dans `precheck_run` |
-| `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier |
+| `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier ; champ d'échéance du dossier métier (§115) |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/be/myrmacta/infrastructure/flowable/` — en cas

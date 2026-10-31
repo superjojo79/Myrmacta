@@ -9,11 +9,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
+import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -73,6 +75,7 @@ class MailRoomExampleIT {
     @Autowired private HistoryService historyService;
     @Autowired private ManagementService managementService;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private DeadlineAlertJob deadlineAlertJob;
 
     private static boolean configured;
 
@@ -108,6 +111,24 @@ class MailRoomExampleIT {
         assertThat(task.getAssignee()).isNull();
         assertThat(taskService.getIdentityLinksForTask(task.getId()))
                 .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+
+        // TODO §115 (D-DEADLINE-FIELD) : le routage écrit l'échéance dans le champ désigné du type FACTURE.
+        String deadline = LocalDate.now(ZoneOffset.UTC).plusDays(30).toString();
+        assertThat(business.get("fields").get("echeance").asString()).isEqualTo(deadline);
+        // D-DEADLINE-ESCALATE : rappel à J-5 (une fois), puis, le lendemain du terme, la tâche passe à la direction financière.
+        Instant reminder = LocalDate.parse(deadline).minusDays(5).atTime(9, 0).toInstant(ZoneOffset.UTC);
+        deadlineAlertJob.process(reminder);
+        deadlineAlertJob.process(reminder.plusSeconds(3600));
+        assertThat(jdbc.queryForObject("select count(*) from dossier_deadline_alert where dossier_id = ?::uuid and level = 'RAPPEL'",
+                Integer.class, invoiceId)).isEqualTo(1);
+        assertThat(taskService.getIdentityLinksForTask(task.getId()))
+                .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+        deadlineAlertJob.process(LocalDate.parse(deadline).plusDays(1).atTime(9, 0).toInstant(ZoneOffset.UTC));
+        assertThat(taskService.getIdentityLinksForTask(task.getId()))
+                .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("DIRECTION_FINANCIERE"))
+                .noneSatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+        assertThat(read(get("/api/dossiers/{id}/elements", invoiceId)).toString())
+                .contains("Échéance du " + deadline + " dépassée : 1 tâche(s) réaffectée(s) au groupe DIRECTION_FINANCIERE");
 
         // Le registre du courrier : la liste des dossiers filtrée sur le type.
         assertThat(read(get("/api/dossiers").param("dossierTypeCode", "COURRIER")).get("content").toString())
@@ -170,6 +191,19 @@ class MailRoomExampleIT {
                 .anySatisfy(identity -> assertThat(identity.getGroupId()).isEqualTo("COMPTABILITE"));
         assertThat(taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("traiterFactureTache").count())
                 .isEqualTo(1);
+        // Mode 3 (D-MAILROOM-REPLY-WORKFLOW, DOSSIER_ENFANT) : un dossier « réponse » enfant de la facture, avec son workflow.
+        JsonNode child = null;
+        for (JsonNode relation : read(get("/api/dossiers/{id}/relations", invoiceId))) {
+            if ("PARENT_CHILD".equals(relation.get("type").asString())) {
+                child = relation.get("relatedDossier");
+            }
+        }
+        assertThat(child).isNotNull();
+        assertThat(child.get("dossierTypeCode").asString()).isEqualTo("REPONSE_FACTURE");
+        var replyProcess = runtimeService.createProcessInstanceQuery().processDefinitionKey("traiterReponse")
+                .variableValueEquals("dossierId", child.get("id").asString()).singleResult();
+        assertThat(replyProcess).isNotNull();
+        assertThat(runtimeService.getVariable(replyProcess.getId(), "courrierId")).isEqualTo(reply);
 
         deliver(new ImapMailbox.Mail("<x300@autre.example>", "quelquun@autre.example", "Autre", "RE: Facture 2026-300 (autre)",
                 Instant.parse("2026-10-31T09:00:00Z"), "Je m'immisce.", false, "mx.example.com; dmarc=pass header.from=autre.example",
@@ -202,7 +236,7 @@ class MailRoomExampleIT {
                             .content(JSON.writeValueAsString(group)))
                     .andExpect(status().isCreated());
         }
-        for (String type : List.of("config/type-dossier.json", "config/type-facture.json")) {
+        for (String type : List.of("config/type-dossier.json", "config/type-facture.json", "config/type-reponse-facture.json")) {
             JsonNode body = JSON.readTree(EXAMPLE.resolve(type).toFile());
             mockMvc.perform(post("/api/dossier-types").with(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                             .content(JSON.writeValueAsString(body)))
@@ -212,7 +246,8 @@ class MailRoomExampleIT {
                             .content("{\"subjectUserId\":\"" + OPERATOR + "\",\"permission\":\"EDIT\"}"))
                     .andExpect(status().isNoContent());
         }
-        for (String workflow : List.of("config/workflow-config.json", "config/workflow-config-facture.json")) {
+        for (String workflow : List.of("config/workflow-config.json", "config/workflow-config-facture.json",
+                "config/workflow-config-reponse.json")) {
             // Forme MCP (processDefinitionKey) ; l'API REST attend workflowKey.
             ObjectNode config = (ObjectNode) JSON.readTree(EXAMPLE.resolve(workflow).toFile());
             config.set("workflowKey", config.remove("processDefinitionKey"));
@@ -224,12 +259,22 @@ class MailRoomExampleIT {
                                 "application/xml", Files.readAllBytes(EXAMPLE.resolve("routage-courrier.dmn"))))
                         .with(admin).with(csrf()))
                 .andExpect(status().isCreated());
-        for (String bpmn : List.of("traiter-facture.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
+        for (String bpmn : List.of("traiter-facture.bpmn20.xml", "traiter-reponse.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
             mockMvc.perform(multipart("/api/workflow-bpmn-deployments").file(new MockMultipartFile("file", bpmn,
                                     "application/xml", Files.readAllBytes(EXAMPLE.resolve(bpmn))))
                             .with(admin).with(csrf()))
                     .andExpect(status().isCreated());
         }
+        ObjectNode reply = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/reponse-facture.json").toFile());
+        reply.remove("_commentaire");
+        mockMvc.perform(put("/api/dossier-types/{code}/reply-workflow", "FACTURE").with(admin).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(reply)))
+                .andExpect(status().isOk());
+        ObjectNode deadline = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/echeance-facture.json").toFile());
+        deadline.remove("_commentaire");
+        mockMvc.perform(put("/api/dossier-types/{code}/deadline", "FACTURE").with(admin).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(deadline)))
+                .andExpect(status().isOk());
         configured = true;
     }
 

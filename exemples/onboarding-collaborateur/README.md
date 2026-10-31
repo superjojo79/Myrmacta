@@ -131,7 +131,7 @@ contre un faux SIRH, un faux IAM et un faux ITSM locaux :
 
 ## Ce que l'exemple ne montre pas
 
-- `PATCH` (mise à jour partielle OData, D365 F&O, Dataverse) : le connecteur l'accepte (TODO §115) ; cet exemple ne l'utilise pas.
+- `PATCH` (mise à jour partielle OData, D365 F&O, Dataverse) : le connecteur l'accepte (TODO §116) ; cet exemple ne l'utilise pas.
 - Un délai sur une validation (minuteur en bordure) : voir l'exemple
   [autorisation riverain](../autorisation-riverain/README.md).
 - Une réponse asynchrone d'une application (callback corrélé) : connecteur `flowable-callback`,

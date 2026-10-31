@@ -25,7 +25,7 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.util.Timeout;
 
 /**
- * TODO §115 (D-HTTP-PATCH) — client des appels {@code http-rest} et des jetons OAuth2 qui passent par le même
+ * TODO §116 (D-HTTP-PATCH) — client des appels {@code http-rest} et des jetons OAuth2 qui passent par le même
  * {@link HttpRestConnector.HttpSender}.
  *
  * <p>L'URL garde le nom d'hôte d'origine : le SNI et la vérification du certificat sont ceux du client, sans vérificateur

@@ -1,0 +1,6 @@
+{
+  "_commentaire": "Échéance du type FACTURE (PUT /api/dossier-types/FACTURE/deadline) : le routage y écrit le délai de la table ; rappel aux participants 5 jours avant, puis, le lendemain du terme, tâches ouvertes réaffectées à la direction financière.",
+  "fieldName": "echeance",
+  "reminderDays": 5,
+  "escalationGroup": "DIRECTION_FINANCIERE"
+}

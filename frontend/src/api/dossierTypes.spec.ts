@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
-import { evaluateFieldRules, updateDossierType } from './dossierTypes'
+import {
+  clearDeadline,
+  clearReplyWorkflow,
+  evaluateFieldRules,
+  getDeadline,
+  getReplyWorkflow,
+  setDeadline,
+  setReplyWorkflow,
+  updateDossierType,
+} from './dossierTypes'
 
 vi.mock('axios')
 
@@ -24,5 +33,51 @@ describe('dossierTypes api', () => {
     await expect(evaluateFieldRules('A/B', { ht: 100 })).resolves.toEqual(preview)
 
     expect(axios.post).toHaveBeenCalledWith('/api/dossier-types/A%2FB/evaluate-rules', { fields: { ht: 100 } })
+  })
+})
+
+describe('reply workflow api (TODO §113)', () => {
+  it('reads, sets and clears the reply workflow of a type; 204 means none', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: '', status: 204 })
+    expect(await getReplyWorkflow('FACTURE')).toBeNull()
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { dossierTypeCode: 'FACTURE', mode: 'SUR_DOSSIER', workflowKey: 'w', childTypeCode: null },
+      status: 200,
+    })
+    expect((await getReplyWorkflow('FACTURE'))?.mode).toBe('SUR_DOSSIER')
+    vi.mocked(axios.put).mockResolvedValue({ data: {} })
+    vi.mocked(axios.delete).mockResolvedValue({})
+    await setReplyWorkflow('FACTURE', { mode: 'DOSSIER_ENFANT', workflowKey: 'w', childTypeCode: 'REPONSE' })
+    await clearReplyWorkflow('FACTURE')
+    expect(axios.get).toHaveBeenCalledWith('/api/dossier-types/FACTURE/reply-workflow')
+    expect(axios.put).toHaveBeenCalledWith('/api/dossier-types/FACTURE/reply-workflow', {
+      mode: 'DOSSIER_ENFANT',
+      workflowKey: 'w',
+      childTypeCode: 'REPONSE',
+    })
+    expect(axios.delete).toHaveBeenCalledWith('/api/dossier-types/FACTURE/reply-workflow')
+  })
+})
+
+describe('deadline api (TODO §115)', () => {
+  it('reads, sets and clears the deadline of a type; 204 means none', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: '', status: 204 })
+    expect(await getDeadline('FACTURE')).toBeNull()
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { dossierTypeCode: 'FACTURE', fieldName: 'echeance', reminderDays: 5, escalationGroup: null },
+      status: 200,
+    })
+    expect((await getDeadline('FACTURE'))?.reminderDays).toBe(5)
+    vi.mocked(axios.put).mockResolvedValue({ data: {} })
+    vi.mocked(axios.delete).mockResolvedValue({})
+    await setDeadline('FACTURE', { fieldName: 'echeance', reminderDays: 2, escalationGroup: 'DIRECTION' })
+    await clearDeadline('FACTURE')
+    expect(axios.get).toHaveBeenCalledWith('/api/dossier-types/FACTURE/deadline')
+    expect(axios.put).toHaveBeenCalledWith('/api/dossier-types/FACTURE/deadline', {
+      fieldName: 'echeance',
+      reminderDays: 2,
+      escalationGroup: 'DIRECTION',
+    })
+    expect(axios.delete).toHaveBeenCalledWith('/api/dossier-types/FACTURE/deadline')
   })
 })

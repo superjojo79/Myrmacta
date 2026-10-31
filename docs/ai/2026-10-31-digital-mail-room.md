@@ -183,8 +183,9 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | livré | #262 |
 | 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §114) | livré | #264 |
 | 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | #266 |
-| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | à ouvrir |
-| 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
+| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | #267 |
+| 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | en cours | |
+| 3b | Workflow « réponse » déclaré par le type de dossier (mode 3) | à faire | |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
@@ -232,7 +233,19 @@ Fait dans le lot 2c (§114 D-GROUP-REASSIGN) :
 - `GET /api/user-group-options` ; la liste des tâches d'un lien expose `candidateGroups`.
 - Fiche dossier : groupe de la tâche, choix « Réaffecter au groupe… » pour les éditeurs.
 
-Prochaine action : preuves complètes du lot 2c, PR, puis lot 3 (fils de discussion). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Les lots 1 à 2c sont mergés (#262, #264, #266, #267). Ils ont été reconstruits au-dessus de `main` après la PR #265, qui avait
+pris le §112 : les points de la mail room sont devenus §113 et §114.
+
+Fait dans le lot 3a :
+- index `mail_message_index` ;
+- inscription des e-mails reçus (relais du connecteur) et envoyés (outbox, Message-ID renvoyé par `EmailPort`, dossier
+  d'origine posé par « Notifier ») ;
+- brique `attachToThreadTask` ;
+- `WorkflowEnginePort.correlateMessageToAllWaiting` ;
+- variables `mail*` réservées à la plateforme ;
+- exemple : tri qui rattache d'abord, facture qui attend `courrierRecu`.
+
+Prochaine action : preuves complètes du lot 3a, PR, puis lot 3b. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves

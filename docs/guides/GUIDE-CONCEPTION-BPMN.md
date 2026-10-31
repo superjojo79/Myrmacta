@@ -441,7 +441,8 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Appeler un connecteur | `serviceTask` | `${connectorServiceTask}` |
 | Notifier | `serviceTask` | `${notificationDispatchTask}` |
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
-| Router le courrier | `serviceTask` | `${routeMailTask}` |
+| Router le courrier | `serviceTask` | `${attachToThreadTask}` | rattache une réponse au dossier de son fil (§« Rattacher une réponse à son fil ») | variables `mail*` posées par le connecteur ; `dossierId` (réservée) | `filResultat` (`RATTACHE` ou `NOUVEAU`), `filDossierId`, `filDossierReference`, `filMotif` ; lien, pièces copiées, message `courrierRecu` au dossier du fil |
+| `${routeMailTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
@@ -722,6 +723,41 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   traverse sinon tout le process pendant son démarrage, avant que celui-ci ne soit confirmé.
 - **Ouvrir le courrier.** Un courrier créé par un connecteur naît `DRAFT` : ouvrez-le (`OUVERT`), puis mettez-le en cours
   (`EN_COURS`) avant de pouvoir le clôturer.
+
+### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lot 3a)
+
+- **Rattacher au fil.** La brique **Rattacher au fil** (`${attachToThreadTask}`, sans paramètre) se place en tête du tri, avant
+  la table de routage.
+  - **Recherche du fil.** Elle cherche le fil du courrier dans l'index des e-mails reçus et envoyés (`In-Reply-To`, puis
+    `References`, puis `conversationId` Graph).
+  - **Conditions du rattachement :**
+    - l'expéditeur est attesté ;
+    - son domaine est celui de l'interlocuteur du fil ;
+    - le dossier du fil est encore ouvert.
+  - **Effets du rattachement :**
+    - un lien `LINKED` vers le dossier du fil ;
+    - la copie des pièces (antivirus compris) ;
+    - l'avertissement des participants ;
+    - le message `courrierRecu`, remis à **toutes** les exécutions de ce dossier qui l'attendent.
+  - **Variables posées :** `filResultat` vaut `RATTACHE` ou `NOUVEAU`, avec `filDossierId`, `filDossierReference` et, s'il
+    n'y a pas eu rattachement, `filMotif`.
+  - **Suite du tri :** une passerelle `${filResultat == 'RATTACHE'}` clôt le courrier rattaché. Les autres vont à la table de
+    routage.
+- **Attendre un courrier.** Un process métier qui veut réagir à une réponse attend le message `courrierRecu`, par un
+  événement intermédiaire ou en bordure. Le message apporte `courrierId` et `courrierReference`. Exemple, non interruptif,
+  pris de [`traiter-facture.bpmn20.xml`](../../exemples/digital-mail-room/traiter-facture.bpmn20.xml) :
+
+  ```xml
+  <message id="courrierRecuMsg" name="courrierRecu"/>
+  …
+  <boundaryEvent id="courrierRecu" attachedToRef="traiterFactureTache" cancelActivity="false">
+    <messageEventDefinition messageRef="courrierRecuMsg"/>
+  </boundaryEvent>
+  ```
+
+  Sans attente modélisée, rien ne se perd : la réponse est rangée dans le dossier, et ses participants sont prévenus.
+- **E-mails envoyés.** Les e-mails de « Notifier » partis d'un dossier sont inscrits dans l'index par leur Message-ID : une
+  réponse du destinataire rejoint ce dossier.
 
 ## 4. Instancier / appeler un service externe
 

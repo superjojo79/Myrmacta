@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 
 import be.myrmacta.domain.connector.port.out.ConnectorSecretCipher;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
+import be.myrmacta.domain.mailroom.model.MailIndexEntry;
+import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.notification.model.NotificationChannel;
 import be.myrmacta.domain.notification.model.NotificationOutboxRecord;
 import be.myrmacta.domain.notification.model.NotificationOutboxStatus;
@@ -141,6 +143,54 @@ class NotificationOutboxRelayTest {
         verify(emailPort).send("a@example.com", "Hi", "Body");
         verify(outboxRepository).markProcessed(record.id(), now);
         verify(outboxRepository).purgeTerminalOlderThan(now.minus(Duration.ofDays(7)));
+    }
+
+    /** TODO §113 (D-MAILROOM-INDEX) — un e-mail parti d'un dossier inscrit son Message-ID, pour qu'une réponse le rejoigne. */
+    @Test
+    void relay_emailSentFromADossier_recordsItsMessageIdInTheThreadIndex() {
+        Instant now = Instant.parse("2026-10-31T12:00:00Z");
+        UUID dossierId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        MailMessageIndex index = mock(MailMessageIndex.class);
+        NotificationOutboxRelay indexing = new NotificationOutboxRelay(outboxRepository, webhookRepository, emailPort, webhookPort,
+                browserPushPort, cipher, new NotificationProperties(
+                        new NotificationProperties.Outbox(20, 3, Duration.ofSeconds(1), Duration.ofDays(7)), null, null, null),
+                JsonMapper.builder().build(), storage, new NotificationEmailProperties(16L), index);
+        NotificationOutboxRecord fromDossier = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"Citoyen@Example.org\",\"subject\":\"Hi\",\"body\":\"Body\",\"dossierId\":\"" + dossierId + "\"}", now);
+        NotificationOutboxRecord anonymous = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\"}", now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(fromDossier, anonymous));
+        when(emailPort.send(anyString(), anyString(), anyString())).thenReturn("<sent-1@myrmacta.example>");
+
+        indexing.relayPending(now);
+
+        ArgumentCaptor<MailIndexEntry> entry = ArgumentCaptor.forClass(MailIndexEntry.class);
+        verify(index).record(entry.capture());
+        org.assertj.core.api.Assertions.assertThat(entry.getValue().key()).isEqualTo("<sent-1@myrmacta.example>");
+        org.assertj.core.api.Assertions.assertThat(entry.getValue().direction()).isEqualTo(MailIndexEntry.Direction.OUT);
+        org.assertj.core.api.Assertions.assertThat(entry.getValue().dossierId()).isEqualTo(dossierId);
+        org.assertj.core.api.Assertions.assertThat(entry.getValue().counterpart()).isEqualTo("citoyen@example.org");
+    }
+
+    @Test
+    void relay_aThreadIndexFailureNeverResendsTheEmail() {
+        Instant now = Instant.parse("2026-10-31T12:00:00Z");
+        MailMessageIndex index = mock(MailMessageIndex.class);
+        org.mockito.Mockito.doThrow(new IllegalStateException("db")).when(index).record(any());
+        NotificationOutboxRelay indexing = new NotificationOutboxRelay(outboxRepository, webhookRepository, emailPort, webhookPort,
+                browserPushPort, cipher, new NotificationProperties(
+                        new NotificationProperties.Outbox(20, 3, Duration.ofSeconds(1), Duration.ofDays(7)), null, null, null),
+                JsonMapper.builder().build(), storage, new NotificationEmailProperties(16L), index);
+        NotificationOutboxRecord record = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\",\"dossierId\":\"" + UUID.randomUUID() + "\"}",
+                now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+        when(emailPort.send(anyString(), anyString(), anyString())).thenReturn("<sent-2@myrmacta.example>");
+
+        indexing.relayPending(now);
+
+        verify(outboxRepository).markProcessed(record.id(), now);
+        verify(outboxRepository, never()).recordFailure(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
     }
 
     @Test

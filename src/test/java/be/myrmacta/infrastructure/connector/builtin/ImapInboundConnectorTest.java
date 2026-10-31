@@ -165,6 +165,22 @@ class ImapInboundConnectorTest {
                 .containsEntry("mailConversationId", "AAQkConv1=");
     }
 
+    /** TODO §113 — les variables de fil viennent de la plateforme : un mapping de connecteur ne peut pas les forger. */
+    @Test
+    void aConnectorMappingCannotForgeThePlatformMailVariables() {
+        Map<String, Object> c = config();
+        c.put("mapping", Map.of("fields", Map.of("objet", "$.subject", "texte", "$.body", "expediteur", "$.from"),
+                "variables", Map.of("mailSenderAuthenticated", "$.subject", "mailInReplyTo", "$.body", "autre", "$.fromName")));
+        inbox.add(mail("RE: courrier", "<forged@x>", false, List.of()));
+
+        var event = events(instance(c)).getFirst();
+
+        assertThat(event.variables()).containsEntry("mailSenderAuthenticated", true).doesNotContainKey("mailInReplyTo")
+                .containsEntry("autre", "Client");
+        assertThat(event.mail().messageId()).isEqualTo("<id@x>");
+        assertThat(event.mail().sender()).isEqualTo("client@example.org");
+    }
+
     @Test
     void aMessageOutsideAnyThreadCarriesNoThreadVariable() {
         inbox.add(mail("Nouvelle demande", "Bonjour", false, List.of()));

@@ -14,7 +14,7 @@ Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une en
 
 Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Dossiers → filtre « Type : Courrier entrant »).
 
-État : **lots 1 et 2b** de la feature.
+État : **lots 1 à 3a** de la feature.
 
 - **Ce que fait déjà l'exemple :**
   - un e-mail devient un courrier, avec ses pièces ;
@@ -22,10 +22,13 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     - une facture d'un fournisseur connu ouvre un **dossier « facture » lié**, dont la tâche va au groupe COMPTABILITE, avec
       une échéance à 30 jours ;
     - le reste part à la **file de tri** du groupe COURRIER ;
-  - les en-têtes de fil (`In-Reply-To`, `References`, `conversationId`) parviennent au processus.
+  - une tâche se réaffecte à un autre groupe depuis la fiche du dossier, avec une note de trace ;
+  - une **réponse** à un e-mail connu (reçu ou envoyé par « Notifier ») rejoint le dossier de son fil :
+    - lien vers ce dossier, pièces copiées, participants prévenus ;
+    - pendant le traitement d'une facture, la tâche « Prendre connaissance du courrier » s'ouvre ;
+    - un expéditeur non attesté, ou d'un autre domaine, n'entre pas dans le fil : son courrier est routé comme un nouveau.
 - **Ce qui viendra :**
-  - la réaffectation d'une tâche vers un autre groupe, avec sa trace (lot 2c) ;
-  - le rattachement des réponses à leur fil (lot 3) ;
+  - le workflow « réponse » déclaré par le type de dossier (lot 3b) ;
   - les rappels et l'escalade des échéances (lot 4) ;
   - les PDF déposés (lot 5) ;
   - les outils MCP (lot 6).
@@ -38,8 +41,8 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
 | `config/type-dossier.json` | Type `COURRIER` : canal, expéditeur, objet, texte, service destinataire, échéance |
 | `config/workflow-config.json` | Statuts du courrier : reçu, à trier, routé, rattaché, traité, classé |
 | `routage-courrier.dmn` | Table de routage `routageCourrier` (entrées `canal`, `domaineExpediteur`) |
-| `tri-courrier.bpmn20.xml` | Processus `triCourrier` : ouvrir le courrier, préparer les entrées, table, brique « Router le courrier », puis routé ou « Trier le courrier » |
-| `config/type-facture.json`, `config/workflow-config-facture.json`, `traiter-facture.bpmn20.xml` | Dossier métier « facture » ouvert par le routage, et son process `traiterFacture` |
+| `tri-courrier.bpmn20.xml` | Processus `triCourrier` : ouvrir le courrier, « Rattacher au fil », sinon préparer les entrées, table, « Router le courrier », puis routé ou « Trier le courrier » |
+| `config/type-facture.json`, `config/workflow-config-facture.json`, `traiter-facture.bpmn20.xml` | Dossier métier « facture » ouvert par le routage, et son process `traiterFacture` (attend `courrierRecu` pendant le traitement) |
 | `config/connecteur-imap.exemple.json` | Connecteur `imap-inbound` vers une boîte générique (**non créé**) |
 
 ## Installer
@@ -66,4 +69,4 @@ service, le type de dossier, le process et le délai.
   dans la boîte après lui avoir donné un objet.
 - **Canal :** il vaut `EMAIL` par défaut. Les autres canaux le poseront eux-mêmes.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri.
+Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture », celle d'un autre domaine non.

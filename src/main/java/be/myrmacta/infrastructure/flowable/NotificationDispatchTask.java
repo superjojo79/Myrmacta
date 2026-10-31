@@ -64,7 +64,8 @@ public class NotificationDispatchTask implements JavaDelegate {
         Map<String, Object> payload = parsePayload(execution.getVariable("notificationPayload"));
 
         NotificationEvent event = new NotificationEvent(channels, to, subject, body, userId, webhookConfigId, payload)
-                .withAttachment(attachment(execution));
+                .withAttachment(attachment(execution))
+                .withOriginDossier(originDossier(execution));
         sendNotificationUseCase.send(event, tenantProperties.id());
     }
 
@@ -157,6 +158,19 @@ public class NotificationDispatchTask implements JavaDelegate {
     }
 
     /** @param origin « {@code <paramètre> source <source>} », repris tel quel dans le message d'erreur */
+    /** TODO §113 — variable de plateforme {@code dossierId} (réservée) ; absente ou illisible : pas d'inscription. */
+    private static UUID originDossier(DelegateExecution execution) {
+        Object raw = execution.getVariable(WorkflowVariables.DOSSIER_ID);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.toString());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     private static UUID dossierId(DelegateExecution execution, String origin) {
         Object raw = execution.getVariable(WorkflowVariables.DOSSIER_ID);
         if (raw == null || raw.toString().isBlank()) {

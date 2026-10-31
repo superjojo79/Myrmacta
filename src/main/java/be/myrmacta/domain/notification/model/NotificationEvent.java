@@ -17,7 +17,22 @@ public record NotificationEvent(
         UUID webhookConfigId,
         Map<String, Object> payload,
         DossierFieldsSnapshot dossierFieldsSnapshot,
-        EmailAttachment attachment) {
+        EmailAttachment attachment,
+        /** TODO §113 (D-MAILROOM-INDEX) — dossier d'où part l'e-mail, posé par la brique « Notifier » seule ; {@code null} sinon. */
+        UUID originDossierId) {
+
+    public NotificationEvent(
+            List<NotificationChannel> channels,
+            String to,
+            String subject,
+            String body,
+            String userId,
+            UUID webhookConfigId,
+            Map<String, Object> payload,
+            DossierFieldsSnapshot dossierFieldsSnapshot,
+            EmailAttachment attachment) {
+        this(channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, attachment, null);
+    }
 
     /** Sans pièce jointe (issue #183 : seule la brique « Notifier » en pose une). */
     public NotificationEvent(
@@ -47,6 +62,12 @@ public record NotificationEvent(
     /** Même événement, avec cette pièce jointe e-mail ({@code null} : aucune). */
     public NotificationEvent withAttachment(EmailAttachment emailAttachment) {
         return new NotificationEvent(
-                channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, emailAttachment);
+                channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, emailAttachment, originDossierId);
+    }
+
+    /** Même événement, envoyé depuis ce dossier : un e-mail parti est inscrit dans l'index des fils (TODO §113). */
+    public NotificationEvent withOriginDossier(UUID dossierId) {
+        return new NotificationEvent(
+                channels, to, subject, body, userId, webhookConfigId, payload, dossierFieldsSnapshot, attachment, dossierId);
     }
 }

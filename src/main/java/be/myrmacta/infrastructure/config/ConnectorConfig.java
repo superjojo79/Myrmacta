@@ -36,8 +36,10 @@ public class ConnectorConfig {
             CreateDossierUseCase createDossier,
             GetDossierUseCase getDossier,
             OutboxRepository outboxRepository,
-            AttachInboundFilesUseCase attachInboundFiles) {
-        return new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attachInboundFiles);
+            AttachInboundFilesUseCase attachInboundFiles,
+            be.myrmacta.domain.mailroom.port.out.MailMessageIndex mailIndex) {
+        return new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attachInboundFiles, mailIndex,
+                java.time.Clock.systemUTC());
     }
 
     /** TODO §87 (D3c) — pièces jointes d'un e-mail entrant : mêmes contrôles que l'upload interne (types, contenu, antivirus). */

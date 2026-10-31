@@ -138,6 +138,50 @@ class MailRoomExampleIT {
         assertThat(read(get("/api/dossiers/{id}/relations", mailId))).isEmpty();
     }
 
+    /** TODO §113 (lot 3a) — une réponse au fil d'une facture routée rejoint le dossier « facture » et réveille son traitement. */
+    @Test
+    void aReplyFromTheSupplierJoinsTheInvoiceDossierOfItsThread_aForeignDomainDoesNot() throws Exception {
+        configureTheExample();
+        deliver(new ImapMailbox.Mail("<f300@fournisseur.example>", "compta@fournisseur.example", "Fournisseur SA", "Facture 2026-300",
+                Instant.parse("2026-10-30T08:15:00Z"), "Notre facture.", false, "mx.example.com; dmarc=pass header.from=fournisseur.example",
+                List.of(), 0));
+        String invoiceMail = awaitMailDossier("Facture 2026-300");
+        awaitRouted(invoiceMail);
+        String invoiceId = read(get("/api/dossiers/{id}/relations", invoiceMail)).get(0).get("relatedDossier").get("id").asString();
+
+        var reminder = new InboundAttachment("rappel.pdf", "application/pdf", "%PDF-1.4 rappel".getBytes(StandardCharsets.US_ASCII));
+        deliver(new ImapMailbox.Mail("<r300@fournisseur.example>", "compta@fournisseur.example", "Fournisseur SA",
+                "RE: Facture 2026-300", Instant.parse("2026-10-31T08:15:00Z"), "Rappel en annexe.", false,
+                "mx.example.com; dmarc=pass header.from=fournisseur.example", List.of(reminder), 0,
+                MailThread.of("<f300@fournisseur.example>", "<f300@fournisseur.example>", "")));
+        String reply = awaitMailDossier("RE: Facture 2026-300");
+        awaitRouted(reply);
+
+        assertThat(read(get("/api/dossiers/{id}/workflows", reply)).get("content").get(0).get("status").asString()).isEqualTo("RATTACHE");
+        JsonNode link = read(get("/api/dossiers/{id}/relations", reply)).get(0);
+        assertThat(link.get("type").asString()).isEqualTo("LINKED");
+        assertThat(link.get("relatedDossier").get("id").asString()).isEqualTo(invoiceId);
+        assertThat(read(get("/api/dossiers/{id}/elements", invoiceId)).toString()).contains("rappel.pdf");
+        String invoiceProcess = runtimeService.createProcessInstanceQuery().processDefinitionKey("traiterFacture")
+                .variableValueEquals("dossierId", invoiceId).singleResult().getId();
+        Task readTask = taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("lireCourrier").singleResult();
+        assertThat(readTask).isNotNull();
+        assertThat(taskService.getIdentityLinksForTask(readTask.getId()))
+                .anySatisfy(identity -> assertThat(identity.getGroupId()).isEqualTo("COMPTABILITE"));
+        assertThat(taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("traiterFactureTache").count())
+                .isEqualTo(1);
+
+        deliver(new ImapMailbox.Mail("<x300@autre.example>", "quelquun@autre.example", "Autre", "RE: Facture 2026-300 (autre)",
+                Instant.parse("2026-10-31T09:00:00Z"), "Je m'immisce.", false, "mx.example.com; dmarc=pass header.from=autre.example",
+                List.of(), 0, MailThread.of("<f300@fournisseur.example>", "", "")));
+        String intruder = awaitMailDossier("RE: Facture 2026-300 (autre)");
+        ProcessInstance sorting = awaitSortingTask(intruder);
+        assertThat(runtimeService.getVariables(sorting.getId()))
+                .containsEntry("filResultat", "NOUVEAU")
+                .containsEntry("filMotif", "domaine de l'expéditeur différent de celui du fil");
+        assertThat(read(get("/api/dossiers/{id}/relations", intruder))).isEmpty();
+    }
+
     private void deliver(ImapMailbox.Mail mail) throws Exception {
         doAnswer(call -> {
             ImapMailbox.Handler handler = call.getArgument(3);

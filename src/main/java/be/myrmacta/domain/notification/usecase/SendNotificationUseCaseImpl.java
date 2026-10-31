@@ -170,7 +170,8 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
     private static String snapshot(
             NotificationChannel channel, NotificationEvent event, Map<String, Object> payload, UUID inboxId) {
         return switch (channel) {
-            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body(), event.attachment());
+            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body(), event.attachment(),
+                    event.originDossierId());
             case WEBHOOK -> NotificationPayloadJson.webhook(event.webhookConfigId(), payload);
             case BROWSER -> NotificationPayloadJson.browser(event.userId(), payload, inboxId);
         };

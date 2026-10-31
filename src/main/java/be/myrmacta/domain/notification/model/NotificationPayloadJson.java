@@ -18,11 +18,19 @@ public final class NotificationPayloadJson {
 
     /** Issue #183 — {@code attachment} (facultatif) : la référence seulement, jamais le contenu (D-NOTIF-ATTACH-REF-IN-OUTBOX). */
     public static String email(String to, String subject, String body, EmailAttachment attachment) {
+        return email(to, subject, body, attachment, null);
+    }
+
+    /** TODO §113 — {@code originDossierId} (facultatif) : le relais inscrit le Message-ID envoyé dans l'index des fils. */
+    public static String email(String to, String subject, String body, EmailAttachment attachment, UUID originDossierId) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('{');
         appendField(sb, "to", to, true);
         appendField(sb, "subject", subject, false);
         appendField(sb, "body", body, false);
+        if (originDossierId != null) {
+            appendField(sb, "dossierId", originDossierId.toString(), false);
+        }
         if (attachment != null) {
             sb.append(',');
             quote(sb, "attachment");

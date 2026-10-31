@@ -13,8 +13,11 @@ import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.port.in.CreateDossierUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
+import be.myrmacta.domain.mailroom.model.MailIndexEntry;
+import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.workflow.model.TriggerOutboxPayload;
 import be.myrmacta.domain.workflow.port.out.OutboxRepository;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -27,6 +30,8 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
     private final GetDossierUseCase getDossier;
     private final OutboxRepository outboxRepository;
     private final AttachInboundFilesUseCase attachInboundFiles;
+    private final MailMessageIndex mailIndex;
+    private final Clock clock;
 
     /** Sans rattachement de pièces jointes : un événement qui en porte est refusé (jamais ignoré en silence). */
     public ConnectorTriggerRuntimeImpl(
@@ -34,7 +39,7 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
             CreateDossierUseCase createDossier,
             GetDossierUseCase getDossier,
             OutboxRepository outboxRepository) {
-        this(catalog, createDossier, getDossier, outboxRepository, null);
+        this(catalog, createDossier, getDossier, outboxRepository, null, null, Clock.systemUTC());
     }
 
     public ConnectorTriggerRuntimeImpl(
@@ -43,11 +48,25 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
             GetDossierUseCase getDossier,
             OutboxRepository outboxRepository,
             AttachInboundFilesUseCase attachInboundFiles) {
+        this(catalog, createDossier, getDossier, outboxRepository, attachInboundFiles, null, Clock.systemUTC());
+    }
+
+    /** TODO §113 (D-MAILROOM-INDEX) — avec l'index des fils : un e-mail qui crée un courrier y est inscrit. */
+    public ConnectorTriggerRuntimeImpl(
+            ConnectorCatalog catalog,
+            CreateDossierUseCase createDossier,
+            GetDossierUseCase getDossier,
+            OutboxRepository outboxRepository,
+            AttachInboundFilesUseCase attachInboundFiles,
+            MailMessageIndex mailIndex,
+            Clock clock) {
         this.catalog = catalog;
         this.createDossier = createDossier;
         this.getDossier = getDossier;
         this.outboxRepository = outboxRepository;
         this.attachInboundFiles = attachInboundFiles;
+        this.mailIndex = mailIndex;
+        this.clock = clock;
     }
 
     @Override
@@ -74,6 +93,7 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
             throw new ConnectorValidationException("attachments are not supported by this trigger runtime");
         }
         UUID dossierId = resolveOrCreateDossier(instance, event);
+        recordInboundMail(instance, event, dossierId);
         Map<String, Object> variables = event.variables();
         if (!event.attachments().isEmpty()) {
             int rejected;
@@ -95,6 +115,24 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
                 event.processKey(),
                 variables,
                 "connector:" + instance.id()));
+    }
+
+    /** Un identifiant illisible ou trop long n'est pas inscrit : il ne rattachera rien, sans empêcher le courrier. */
+    private void recordInboundMail(ConnectorInstanceData instance, WorkflowTriggerEvent event, UUID dossierId) {
+        if (mailIndex == null || event.mail() == null) {
+            return;
+        }
+        WorkflowTriggerEvent.InboundMailIdentity mail = event.mail();
+        record(instance, MailIndexEntry.Kind.MESSAGE_ID, mail.messageId(), dossierId, mail.sender());
+        record(instance, MailIndexEntry.Kind.CONVERSATION, mail.conversationId(), dossierId, mail.sender());
+    }
+
+    private void record(ConnectorInstanceData instance, MailIndexEntry.Kind kind, String key, UUID dossierId, String sender) {
+        if (key == null || key.isBlank() || key.length() > MailIndexEntry.MAX_KEY_CHARS) {
+            return;
+        }
+        mailIndex.record(new MailIndexEntry(instance.tenantId(), kind, key.strip(), MailIndexEntry.Direction.IN, dossierId, sender,
+                clock.instant()));
     }
 
     private UUID resolveOrCreateDossier(ConnectorInstanceData instance, WorkflowTriggerEvent event) {

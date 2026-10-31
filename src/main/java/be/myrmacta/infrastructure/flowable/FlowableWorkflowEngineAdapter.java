@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.flowable;
 
 import be.myrmacta.domain.connector.model.CallbackAmbiguousCorrelationException;
 import be.myrmacta.domain.connector.model.CallbackNoMatchingInstanceException;
+import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +114,21 @@ class FlowableWorkflowEngineAdapter implements WorkflowEnginePort {
     public void correlateMessageOnExecution(
             String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables) {
         correlate(messageName, correlationKey, correlationValue, variables, true);
+    }
+
+    @Override
+    public int correlateMessageToAllWaiting(String messageName, String dossierId, Map<String, Object> variables) {
+        int resumed = 0;
+        for (Execution execution : runtimeService.createExecutionQuery().messageEventSubscriptionName(messageName)
+                .processVariableValueEquals(WorkflowVariables.DOSSIER_ID, dossierId).list()) {
+            try {
+                runtimeService.messageEventReceived(messageName, execution.getId(), variables);
+                resumed++;
+            } catch (FlowableException alreadyResumed) {
+                // Même course que D-CALLBACK-RACE : l'exécution a repris entre la requête et l'envoi ; ce n'est pas une erreur.
+            }
+        }
+        return resumed;
     }
 
     private void correlate(

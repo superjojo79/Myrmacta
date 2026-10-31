@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -27,6 +28,9 @@ final class InboundMailRouting {
 
     static final int MAX_SUBJECT_CHARS = 500;
     static final int MAX_REGEX_CHARS = 200;
+    /** TODO §113 — variables que seule la plateforme pose (un mapping de même nom est ignoré). */
+    static final Set<String> PLATFORM_VARIABLES = Set.of("mailMessageId", "mailFrom", "mailSubject", "mailInReplyTo",
+            "mailReferences", "mailConversationId", "mailSenderAuthenticated", "mailReferenceIgnored");
     private static final Logger log = LoggerFactory.getLogger(InboundMailRouting.class);
 
     private final SimpleJsonPathMapper mapper;
@@ -108,9 +112,12 @@ final class InboundMailRouting {
                 }
                 Map<String, Object> variables = new LinkedHashMap<>(mapPaths(payload, variablePaths));
                 variables.values().removeIf(Objects::isNull);
-                variables.putIfAbsent("mailMessageId", payload.get("messageId"));
-                variables.putIfAbsent("mailFrom", payload.get("from"));
-                variables.putIfAbsent("mailSubject", payload.get("subject"));
+                // TODO §113 — variables posées par la plateforme : un mapping de connecteur ne les remplace pas (le rattachement à un
+                // fil les relit).
+                variables.keySet().removeAll(PLATFORM_VARIABLES);
+                variables.put("mailMessageId", payload.get("messageId"));
+                variables.put("mailFrom", payload.get("from"));
+                variables.put("mailSubject", payload.get("subject"));
                 putThread(variables, mail.thread());
                 boolean authenticated = AuthenticationResults.attests(mail.authenticationResults(), trustedAuthservId, mail.fromAddress());
                 variables.put("mailSenderAuthenticated", authenticated);
@@ -125,7 +132,9 @@ final class InboundMailRouting {
                     existing = null;
                 }
                 try {
-                    delivery.deliver(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existing, mail.attachments(), true));
+                    delivery.deliver(new WorkflowTriggerEvent(processKey, dossierType, fields, variables, existing, mail.attachments(), true,
+                            new WorkflowTriggerEvent.InboundMailIdentity(mail.messageId(), mail.thread().conversationId(),
+                                    mail.fromAddress())));
                 } catch (RuntimeException failure) {
                     // Le message n'est PAS rangé comme traité : il va dans « refusés », visible et rejouable à la main.
                     log.warn("{}: instance {} could not take a message in charge ({}): moved to the rejected folder",
@@ -166,13 +175,13 @@ final class InboundMailRouting {
     /** En-têtes de fil remis au process, seulement s'ils existent (TODO §113, D-MAILROOM-THREAD). */
     private static void putThread(Map<String, Object> variables, MailThread thread) {
         if (!thread.inReplyTo().isEmpty()) {
-            variables.putIfAbsent("mailInReplyTo", thread.inReplyTo());
+            variables.put("mailInReplyTo", thread.inReplyTo());
         }
         if (!thread.references().isEmpty()) {
-            variables.putIfAbsent("mailReferences", String.join(" ", thread.references()));
+            variables.put("mailReferences", String.join(" ", thread.references()));
         }
         if (!thread.conversationId().isEmpty()) {
-            variables.putIfAbsent("mailConversationId", thread.conversationId());
+            variables.put("mailConversationId", thread.conversationId());
         }
     }
 

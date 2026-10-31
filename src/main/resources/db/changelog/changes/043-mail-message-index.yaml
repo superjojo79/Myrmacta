@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 043-mail-message-index
+      author: flowforge
+      comment: >-
+        TODO §113 (D-MAILROOM-INDEX) — identifiants des e-mails reçus (IN, par le connecteur) et envoyés (OUT, par l'outbox de
+        notification) : Message-ID ou conversationId Graph, dossier concerné, adresse de l'interlocuteur. Sert à rattacher une
+        réponse à son fil. Supprimé avec le dossier.
+      changes:
+        - createTable:
+            tableName: mail_message_index
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_mail_message_index, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: kind, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: message_key, type: varchar(250), constraints: {nullable: false}}
+              - column: {name: direction, type: varchar(8), constraints: {nullable: false}}
+              - column:
+                  name: dossier_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_mail_message_index_dossier
+                    references: dossier(id)
+                    deleteCascade: true
+              - column: {name: counterpart, type: varchar(320)}
+              - column: {name: recorded_at, type: timestamp with time zone, constraints: {nullable: false}}
+        - addUniqueConstraint:
+            tableName: mail_message_index
+            columnNames: tenant_id, kind, message_key, direction, dossier_id
+            constraintName: uq_mail_message_index_entry
+        - createIndex:
+            tableName: mail_message_index
+            indexName: ix_mail_message_index_lookup
+            columns:
+              - column: {name: tenant_id}
+              - column: {name: kind}
+              - column: {name: message_key}

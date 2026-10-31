@@ -22,6 +22,8 @@ import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.port.in.CreateDossierUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
+import be.myrmacta.domain.mailroom.model.MailIndexEntry;
+import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
@@ -91,6 +93,34 @@ class ConnectorTriggerRuntimeImplTest {
         assertThat(payload.getValue().dossierId()).isEqualTo(dossierId);
         assertThat(payload.getValue().processKey()).isEqualTo("smokeProcess");
         assertThat(payload.getValue().connectorInstanceId()).isEqualTo(instance.id());
+    }
+
+    /** TODO §113 (D-MAILROOM-INDEX) — l'e-mail qui crée un courrier est inscrit dans l'index des fils (Message-ID et conversation). */
+    @Test
+    void anEmailEventRecordsItsIdentityForTheCreatedDossier() {
+        MailMessageIndex index = mock(MailMessageIndex.class);
+        var indexing = new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, null, index,
+                java.time.Clock.fixed(java.time.Instant.parse("2026-10-31T08:00:00Z"), java.time.ZoneOffset.UTC));
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        when(triggerConnector.onEvent(eq(instance), any())).thenReturn(List.of(new WorkflowTriggerEvent("smokeProcess", "SINISTRE",
+                Map.of(), Map.of(), null, List.of(), true,
+                new WorkflowTriggerEvent.InboundMailIdentity("<m1@example.org>", "AAQkConv=", "Client@Example.org"))));
+        UUID dossierId = UUID.randomUUID();
+        when(createDossier.create(any(), any())).thenReturn(dossier(dossierId));
+
+        indexing.onIncomingEvent(instance, Map.of());
+
+        ArgumentCaptor<MailIndexEntry> entries = ArgumentCaptor.forClass(MailIndexEntry.class);
+        verify(index, org.mockito.Mockito.times(2)).record(entries.capture());
+        assertThat(entries.getAllValues()).extracting(MailIndexEntry::kind, MailIndexEntry::key, MailIndexEntry::direction)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(MailIndexEntry.Kind.MESSAGE_ID, "<m1@example.org>", MailIndexEntry.Direction.IN),
+                        org.assertj.core.groups.Tuple.tuple(MailIndexEntry.Kind.CONVERSATION, "AAQkConv=", MailIndexEntry.Direction.IN));
+        assertThat(entries.getAllValues()).allSatisfy(entry -> {
+            assertThat(entry.dossierId()).isEqualTo(dossierId);
+            assertThat(entry.counterpart()).isEqualTo("client@example.org");
+        });
     }
 
     @Test

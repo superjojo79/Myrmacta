@@ -29,7 +29,9 @@ public final class AllowedBpmnDelegates {
             // TODO §106 (issue #211, lot B) : bloc « Pré-vérification IA » (asynchrone, sans outils, constats sourcés).
             "aiPrecheckTask",
             // TODO §113 (issue #217, lot 2b) : bloc « Router le courrier » (décision DMN → dossier métier lié ou file de tri).
-            "routeMailTask");
+            "routeMailTask",
+            // TODO §113 (issue #217, lot 3a) : bloc « Rattacher au fil » (réponse à un e-mail connu → dossier du fil).
+            "attachToThreadTask");
 
     private AllowedBpmnDelegates() {}
 

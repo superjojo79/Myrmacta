@@ -70,6 +70,35 @@ numéro.
 - Statuts du courrier, lisibles dans le registre et sur le dossier métier : reçu, à trier, routé, rattaché, traité,
   classé. Ce sont des statuts de workflow (`workflow-config`), pas de nouveaux statuts de dossier.
 
+Précisions de conception du lot 3a (2026-10-31) :
+
+- **Index des identifiants (D-MAILROOM-INDEX).** La table `mail_message_index` associe un identifiant à un dossier, avec
+  le sens et l'adresse de l'interlocuteur. Les identifiants sont des Message-ID, ou des `conversationId` Graph.
+  - **Reçus (`IN`) :** les inscrit le relais du connecteur, quand un e-mail crée un courrier. Interlocuteur = expéditeur.
+  - **Envoyés (`OUT`) :** les inscrit le relais de l'outbox, une fois l'e-mail de « Notifier » parti. Le Message-ID est
+    celui que JavaMail a posé. Interlocuteur = destinataire.
+- **Brique « Rattacher au fil » (`attachToThreadTask`).** Elle passe en tête du tri, avant la table de routage.
+  - **Recherche du fil :**
+    - elle cherche dans l'index `In-Reply-To`, puis les `References` de la plus récente à la plus ancienne, puis le
+      `conversationId` ;
+    - un identifiant reçu désigne le courrier d'origine ; s'il a été routé, c'est son dossier métier lié qui compte ;
+    - un identifiant envoyé désigne le dossier qui a envoyé l'e-mail.
+  - **Conditions du rattachement :**
+    - l'expéditeur est attesté (`mailSenderAuthenticated`, D-INTEG-MAIL-SENDER) ;
+    - son domaine est celui de l'interlocuteur inscrit ;
+    - le dossier du fil n'est ni clôturé ni archivé.
+
+    Sinon, le courrier suit le routage ordinaire, avec la raison dans `filMotif`.
+  - **Effets du rattachement :**
+    - un lien `LINKED` du courrier vers le dossier du fil ;
+    - la copie de ses pièces, avec les contrôles des pièces reçues, antivirus compris ;
+    - l'avertissement des personnes assignées aux tâches ouvertes du dossier (mode 1) ;
+    - l'envoi du message `courrierRecu` à toutes les exécutions de ce dossier qui l'attendent (mode 2) ;
+    - `filResultat=RATTACHE`, `filDossierId` et `filDossierReference`. Hors fil : `filResultat=NOUVEAU`.
+- **Les variables de fil sont posées par la plateforme.** Les variables `mail*` posées par le connecteur ne sont plus
+  remplaçables par un mapping de connecteur.
+- **Reporté au lot 3b :** le workflow « réponse » déclaré par le type de dossier (mode 3).
+
 **D-MAILROOM-REACT** (tranché par l'utilisateur, 2026-10-31) — quand une réponse arrive sur un dossier dont un process
 tourne déjà, trois réactions se choisissent et se combinent :
 

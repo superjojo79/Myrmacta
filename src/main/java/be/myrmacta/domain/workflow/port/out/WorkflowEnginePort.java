@@ -55,4 +55,13 @@ public interface WorkflowEnginePort {
      */
     void correlateMessageOnExecution(
             String messageName, String correlationKey, Object correlationValue, Map<String, Object> variables);
+
+    /**
+     * TODO §113 (D-MAILROOM-REACT, mode 2) — remet le message {@code messageName} à TOUTES les exécutions abonnées des process
+     * du dossier ({@code dossierId}, variable de plateforme). Aucune exécution n'attend : rien ne se passe, ce n'est pas une
+     * erreur. Renvoie le nombre d'exécutions reprises.
+     */
+    default int correlateMessageToAllWaiting(String messageName, String dossierId, Map<String, Object> variables) {
+        return 0;
+    }
 }

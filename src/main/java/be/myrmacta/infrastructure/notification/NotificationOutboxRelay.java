@@ -3,6 +3,8 @@ package be.myrmacta.infrastructure.notification;
 import be.myrmacta.domain.connector.port.out.ConnectorSecretCipher;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.notification.model.NotificationChannel;
+import be.myrmacta.domain.mailroom.model.MailIndexEntry;
+import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.notification.model.NotificationOutboxRecord;
 import be.myrmacta.domain.notification.model.NotificationWebhookConfig;
 import be.myrmacta.domain.notification.model.WebhookDeliveryCommand;
@@ -21,6 +23,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -33,6 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 public class NotificationOutboxRelay {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationOutboxRelay.class);
 
     private final NotificationOutboxRepository outboxRepository;
     private final NotificationWebhookRepository webhookRepository;
@@ -44,6 +50,7 @@ public class NotificationOutboxRelay {
     private final ObjectMapper objectMapper;
     private final DocumentStoragePort documentStorage;
     private final NotificationEmailProperties emailProperties;
+    private final MailMessageIndex mailIndex;
 
     public NotificationOutboxRelay(
             NotificationOutboxRepository outboxRepository,
@@ -66,6 +73,34 @@ public class NotificationOutboxRelay {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.documentStorage = Objects.requireNonNull(documentStorage, "documentStorage");
         this.emailProperties = Objects.requireNonNull(emailProperties, "emailProperties");
+        this.mailIndex = null;
+    }
+
+    /** TODO §113 (D-MAILROOM-INDEX) — avec l'index des fils : un e-mail parti d'un dossier y est inscrit. */
+    @Autowired
+    public NotificationOutboxRelay(
+            NotificationOutboxRepository outboxRepository,
+            NotificationWebhookRepository webhookRepository,
+            EmailPort emailPort,
+            WebhookPort webhookPort,
+            BrowserPushPort browserPushPort,
+            ConnectorSecretCipher cipher,
+            NotificationProperties properties,
+            ObjectMapper objectMapper,
+            DocumentStoragePort documentStorage,
+            NotificationEmailProperties emailProperties,
+            MailMessageIndex mailIndex) {
+        this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository");
+        this.webhookRepository = Objects.requireNonNull(webhookRepository, "webhookRepository");
+        this.emailPort = Objects.requireNonNull(emailPort, "emailPort");
+        this.webhookPort = Objects.requireNonNull(webhookPort, "webhookPort");
+        this.browserPushPort = Objects.requireNonNull(browserPushPort, "browserPushPort");
+        this.cipher = Objects.requireNonNull(cipher, "cipher");
+        this.properties = Objects.requireNonNull(properties, "properties");
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+        this.documentStorage = Objects.requireNonNull(documentStorage, "documentStorage");
+        this.emailProperties = Objects.requireNonNull(emailProperties, "emailProperties");
+        this.mailIndex = Objects.requireNonNull(mailIndex, "mailIndex");
     }
 
     @Scheduled(fixedDelayString = "${app.notification.outbox.poll-delay:1s}")
@@ -116,12 +151,32 @@ public class NotificationOutboxRelay {
         String subject = textRequired(root, "subject");
         String body = textRequired(root, "body");
         JsonNode attachment = root.get("attachment");
+        String messageId;
         if (attachment == null || attachment.isNull()) {
-            emailPort.send(to, subject, body);
+            messageId = emailPort.send(to, subject, body);
         } else {
-            emailPort.send(to, subject, body, attachmentContent(record.tenantId(), attachment));
+            messageId = emailPort.send(to, subject, body, attachmentContent(record.tenantId(), attachment));
         }
         outboxRepository.markProcessed(record.id(), now);
+        recordSent(record, root, messageId, to, now);
+    }
+
+    /**
+     * TODO §113 (D-MAILROOM-INDEX) — l'e-mail est parti : son Message-ID est inscrit pour le dossier d'origine, afin qu'une réponse
+     * rejoigne ce dossier. Un échec ici ne renvoie jamais l'e-mail : il est journalisé, la réponse suivra alors le routage.
+     */
+    private void recordSent(NotificationOutboxRecord record, JsonNode root, String messageId, String to, Instant now) {
+        JsonNode dossier = root.get("dossierId");
+        if (mailIndex == null || messageId == null || messageId.isBlank() || messageId.length() > MailIndexEntry.MAX_KEY_CHARS
+                || dossier == null || dossier.isNull()) {
+            return;
+        }
+        try {
+            mailIndex.record(new MailIndexEntry(record.tenantId(), MailIndexEntry.Kind.MESSAGE_ID, messageId.strip(),
+                    MailIndexEntry.Direction.OUT, UUID.fromString(dossier.asText()), to, now));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("event=mail_index_record_failed outboxId={} error={}", record.id(), ex.getClass().getSimpleName());
+        }
     }
 
     /**

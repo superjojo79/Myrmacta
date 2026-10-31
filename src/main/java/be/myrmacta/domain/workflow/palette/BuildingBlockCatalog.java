@@ -85,6 +85,11 @@ public final class BuildingBlockCatalog {
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("routeMailTask"),
                     text("groupeTri", "Groupe de la file de tri", 64,
                             "Code du groupe qui trie à la main ce que la table ne reconnaît pas (ex. COURRIER).", true)),
+            // TODO §113 (D-MAILROOM-THREAD) — en tête du tri : une réponse à un e-mail connu rejoint le dossier de son fil.
+            block("attach-to-thread", "Rattacher au fil",
+                    "En tête du tri : une réponse à un e-mail connu rejoint le dossier de son fil (lien, pièces, avertissement, "
+                            + "message courrierRecu) ; sinon le courrier poursuit vers le routage.",
+                    BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("attachToThreadTask")),
             block("set-dossier-status", "Changer le statut du dossier",
                     "Modifie le statut du dossier courant.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("updateDossierStatusTask"),

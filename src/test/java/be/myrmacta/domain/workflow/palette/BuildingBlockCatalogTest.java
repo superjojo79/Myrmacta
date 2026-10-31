@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheSixteenBlocksWithUniqueIds() {
+    void containsTheSeventeenBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "route-mail", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
+                "route-mail", "attach-to-thread", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
                 "ai-precheck", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());

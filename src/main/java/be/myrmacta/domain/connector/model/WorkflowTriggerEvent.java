@@ -17,7 +17,9 @@ public record WorkflowTriggerEvent(
         Map<String, Object> variables,
         String existingDossierReference,
         List<InboundAttachment> attachments,
-        boolean createWhenReferenceUnknown
+        boolean createWhenReferenceUnknown,
+        /** TODO §113 (D-MAILROOM-INDEX) — identité de l'e-mail reçu, à inscrire dans l'index des fils ; {@code null} hors e-mail. */
+        InboundMailIdentity mail
 ) {
     public WorkflowTriggerEvent {
         Objects.requireNonNull(processKey, "processKey");
@@ -25,6 +27,21 @@ public record WorkflowTriggerEvent(
         variables = variables == null ? Map.of() : Map.copyOf(variables);
         attachments = attachments == null ? List.of() : List.copyOf(attachments);
     }
+
+    public WorkflowTriggerEvent(
+            String processKey,
+            String dossierTypeCode,
+            Map<String, Object> dossierFields,
+            Map<String, Object> variables,
+            String existingDossierReference,
+            List<InboundAttachment> attachments,
+            boolean createWhenReferenceUnknown) {
+        this(processKey, dossierTypeCode, dossierFields, variables, existingDossierReference, attachments, createWhenReferenceUnknown,
+                null);
+    }
+
+    /** Message-ID, conversationId (Graph, facultatif) et adresse de l'expéditeur d'un e-mail reçu. */
+    public record InboundMailIdentity(String messageId, String conversationId, String sender) {}
 
     public WorkflowTriggerEvent(
             String processKey,

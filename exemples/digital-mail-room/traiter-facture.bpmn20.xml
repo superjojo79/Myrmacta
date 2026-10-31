@@ -7,10 +7,16 @@
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://myrmacta/exemples">
   <!-- Dossier métier ouvert par le routage. La tâche ne nomme aucun groupe : elle reçoit le service choisi par la table de
-       routage, porté par le lien de workflow (§114 D-GROUP-LINK). -->
+       routage, porté par le lien de workflow (§114 D-GROUP-LINK). Pendant le traitement, une réponse rattachée au fil remet le
+       message courrierRecu (§113 D-MAILROOM-REACT, mode 2) : une tâche « Prendre connaissance du courrier » s'ouvre, sans
+       interrompre le traitement. -->
+  <message id="courrierRecuMsg" name="courrierRecu"/>
   <process id="traiterFacture" name="Traiter une facture fournisseur" isExecutable="true">
     <startEvent id="debut" name="Facture reçue"/>
     <userTask id="traiterFactureTache" name="Traiter la facture"><documentation>Vérifier la facture jointe au courrier lié, l'encoder puis terminer la tâche.</documentation></userTask>
+    <boundaryEvent id="courrierRecu" name="Courrier reçu" attachedToRef="traiterFactureTache" cancelActivity="false"><messageEventDefinition messageRef="courrierRecuMsg"/></boundaryEvent>
+    <userTask id="lireCourrier" name="Prendre connaissance du courrier"><documentation>Un courrier répond au fil de cette facture (variables courrierReference et courrierId) ; ses pièces ont été ajoutées au dossier. Le lire, puis terminer la tâche ; le traitement de la facture continue.</documentation></userTask>
+    <endEvent id="finLecture" name="Courrier lu"/>
     <serviceTask id="statutTraitee" name="Statut : traitée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="TRAITEE"/>
     <serviceTask id="clotureFacture" name="Clôturer la facture" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
     <endEvent id="fin" name="Facture traitée"/>
@@ -18,11 +24,16 @@
     <sequenceFlow id="flow_traiter_statut" sourceRef="traiterFactureTache" targetRef="statutTraitee"/>
     <sequenceFlow id="flow_statut_cloture" sourceRef="statutTraitee" targetRef="clotureFacture"/>
     <sequenceFlow id="flow_cloture_fin" sourceRef="clotureFacture" targetRef="fin"/>
+    <sequenceFlow id="flow_courrierRecu_lire" sourceRef="courrierRecu" targetRef="lireCourrier"/>
+    <sequenceFlow id="flow_lire_finLecture" sourceRef="lireCourrier" targetRef="finLecture"/>
   </process>
   <bpmndi:BPMNDiagram id="diagram_traiterFacture">
     <bpmndi:BPMNPlane id="plane_traiterFacture" bpmnElement="traiterFacture">
       <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="80" y="122" width="36" height="36"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_traiterFactureTache" bpmnElement="traiterFactureTache"><omgdc:Bounds x="170" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_courrierRecu" bpmnElement="courrierRecu"><omgdc:Bounds x="232" y="162" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_lireCourrier" bpmnElement="lireCourrier"><omgdc:Bounds x="190" y="240" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_finLecture" bpmnElement="finLecture"><omgdc:Bounds x="360" y="262" width="36" height="36"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_statutTraitee" bpmnElement="statutTraitee"><omgdc:Bounds x="340" y="100" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_clotureFacture" bpmnElement="clotureFacture"><omgdc:Bounds x="510" y="100" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="680" y="122" width="36" height="36"/></bpmndi:BPMNShape>
@@ -30,6 +41,8 @@
       <bpmndi:BPMNEdge id="edge_flow_traiter_statut" bpmnElement="flow_traiter_statut"><omgdi:waypoint x="290" y="140"/><omgdi:waypoint x="340" y="140"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_statut_cloture" bpmnElement="flow_statut_cloture"><omgdi:waypoint x="460" y="140"/><omgdi:waypoint x="510" y="140"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_cloture_fin" bpmnElement="flow_cloture_fin"><omgdi:waypoint x="630" y="140"/><omgdi:waypoint x="680" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_courrierRecu_lire" bpmnElement="flow_courrierRecu_lire"><omgdi:waypoint x="250" y="198"/><omgdi:waypoint x="250" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_lire_finLecture" bpmnElement="flow_lire_finLecture"><omgdi:waypoint x="310" y="280"/><omgdi:waypoint x="360" y="280"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>

@@ -20,7 +20,7 @@ public class SmtpEmailAdapter implements EmailPort {
     }
 
     @Override
-    public void send(String to, String subject, String body, EmailAttachmentContent attachment) {
+    public String send(String to, String subject, String body, EmailAttachmentContent attachment) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper =
@@ -36,6 +36,8 @@ public class SmtpEmailAdapter implements EmailPort {
                         attachment.contentType());
             }
             mailSender.send(message);
+            // TODO §113 — JavaMail pose le Message-ID à l'envoi : c'est lui qu'une réponse citera dans In-Reply-To.
+            return message.getMessageID();
         } catch (MessagingException ex) {
             throw new IllegalStateException("Failed to build email message", ex);
         }

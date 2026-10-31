@@ -1,0 +1,34 @@
+{
+  "code": "FACTURE",
+  "label": "Facture fournisseur",
+  "workflowKey": "traiterFacture",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "expediteur",
+      "label": "Fournisseur (adresse)",
+      "type": "STRING",
+      "required": true,
+      "group": "Facture",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "objet",
+      "label": "Objet",
+      "type": "STRING",
+      "required": true,
+      "group": "Facture",
+      "width": "FULL"
+    },
+    {
+      "name": "montant",
+      "label": "Montant",
+      "type": "MONEY",
+      "required": false,
+      "group": "Facture",
+      "width": "HALF"
+    }
+  ]
+}

@@ -25,6 +25,18 @@ expression du BPMN :
 - Les tâches d'un groupe apparaissent dans « Tâches » pour ses membres. Un membre peut les prendre (`claim`, §92) s'il a
   l'ACL EDIT du dossier. Un non-membre ne les voit pas.
 
+**D-GROUP-LINK** (conception du lot 2b, 2026-10-31) — le groupe destinataire d'un process est porté par son **lien de
+workflow** (table `workflow_link_group`, une ligne par lien), pas par une variable du process :
+
+- Il est posé par la plateforme seule : la brique de routage (§112), ou la réaffectation (lot 2c). Il est posé entre la
+  réservation du lien et le démarrage du moteur.
+- À la création d'une tâche sans assigné ni candidat, un écouteur Flowable (`TASK_CREATED`) lit le lien par la clé métier
+  du process (l'identifiant du lien) et y ajoute ce groupe comme candidat.
+- Une tâche qui déclare déjà un `candidateGroups` littéral, ou un assigné, garde sa déclaration.
+- Pourquoi pas une variable réservée : `ManualStartOrchestrator` refuse les variables réservées, et une variable posée après
+  le démarrage arriverait trop tard pour la première tâche, créée pendant le démarrage. Une variable libre pourrait venir
+  d'un mapping de connecteur ou d'un formulaire.
+
 **Bornes et limites (livraison du lot 2a) :**
 
 - **Code d'un groupe :** 2 à 64 caractères, majuscules, chiffres et `_`, commençant par une lettre.

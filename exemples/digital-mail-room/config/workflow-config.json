@@ -25,7 +25,7 @@
       "code": "ROUTE",
       "label": "Routé vers un service",
       "initial": false,
-      "outcome": "NONE"
+      "outcome": "COMPLETED"
     },
     {
       "code": "RATTACHE",

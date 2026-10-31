@@ -30,6 +30,30 @@ autorisée). Il passe ensuite le résultat à une brique de routage, dont le dé
 - Pourquoi un délégué : `createChildDossierTask` ne lit que des paramètres littéraux, et une expression dans le BPMN est
   refusée (§57, §69). Une branche par service dans le BPMN ne tiendrait pas à l'échelle.
 
+Précisions de conception du lot 2b (2026-10-31) :
+
+- **Entrées de la table.** Une entrée de table DMN n'accepte qu'un nom de variable nu, et une cellule qu'une comparaison à
+  un littéral (`FlowableDmnParserAdapter`). Le process de tri prépare donc ses entrées avant la table, par des briques
+  « Calcul » (JSONata, §40) : canal, domaine de l'expéditeur, etc.
+- **Sorties de la table**, lues par la brique `routeMailTask` :
+  - `routageAction` : `OUVRIR` ou `TRIER` ;
+  - `routageService` : code d'un groupe, §113 ;
+  - `routageTypeDossier` et `routageProcessus` ;
+  - `routageDelaiJours`, facultatif ; la brique l'écrit dans le champ `echeance`, que le lot 4 exploitera.
+- **Paramètre littéral de la brique.** `groupeTri` désigne le groupe de la file de tri.
+- **`OUVRIR` :**
+  - le dossier métier est créé et lié au courrier (`LINKED`, clé d'idempotence `processInstanceId:activityId`) ;
+  - son process est démarré par `ManualStartOrchestrator` ;
+  - son lien reçoit le groupe `routageService` (D-GROUP-LINK) ;
+  - le champ `service` du courrier est renseigné, et la brique pose `routageResultat=ROUTE`, `dossierMetierId` et
+    `dossierMetierReference`.
+- **`TRIER`, absent, ou valeur hors catalogue** (groupe, type actif ou process déployé inconnus) :
+  - la brique pose `routageResultat=A_TRIER` et donne au lien du tri le groupe `groupeTri` ;
+  - la tâche « Trier le courrier » qui suit va donc à la file de tri ;
+  - une erreur de configuration n'arrête jamais le courrier.
+- **Hors 2b.** Les pièces du courrier ne sont pas copiées dans le dossier métier, qui y accède par le lien. La copie viendra
+  avec le rattachement des réponses (lot 3).
+
 **D-MAILROOM-THREAD** (tranché par l'utilisateur, 2026-10-31) — chaque message reçu reste un courrier, avec son propre
 numéro.
 

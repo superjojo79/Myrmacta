@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="routageCourrierDefinitions" name="Routage du courrier entrant"
+             namespace="http://myrmacta/exemples">
+  <!-- Table de routage de la mail room (#217, §112 D-MAILROOM-ROUTE). Première règle qui correspond (FIRST). Aucune règle :
+       le courrier va à la file de tri. Entrées préparées par le process de tri (variables nues, §61). -->
+  <decision id="routageCourrier" name="Routage du courrier entrant">
+    <decisionTable id="routageCourrierTable" hitPolicy="FIRST">
+      <input id="inputCanal" label="Canal">
+        <inputExpression id="inputCanalExpression" typeRef="string"><text>canal</text></inputExpression>
+      </input>
+      <input id="inputDomaine" label="Domaine de l'expéditeur">
+        <inputExpression id="inputDomaineExpression" typeRef="string"><text>domaineExpediteur</text></inputExpression>
+      </input>
+      <output id="outputAction" label="Action" name="routageAction" typeRef="string"/>
+      <output id="outputService" label="Service (groupe)" name="routageService" typeRef="string"/>
+      <output id="outputType" label="Type de dossier" name="routageTypeDossier" typeRef="string"/>
+      <output id="outputProcessus" label="Process" name="routageProcessus" typeRef="string"/>
+      <output id="outputDelai" label="Délai (jours)" name="routageDelaiJours" typeRef="number"/>
+      <rule id="regleFactureFournisseur">
+        <description>Facture d'un fournisseur connu : la comptabilité, 30 jours.</description>
+        <inputEntry id="regleFactureFournisseurCanal"><text>"EMAIL"</text></inputEntry>
+        <inputEntry id="regleFactureFournisseurDomaine"><text>"fournisseur.example"</text></inputEntry>
+        <outputEntry id="regleFactureFournisseurAction"><text>"OUVRIR"</text></outputEntry>
+        <outputEntry id="regleFactureFournisseurService"><text>"COMPTABILITE"</text></outputEntry>
+        <outputEntry id="regleFactureFournisseurType"><text>"FACTURE"</text></outputEntry>
+        <outputEntry id="regleFactureFournisseurProcessus"><text>"traiterFacture"</text></outputEntry>
+        <outputEntry id="regleFactureFournisseurDelai"><text>30</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

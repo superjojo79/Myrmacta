@@ -27,7 +27,9 @@ public final class AllowedBpmnDelegates {
             // TODO §102 (issue #184, lot B) : bloc « Rechercher des dossiers » (dossiers ouverts du même type).
             "dossierSearchTask",
             // TODO §106 (issue #211, lot B) : bloc « Pré-vérification IA » (asynchrone, sans outils, constats sourcés).
-            "aiPrecheckTask");
+            "aiPrecheckTask",
+            // TODO §112 (issue #217, lot 2b) : bloc « Router le courrier » (décision DMN → dossier métier lié ou file de tri).
+            "routeMailTask");
 
     private AllowedBpmnDelegates() {}
 

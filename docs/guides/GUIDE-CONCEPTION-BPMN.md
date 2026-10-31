@@ -441,6 +441,7 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Appeler un connecteur | `serviceTask` | `${connectorServiceTask}` |
 | Notifier | `serviceTask` | `${notificationDispatchTask}` |
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
+| Router le courrier | `serviceTask` | `${routeMailTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
 | Décision DMN | `serviceTask` | `flowable:type="dmn"` |
@@ -691,6 +692,37 @@ l'avis du modèle**. Spécification : [spec 48](../specs/48-preverification-ia.m
 - Exemple complet : `exemples/autorisation-riverain/autorisation-riverain-preverification.bpmn20.xml` (généré par
   `generer-bpmn.py`).
 
+## 3decies. Router le courrier entrant (TODO §112, issue #217)
+
+La brique **Router le courrier** (`${routeMailTask}`) suit une table de décision DMN dans le process de tri d'une mail room.
+Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../exemples/digital-mail-room/tri-courrier.bpmn20.xml).
+
+- **Avant la table : préparer les entrées.** Une entrée DMN n'accepte qu'un nom de variable nu (§7bis). On prépare donc les
+  entrées par des briques « Évaluer une expression » (§3sexies), par exemple :
+  - `canal` à partir de `dossier.fields.canal` ;
+  - `domaineExpediteur` à partir de `$lowercase($substringAfter(dossier.fields.expediteur, "@"))`.
+- **Sorties de la table**, lues par la brique :
+  - `routageAction` : `OUVRIR` ou `TRIER` ;
+  - `routageService` : code d'un groupe ;
+  - `routageTypeDossier` et `routageProcessus` ;
+  - `routageDelaiJours`, facultatif (0 à 3 650).
+- **Paramètre de la brique** : `groupeTri`, le code du groupe de la file de tri (littéral).
+- **`OUVRIR`.** La brique :
+  - crée le dossier métier lié au courrier (`LINKED`), avec les champs du courrier qui portent le même nom ;
+  - l'ouvre, puis y démarre le process avec le groupe `routageService` comme destinataire ;
+  - renseigne les champs `service` et `echeance` du courrier, si son type les déclare ;
+  - pose `routageResultat = ROUTE`, `dossierMetierId` et `dossierMetierReference`.
+- **Sinon** : aucune règle, action `TRIER`, ou valeur hors catalogue (groupe inconnu, type inactif, process non déployé,
+  délai invalide, champ obligatoire du type cible absent du courrier).
+  - La brique pose `routageResultat = A_TRIER` et `routageMotif`, la raison en clair.
+  - Elle donne au process de tri le groupe `groupeTri` : la tâche de tri qui suit lui est destinée.
+  - Une erreur de configuration n'arrête jamais le courrier.
+- **Aiguiller ensuite.** Après la brique, une passerelle `${routageResultat == 'ROUTE'}` sépare les deux chemins.
+- **Rendre le début du tri asynchrone.** Placez `flowable:async="true"` sur la première étape du tri. Un courrier routé
+  traverse sinon tout le process pendant son démarrage, avant que celui-ci ne soit confirmé.
+- **Ouvrir le courrier.** Un courrier créé par un connecteur naît `DRAFT` : ouvrez-le (`OUVERT`), puis mettez-le en cours
+  (`EN_COURS`) avant de pouvoir le clôturer.
+
 ## 4. Instancier / appeler un service externe
 
 Le mécanisme est le **système de connecteurs** ([06-connecteurs.md](../specs/06-connecteurs.md)), jamais
@@ -834,11 +866,19 @@ Myrmacta ne déclare **aucun intervenant dans le BPMN lui-même** — ni `assign
 
 ### a) Assignation d'une tâche humaine (`userTask`) — à l'exécution, pas dans le diagramme
 
-Un `userTask` sans `assignee` reste non assignée jusqu'à une action explicite :
-`TaskService.setAssignee(taskId, userId)`, exposé par
-`PATCH`/action **Réassigner** sur l'écran de suivi du dossier (`docs/guides/GUIDE-UTILISATEUR.md` §3, tâches
-en cours) ou sur `/tasks` — identifiant utilisateur saisi librement, pas de groupe candidat en V1.
-Rien à écrire dans le diagramme pour ce mécanisme.
+Un `userTask` sans `assignee` reste non assignée jusqu'à une action explicite : **Réassigner** ou **M'assigner** sur l'écran de
+suivi du dossier (`docs/guides/GUIDE-UTILISATEUR.md` §3), ou **Prendre** dans `/tasks` pour une tâche de groupe. Rien à écrire
+dans le diagramme pour ce mécanisme.
+
+**Groupes (TODO §113).**
+
+- **Groupe candidat littéral.** Un `userTask` peut nommer un groupe candidat littéral, `flowable:candidateGroups="COMPTABILITE"`
+  (code d'un groupe d'**Admin → Groupes**). Une expression y est refusée.
+- **Groupe du lien de workflow (D-GROUP-LINK).** Une tâche sans assigné ni candidat reçoit le **groupe destinataire du
+  lien de workflow**, s'il en a un. C'est la brique « Router le courrier » (§3decies) qui le pose, sur le process qu'elle
+  démarre. Un process démarré par le routage n'a donc rien à déclarer pour que ses tâches aillent au bon service.
+- **Visibilité.** Les membres du groupe voient la tâche dans **Tâches** et peuvent la prendre, s'ils peuvent modifier le
+  dossier.
 
 ### b) Résolution des « participants » d'une exécution — pour les notifications automatiques
 
@@ -950,6 +990,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${aiPrecheckTask}` | pré-vérification IA du dossier, **asynchrone** (§3nonies) | attributs littéraux `precheckPieces`, `precheckFields`, `precheckQuestions`, `precheckRules`, `precheckResult` ; `dossierId` (réservée), variables posées avant (règles) | la variable nommée par `precheckResult` (comptes déterministes) ; exécution et constats dans `precheck_run` |
+| `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/be/myrmacta/infrastructure/flowable/` — en cas

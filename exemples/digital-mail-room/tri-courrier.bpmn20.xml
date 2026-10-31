@@ -6,33 +6,81 @@
              xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
              xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
              targetNamespace="http://myrmacta/exemples">
-  <!-- Tri du courrier entrant, version du lot 1 (#217) : enregistrement puis tri manuel. Le routage DMN arrive au lot 2. -->
+  <!-- Tri du courrier entrant (#217, lot 2b, §112 D-MAILROOM-ROUTE). Entrées préparées, table de routage, brique de routage :
+       le courrier est routé vers un dossier métier, ou part à la file de tri du groupe COURRIER. Un courrier naît DRAFT (créé
+       par un connecteur) : le process l'ouvre puis le met en cours lui-même. La première étape est asynchrone : un courrier
+       routé traverse tout le process sans s'arrêter, et le routage tourne ainsi dans un job, après la confirmation du
+       démarrage, rejouable en cas d'incident. -->
   <process id="triCourrier" name="Tri du courrier entrant" isExecutable="true">
     <startEvent id="debut" name="Courrier reçu"/>
+    <serviceTask id="ouvrirCourrier" name="Ouvrir le courrier" flowable:async="true" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="OUVERT"/>
+    <serviceTask id="courrierEnCours" name="Courrier en cours" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="EN_COURS"/>
+    <serviceTask id="prepCanal" name="Entrée : canal" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="dossier.fields.canal" flowable:formulaResult="canal"/>
+    <serviceTask id="prepDomaine" name="Entrée : domaine de l'expéditeur" flowable:delegateExpression="${businessExpressionTask}" flowable:formula='$lowercase($substringAfter(dossier.fields.expediteur, "@"))' flowable:formulaResult="domaineExpediteur"/>
+    <serviceTask id="tableRoutage" name="Table de routage" flowable:type="dmn">
+      <extensionElements>
+        <flowable:field name="decisionTableReferenceKey">
+          <flowable:string>routageCourrier</flowable:string>
+        </flowable:field>
+      </extensionElements>
+    </serviceTask>
+    <serviceTask id="router" name="Router le courrier" flowable:delegateExpression="${routeMailTask}" flowable:groupeTri="COURRIER"/>
+    <exclusiveGateway id="aiguillage" name="Routé ?" default="flow_aiguillage_statutATrier"/>
+    <serviceTask id="statutRoute" name="Statut : routé" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="ROUTE"/>
     <serviceTask id="statutATrier" name="Statut : à trier" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="A_TRIER"/>
-    <userTask id="trierCourrier" name="Trier le courrier"><documentation>Lire le courrier et ses pièces, renseigner le service destinataire et, s'il y en a une, l'échéance. Ensuite, ouvrir ou alimenter le dossier métier concerné, puis terminer la tâche pour classer le courrier.</documentation></userTask>
+    <userTask id="trierCourrier" name="Trier le courrier"><documentation>La table de routage n'a pas reconnu ce courrier (motif dans la variable routageMotif). Le lire, le rattacher au dossier métier concerné (onglet Relations) ou réaffecter la tâche au service compétent, puis la terminer pour classer le courrier.</documentation></userTask>
     <serviceTask id="statutClasse" name="Statut : classé" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="CLASSE"/>
+    <exclusiveGateway id="classement"/>
     <serviceTask id="clotureCourrier" name="Clôturer le courrier" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
-    <endEvent id="fin" name="Courrier classé"/>
-    <sequenceFlow id="flow_debut_statutATrier" sourceRef="debut" targetRef="statutATrier"/>
+    <endEvent id="fin" name="Courrier traité"/>
+    <sequenceFlow id="flow_debut_ouvrirCourrier" sourceRef="debut" targetRef="ouvrirCourrier"/>
+    <sequenceFlow id="flow_ouvrirCourrier_courrierEnCours" sourceRef="ouvrirCourrier" targetRef="courrierEnCours"/>
+    <sequenceFlow id="flow_courrierEnCours_prepCanal" sourceRef="courrierEnCours" targetRef="prepCanal"/>
+    <sequenceFlow id="flow_prepCanal_prepDomaine" sourceRef="prepCanal" targetRef="prepDomaine"/>
+    <sequenceFlow id="flow_prepDomaine_tableRoutage" sourceRef="prepDomaine" targetRef="tableRoutage"/>
+    <sequenceFlow id="flow_tableRoutage_router" sourceRef="tableRoutage" targetRef="router"/>
+    <sequenceFlow id="flow_router_aiguillage" sourceRef="router" targetRef="aiguillage"/>
+    <sequenceFlow id="flow_aiguillage_statutRoute" sourceRef="aiguillage" targetRef="statutRoute"><conditionExpression xsi:type="tFormalExpression">${routageResultat == 'ROUTE'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="flow_aiguillage_statutATrier" sourceRef="aiguillage" targetRef="statutATrier"/>
     <sequenceFlow id="flow_statutATrier_trierCourrier" sourceRef="statutATrier" targetRef="trierCourrier"/>
     <sequenceFlow id="flow_trierCourrier_statutClasse" sourceRef="trierCourrier" targetRef="statutClasse"/>
-    <sequenceFlow id="flow_statutClasse_clotureCourrier" sourceRef="statutClasse" targetRef="clotureCourrier"/>
+    <sequenceFlow id="flow_statutClasse_classement" sourceRef="statutClasse" targetRef="classement"/>
+    <sequenceFlow id="flow_statutRoute_classement" sourceRef="statutRoute" targetRef="classement"/>
+    <sequenceFlow id="flow_classement_clotureCourrier" sourceRef="classement" targetRef="clotureCourrier"/>
     <sequenceFlow id="flow_clotureCourrier_fin" sourceRef="clotureCourrier" targetRef="fin"/>
   </process>
   <bpmndi:BPMNDiagram id="diagram_triCourrier">
     <bpmndi:BPMNPlane id="plane_triCourrier" bpmnElement="triCourrier">
-      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="80" y="122" width="36" height="36"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutATrier" bpmnElement="statutATrier"><omgdc:Bounds x="170" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_trierCourrier" bpmnElement="trierCourrier"><omgdc:Bounds x="340" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_statutClasse" bpmnElement="statutClasse"><omgdc:Bounds x="510" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_clotureCourrier" bpmnElement="clotureCourrier"><omgdc:Bounds x="680" y="100" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="850" y="122" width="36" height="36"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="edge_flow_debut_statutATrier" bpmnElement="flow_debut_statutATrier"><omgdi:waypoint x="116" y="140"/><omgdi:waypoint x="170" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutATrier_trierCourrier" bpmnElement="flow_statutATrier_trierCourrier"><omgdi:waypoint x="290" y="140"/><omgdi:waypoint x="340" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_trierCourrier_statutClasse" bpmnElement="flow_trierCourrier_statutClasse"><omgdi:waypoint x="460" y="140"/><omgdi:waypoint x="510" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutClasse_clotureCourrier" bpmnElement="flow_statutClasse_clotureCourrier"><omgdi:waypoint x="630" y="140"/><omgdi:waypoint x="680" y="140"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_clotureCourrier_fin" bpmnElement="flow_clotureCourrier_fin"><omgdi:waypoint x="800" y="140"/><omgdi:waypoint x="850" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="40" y="142" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_ouvrirCourrier" bpmnElement="ouvrirCourrier"><omgdc:Bounds x="20" y="300" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_courrierEnCours" bpmnElement="courrierEnCours"><omgdc:Bounds x="160" y="300" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepCanal" bpmnElement="prepCanal"><omgdc:Bounds x="110" y="120" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_prepDomaine" bpmnElement="prepDomaine"><omgdc:Bounds x="250" y="120" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_tableRoutage" bpmnElement="tableRoutage"><omgdc:Bounds x="390" y="120" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_router" bpmnElement="router"><omgdc:Bounds x="530" y="120" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_aiguillage" bpmnElement="aiguillage" isMarkerVisible="true"><omgdc:Bounds x="670" y="135" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutRoute" bpmnElement="statutRoute"><omgdc:Bounds x="760" y="20" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutATrier" bpmnElement="statutATrier"><omgdc:Bounds x="760" y="220" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_trierCourrier" bpmnElement="trierCourrier"><omgdc:Bounds x="900" y="220" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutClasse" bpmnElement="statutClasse"><omgdc:Bounds x="1040" y="220" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_classement" bpmnElement="classement" isMarkerVisible="true"><omgdc:Bounds x="1180" y="135" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureCourrier" bpmnElement="clotureCourrier"><omgdc:Bounds x="1260" y="120" width="110" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="1400" y="142" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_flow_debut_ouvrirCourrier" bpmnElement="flow_debut_ouvrirCourrier"><omgdi:waypoint x="58" y="178"/><omgdi:waypoint x="58" y="300"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_ouvrirCourrier_courrierEnCours" bpmnElement="flow_ouvrirCourrier_courrierEnCours"><omgdi:waypoint x="130" y="340"/><omgdi:waypoint x="160" y="340"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_courrierEnCours_prepCanal" bpmnElement="flow_courrierEnCours_prepCanal"><omgdi:waypoint x="215" y="300"/><omgdi:waypoint x="165" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepCanal_prepDomaine" bpmnElement="flow_prepCanal_prepDomaine"><omgdi:waypoint x="220" y="160"/><omgdi:waypoint x="250" y="160"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_prepDomaine_tableRoutage" bpmnElement="flow_prepDomaine_tableRoutage"><omgdi:waypoint x="360" y="160"/><omgdi:waypoint x="390" y="160"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_tableRoutage_router" bpmnElement="flow_tableRoutage_router"><omgdi:waypoint x="500" y="160"/><omgdi:waypoint x="530" y="160"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_router_aiguillage" bpmnElement="flow_router_aiguillage"><omgdi:waypoint x="640" y="160"/><omgdi:waypoint x="670" y="160"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillage_statutRoute" bpmnElement="flow_aiguillage_statutRoute"><omgdi:waypoint x="695" y="135"/><omgdi:waypoint x="695" y="60"/><omgdi:waypoint x="760" y="60"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_aiguillage_statutATrier" bpmnElement="flow_aiguillage_statutATrier"><omgdi:waypoint x="695" y="185"/><omgdi:waypoint x="695" y="260"/><omgdi:waypoint x="760" y="260"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutATrier_trierCourrier" bpmnElement="flow_statutATrier_trierCourrier"><omgdi:waypoint x="870" y="260"/><omgdi:waypoint x="900" y="260"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_trierCourrier_statutClasse" bpmnElement="flow_trierCourrier_statutClasse"><omgdi:waypoint x="1010" y="260"/><omgdi:waypoint x="1040" y="260"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutClasse_classement" bpmnElement="flow_statutClasse_classement"><omgdi:waypoint x="1150" y="260"/><omgdi:waypoint x="1205" y="260"/><omgdi:waypoint x="1205" y="185"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutRoute_classement" bpmnElement="flow_statutRoute_classement"><omgdi:waypoint x="870" y="60"/><omgdi:waypoint x="1205" y="60"/><omgdi:waypoint x="1205" y="135"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_classement_clotureCourrier" bpmnElement="flow_classement_clotureCourrier"><omgdi:waypoint x="1230" y="160"/><omgdi:waypoint x="1260" y="160"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_clotureCourrier_fin" bpmnElement="flow_clotureCourrier_fin"><omgdi:waypoint x="1370" y="160"/><omgdi:waypoint x="1400" y="160"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>

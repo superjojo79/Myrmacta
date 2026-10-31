@@ -201,6 +201,19 @@ export default {
     errors: { load: 'Chargement impossible', create: 'Création impossible', save: 'Enregistrement du schéma impossible', remove: 'Suppression impossible' },
   },
   types: {
+    deadline: {
+      legend: 'Échéance',
+      hint: "Champ date qui porte l'échéance des dossiers de ce type. Rappel aux participants N jours avant ; le lendemain du terme, les tâches ouvertes passent au groupe d'escalade, qui est prévenu. Jours calendaires.",
+      field: 'Champ échéance',
+      none: "Pas d'échéance",
+      reminderDays: 'Rappel (jours avant, 0 = aucun)',
+      escalationGroup: "Groupe d'escalade",
+      noEscalation: 'Aucune escalade',
+      noDateField: "Ce type n'a aucun champ de type date.",
+      save: "Enregistrer l'échéance",
+      saved: 'Enregistré',
+      errors: { load: 'Chargement impossible', save: 'Enregistrement impossible' },
+    },
     reply: {
       legend: 'Réponse à un courrier',
       hint: "Ce qui démarre quand une réponse à un e-mail rejoint un dossier de ce type (mail room). Sur le dossier : seulement si aucun process n'y tourne. Dossier enfant : chaque réponse ouvre un dossier enfant du type choisi, en parallèle du process en cours.",

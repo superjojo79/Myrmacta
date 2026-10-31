@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DeadlinePanel from '@/components/admin/DeadlinePanel.vue'
 import ReplyWorkflowPanel from '@/components/admin/ReplyWorkflowPanel.vue'
 import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
@@ -543,6 +544,10 @@ const { t } = useI18n()
         <legend>{{ t('dossier.pieceTypes.legend') }}</legend>
         <PieceTypesEditor v-model="editDraft.pieceTypes" />
       </fieldset>
+      <DeadlinePanel
+        :type-code="editingCode"
+        :date-fields="editDraft.fieldDefinitions.filter((field) => field.type === 'DATE').map((field) => field.name)"
+      />
       <ReplyWorkflowPanel
         :type-code="editingCode"
         :child-type-codes="types.map((type) => type.code).filter((code) => code !== editingCode)"

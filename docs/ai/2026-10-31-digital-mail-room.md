@@ -185,8 +185,9 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | #266 |
 | 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | #267 |
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
-| 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | à ouvrir |
-| 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
+| 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
+| 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | en cours | |
+| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeance…}` dans un minuteur | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
@@ -258,7 +259,17 @@ Appris pendant le lot 3b :
 - La règle « un seul workflow actif par dossier » rend le mode 3 impossible tel quel sur un dossier en cours de
   traitement : d'où les deux modes.
 
-Prochaine action : PR du lot 3b, puis lot 4 (échéances, point du registre à écrire). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Fait dans le lot 4a (choix de l'utilisateur, 2026-10-31 : champ date du type + réaffectation ; brique + variable pour le
+minuteur ; calendrier ouvrable plus tard) :
+- point §115 écrit (D-DEADLINE-FIELD, -ESCALATE, -TIMER, -CALENDAR) ;
+- domaine `deadline` : réglage par type (table `dossier_type_deadline`), job `DeadlineAlertJob`, paliers pris une fois
+  (`dossier_deadline_alert`) ; `UserGroupsUseCase.membersOf` (membres listés + IdP) ;
+- « Router le courrier » écrit l'échéance dans le champ désigné du type métier ;
+- API `/api/dossier-types/{code}/deadline`, panneau « Échéance » ; exemple : groupe DIRECTION_FINANCIERE, champ
+  `echeance` de FACTURE, `config/echeance-facture.json`.
+
+Prochaine action : preuves du lot 4a, PR, puis lot 4b. Calendrier de jours ouvrables : issue #270
+(D-DEADLINE-CALENDAR). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves

@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
+import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -74,6 +75,7 @@ class MailRoomExampleIT {
     @Autowired private HistoryService historyService;
     @Autowired private ManagementService managementService;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private DeadlineAlertJob deadlineAlertJob;
 
     private static boolean configured;
 
@@ -109,6 +111,24 @@ class MailRoomExampleIT {
         assertThat(task.getAssignee()).isNull();
         assertThat(taskService.getIdentityLinksForTask(task.getId()))
                 .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+
+        // TODO §115 (D-DEADLINE-FIELD) : le routage écrit l'échéance dans le champ désigné du type FACTURE.
+        String deadline = LocalDate.now(ZoneOffset.UTC).plusDays(30).toString();
+        assertThat(business.get("fields").get("echeance").asString()).isEqualTo(deadline);
+        // D-DEADLINE-ESCALATE : rappel à J-5 (une fois), puis, le lendemain du terme, la tâche passe à la direction financière.
+        Instant reminder = LocalDate.parse(deadline).minusDays(5).atTime(9, 0).toInstant(ZoneOffset.UTC);
+        deadlineAlertJob.process(reminder);
+        deadlineAlertJob.process(reminder.plusSeconds(3600));
+        assertThat(jdbc.queryForObject("select count(*) from dossier_deadline_alert where dossier_id = ?::uuid and level = 'RAPPEL'",
+                Integer.class, invoiceId)).isEqualTo(1);
+        assertThat(taskService.getIdentityLinksForTask(task.getId()))
+                .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+        deadlineAlertJob.process(LocalDate.parse(deadline).plusDays(1).atTime(9, 0).toInstant(ZoneOffset.UTC));
+        assertThat(taskService.getIdentityLinksForTask(task.getId()))
+                .anySatisfy(link -> assertThat(link.getGroupId()).isEqualTo("DIRECTION_FINANCIERE"))
+                .noneSatisfy(link -> assertThat(link.getGroupId()).isEqualTo("COMPTABILITE"));
+        assertThat(read(get("/api/dossiers/{id}/elements", invoiceId)).toString())
+                .contains("Échéance du " + deadline + " dépassée : 1 tâche(s) réaffectée(s) au groupe DIRECTION_FINANCIERE");
 
         // Le registre du courrier : la liste des dossiers filtrée sur le type.
         assertThat(read(get("/api/dossiers").param("dossierTypeCode", "COURRIER")).get("content").toString())
@@ -249,6 +269,11 @@ class MailRoomExampleIT {
         reply.remove("_commentaire");
         mockMvc.perform(put("/api/dossier-types/{code}/reply-workflow", "FACTURE").with(admin).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(reply)))
+                .andExpect(status().isOk());
+        ObjectNode deadline = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/echeance-facture.json").toFile());
+        deadline.remove("_commentaire");
+        mockMvc.perform(put("/api/dossier-types/{code}/deadline", "FACTURE").with(admin).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(deadline)))
                 .andExpect(status().isOk());
         configured = true;
     }

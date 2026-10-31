@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 045-dossier-deadline
+      author: flowforge
+      comment: >-
+        TODO §115 (D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) — réglage d'échéance d'un type de dossier (champ DATE, rappel J-n,
+        groupe d'escalade), et paliers déjà pris par dossier et par date (une seule fois chacun).
+      changes:
+        - createTable:
+            tableName: dossier_type_deadline
+            columns:
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: dossier_type_code, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: field_name, type: varchar(255), constraints: {nullable: false}}
+              - column: {name: reminder_days, type: int, constraints: {nullable: false}}
+              - column: {name: escalation_group, type: varchar(64)}
+        - addPrimaryKey:
+            tableName: dossier_type_deadline
+            columnNames: tenant_id, dossier_type_code
+            constraintName: pk_dossier_type_deadline
+        - createTable:
+            tableName: dossier_deadline_alert
+            columns:
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: dossier_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: level, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: deadline, type: date, constraints: {nullable: false}}
+              - column: {name: claimed_at, type: timestamp with time zone, constraints: {nullable: false}}
+        - addPrimaryKey:
+            tableName: dossier_deadline_alert
+            columnNames: tenant_id, dossier_id, level, deadline
+            constraintName: pk_dossier_deadline_alert

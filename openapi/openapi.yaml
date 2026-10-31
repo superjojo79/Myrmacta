@@ -403,6 +403,60 @@ paths:
       responses:
         "200":
           description: OK
+  /api/dossier-types/{code}/deadline:
+    get:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: getDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeadlineResponse"
+    put:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: setDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeadlineRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DeadlineResponse"
+    delete:
+      tags:
+      - dossier-type-deadline-controller
+      operationId: clearDeadline
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/dmn-decision-drafts/{decisionKey}:
     get:
       tags:
@@ -3944,6 +3998,28 @@ components:
         workflowKey:
           type: string
         childTypeCode:
+          type: string
+    DeadlineRequest:
+      type: object
+      properties:
+        fieldName:
+          type: string
+        reminderDays:
+          type: integer
+          format: int32
+        escalationGroup:
+          type: string
+    DeadlineResponse:
+      type: object
+      properties:
+        dossierTypeCode:
+          type: string
+        fieldName:
+          type: string
+        reminderDays:
+          type: integer
+          format: int32
+        escalationGroup:
           type: string
     SaveDmnDraftRequest:
       type: object

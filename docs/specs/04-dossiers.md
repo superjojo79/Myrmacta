@@ -1037,3 +1037,32 @@ infrastructure
   `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true`, et signalé en `staging`.
 - **Tests :** `ClamAvAttachmentScanAdapterTest` (faux `clamd` sur socket loopback), `ClamAvAttachmentScanIT` (vrai
   ClamAV sous Docker, ignoré sans démon Docker).
+
+## Implémentation — échéance d'un dossier, rappel et escalade (TODO §115, lot 4a de #217)
+
+Décisions : [§115](../decisions/115-echeances-de-dossier-rappel-escalade-et-minuteurs.md) (D-DEADLINE-FIELD,
+D-DEADLINE-ESCALATE).
+
+- **Réglage par type.** Un type désigne l'un de ses champs `DATE` comme échéance, avec un rappel J-n (0 = aucun) et un
+  groupe d'escalade facultatif.
+  - Stockage : table `dossier_type_deadline` (changeset 045).
+  - API : `GET`, `PUT` et `DELETE /api/dossier-types/{code}/deadline` (`TENANT_ADMIN` ; 204 sans réglage).
+  - Écran : Admin → Types → Modifier les champs → « Échéance ».
+  - Cas d'usage : `ManageDeadlineUseCase`, qui refuse un champ qui n'est pas `DATE` et un groupe inconnu.
+- **Source de la date.** Saisie, mapping de connecteur, ou brique « Router le courrier » : celle-ci écrit
+  `aujourd'hui + routageDelaiJours` dans le champ désigné du type du dossier métier qu'elle ouvre.
+- **Job `DeadlineAlertJob`** (`app.deadlines.scan-interval-ms`, 15 min par défaut) → `EvaluateDeadlinesUseCase` :
+  - périmètre : dossiers `OUVERT`, `EN_COURS` ou `SUSPENDU` des types réglés, dont le champ vaut une date ISO, lue en base
+    par `fields ->> champ` (`DeadlineCandidates`) ;
+  - jours calendaires, en UTC ; le jour du terme est encore dans les temps ;
+  - **rappel** dès J-n : notification « boîte de réception » aux participants des process du dossier ;
+  - **escalade** dès le lendemain du terme :
+    - les tâches ouvertes du process actif passent au groupe d'escalade (`reassignTaskToGroup`, groupe du lien) ;
+    - les participants d'avant et les membres effectifs du groupe (`UserGroupsUseCase.membersOf`) sont prévenus ;
+    - une note `DEADLINE_ESCALATED` est versée au dossier au nom de `system` ;
+    - un groupe supprimé depuis le réglage réduit l'escalade à la note ;
+  - **une seule fois** : chaque palier est inséré dans `dossier_deadline_alert` (clé tenant, dossier, palier, date) avant
+    d'agir, dans la transaction du dossier. Une échéance reportée ouvre de nouveaux paliers.
+- Tests : `EvaluateDeadlinesUseCaseImplTest`, `DossierTypeDeadlineApiTest`, `MailRoomExampleIT` (rappel, puis
+  escalade réelle d'une tâche Flowable).
+- Limite : la promotion de configuration ne transporte pas encore ce réglage.

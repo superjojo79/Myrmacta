@@ -109,4 +109,18 @@ public final class UserGroupsUseCaseImpl implements UserGroupsUseCase {
         }
         return Set.copyOf(result);
     }
+
+    @Override
+    public Set<String> membersOf(String code) {
+        UserGroup group = get(code);
+        Set<String> result = new LinkedHashSet<>(group.memberIds());
+        if (group.idpGroup() != null) {
+            for (KnownUser user : users.findAll(tenantId)) {
+                if (user.idpGroups() != null && user.idpGroups().contains(group.idpGroup())) {
+                    result.add(user.userId());
+                }
+            }
+        }
+        return Set.copyOf(result);
+    }
 }

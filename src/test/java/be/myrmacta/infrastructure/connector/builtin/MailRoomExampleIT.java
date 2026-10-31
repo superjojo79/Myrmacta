@@ -44,7 +44,7 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
 /**
- * TODO §112 (issue #217, lot 1) — le paquet {@code exemples/digital-mail-room} sur l'application : un e-mail lu par le
+ * TODO §113 (issue #217, lot 1) — le paquet {@code exemples/digital-mail-room} sur l'application : un e-mail lu par le
  * connecteur IMAP de l'exemple devient un courrier numéroté (type {@code COURRIER}), ses pièces sont rangées, le tri démarre
  * au statut « à trier », et les en-têtes de fil parviennent au process. Seule la boîte aux lettres est simulée. Placé dans ce
  * paquet parce que {@link ImapMailbox} n'est pas public.

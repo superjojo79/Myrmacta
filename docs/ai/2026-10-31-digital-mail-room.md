@@ -4,7 +4,7 @@ Issue : #217 (sous-issues #190, #186, #185) · Spec du domaine : à créer, `doc
 [04](../specs/04-dossiers.md), [25](../specs/25-introduction-dmn.md), [34](../specs/34-integrations-entreprise.md),
 [48](../specs/48-preverification-ia.md) · Points du registre : [§87](../decisions/087-d3c-d3d-e-mail-entrant-bus-azure.md),
 [§92](../decisions/092-assignation-des-taches-m-assigner-et-annuaire.md), [§106](../decisions/106-preverification-ia-et-types-de-pieces.md) ;
-nouveaux points à partir de §112
+nouveaux points à partir de §113
 
 ## Cadrage
 
@@ -97,22 +97,22 @@ nouveaux points à partir de §112
 
 | Question | Options | Recommandation | Statut (ouverte, reportée, hypothèse, tranchée → §N) |
 |---|---|---|---|
-| Représentation du courrier | Dossier d'un type dédié ; entité `mailroom` dédiée ; pas d'objet courrier | Dossier dédié | Tranchée le 2026-10-31 (dossier dédié + fils e-mail) → §112 |
+| Représentation du courrier | Dossier d'un type dédié ; entité `mailroom` dédiée ; pas d'objet courrier | Dossier dédié | Tranchée le 2026-10-31 (dossier dédié + fils e-mail) → §113 |
 | Réponse dans un fil connu | Nouveau courrier rattaché ; ajout au courrier existant ; reroutage | Nouveau courrier rattaché | Tranchée le 2026-10-31, avec un statut lisible et sans complexifier les BPMN |
 | Réaction du workflow à une réponse | Plateforme seule ; sous-process modélisé ; workflow séparé | Plateforme + brique optionnelle | Tranchée le 2026-10-31 : les trois, au choix et combinables |
 | Canaux de la première livraison | E-mail + PDF sans OCR ; e-mail seul ; tout, OCR compris | E-mail + PDF sans OCR | Tranchée le 2026-10-31 : OCR dans un lot ultérieur, eBox en feature séparée |
-| Groupes | Locaux ; claim IdP ; les deux | Locaux | Tranchée le 2026-10-31 : les deux → §113 |
+| Groupes | Locaux ; claim IdP ; les deux | Locaux | Tranchée le 2026-10-31 : les deux → §114 |
 | Échéances | Plateforme ; minuteurs BPMN (#186) ; plus tard | Plateforme | Tranchée le 2026-10-31 : les deux au choix |
 | MCP | Lecture ; lecture + actions ; rien | Lecture | Tranchée le 2026-10-31 : lecture + actions, avec `security-review` |
-| Fils initiés par un e-mail sortant | Enregistrer le Message-ID des envois de « Notifier » ; ne suivre que les fils entrants | Enregistrer | Tranchée à la conception → §112 D-MAILROOM-THREAD |
-| Corrélation du message vers les process | Tous les process du dossier qui l'attendent ; seulement le principal | Tous ceux qui l'attendent | Tranchée à la conception → §112 D-MAILROOM-REACT (requête vérifiée dans `FlowableWorkflowEngineAdapter`) |
+| Fils initiés par un e-mail sortant | Enregistrer le Message-ID des envois de « Notifier » ; ne suivre que les fils entrants | Enregistrer | Tranchée à la conception → §113 D-MAILROOM-THREAD |
+| Corrélation du message vers les process | Tous les process du dossier qui l'attendent ; seulement le principal | Tous ceux qui l'attendent | Tranchée à la conception → §113 D-MAILROOM-REACT (requête vérifiée dans `FlowableWorkflowEngineAdapter`) |
 | Rôle de l'opérateur de tri | Rôle existant (`DOSSIER_MANAGER` sur le type « courrier ») ; nouveau rôle | Rôle existant + ACL du type | Hypothèse |
 | Dépôt SFTP de PDF | Nouveau connecteur TRIGGER « dossier surveillé » ; étendre `batch-import` | Nouveau connecteur | Reportée à la conception du lot 5 |
 
 ## Conception
 
-Décisions : [§112](../decisions/112-digital-mail-room-courrier-dossier-et-fils.md) (D-MAILROOM-MODEL, -ROUTE, -THREAD, -REACT),
-[§113](../decisions/113-groupes-d-utilisateurs-et-assignation-par-groupe.md) (D-GROUP-SOURCE, -ASSIGN). Les points du registre
+Décisions : [§113](../decisions/113-digital-mail-room-courrier-dossier-et-fils.md) (D-MAILROOM-MODEL, -ROUTE, -THREAD, -REACT),
+[§114](../decisions/114-groupes-d-utilisateurs-et-assignation-par-groupe.md) (D-GROUP-SOURCE, -ASSIGN). Les points du registre
 pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écrivent à la conception de leur lot.
 
 - Faits vérifiés dans le code :
@@ -181,8 +181,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
 | 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | en cours | |
-| 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | à faire | |
-| 2b | Brique de routage `routeMailTask`, table DMN, file de tri, réaffectation vers un groupe, trace (§112 D-MAILROOM-ROUTE) | à faire | |
+| 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §114) | à faire | |
+| 2b | Brique de routage `routeMailTask`, table DMN, file de tri, réaffectation vers un groupe, trace (§113 D-MAILROOM-ROUTE) | à faire | |
 | 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |

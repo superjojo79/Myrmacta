@@ -1,0 +1,42 @@
+[
+  {
+    "_role": "SIRH : création et suppression de la fiche du collaborateur",
+    "_placeholder": "00000000-0000-4000-8000-000000000001",
+    "name": "SIRH",
+    "connectorType": "http-rest",
+    "enabled": true,
+    "config": {
+      "webhookEnabled": false,
+      "baseUrl": "https://sirh.example.com/api/v1",
+      "authHeaderValue": "Bearer <jeton de l'API SIRH>"
+    }
+  },
+  {
+    "_role": "IAM : création du compte, ajout à un groupe, suppression",
+    "_placeholder": "00000000-0000-4000-8000-000000000002",
+    "name": "IAM",
+    "connectorType": "http-rest",
+    "enabled": true,
+    "config": {
+      "webhookEnabled": false,
+      "baseUrl": "https://iam.example.com/admin/realms/entreprise",
+      "authMode": "OAUTH2_CLIENT_CREDENTIALS",
+      "oauthTokenUrl": "https://iam.example.com/realms/entreprise/protocol/openid-connect/token",
+      "oauthClientId": "myrmacta-provisioning",
+      "oauthClientSecret": "<secret du client>",
+      "oauthAllowedHosts": "iam.example.com"
+    }
+  },
+  {
+    "_role": "ITSM : ticket de mise à disposition du matériel",
+    "_placeholder": "00000000-0000-4000-8000-000000000003",
+    "name": "ITSM",
+    "connectorType": "http-rest",
+    "enabled": true,
+    "config": {
+      "webhookEnabled": false,
+      "baseUrl": "https://itsm.example.com/api/now",
+      "authHeaderValue": "Basic <identifiants encodés>"
+    }
+  }
+]

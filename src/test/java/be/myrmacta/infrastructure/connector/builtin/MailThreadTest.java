@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
-/** TODO §112 (D-MAILROOM-THREAD) — en-têtes de fil d'un e-mail entrant : lus, bornés, jamais pris tels quels. */
+/** TODO §113 (D-MAILROOM-THREAD) — en-têtes de fil d'un e-mail entrant : lus, bornés, jamais pris tels quels. */
 class MailThreadTest {
 
     @Test

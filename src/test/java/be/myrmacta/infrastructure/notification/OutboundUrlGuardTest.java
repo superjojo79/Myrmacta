@@ -235,6 +235,15 @@ class OutboundUrlGuardTest {
     }
 
     @Test
+    void resolveSafe_keepsPercentEncodingOnPinnedUrl() {
+        // TODO §112 (revue) : un %2F ou un %26 décodé ferait sortir une valeur de son segment ou de son paramètre.
+        OutboundUrlGuard.PinnedEndpoint pinned = strict.resolveSafe(
+                "https://hooks.example.com:8443/users/a%2F..%2Fadmin%3Fx/g?q=A%26B%3Dc&r=%23#f%20g");
+        assertThat(pinned.requestUrl())
+                .isEqualTo("https://93.184.216.34:8443/users/a%2F..%2Fadmin%3Fx/g?q=A%26B%3Dc&r=%23#f%20g");
+    }
+
+    @Test
     void resolveSafe_ipv6Literal_wrapsHostInRequestUrl() {
         OutboundUrlGuard.PinnedEndpoint pinned = strict.resolveSafe("https://[2001:4860:4860::8888]/hook");
         assertThat(pinned.requestUrl()).isEqualTo("https://[2001:4860:4860:0:0:0:0:8888]/hook");

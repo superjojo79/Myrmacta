@@ -163,7 +163,7 @@ final class InboundMailRouting {
         return p;
     }
 
-    /** En-têtes de fil remis au process, seulement s'ils existent (TODO §112, D-MAILROOM-THREAD). */
+    /** En-têtes de fil remis au process, seulement s'ils existent (TODO §113, D-MAILROOM-THREAD). */
     private static void putThread(Map<String, Object> variables, MailThread thread) {
         if (!thread.inReplyTo().isEmpty()) {
             variables.putIfAbsent("mailInReplyTo", thread.inReplyTo());

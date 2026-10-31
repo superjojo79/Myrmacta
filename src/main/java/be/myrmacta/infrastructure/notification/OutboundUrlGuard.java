@@ -49,24 +49,35 @@ public class OutboundUrlGuard {
             return original.getHost();
         }
 
+        /**
+         * URL de connexion : l'hôte remplacé par l'IP figée, <b>tout le reste en composants bruts</b>. TODO §112 (revue) :
+         * le constructeur multi-arguments de {@link URI} prend des composants décodés — {@code %2F} y redevenait {@code /}
+         * et {@code %26} {@code &}, ce qui laissait une valeur encodée sortir de son segment de chemin ou de son
+         * paramètre de requête.
+         */
         public String requestUrl() {
             String host = address.getHostAddress();
             if (address instanceof java.net.Inet6Address && !host.startsWith("[")) {
                 host = "[" + host + "]";
             }
-            try {
-                return new URI(
-                                original.getScheme(),
-                                original.getUserInfo(),
-                                host,
-                                original.getPort(),
-                                original.getPath(),
-                                original.getQuery(),
-                                original.getFragment())
-                        .toString();
-            } catch (java.net.URISyntaxException ex) {
-                throw new IllegalArgumentException("Webhook URL is malformed", ex);
+            StringBuilder out = new StringBuilder(original.getScheme()).append("://");
+            if (original.getRawUserInfo() != null) {
+                out.append(original.getRawUserInfo()).append('@');
             }
+            out.append(host);
+            if (original.getPort() != -1) {
+                out.append(':').append(original.getPort());
+            }
+            if (original.getRawPath() != null) {
+                out.append(original.getRawPath());
+            }
+            if (original.getRawQuery() != null) {
+                out.append('?').append(original.getRawQuery());
+            }
+            if (original.getRawFragment() != null) {
+                out.append('#').append(original.getRawFragment());
+            }
+            return out.toString();
         }
     }
 

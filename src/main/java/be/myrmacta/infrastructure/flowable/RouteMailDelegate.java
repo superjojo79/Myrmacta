@@ -22,11 +22,13 @@ import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -47,7 +49,8 @@ import org.springframework.stereotype.Component;
  *       littéral de la brique, devient le groupe du lien de tri). Une erreur de configuration n'arrête jamais le courrier.
  * </ul>
  *
- * Toutes les vérifications ont lieu AVANT la première écriture : une exception remontée par une écriture transactionnelle
+ * Seuls les champs non sensibles du courrier sont copiés dans le dossier métier, sous le même nom. Toutes les vérifications
+ * ont lieu AVANT la première écriture : une exception remontée par une écriture transactionnelle
  * condamnerait la transaction du moteur, qu'un repli ne pourrait plus sauver.
  */
 @Component("routeMailTask")
@@ -129,7 +132,7 @@ class RouteMailDelegate implements JavaDelegate {
                 .orElseThrow(() -> new IllegalStateException("mail dossier not found: " + mailId));
         DossierType mailType = typeRepository.findByCode(tenantProperties.id(), mail.dossierTypeCode())
                 .orElseThrow(() -> new IllegalStateException("mail dossier type not found: " + mail.dossierTypeCode()));
-        Plan plan = plan(execution, mail);
+        Plan plan = plan(execution, mail, mailType);
         if (plan.refusal() != null) {
             toSorting(execution, mailType, mail, plan.refusal());
             return;
@@ -152,7 +155,7 @@ class RouteMailDelegate implements JavaDelegate {
     }
 
     /** Décision vérifiée contre les catalogues, sans aucune écriture. */
-    private Plan plan(DelegateExecution execution, Dossier mail) {
+    private Plan plan(DelegateExecution execution, Dossier mail, DossierType mailType) {
         String action = text(execution.getVariable(ACTION));
         if (!"OUVRIR".equals(action == null ? null : action.toUpperCase(Locale.ROOT))) {
             return Plan.refused(action == null ? "aucune action de routage" : "action " + action);
@@ -175,18 +178,19 @@ class RouteMailDelegate implements JavaDelegate {
             return Plan.refused("délai invalide : " + execution.getVariable(DELAY_DAYS));
         }
         Map<String, Object> fields = new LinkedHashMap<>();
+        Set<String> copyable = nonSensitiveFieldNames(mailType);
         for (FieldDefinition definition : type.get().fieldDefinitions()) {
-            if (mail.fields().containsKey(definition.name())) {
+            if (copyable.contains(definition.name()) && mail.fields().containsKey(definition.name())) {
                 fields.put(definition.name(), mail.fields().get(definition.name()));
             }
         }
         for (FieldDefinition definition : type.get().fieldDefinitions()) {
             boolean unconditional = definition.requiredWhen() == null || definition.requiredWhen().isBlank();
-            if (definition.required() && unconditional && definition.defaultValue() == null && !fields.containsKey(definition.name())) {
+            if (definition.required() && unconditional && !definition.hasDefaultValue() && !fields.containsKey(definition.name())) {
                 return Plan.refused("champ obligatoire du type " + typeCode + " absent du courrier : " + definition.name());
             }
         }
-        return new Plan(group, typeCode, process, delay, fields, label(mail), null);
+        return new Plan(group, typeCode, process, delay, fields, label(mail, copyable), null);
     }
 
     private void toSorting(DelegateExecution execution, DossierType mailType, Dossier mail, String reason) {
@@ -242,8 +246,19 @@ class RouteMailDelegate implements JavaDelegate {
         }
     }
 
-    private static String label(Dossier mail) {
-        String subject = text(mail.fields().get("objet"));
+    /** Seuls les champs non sensibles du courrier passent au dossier métier : un champ cible du même nom peut ne pas l'être. */
+    private static Set<String> nonSensitiveFieldNames(DossierType mailType) {
+        Set<String> names = new HashSet<>();
+        for (FieldDefinition definition : mailType.fieldDefinitions()) {
+            if (!Boolean.TRUE.equals(definition.sensitive())) {
+                names.add(definition.name());
+            }
+        }
+        return names;
+    }
+
+    private static String label(Dossier mail, Set<String> copyable) {
+        String subject = copyable.contains("objet") ? text(mail.fields().get("objet")) : null;
         String label = subject == null ? mail.reference() : subject;
         return label.length() > MAX_LABEL_CHARS ? label.substring(0, MAX_LABEL_CHARS) : label;
     }

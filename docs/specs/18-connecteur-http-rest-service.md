@@ -213,8 +213,9 @@ Livré en complément du rôle SERVICE (§48) :
 
 `http-rest` envoie `PATCH` par Apache HttpClient 5 (version gérée par Spring Boot). L'URL garde le nom d'hôte d'origine :
 le SNI et la vérification du certificat sont ceux du client. Le résolveur DNS ne renvoie que l'adresse déjà choisie par
-`OutboundUrlGuard` (D-44), et seulement pour ce nom. Une redirection n'est pas suivie. Le délai borne la connexion et la
-lecture du corps. Les jetons OAuth2, et ceux d'IMAP, de Graph et du bus Azure qui réutilisent le même envoi, passent par
+`OutboundUrlGuard` (D-44), et seulement pour ce nom. Une redirection n'est pas suivie. Le client ne passe par aucun
+proxy de la JVM. Le délai borne la connexion et la lecture du corps. Les jetons OAuth2, et ceux d'IMAP, de Graph et du
+bus Azure qui réutilisent le même envoi, passent par
 ce client. Les webhooks sortants restent sur `HttpURLConnection`.
 
 Tests de référence : `HttpRestConnectorTest.execute_methodPatch_sendsPatchWithBody`, `PinnedHttpClientTest`.

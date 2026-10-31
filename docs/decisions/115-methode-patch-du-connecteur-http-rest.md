@@ -26,6 +26,8 @@ Garde SSRF, inchangée dans son intention (D-44) :
 - le résolveur DNS ne renvoie que cette adresse, et seulement pour ce nom : pas de second DNS, donc pas de rebinding
   entre le contrôle et la connexion ;
 - une redirection n'est pas suivie (sa cible ne repasse pas par la garde) ;
+- pas de proxy : le planificateur de route est direct. HttpClient 5 ne consulte le `ProxySelector` de la JVM que si
+  `useSystemProperties()` ou `setProxySelector` est appelé ; un proxy referait le DNS hors de l'adresse figée (D-44) ;
 - pas de nouvelle tentative automatique, pas de cookies ;
 - le délai borne la connexion et la lecture du corps ; le corps de la réponse reste borné (`maxResponseBytes`).
 

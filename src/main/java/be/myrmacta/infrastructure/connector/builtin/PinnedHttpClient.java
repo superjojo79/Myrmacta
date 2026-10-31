@@ -11,8 +11,10 @@ import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.DefaultSchemePortResolver;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.routing.DefaultRoutePlanner;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -29,7 +31,8 @@ import org.apache.hc.core5.util.Timeout;
  * <p>L'URL garde le nom d'hôte d'origine : le SNI et la vérification du certificat sont ceux du client, sans vérificateur
  * réécrit. Le {@link DnsResolver} ne renvoie que l'adresse déjà validée par {@code OutboundUrlGuard} (D-44) : pas de
  * second DNS, donc pas de rebinding entre le contrôle et la connexion. Les redirections sont refusées : une cible 3xx
- * ne repasse pas par la garde. Le délai borne la connexion et la lecture du corps.
+ * ne repasse pas par la garde. Aucun proxy : un proxy résoudrait le nom de son côté (D-44). Le délai borne la connexion
+ * et la lecture du corps.
  */
 final class PinnedHttpClient {
 
@@ -85,6 +88,10 @@ final class PinnedHttpClient {
         ClassicHttpRequest httpRequest = requestOf(request);
         try (CloseableHttpClient client = HttpClients.custom()
                         .setConnectionManager(connections.build())
+                        // D-44. HttpClient 5 ne consulte le ProxySelector de la JVM que via
+                        // useSystemProperties() ou setProxySelector. Le planificateur direct le fixe :
+                        // un proxy referait le DNS et sortirait de l'adresse figée.
+                        .setRoutePlanner(new DefaultRoutePlanner(DefaultSchemePortResolver.INSTANCE))
                         .disableRedirectHandling()
                         .disableAutomaticRetries()
                         .disableCookieManagement()

@@ -15,11 +15,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,10 +41,18 @@ class PinnedHttpClientTest {
 
     private HttpServer server;
     private HttpServer elsewhere;
+    private HttpServer proxy;
+    private ProxySelector previousProxySelector;
+    private boolean restoreProxySelector;
     private volatile Thread stalled;
 
     @AfterEach
     void stop() {
+        if (restoreProxySelector) {
+            ProxySelector.setDefault(previousProxySelector);
+            previousProxySelector = null;
+            restoreProxySelector = false;
+        }
         if (stalled != null) {
             stalled.interrupt();
         }
@@ -48,6 +61,9 @@ class PinnedHttpClientTest {
         }
         if (elsewhere != null) {
             elsewhere.stop(0);
+        }
+        if (proxy != null) {
+            proxy.stop(0);
         }
     }
 
@@ -82,6 +98,51 @@ class PinnedHttpClientTest {
         assertThat(method).hasValue("PATCH");
         assertThat(body).hasValue("{\"Name\":\"A\"}");
         assertThat(host.get()).isEqualTo("pinned.invalid:" + port);
+    }
+
+    @Test
+    void jvmProxySelectorIsNotUsed() throws Exception {
+        AtomicInteger proxyHits = new AtomicInteger();
+        proxy = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        proxy.createContext("/", exchange -> {
+            proxyHits.incrementAndGet();
+            exchange.sendResponseHeaders(500, -1);
+            exchange.close();
+        });
+        proxy.start();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/vendors", exchange -> {
+            byte[] out = "direct".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, out.length);
+            exchange.getResponseBody().write(out);
+            exchange.close();
+        });
+        server.start();
+        int targetPort = server.getAddress().getPort();
+        previousProxySelector = ProxySelector.getDefault();
+        restoreProxySelector = true;
+        ProxySelector.setDefault(new ProxySelector() {
+            @Override
+            public List<Proxy> select(URI uri) {
+                return List.of(new Proxy(
+                        Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", proxy.getAddress().getPort())));
+            }
+
+            @Override
+            public void connectFailed(URI uri, SocketAddress sa, IOException ioe) {}
+        });
+
+        HttpRestConnector.HttpCallResponse response = PinnedHttpClient.sender().send(request(
+                "http://pinned.invalid:" + targetPort + "/vendors",
+                "GET",
+                null,
+                1_000,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(2)));
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("direct");
+        assertThat(proxyHits).hasValue(0);
     }
 
     @Test

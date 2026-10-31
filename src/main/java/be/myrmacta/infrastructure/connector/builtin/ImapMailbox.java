@@ -55,7 +55,20 @@ interface ImapMailbox {
             /** Premier en-tête {@code Authentication-Results} du message (celui que notre serveur de réception ajoute en tête), brut. */
             String authenticationResults,
             List<InboundAttachment> attachments,
-            int attachmentsSkipped) {}
+            int attachmentsSkipped,
+            /** En-têtes de fil (TODO §112, D-MAILROOM-THREAD), {@link MailThread#NONE} hors fil. */
+            MailThread thread) {
+
+        public Mail {
+            thread = thread == null ? MailThread.NONE : thread;
+        }
+
+        public Mail(String messageId, String fromAddress, String fromDisplay, String subject, Instant sentAt, String body, boolean automatic,
+                String authenticationResults, List<InboundAttachment> attachments, int attachmentsSkipped) {
+            this(messageId, fromAddress, fromDisplay, subject, sentAt, body, automatic, authenticationResults, attachments,
+                    attachmentsSkipped, MailThread.NONE);
+        }
+    }
 
     enum Outcome {
         PROCESSED,

@@ -177,13 +177,20 @@ class AngusImapMailbox implements ImapMailbox {
             body = body.substring(0, limits.maxBodyChars());
         }
         String subject = message.getSubject() == null ? "" : message.getSubject();
+        MailThread thread = MailThread.of(header(message, "In-Reply-To"), joinedHeader(message, "References"), "");
         return new Mail(messageId, fromAddress, fromDisplay, subject, sent, body.strip(), automatic, authenticationResults,
-                List.copyOf(content.attachments), content.skipped);
+                List.copyOf(content.attachments), content.skipped, thread);
     }
 
     private static String header(MimeMessage message, String name) throws MessagingException {
         String[] values = message.getHeader(name);
         return values == null || values.length == 0 || values[0] == null ? "" : values[0].strip();
+    }
+
+    /** Toutes les occurrences d'un en-tête, jointes : un {@code References} peut être réparti sur plusieurs lignes. */
+    private static String joinedHeader(MimeMessage message, String name) throws MessagingException {
+        String joined = message.getHeader(name, " ");
+        return joined == null ? "" : joined;
     }
 
     private static final class Content {

@@ -180,7 +180,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | à faire | |
+| 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | en cours | |
 | 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | à faire | |
 | 2b | Brique de routage `routeMailTask`, table DMN, file de tri, réaffectation vers un groupe, trace (§112 D-MAILROOM-ROUTE) | à faire | |
 | 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
@@ -190,7 +190,21 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
 
-Prochaine action : lot 1, en TDD. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Fait dans le lot 1 :
+- `MailThread` lit `In-Reply-To` et `References` (identifiants `<…>`, 250 caractères chacun, les 10 plus récents, en-tête lu sur 8 000
+  caractères au plus) et le `conversationId` de Graph. Ces valeurs sont exposées au mapping et aux variables `mailInReplyTo`,
+  `mailReferences` et `mailConversationId`.
+- Paquet `exemples/digital-mail-room`.
+- `MailRoomExampleIT` traverse le connecteur IMAP réel (boîte simulée), la création du dossier, la pièce, l'outbox et le démarrage du
+  tri.
+
+Appris pendant le lot :
+- Un dossier créé par un connecteur naît `DRAFT` : la configuration du workflow doit l'autoriser au démarrage. Sinon l'outbox marque
+  l'événement mort sans rien journaliser.
+- Un champ mappé vide fait refuser le message : on ne mappe donc pas les en-têtes de fil sur un champ.
+- Sans `trustedAuthservId`, aucun expéditeur n'est attesté.
+
+Prochaine action : preuves du lot 1, PR, puis lot 2a. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves

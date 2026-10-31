@@ -43,7 +43,7 @@ class HttpGraphMailbox implements GraphMailbox {
 
     private static final String LIST_SELECT = "id,categories";
     private static final String MESSAGE_SELECT = "id,internetMessageId,subject,from,sentDateTime,receivedDateTime,body,hasAttachments,"
-            + "internetMessageHeaders,categories";
+            + "internetMessageHeaders,categories,conversationId";
 
     private final HttpClient client = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -198,7 +198,9 @@ class HttpGraphMailbox implements GraphMailbox {
         }
         return new ImapMailbox.Mail(node.path("internetMessageId").asString(""), fromAddress, fromDisplay,
                 node.path("subject").asString(""), instant(node), body.strip(), automatic,
-                headers.getOrDefault("authentication-results", ""), List.copyOf(attachments), skipped);
+                headers.getOrDefault("authentication-results", ""), List.copyOf(attachments), skipped,
+                MailThread.of(headers.getOrDefault("in-reply-to", ""), headers.getOrDefault("references", ""),
+                        node.path("conversationId").asString("")));
     }
 
     private int attachments(Api api, String messageId, ImapMailbox.Limits limits, List<InboundAttachment> out) {

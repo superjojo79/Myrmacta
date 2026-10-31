@@ -334,6 +334,25 @@ class AngusImapMailboxTest {
     }
 
     @Test
+    void theThreadHeadersAreRead_soAReplyCanBeTiedToItsThread() throws Exception {
+        MimeMessage m = newMessage();
+        m.setSubject("RE: votre courrier");
+        m.setText("x", "UTF-8");
+        m.saveChanges();
+        m.setHeader("In-Reply-To", "<sent-1@myrmacta.example>");
+        m.setHeader("References", "<first@example.org> <sent-1@myrmacta.example>");
+        deliver(m);
+        var collector = new Collector();
+
+        mailbox.process(settings("s3cret"), 10, LIMITS, collector);
+
+        var thread = collector.mails.getFirst().thread();
+        assertThat(thread.inReplyTo()).isEqualTo("<sent-1@myrmacta.example>");
+        assertThat(thread.references()).containsExactly("<first@example.org>", "<sent-1@myrmacta.example>");
+        assertThat(thread.conversationId()).isEmpty();
+    }
+
+    @Test
     void messagesFlaggedDeletedAtTheHeadOfTheBoxNeverBlockTheNewOnes() throws Exception {
         for (int i = 0; i < 3; i++) {
             MimeMessage stale = newMessage();

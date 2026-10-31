@@ -145,6 +145,24 @@ class HttpGraphMailboxTest {
             + "{\"name\":\"Authentication-Results\",\"value\":\"attacker; dmarc=pass\"}]";
 
     @Test
+    void theThreadHeadersAndTheConversationIdAreRead_andTheConversationIdIsAskedFor() throws Exception {
+        String thread = "\"conversationId\":\"AAQkConv1=\",\"internetMessageHeaders\":["
+                + "{\"name\":\"In-Reply-To\",\"value\":\"<sent-1@myrmacta.example>\"},"
+                + "{\"name\":\"References\",\"value\":\"<first@example.org> <sent-1@myrmacta.example>\"}]";
+        messages = "{\"value\":[" + message("M9", "RE: courrier", false, thread) + "]}";
+        var settings = start();
+        var collector = new Collector();
+
+        new HttpGraphMailbox(mapper).process(settings, 10, LIMITS, collector);
+
+        var read = collector.mails.getFirst().thread();
+        assertThat(read.inReplyTo()).isEqualTo("<sent-1@myrmacta.example>");
+        assertThat(read.references()).containsExactly("<first@example.org>", "<sent-1@myrmacta.example>");
+        assertThat(read.conversationId()).isEqualTo("AAQkConv1=");
+        assertThat(calls).anyMatch(c -> c.startsWith("GET /v1.0/users/dossiers@example.com/messages/M9?") && c.contains("conversationId"));
+    }
+
+    @Test
     void aMessageIsHandedOverThenMovedToProcessed_withTheBearerTokenAndAnUncreatedExistingFolderReused() throws Exception {
         messages = "{\"value\":[" + message("M1", "Panne", false, AUTH_HEADERS) + "]}";
         var settings = start();

@@ -506,6 +506,10 @@ toutes les `pollSeconds` secondes (30 au minimum).
   « RE: [DOS-2026-0042] … » est ajoutée à ce dossier ; une référence inconnue (faute de frappe) crée un nouveau dossier plutôt que de perdre le message.
 - **Contenu** : `mapping` associe des champs du dossier ou des variables du processus à l'objet (`$.subject`), au texte (`$.body`, texte brut, 20 000 caractères),
   à l'expéditeur (`$.from`, `$.fromName`), à la date (`$.sentAt`). Les variables `mailMessageId`, `mailFrom` et `mailSubject` sont toujours posées.
+- **Fil de discussion** (TODO §112) : les en-têtes `In-Reply-To` et `References`, et le `conversationId` de Microsoft Graph, sont lus et bornés : identifiants
+  `<…>` seulement, 250 caractères chacun, les 10 références les plus récentes. Le processus voit `mailInReplyTo`, `mailReferences` (séparées par une espace) et
+  `mailConversationId` quand ils existent. Ils sont aussi disponibles pour `mapping` (`$.inReplyTo`, `$.references`, `$.conversationId`), mais ne les mappez pas sur
+  un champ du dossier : vides pour un nouveau message, ils feraient refuser celui-ci. Ils ne rattachent encore rien seuls.
 - **Pièces jointes** : jusqu'à `maxAttachments` (5) par message, 10 Mo chacune ; elles passent les mêmes contrôles que les pièces ajoutées à la main (types autorisés,
   contenu conforme au type annoncé, antivirus). Une pièce refusée n'empêche pas les autres ni le dossier : le processus voit `inboundAttachmentsRejected` /
   `inboundAttachmentsSkipped`.

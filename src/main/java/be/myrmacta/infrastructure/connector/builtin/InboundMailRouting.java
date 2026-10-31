@@ -60,7 +60,7 @@ final class InboundMailRouting {
                 new ConfigField("dossierTypeCode", "Dossier type", ConfigFieldType.STRING, true, null, List.of(), null),
                 new ConfigField("mapping", "Message mapping", ConfigFieldType.STRING, false, null, List.of(),
                         "JSON object: {\"fields\": {\"objet\": \"$.subject\", \"texte\": \"$.body\", \"expediteur\": \"$.from\"}, "
-                                + "\"variables\": {...}}. Available: messageId, from, fromName, subject, body, sentAt, attachmentCount."));
+                                + "\"variables\": {...}}. Available: messageId, from, fromName, subject, body, sentAt, attachmentCount, inReplyTo, references, conversationId."));
     }
 
     static void validate(Map<String, Object> config, InboundConnectorProperties inbound) {
@@ -111,6 +111,7 @@ final class InboundMailRouting {
                 variables.putIfAbsent("mailMessageId", payload.get("messageId"));
                 variables.putIfAbsent("mailFrom", payload.get("from"));
                 variables.putIfAbsent("mailSubject", payload.get("subject"));
+                putThread(variables, mail.thread());
                 boolean authenticated = AuthenticationResults.attests(mail.authenticationResults(), trustedAuthservId, mail.fromAddress());
                 variables.put("mailSenderAuthenticated", authenticated);
                 if (mail.attachmentsSkipped() > 0) {
@@ -156,7 +157,23 @@ final class InboundMailRouting {
         p.put("body", mail.body());
         p.put("sentAt", mail.sentAt() == null ? "" : mail.sentAt().toString());
         p.put("attachmentCount", mail.attachments().size());
+        p.put("inReplyTo", mail.thread().inReplyTo());
+        p.put("references", String.join(" ", mail.thread().references()));
+        p.put("conversationId", mail.thread().conversationId());
         return p;
+    }
+
+    /** En-têtes de fil remis au process, seulement s'ils existent (TODO §112, D-MAILROOM-THREAD). */
+    private static void putThread(Map<String, Object> variables, MailThread thread) {
+        if (!thread.inReplyTo().isEmpty()) {
+            variables.putIfAbsent("mailInReplyTo", thread.inReplyTo());
+        }
+        if (!thread.references().isEmpty()) {
+            variables.putIfAbsent("mailReferences", String.join(" ", thread.references()));
+        }
+        if (!thread.conversationId().isEmpty()) {
+            variables.putIfAbsent("mailConversationId", thread.conversationId());
+        }
     }
 
     private static String firstGroup(Pattern pattern, String subject) {

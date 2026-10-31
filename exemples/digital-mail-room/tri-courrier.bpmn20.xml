@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://myrmacta/exemples">
+  <!-- Tri du courrier entrant, version du lot 1 (#217) : enregistrement puis tri manuel. Le routage DMN arrive au lot 2. -->
+  <process id="triCourrier" name="Tri du courrier entrant" isExecutable="true">
+    <startEvent id="debut" name="Courrier reçu"/>
+    <serviceTask id="statutATrier" name="Statut : à trier" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="A_TRIER"/>
+    <userTask id="trierCourrier" name="Trier le courrier"><documentation>Lire le courrier et ses pièces, renseigner le service destinataire et, s'il y en a une, l'échéance. Ensuite, ouvrir ou alimenter le dossier métier concerné, puis terminer la tâche pour classer le courrier.</documentation></userTask>
+    <serviceTask id="statutClasse" name="Statut : classé" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="CLASSE"/>
+    <serviceTask id="clotureCourrier" name="Clôturer le courrier" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
+    <endEvent id="fin" name="Courrier classé"/>
+    <sequenceFlow id="flow_debut_statutATrier" sourceRef="debut" targetRef="statutATrier"/>
+    <sequenceFlow id="flow_statutATrier_trierCourrier" sourceRef="statutATrier" targetRef="trierCourrier"/>
+    <sequenceFlow id="flow_trierCourrier_statutClasse" sourceRef="trierCourrier" targetRef="statutClasse"/>
+    <sequenceFlow id="flow_statutClasse_clotureCourrier" sourceRef="statutClasse" targetRef="clotureCourrier"/>
+    <sequenceFlow id="flow_clotureCourrier_fin" sourceRef="clotureCourrier" targetRef="fin"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram_triCourrier">
+    <bpmndi:BPMNPlane id="plane_triCourrier" bpmnElement="triCourrier">
+      <bpmndi:BPMNShape id="shape_debut" bpmnElement="debut"><omgdc:Bounds x="80" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutATrier" bpmnElement="statutATrier"><omgdc:Bounds x="170" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_trierCourrier" bpmnElement="trierCourrier"><omgdc:Bounds x="340" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_statutClasse" bpmnElement="statutClasse"><omgdc:Bounds x="510" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_clotureCourrier" bpmnElement="clotureCourrier"><omgdc:Bounds x="680" y="100" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_fin" bpmnElement="fin"><omgdc:Bounds x="850" y="122" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="edge_flow_debut_statutATrier" bpmnElement="flow_debut_statutATrier"><omgdi:waypoint x="116" y="140"/><omgdi:waypoint x="170" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutATrier_trierCourrier" bpmnElement="flow_statutATrier_trierCourrier"><omgdi:waypoint x="290" y="140"/><omgdi:waypoint x="340" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_trierCourrier_statutClasse" bpmnElement="flow_trierCourrier_statutClasse"><omgdi:waypoint x="460" y="140"/><omgdi:waypoint x="510" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutClasse_clotureCourrier" bpmnElement="flow_statutClasse_clotureCourrier"><omgdi:waypoint x="630" y="140"/><omgdi:waypoint x="680" y="140"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_clotureCourrier_fin" bpmnElement="flow_clotureCourrier_fin"><omgdi:waypoint x="800" y="140"/><omgdi:waypoint x="850" y="140"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

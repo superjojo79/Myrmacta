@@ -117,6 +117,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/ObservabilityAdminView.vue'),
   },
   {
+    path: '/admin/user-groups',
+    name: 'admin-user-groups',
+    meta: { roles: ['TENANT_ADMIN'] },
+    component: () => import('@/views/admin/UserGroupsAdminView.vue'),
+  },
+  {
     path: '/admin/notification-webhooks',
     name: 'admin-notification-webhooks',
     meta: { roles: ['TENANT_ADMIN'] },

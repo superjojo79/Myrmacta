@@ -92,6 +92,9 @@ uniquement utilisable en profil `local`/`test` (seul HSTS y est absent par aille
 profils, le boot refuse de démarrer si cette variable vaut `false` (TODO §64).
 `APP_SECURITY_HEADERS_TRUSTED_PROXY_CIDRS` et `APP_SECURITY_HEADERS_CSP_REPORT_RATE_LIMIT` ont des
 défauts adaptés au dev local — voir `.env.local.example`.
+`APP_SECURITY_OIDC_GROUPS_CLAIM` (défaut `groups`) nomme la claim du jeton qui porte les groupes de l'utilisateur,
+repris par les groupes de **Admin → Groupes** (TODO §114). Rien à configurer pour suivre ce guide : sans cette claim, les
+groupes n'ont que leurs membres listés.
 
 Le profil Spring **`local`** (`SPRING_PROFILES_ACTIVE=local` dans `.env.local.example`) autorise les
 secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWORD` dans la denylist

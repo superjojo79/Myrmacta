@@ -19,7 +19,6 @@ public record MyWorkflowTask(
     public MyWorkflowTask {
         Objects.requireNonNull(taskId, "taskId");
         Objects.requireNonNull(name, "name");
-        Objects.requireNonNull(assigneeId, "assigneeId");
         Objects.requireNonNull(processInstanceId, "processInstanceId");
         Objects.requireNonNull(dossierId, "dossierId");
         Objects.requireNonNull(dossierReference, "dossierReference");

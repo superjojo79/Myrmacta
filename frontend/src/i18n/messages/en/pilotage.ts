@@ -119,7 +119,9 @@ const pilotage: typeof fr = {
     slaOver: 'overdue',
     dossier: 'Dossier',
     complete: 'Complete',
-    errors: { complete: 'Unable to complete' },
+    groupTask: 'To take (task of your group)',
+    take: 'Take',
+    errors: { complete: 'Unable to complete', take: 'Unable to take' },
   },
   createDossier: {
     title: 'New dossier',

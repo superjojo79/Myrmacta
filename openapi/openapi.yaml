@@ -48,6 +48,105 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/BpmnDraftResponse"
+  /api/user-groups/{code}:
+    get:
+      tags:
+      - user-group-admin-controller
+      operationId: getUserGroup
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserGroupResponse"
+    put:
+      tags:
+      - user-group-admin-controller
+      operationId: updateUserGroup
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserGroupRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserGroupResponse"
+    delete:
+      tags:
+      - user-group-admin-controller
+      operationId: deleteUserGroup
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/user-groups/{code}/members/{userId}:
+    put:
+      tags:
+      - user-group-admin-controller
+      operationId: addUserGroupMember
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserGroupResponse"
+    delete:
+      tags:
+      - user-group-admin-controller
+      operationId: removeUserGroupMember
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserGroupResponse"
   /api/tenant/sla-settings:
     get:
       tags:
@@ -468,6 +567,37 @@ paths:
       responses:
         "200":
           description: OK
+  /api/user-groups:
+    get:
+      tags:
+      - user-group-admin-controller
+      operationId: listUserGroups
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserGroupResponse"
+    post:
+      tags:
+      - user-group-admin-controller
+      operationId: createUserGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserGroupRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserGroupResponse"
   /api/task-question-schemas:
     get:
       tags:
@@ -2389,6 +2519,20 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ProcessDeploymentInfoResponse"
+  /api/user-groups/directory:
+    get:
+      tags:
+      - user-group-admin-controller
+      operationId: userDirectory
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DirectoryUserResponse"
   /api/task-question-schemas/{schemaKey}/runtime:
     get:
       tags:
@@ -3312,6 +3456,33 @@ components:
           format: date-time
         updatedBy:
           type: string
+    UpdateUserGroupRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        idpGroup:
+          type: string
+    UserGroupMemberResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+    UserGroupResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        idpGroup:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserGroupMemberResponse"
     UpsertTenantSlaSettingsRequest:
       type: object
       properties:
@@ -3782,6 +3953,15 @@ components:
           type: integer
           format: int32
         deploymentId:
+          type: string
+    CreateUserGroupRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        idpGroup:
           type: string
     CreateTaskQuestionSchemaRequest:
       type: object
@@ -5246,6 +5426,15 @@ components:
         activeInstanceCount:
           type: integer
           format: int64
+    DirectoryUserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
     PageResponseTaskQuestionSchemaResponse:
       type: object
       properties:

@@ -210,6 +210,9 @@ app:
   security:
     cookie:
       secure: true   # false en local HTTP (profil / override)
+    oidc:
+      # TODO §114 : claim du jeton qui porte les groupes de l'utilisateur (groupes d'un service repris par un groupe Myrmacta).
+      groups-claim: ${APP_SECURITY_OIDC_GROUPS_CLAIM:groups}
     headers:
       enabled: ${APP_SECURITY_HEADERS_ENABLED:true}
       # Pairs TCP immédiats de confiance pour l'émission HSTS (A4-HSTS-001). Défaut = loopback +

@@ -8,6 +8,7 @@ import { toProblemDetail } from '@/api/http'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
+import type { MyWorkflowTask } from '@/api/types'
 
 const { t } = useI18n()
 const store = useTasksStore()
@@ -32,6 +33,14 @@ async function complete(taskId: string, variables: Record<string, unknown> = {})
   }
 }
 
+async function take(task: MyWorkflowTask) {
+  actionError.value = null
+  try {
+    await store.take(task)
+  } catch (err) {
+    actionError.value = toProblemDetail(err).detail ?? t('myTasks.errors.take')
+  }
+}
 </script>
 
 <template>
@@ -46,6 +55,7 @@ async function complete(taskId: string, variables: Record<string, unknown> = {})
           <strong>{{ task.name || task.taskId }}</strong>
           <span>
             {{ task.dossierReference || task.dossierId }}
+            <em v-if="task.assigneeId == null" class="group-task" data-testid="task-group">{{ t('myTasks.groupTask') }}</em>
             <em v-if="task.slaRemainingHours != null" data-testid="task-sla">
               {{ t('myTasks.sla', { state: task.slaRemainingHours > 0 ? t('myTasks.slaIn', { n: task.slaRemainingHours }) : t('myTasks.slaOver') }) }}
             </em>
@@ -53,9 +63,12 @@ async function complete(taskId: string, variables: Record<string, unknown> = {})
         </div>
         <div class="tasks-view__actions">
           <RouterLink v-if="task.dossierId" :to="`/dossiers/${task.dossierId}`">{{ t('myTasks.dossier') }}</RouterLink>
+          <button v-if="task.assigneeId == null" type="button" data-testid="take-task" @click="take(task)">
+            {{ t('myTasks.take') }}
+          </button>
           <component
             :is="resolveTaskFormComponent(task.formKey)"
-            v-if="resolveTaskFormComponent(task.formKey)"
+            v-else-if="resolveTaskFormComponent(task.formKey)"
             :dossier-id="task.dossierId"
             :task-id="task.taskId"
             :form-key="task.formKey"

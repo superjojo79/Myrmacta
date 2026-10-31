@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.dossier.DossierAccessPolicy;
+import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
@@ -15,6 +17,7 @@ import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.MyWorkflowTask;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.port.out.WorkflowTaskInboxPort;
 import java.time.Clock;
 import java.time.Instant;
@@ -22,6 +25,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +48,10 @@ class ListMyTasksUseCaseImplTest {
     private DossierRepository dossierRepository;
     @Mock
     private DossierTypeRepository typeRepository;
+    @Mock
+    private UserGroupsUseCase groups;
+    @Mock
+    private DossierAccessPolicy accessPolicy;
 
     @Test
     void list_enrichesAssignedTasksAndSkipsMissingDossierId() {
@@ -161,6 +169,60 @@ class ListMyTasksUseCaseImplTest {
         PageResult<MyWorkflowTask> result = useCase.listMine(SUB, query);
 
         assertThat(result.content().getFirst().formKey()).isEqualTo("dossier-fields");
+    }
+
+    /** TODO §114 (D-GROUP-ASSIGN) — « Tâches » montre aussi les tâches libres des groupes du membre, s'il peut modifier le dossier. */
+    @Test
+    void list_includesTheFreeTasksOfTheUsersGroups_onlyOnDossiersHeCanEdit() {
+        Instant created = Instant.parse("2026-10-31T10:00:00Z");
+        UUID editable = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID readOnly = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        PageQuery query = PageQuery.of(0, 20);
+        var actor = AccessContext.user(SUB, Set.of("DOSSIER_MANAGER"));
+        when(groups.groupsOf(SUB)).thenReturn(Set.of("COMPTABILITE"));
+        when(inboxPort.findActiveForUser(eq(SUB), eq(Set.of("COMPTABILITE")), eq(query))).thenReturn(PageResult.of(
+                List.of(
+                        new WorkflowTaskInboxPort.ActiveTaskSnapshot("mine", "Instruction", SUB, created, "pi-1"),
+                        new WorkflowTaskInboxPort.ActiveTaskSnapshot("free", "Trier le courrier", null, created, "pi-2"),
+                        new WorkflowTaskInboxPort.ActiveTaskSnapshot("hidden", "Trier le courrier", null, created, "pi-3")),
+                0, 20, 3));
+        when(workflowEnginePort.findDossierIdVariable("pi-1")).thenReturn(Optional.of(editable.toString()));
+        when(workflowEnginePort.findDossierIdVariable("pi-2")).thenReturn(Optional.of(editable.toString()));
+        when(workflowEnginePort.findDossierIdVariable("pi-3")).thenReturn(Optional.of(readOnly.toString()));
+        when(linkRepository.findByProcessInstanceId(eq(TENANT), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.of(link(UUID.randomUUID(), editable)));
+        when(dossierRepository.findById(editable)).thenReturn(Optional.of(dossier(editable)));
+        Dossier other = dossier(readOnly);
+        when(dossierRepository.findById(readOnly)).thenReturn(Optional.of(other));
+        when(accessPolicy.canEdit(dossier(editable), actor)).thenReturn(true);
+        when(accessPolicy.canEdit(other, actor)).thenReturn(false);
+
+        PageResult<MyWorkflowTask> result = useCase().listMine(actor, query);
+
+        assertThat(result.content()).extracting(MyWorkflowTask::taskId).containsExactly("mine", "free");
+        assertThat(result.content().get(1).assigneeId()).isNull();
+    }
+
+    @Test
+    void list_withoutAnyGroupAsksOnlyForTheAssignedTasks() {
+        PageQuery query = PageQuery.of(0, 20);
+        when(groups.groupsOf(SUB)).thenReturn(Set.of());
+        when(inboxPort.findActiveForUser(eq(SUB), eq(Set.of()), eq(query))).thenReturn(PageResult.of(List.of(), 0, 20, 0));
+
+        assertThat(useCase().listMine(AccessContext.user(SUB, Set.of()), query).content()).isEmpty();
+    }
+
+    private ListMyTasksUseCaseImpl useCase() {
+        return new ListMyTasksUseCaseImpl(
+                TENANT,
+                inboxPort,
+                workflowEnginePort,
+                linkRepository,
+                dossierRepository,
+                typeRepository,
+                Clock.fixed(Instant.parse("2026-10-31T12:00:00Z"), ZoneOffset.UTC),
+                groups,
+                accessPolicy);
     }
 
     private static DossierWorkflowLink link(UUID linkId, UUID dossierId) {

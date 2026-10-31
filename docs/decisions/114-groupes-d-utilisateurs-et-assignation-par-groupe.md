@@ -25,5 +25,17 @@ expression du BPMN :
 - Les tâches d'un groupe apparaissent dans « Tâches » pour ses membres. Un membre peut les prendre (`claim`, §92) s'il a
   l'ACL EDIT du dossier. Un non-membre ne les voit pas.
 
+**Bornes et limites (livraison du lot 2a) :**
+
+- **Code d'un groupe :** 2 à 64 caractères, majuscules, chiffres et `_`, commençant par une lettre.
+- **Membres listés :** 500 au plus par groupe, uniquement des utilisateurs de l'annuaire. Un sujet jamais connecté est
+  refusé (400), comme la garde anti-faute de frappe du §92.
+- **Claim de l'IdP :** son nom se règle par `APP_SECURITY_OIDC_GROUPS_CLAIM` (`groups` par défaut). On en garde 100 valeurs
+  au plus, de 256 caractères chacune ; les valeurs vides ou porteuses de caractères de contrôle sont écartées.
+- **Débordement Entra ID** (au-delà de 200 groupes, la claim est remplacée par un lien Graph) : non géré, ces utilisateurs
+  n'ont alors aucun groupe d'IdP.
+- **Filtre de « Tâches » :** il s'applique après la pagination de Flowable, comme pour les tâches orphelines. Une page peut
+  donc compter moins d'éléments que sa taille.
+
 **Impacte :** `docs/guides/GUIDE-UTILISATEUR.md` (administration des groupes, Tâches), `docs/guides/GETTING-STARTED.md` et
 `.env*.example` si la claim se configure par variable d'environnement, `openapi/openapi.yaml`, nouveaux changesets.

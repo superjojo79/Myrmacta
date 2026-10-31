@@ -42,6 +42,11 @@ class KnownUserJpaEntity {
     @Column(nullable = false, columnDefinition = "json")
     private List<String> roles = List.of();
 
+    /** TODO §114 — groupes du jeton à la dernière connexion. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "idp_groups", nullable = false, columnDefinition = "json")
+    private List<String> idpGroups = List.of();
+
     @Column(name = "last_login_at", nullable = false)
     private Instant lastLoginAt;
 
@@ -62,6 +67,7 @@ class KnownUserJpaEntity {
         this.displayName = user.displayName();
         this.email = user.email();
         this.roles = user.roles().stream().sorted().toList();
+        this.idpGroups = user.idpGroups().stream().sorted().toList();
         this.lastLoginAt = user.lastLoginAt();
     }
 
@@ -72,6 +78,7 @@ class KnownUserJpaEntity {
                 displayName,
                 email,
                 roles == null ? Set.of() : new HashSet<>(roles),
+                idpGroups == null ? Set.of() : new HashSet<>(idpGroups),
                 lastLoginAt);
     }
 }

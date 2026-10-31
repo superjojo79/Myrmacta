@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { i18n } from '@/i18n'
 import { ref } from 'vue'
 import { completeTask, listMyTasks } from '@/api/tasks'
+import { claimWorkflowTask } from '@/api/workflows'
 import { toProblemDetail } from '@/api/http'
 import type { MyWorkflowTask } from '@/api/types'
 
@@ -33,5 +34,12 @@ export const useTasksStore = defineStore('tasks', () => {
     await refresh()
   }
 
-  return { tasks, totalPages, page, loading, error, refresh, complete }
+  /** TODO §114 — prendre une tâche libre de l'un de ses groupes (« M'assigner », §92), puis recharger la liste. */
+  async function take(task: MyWorkflowTask): Promise<void> {
+    if (!task.linkId) return
+    await claimWorkflowTask(task.linkId, task.taskId)
+    await refresh()
+  }
+
+  return { tasks, totalPages, page, loading, error, refresh, complete, take }
 })

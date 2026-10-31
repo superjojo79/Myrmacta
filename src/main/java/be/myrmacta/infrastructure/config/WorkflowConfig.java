@@ -11,6 +11,7 @@ import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.dossier.usecase.AttachWorkflowUseCaseImpl;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.user.port.out.KnownUserRepository;
 import be.myrmacta.domain.workflow.port.in.CompleteTaskUseCase;
 import be.myrmacta.domain.workflow.port.in.DeployBpmnProcessUseCase;
@@ -142,7 +143,9 @@ public class WorkflowConfig {
             WorkflowEnginePort workflowEnginePort,
             DossierWorkflowLinkRepository linkRepository,
             DossierRepository dossierRepository,
-            DossierTypeRepository typeRepository) {
+            DossierTypeRepository typeRepository,
+            UserGroupsUseCase userGroups,
+            DossierAccessPolicy dossierAccessPolicy) {
         return new ListMyTasksUseCaseImpl(
                 tenantProperties.id(),
                 inboxPort,
@@ -150,7 +153,9 @@ public class WorkflowConfig {
                 linkRepository,
                 dossierRepository,
                 typeRepository,
-                java.time.Clock.systemUTC());
+                java.time.Clock.systemUTC(),
+                userGroups,
+                dossierAccessPolicy);
     }
 
     @Bean

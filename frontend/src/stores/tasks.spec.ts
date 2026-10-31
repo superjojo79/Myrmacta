@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useTasksStore } from './tasks'
 import * as tasksApi from '@/api/tasks'
+import * as workflowsApi from '@/api/workflows'
 import { asPage } from '@/api/page'
 
 vi.mock('@/api/tasks')
+vi.mock('@/api/workflows')
 
 describe('tasks store', () => {
   beforeEach(() => {
@@ -56,5 +58,23 @@ describe('tasks store', () => {
       variantKey: null,
       locale: 'fr',
     })
+  })
+
+  it('takes a free group task through the claim endpoint then refreshes', async () => {
+    vi.mocked(tasksApi.listMyTasks).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.claimWorkflowTask).mockResolvedValue()
+    const store = useTasksStore()
+    await store.take({
+      taskId: 't-free',
+      name: 'Trier le courrier',
+      assigneeId: null,
+      createdAt: null,
+      processInstanceId: 'pi',
+      dossierId: 'd1',
+      dossierReference: 'DOS-1',
+      linkId: 'l1',
+    })
+    expect(workflowsApi.claimWorkflowTask).toHaveBeenCalledWith('l1', 't-free')
+    expect(tasksApi.listMyTasks).toHaveBeenCalled()
   })
 })

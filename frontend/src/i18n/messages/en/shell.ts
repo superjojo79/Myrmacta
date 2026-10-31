@@ -20,6 +20,7 @@ const shell: typeof fr = {
     promotion: 'Promotion',
     purgeQueue: 'Purge queue',
     observability: 'Observability',
+    userGroups: 'Groups',
     webhooks: 'Webhooks',
     assistant: 'Assistant',
     parcours: 'Journeys',

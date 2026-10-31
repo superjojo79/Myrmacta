@@ -189,3 +189,27 @@ conséquence ; si au contraire tout reste piloté dynamiquement par `connectorIn
 7. **Nommage du lot** — aucun nom n'est encore réservé dans [`FILE-ATTENTE.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/FILE-ATTENTE.md) /
    [`DEFERRED-FEATURES.md`](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/DEFERRED-FEATURES.md) pour ce sujet ; proposition : `connecteur-http-rest-service` (à confirmer
    en séquençant avec le reste de la file au moment de la Phase 1 `dev-requirements`).
+
+---
+
+## Implémentation — orchestration technique (TODO §112, issue #260)
+
+Livré en complément du rôle SERVICE (§48) :
+
+- **`baseUrl`** par instance : un appel ne donne plus qu'un `path` relatif (gabarit `{nom}` rempli par `pathParams`, chaque
+  valeur encodée comme un seul segment, sans `/`, `\` ni contrôle), plus `query` encodée. Avec `baseUrl`, `url` est refusée,
+  un chemin sans `/` initial, avec `//`, un segment fait seulement de points (même `..;x` ou `..%20`), `?`, `#`, espace,
+  `\` ou un encodage de `/ \ . ; %`, d'un contrôle ou d'un octet UTF-8 sur-long (`%C0`, `%C1`) aussi. Les en-têtes de
+  cadrage et de connexion fournis par l'appel sont refusés ; l'URL construite garde le schéma, l'hôte et le port de la base. Depuis un process, une instance à
+  `baseUrl` n'accepte que l'entrée construite par `connectorRequest` (`ConnectorCallContext.requestBuiltByProcess`). Sans
+  `baseUrl`, comportement d'avant (`url` absolue).
+- **Instance « service seul »** (`webhookEnabled = false`) : les champs du webhook ne sont plus exigés par `validate()` ni marqués
+  obligatoires dans le schéma ; `WebhookController` répond 404 avant toute authentification
+  (`ConnectorInstanceData.acceptsWebhooks`). Absent ou vrai : comportement d'avant (D-CAPABILITY-SCOPE reste au niveau du type ;
+  ce drapeau ne coupe que l'entrée).
+- **`DELETE`**, sans corps. `PATCH` attend un autre client HTTP que `HttpURLConnection` : issue #261.
+- Correctif trouvé en chemin : `OutboundUrlGuard.PinnedEndpoint.requestUrl()` reconstruisait l'URL à partir des composants
+  **décodés** (`%2F` redevenait `/`, `%26` `&`) ; elle garde désormais les composants bruts.
+
+Tests de référence : `HttpRestConnectorTest` (section TODO §112), `OutboundUrlGuardTest.resolveSafe_keepsPercentEncodingOnPinnedUrl`,
+`WebhookControllerTest.receive_serviceOnlyInstanceReturns404EvenWithAValidSecret`, `OnboardingOrchestrationExampleIT`.

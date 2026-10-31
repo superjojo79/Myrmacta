@@ -56,7 +56,7 @@ public class GraphInboundConnector implements ConnectorDefinition, PollingTrigge
             ConnectorProperties connectorProperties,
             InboundConnectorProperties inbound,
             GraphMailbox mailbox) {
-        this(mapper, outboundUrlGuard, objectMapper, connectorProperties, inbound, mailbox, HttpRestConnector.urlConnectionSender(),
+        this(mapper, outboundUrlGuard, objectMapper, connectorProperties, inbound, mailbox, PinnedHttpClient.sender(),
                 Clock.systemUTC());
     }
 

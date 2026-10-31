@@ -885,7 +885,7 @@ Entrée lue par `http-rest` en rôle SERVICE :
 
 | Clé | Rôle |
 |---|---|
-| `method` | `GET` (défaut), `POST`, `PUT`, `DELETE`. `PATCH` : issue [#261](https://github.com/superjojo79/Myrmacta/issues/261) |
+| `method` | `GET` (défaut), `POST`, `PUT`, `PATCH`, `DELETE`. `PATCH` porte un corps, comme `POST` et `PUT` (TODO §116) |
 | `path` | Chemin relatif à l'URL de base de l'instance (`baseUrl`), commençant par un seul `/`. Sans `//`, segment `.` ou `..` (y compris `..;x`), `?`, `#`, espace, `\`, ni encodage de `/ \ . ; %` ou d'un caractère de contrôle. Peut contenir des marqueurs `{nom}` |
 | `pathParams` | Valeur de chaque marqueur `{nom}`, encodée comme **un seul segment** (`a b?` devient `a%20b%3F`). Chaque marqueur a sa valeur et chaque valeur son marqueur ; ni vide, ni faite seulement de points une fois retirés un paramètre `;x` et les espaces (`..`, `..;x`, `.. `), ni `/`, `\` ou caractère de contrôle. 20 au plus |
 | `query` | Paramètres de requête, encodés (`$filter` reste lisible). Une liste répète le paramètre. 50 au plus |

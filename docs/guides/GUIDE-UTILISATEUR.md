@@ -462,8 +462,8 @@ connecteur `http-rest` qui ne sert qu'à appeler une API (SIRH, IAM, ITSM, ERP�
   une variable saisie. **Sans `baseUrl`, l'en-tête d'authentification part vers l'URL donnée à chaque appel** : réservez ce
   mode aux appels dont l'URL est fixée par le concepteur.
 
-Méthodes acceptées : `GET`, `POST`, `PUT` et `DELETE` (sans corps pour `GET` et `DELETE`). `PATCH` n'est pas encore disponible
-([#261](https://github.com/superjojo79/Myrmacta/issues/261)). Un exemple complet coordonne trois applications avec des validations
+Méthodes acceptées : `GET`, `POST`, `PUT`, `PATCH` et `DELETE` (sans corps pour `GET` et `DELETE` ; `PATCH` porte un corps,
+comme `POST` et `PUT` — mises à jour partielles OData). Un exemple complet coordonne trois applications avec des validations
 humaines : [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md).
 
 **Appeler une API protégée par OAuth2 (Microsoft Entra ID : D365 F&O, Dataverse, Graph).** Sur un connecteur `http-rest`, choisir

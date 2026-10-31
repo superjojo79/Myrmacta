@@ -183,7 +183,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | livré | #262 |
 | 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | livré | #264 |
 | 2b | Brique de routage `routeMailTask` (DMN, dossier métier lié, groupe destinataire), groupe porté par le lien (D-GROUP-LINK), écouteur de tâches, table et process de tri de l'exemple | livré | #266 |
-| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | en cours | |
+| 2c | Réaffectation d'une tâche vers un groupe (API, SPA), trace qui / quand / d'où / vers où | livré | à ouvrir |
 | 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
 | 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
@@ -249,6 +249,9 @@ runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 | 2026-10-31 | lot 2b — `MailRoomExampleIT`, `RouteMailDelegateTest`, `ManualStartOrchestratorTest`, `BuildingBlockCatalogTest` | vert : 2 + 6 + 10 + 11 tests |
 | 2026-10-31 | lot 2b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | rouge au premier passage (ArchUnit : lecture brute des champs et de la valeur par défaut ; palette 15 → 16 briques), corrigé ; puis vert : 4 032 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-10-31 | lot 2b — `npm run lint && npm run test` puis `npx playwright test` | vert : 831 Vitest, 152 Playwright |
+| 2026-10-31 | lot 2c — `ReassignTaskToGroupUseCaseImplTest`, `GroupReassignApiTest` | vert : 4 + 1 tests ; 403 sans droit d'édition, 400 pour un groupe inconnu |
+| 2026-10-31 | lot 2c — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 037 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 2c — `npm run lint && npm run test` puis `npx playwright test` | vert : 836 Vitest ; Playwright 152/153 au premier passage (`E2E-BASE-2`, fermeture du contexte au-delà de 30 s, sans lien avec le lot ; 3/3 seul), puis 153/153 |
 
 ## Revue de clôture
 

@@ -180,8 +180,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 
 | Lot | Contenu | Statut (à faire, en cours, livré) | PR |
 |---|---|---|---|
-| 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | en cours | |
-| 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | à faire | |
+| 1 | En-têtes de fil lus par IMAP et Graph ; paquet `exemples/digital-mail-room` (type `COURRIER`, statuts, process de tri minimal, connecteur d'exemple) ; registre = liste filtrée | livré | #262 |
+| 2a | Groupes locaux + claim IdP, administration, « Tâches » par groupe (#190, §113) | en cours | |
 | 2b | Brique de routage `routeMailTask`, table DMN, file de tri, réaffectation vers un groupe, trace (§112 D-MAILROOM-ROUTE) | à faire | |
 | 3 | Fils : index des Message-ID reçus et envoyés, détection, rattachement, trois modes de réaction, brique « Attendre un courrier » | à faire | |
 | 4 | Échéances plateforme (rappel, escalade) + minuteurs à expression (#186) ; point du registre à écrire | à faire | |
@@ -204,13 +204,27 @@ Appris pendant le lot :
 - Un champ mappé vide fait refuser le message : on ne mappe donc pas les en-têtes de fil sur un champ.
 - Sans `trustedAuthservId`, aucun expéditeur n'est attesté.
 
-Prochaine action : preuves du lot 1, PR, puis lot 2a. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
+Fait dans le lot 2a :
+- Domaine `user` : `UserGroup` et `UserGroupsUseCase` (administration, annuaire, `groupsOf`). `KnownUser.idpGroups` est
+  enregistré à la connexion depuis la claim `APP_SECURITY_OIDC_GROUPS_CLAIM`.
+- Changeset 041 : `user_group`, `user_group_member`, `known_user.idp_groups`.
+- API `/api/user-groups` (`TENANT_ADMIN`).
+- « Tâches » : tâches assignées OU candidates pour les groupes de l'utilisateur, une tâche libre n'étant gardée que si
+  l'utilisateur peut modifier le dossier.
+- SPA : écran Admin → Groupes, et bouton « Prendre » dans « Mes tâches ».
+
+Prochaine action : preuves complètes du lot 2a, PR, puis lot 2b. Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
 runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-10-31 | lot 1 — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris, worktree propre) | vert : 3 997 tests, 0 échec, 0 erreur, 5 ignorés, couverture atteinte |
+| 2026-10-31 | lot 1 — `scripts/check-docs.sh` | vert |
+| 2026-10-31 | lot 2a — tests ciblés (domaine, persistance, `UserGroupAdminApiTest`, `GroupTasksApiTest`) | vert : 33 unitaires, 9 intégration ; `GroupTasksApiTest` rouge sans le branchement des groupes |
+| 2026-10-31 | lot 2a — `cd frontend && npm run lint && npm run test` | vert : 135 fichiers, 831 tests |
+| 2026-10-31 | lot 2a — Playwright `pilotage-groupes` + `pilotage-taches` | vert : 13 tests |
 
 ## Revue de clôture
 

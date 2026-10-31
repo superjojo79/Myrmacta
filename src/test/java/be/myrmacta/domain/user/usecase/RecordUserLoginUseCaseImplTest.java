@@ -66,6 +66,29 @@ class RecordUserLoginUseCaseImplTest {
         verifyNoInteractions(repository);
     }
 
+    @Test
+    void record_keepsTheIdpGroupsOfTheToken_boundedAndPrintable() {
+        Set<String> claimed = new java.util.LinkedHashSet<>(java.util.List.of("/services/compta", " RH ", "", "bad\u0000group",
+                "g".repeat(RecordUserLoginUseCaseImpl.MAX_IDP_GROUP_CHARS + 1)));
+        for (int i = 0; i < RecordUserLoginUseCaseImpl.MAX_IDP_GROUPS + 10; i++) {
+            claimed.add("extra-" + i);
+        }
+
+        useCase.record("sub-1", "Demo", null, Set.of(), claimed);
+
+        Set<String> kept = captureUpsert().idpGroups();
+        assertThat(kept).contains("/services/compta", "RH").doesNotContain("", "bad\u0000group");
+        assertThat(kept).hasSize(RecordUserLoginUseCaseImpl.MAX_IDP_GROUPS);
+        assertThat(kept).allMatch(group -> group.length() <= RecordUserLoginUseCaseImpl.MAX_IDP_GROUP_CHARS);
+    }
+
+    @Test
+    void record_withoutGroupsKeepsNone() {
+        useCase.record("sub-1", "Demo", null, Set.of());
+
+        assertThat(captureUpsert().idpGroups()).isEmpty();
+    }
+
     private KnownUser captureUpsert() {
         ArgumentCaptor<KnownUser> captor = ArgumentCaptor.forClass(KnownUser.class);
         verify(repository).upsert(captor.capture());

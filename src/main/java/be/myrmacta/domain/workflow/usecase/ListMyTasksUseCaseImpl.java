@@ -1,5 +1,7 @@
 package be.myrmacta.domain.workflow.usecase;
 
+import be.myrmacta.domain.dossier.DossierAccessPolicy;
+import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
@@ -9,6 +11,7 @@ import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.MyWorkflowTask;
 import be.myrmacta.domain.workflow.port.in.ListMyTasksUseCase;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowTaskInboxPort;
 import java.time.Clock;
@@ -26,6 +29,8 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
     private final DossierRepository dossierRepository;
     private final DossierTypeRepository typeRepository;
     private final Clock clock;
+    private final UserGroupsUseCase groups;
+    private final DossierAccessPolicy accessPolicy;
 
     public ListMyTasksUseCaseImpl(
             String tenantId,
@@ -42,6 +47,30 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
         this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.groups = null;
+        this.accessPolicy = null;
+    }
+
+    /** TODO §113 (D-GROUP-ASSIGN) — avec les groupes de l'utilisateur et la vérification d'édition des dossiers. */
+    public ListMyTasksUseCaseImpl(
+            String tenantId,
+            WorkflowTaskInboxPort inboxPort,
+            WorkflowEnginePort workflowEnginePort,
+            DossierWorkflowLinkRepository linkRepository,
+            DossierRepository dossierRepository,
+            DossierTypeRepository typeRepository,
+            Clock clock,
+            UserGroupsUseCase groups,
+            DossierAccessPolicy accessPolicy) {
+        this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
+        this.inboxPort = Objects.requireNonNull(inboxPort, "inboxPort");
+        this.workflowEnginePort = Objects.requireNonNull(workflowEnginePort, "workflowEnginePort");
+        this.linkRepository = Objects.requireNonNull(linkRepository, "linkRepository");
+        this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
+        this.typeRepository = Objects.requireNonNull(typeRepository, "typeRepository");
+        this.clock = Objects.requireNonNull(clock, "clock");
+        this.groups = Objects.requireNonNull(groups, "groups");
+        this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
     }
 
     /**
@@ -56,8 +85,24 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
         if (assigneeId.isBlank()) {
             throw new IllegalArgumentException("assigneeId is required");
         }
-        PageResult<WorkflowTaskInboxPort.ActiveTaskSnapshot> page =
-                inboxPort.findActiveAssignedTo(assigneeId, query);
+        return enrich(inboxPort.findActiveAssignedTo(assigneeId, query), null);
+    }
+
+    /**
+     * Une tâche libre d'un groupe n'apparaît que si l'utilisateur peut modifier son dossier : sinon il ne pourrait ni la prendre
+     * ni la terminer, et sa référence ne le regarde pas. Même filtrage après pagination que pour les tâches orphelines.
+     */
+    @Override
+    public PageResult<MyWorkflowTask> listMine(AccessContext.User actor, PageQuery query) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(query, "query");
+        if (groups == null) {
+            return listMine(actor.userId(), query);
+        }
+        return enrich(inboxPort.findActiveForUser(actor.userId(), groups.groupsOf(actor.userId()), query), actor);
+    }
+
+    private PageResult<MyWorkflowTask> enrich(PageResult<WorkflowTaskInboxPort.ActiveTaskSnapshot> page, AccessContext.User actor) {
         List<MyWorkflowTask> result = new ArrayList<>();
         for (WorkflowTaskInboxPort.ActiveTaskSnapshot task : page.content()) {
             var dossierIdText = workflowEnginePort.findDossierIdVariable(task.processInstanceId());
@@ -79,6 +124,9 @@ public final class ListMyTasksUseCaseImpl implements ListMyTasksUseCase {
                 continue;
             }
             var loaded = dossier.get();
+            if (actor != null && task.assigneeId() == null && !accessPolicy.canEdit(loaded, actor)) {
+                continue;
+            }
             Integer slaHours = typeRepository
                     .findByCode(tenantId, loaded.dossierTypeCode())
                     .map(type -> type.slaTargetHours())

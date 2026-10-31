@@ -27,6 +27,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Admin | Workflows | `/admin/workflow-types` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Tables de décision | `/admin/dmn-editor` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Questions de tâche | `/admin/task-question-schemas` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
+| Admin | Groupes (d'utilisateurs) | `/admin/user-groups` | `TENANT_ADMIN` |
 | Admin | Webhooks (notification) | `/admin/notification-webhooks` | `TENANT_ADMIN` |
 | Admin | File purge | `/admin/purge-outbox` | `TENANT_ADMIN` |
 | Admin | Observabilité | `/admin/observabilite` | `TENANT_ADMIN` |
@@ -611,13 +612,16 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   l'administrateur a déclaré **Cherchable** (texte : « commence par » ; nombre et date : de / à ; choix et oui/non). Cinq
   filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
-  connecté (une tâche sans assigné n'y figure pas : la prendre avec **M'assigner** depuis la fiche
-  dossier, voir §3), avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
+  connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
   (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
   une tâche dont le diagramme BPMN déclare un formulaire (voir
   [docs/guides/GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du
   bouton nu — édition des champs du dossier, ou choix d'un document à générer parmi ceux autorisés
   pour son type (§1). Une tâche sans formulaire déclaré garde le bouton **Compléter** habituel.
+  **Tâches de groupe** (TODO §113) : une tâche sans assigné destinée à l'un de vos groupes (« Groupes d'utilisateurs » ci-dessous) y figure aussi, marquée
+  « À prendre », si vous pouvez modifier son dossier. **Prendre** vous l'assigne : elle quitte alors la liste des autres
+  membres. Une tâche sans assigné qui n'est destinée à aucun de vos groupes n'y figure pas : la prendre avec **M'assigner**
+  depuis la fiche dossier (§3).
 - **Rapports & SLA** (`/rapports`) — snapshot de conformité et de délais sur une période
   (défaut 30 jours). Visible pour `TENANT_ADMIN`, `WORKFLOW_ADMIN` et `DOSSIER_MANAGER`
   (ce dernier ne voit que les types pour lesquels il a VIEW). Export CSV manuel disponible.
@@ -626,6 +630,23 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
   ne voit et ne télécharge que le CSV SLA et les CSV de types sur lesquels il a VIEW.
   L'objectif de conformité tenant (défaut 95 %), les alertes de franchissement et l'export
   BI se configurent dans **Admin → Types**.
+
+### Groupes d'utilisateurs (Admin → Groupes, `TENANT_ADMIN`) — TODO §113
+
+Un groupe représente un service (RH, comptabilité, juridique…). Ses membres voient ses tâches libres dans **Tâches**.
+
+- **Créer** : un **code** (2 à 64 caractères : majuscules, chiffres, `_`, commençant par une lettre, par exemple
+  `COMPTABILITE`), un **libellé**, et facultativement un **groupe d'IdP repris**.
+- **Membres listés** : choisir un utilisateur de l'annuaire, c'est-à-dire un utilisateur déjà connecté au moins une fois.
+  500 membres listés au plus par groupe.
+- **Groupe d'IdP repris** : les utilisateurs dont le jeton porte ce groupe en sont aussi membres, sans les lister. La
+  claim lue se configure avec `APP_SECURITY_OIDC_GROUPS_CLAIM`, `groups` par défaut : mapper « Group Membership » chez
+  Keycloak, claim `groups` chez Microsoft Entra ID. L'appartenance est celle de la **dernière connexion** de l'utilisateur.
+  Chez Entra, la claim porte les identifiants (GUID) des groupes : c'est cette valeur qu'il faut saisir.
+- **Qui reçoit une tâche de groupe :** pour l'instant, un diagramme désigne le groupe par un `candidateGroups` littéral sur
+  la tâche (le code du groupe). La brique de routage de la mail room le posera à l'exécution (§112).
+- **Prendre une tâche :** il faut toujours le droit de modifier le dossier (§3). Être membre du groupe rend la tâche
+  visible, ça ne donne pas de droit sur le dossier.
 
 ### Notifications (cloche, tous rôles)
 

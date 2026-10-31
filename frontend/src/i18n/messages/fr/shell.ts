@@ -18,6 +18,7 @@ export default {
     promotion: 'Promotion',
     purgeQueue: 'File purge',
     observability: 'Observabilité',
+    userGroups: 'Groupes',
     webhooks: 'Webhooks',
     assistant: 'Assistant',
     parcours: 'Parcours',

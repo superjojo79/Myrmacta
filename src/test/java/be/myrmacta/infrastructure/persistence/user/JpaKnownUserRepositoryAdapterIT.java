@@ -40,6 +40,17 @@ class JpaKnownUserRepositoryAdapterIT {
     }
 
     @Test
+    void upsert_keepsTheIdpGroupsOfTheLastLogin() {
+        String tenant = "tenant-" + UUID.randomUUID();
+        Instant now = Instant.parse("2026-10-31T08:00:00Z");
+        repository.upsert(new KnownUser(tenant, "sub-1", "Alice", null, Set.of(), Set.of("/services/rh"), now));
+        repository.upsert(new KnownUser(tenant, "sub-1", "Alice", null, Set.of(), Set.of("/services/compta", "admins"), now));
+
+        assertThat(repository.findById(tenant, "sub-1").orElseThrow().idpGroups())
+                .containsExactlyInAnyOrder("/services/compta", "admins");
+    }
+
+    @Test
     void findAll_isScopedToTenantAndSortedByDisplayName() {
         String tenant = "tenant-" + UUID.randomUUID();
         Instant now = Instant.parse("2026-10-13T08:00:00Z");

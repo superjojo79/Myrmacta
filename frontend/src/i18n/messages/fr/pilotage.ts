@@ -118,7 +118,9 @@ export default {
     slaOver: 'dépassée',
     dossier: 'Dossier',
     complete: 'Compléter',
-    errors: { complete: 'Complétion impossible' },
+    groupTask: 'À prendre (tâche de votre groupe)',
+    take: 'Prendre',
+    errors: { complete: 'Complétion impossible', take: 'Prise impossible' },
   },
   createDossier: {
     title: 'Nouveau dossier',

@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 041-user-groups
+      author: flowforge
+      comment: >-
+        TODO §113 (issue #190, D-GROUP-SOURCE) — groupes d'utilisateurs (services). user_group : code stable, libellé, groupe
+        d'IdP repris facultatif. user_group_member : membres listés, sujets OIDC de l'annuaire (known_user). known_user.idp_groups :
+        groupes portés par le jeton à la dernière connexion, comme roles.
+      changes:
+        - createTable:
+            tableName: user_group
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_user_group, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: code, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: label, type: varchar(200), constraints: {nullable: false}}
+              - column: {name: idp_group, type: varchar(256)}
+        - addUniqueConstraint:
+            tableName: user_group
+            columnNames: tenant_id, code
+            constraintName: uq_user_group_tenant_code
+        - createTable:
+            tableName: user_group_member
+            columns:
+              - column:
+                  name: group_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_group_member_group
+                    references: user_group(id)
+                    deleteCascade: true
+              - column: {name: user_id, type: varchar(128), constraints: {nullable: false}}
+        - addPrimaryKey:
+            tableName: user_group_member
+            columnNames: group_id, user_id
+            constraintName: pk_user_group_member
+        - addColumn:
+            tableName: known_user
+            columns:
+              - column: {name: idp_groups, type: json, defaultValue: '[]', constraints: {nullable: false}}

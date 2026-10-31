@@ -9,6 +9,8 @@ export type MockOpts = {
   freeTask?: boolean
   /** TODO §94 : une étape du lien est en incident (job en dead letter). */
   withIncident?: boolean
+  /** TODO §113 : « Tâches » contient une tâche libre d'un groupe de l'utilisateur. */
+  groupTask?: boolean
 }
 
 export const DOSSIER_ID = '11111111-1111-1111-1111-111111111111'
@@ -145,7 +147,21 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       linkId: LINK_ID,
       slaRemainingHours: 12,
     },
-  ]
+  ] as Array<Record<string, unknown>>
+  if (opts.groupTask) {
+    mineTasks = [
+      {
+        taskId: 'task-group',
+        name: 'Trier le courrier',
+        assigneeId: null,
+        createdAt: '2026-10-31T08:00:00Z',
+        processInstanceId: 'pi-2',
+        dossierId: DOSSIER_ID,
+        dossierReference: 'DOS-COURRIER-2026-000001',
+        linkId: LINK_ID,
+      },
+    ]
+  }
   let tasks = [
     {
       taskId: 'task-1',
@@ -752,6 +768,7 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
         return
       }
       tasks = tasks.map((task) => ({ ...task, assignee: task.assignee ?? 'user-1' }))
+      mineTasks = mineTasks.map((task) => ({ ...task, assigneeId: task.assigneeId ?? 'user-1' }))
       await route.fulfill({ status: 204, body: '' })
       return
     }
@@ -945,6 +962,51 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       updatedAt: '2026-08-19T10:00:00Z',
     },
   ]
+  // TODO §113 : groupes d'utilisateurs (administration du tenant), en mémoire.
+  let userGroups: Array<{ code: string; label: string; idpGroup: string | null; members: Array<{ userId: string; displayName: string }> }> = [
+    { code: 'COMPTABILITE', label: 'Comptabilité', idpGroup: '/services/compta', members: [] },
+  ]
+  const directory = [
+    { userId: 'user-1', displayName: 'Ada', email: 'ada@example.com' },
+    { userId: 'user-2', displayName: 'Grace Hopper', email: 'grace@example.com' },
+  ]
+  await page.route(/\/api\/user-groups(?:\/.*)?(?:\?|$)/, async (route) => {
+    const method = route.request().method()
+    const path = decodeURIComponent(new URL(route.request().url()).pathname)
+    const json = (status: number, body: unknown) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+    if (path === '/api/user-groups/directory') {
+      await json(200, directory)
+      return
+    }
+    if (path === '/api/user-groups') {
+      if (method === 'POST') {
+        const posted = route.request().postDataJSON() as { code: string; label: string; idpGroup: string | null }
+        const created = { code: posted.code, label: posted.label, idpGroup: posted.idpGroup ?? null, members: [] }
+        userGroups = [...userGroups, created]
+        await json(201, created)
+        return
+      }
+      await json(200, userGroups)
+      return
+    }
+    const member = path.match(/^\/api\/user-groups\/([^/]+)\/members\/(.+)$/)
+    if (member) {
+      const [, code, userId] = member
+      const known = directory.find((user) => user.userId === userId)
+      userGroups = userGroups.map((group) => {
+        if (group.code !== code) return group
+        const others = group.members.filter((m) => m.userId !== userId)
+        return {
+          ...group,
+          members: method === 'PUT' && known ? [...others, { userId, displayName: known.displayName }] : others,
+        }
+      })
+      await json(200, userGroups.find((group) => group.code === code))
+      return
+    }
+    await json(404, { status: 404 })
+  })
   await page.route(/\/api\/notification-webhooks(?:\?|$)/, async (route) => {
     const method = route.request().method()
     if (method === 'GET') {

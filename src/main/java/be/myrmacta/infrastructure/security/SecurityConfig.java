@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.security;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.config.DocumentGenerationProperties;
 import be.myrmacta.infrastructure.config.M2mSecurityProperties;
+import be.myrmacta.infrastructure.config.OidcGroupsProperties;
 import be.myrmacta.infrastructure.config.SecurityCookieProperties;
 import be.myrmacta.infrastructure.config.SecurityHeadersProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
@@ -46,6 +47,7 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 @EnableMethodSecurity
 @EnableConfigurationProperties({
     SecurityCookieProperties.class,
+    OidcGroupsProperties.class,
     M2mSecurityProperties.class,
     SecurityHeadersProperties.class
 })

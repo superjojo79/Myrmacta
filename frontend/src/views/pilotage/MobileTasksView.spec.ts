@@ -283,4 +283,61 @@ describe('MobileTasksView', () => {
     expect(row('Seconde').get('[data-testid="field-error"]').text()).toContain('DOS-2')
     expect(row('Seconde').text()).not.toContain('DOS-9')
   })
+
+  it('offers to take a free task of one of my groups instead of completing it', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/tasks')
+    await router.isReady()
+    const store = useTasksStore()
+    vi.spyOn(store, 'refresh').mockResolvedValue()
+    const take = vi.spyOn(store, 'take').mockResolvedValue()
+    const free = {
+      taskId: 't-free',
+      name: 'Trier le courrier',
+      assigneeId: null,
+      createdAt: null,
+      processInstanceId: 'pi',
+      dossierId: 'd1',
+      dossierReference: 'DOS-COURRIER-1',
+      linkId: 'l1',
+    }
+    store.tasks = [free]
+    store.loading = false
+    const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="task-group"]').text()).toContain('À prendre')
+    expect(wrapper.find('[data-testid="complete-task"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="take-task"]').trigger('click')
+    await flushPromises()
+    expect(take).toHaveBeenCalledWith(free)
+  })
+
+  it('shows the reason when a group task cannot be taken', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/tasks')
+    await router.isReady()
+    const store = useTasksStore()
+    vi.spyOn(store, 'refresh').mockResolvedValue()
+    vi.spyOn(store, 'take').mockRejectedValue({
+      response: { status: 409, data: { detail: 'Task already claimed by another user', status: 409 } },
+    })
+    store.tasks = [
+      {
+        taskId: 't-free',
+        name: 'Trier le courrier',
+        assigneeId: null,
+        createdAt: null,
+        processInstanceId: 'pi',
+        dossierId: 'd1',
+        dossierReference: 'DOS-COURRIER-1',
+        linkId: 'l1',
+      },
+    ]
+    store.loading = false
+    const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('[data-testid="take-task"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Task already claimed by another user')
+  })
 })

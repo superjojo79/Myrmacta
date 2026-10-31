@@ -54,7 +54,7 @@ class WorkflowTaskController {
             Authentication authentication) {
         var actor = accessContextFactory.user(authentication);
         return PageResponse.from(listMyTasksUseCase
-                .listMine(actor.userId(), PageQueryParser.parse(page, size, sort, ListSorts.MY_WORKFLOW_TASKS))
+                .listMine(actor, PageQueryParser.parse(page, size, sort, ListSorts.MY_WORKFLOW_TASKS))
                 .map(MyWorkflowTaskResponse::from));
     }
 

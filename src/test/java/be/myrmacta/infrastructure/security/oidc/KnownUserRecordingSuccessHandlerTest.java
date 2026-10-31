@@ -36,7 +36,7 @@ class KnownUserRecordingSuccessHandlerTest {
     void setUp() {
         recordUserLogin = mock(RecordUserLoginUseCase.class);
         delegate = mock(AuthenticationSuccessHandler.class);
-        handler = new KnownUserRecordingSuccessHandler(recordUserLogin, new TenantProperties("tenant_dev"), delegate);
+        handler = new KnownUserRecordingSuccessHandler(recordUserLogin, new TenantProperties("tenant_dev"), delegate, "groups");
     }
 
     @Test
@@ -45,7 +45,7 @@ class KnownUserRecordingSuccessHandlerTest {
 
         handler.onAuthenticationSuccess(request, response, authentication);
 
-        verify(recordUserLogin).record("sub-1", "Demo User", "demo@myrmacta.local", Set.of("TENANT_ADMIN"));
+        verify(recordUserLogin).record("sub-1", "Demo User", "demo@myrmacta.local", Set.of("TENANT_ADMIN"), Set.of());
         verify(delegate).onAuthenticationSuccess(request, response, authentication);
     }
 
@@ -53,12 +53,23 @@ class KnownUserRecordingSuccessHandlerTest {
     void fallsBackToPreferredUsernameWhenNameClaimIsAbsent() throws Exception {
         handler.onAuthenticationSuccess(request, response, oidcAuthentication(Map.of("preferred_username", "demo")));
 
-        verify(recordUserLogin).record("sub-1", "demo", null, Set.of("TENANT_ADMIN"));
+        verify(recordUserLogin).record("sub-1", "demo", null, Set.of("TENANT_ADMIN"), Set.of());
+    }
+
+    @Test
+    void theGroupsOfTheConfiguredClaimAreRecorded_aListOrASingleValue() throws Exception {
+        handler.onAuthenticationSuccess(request, response,
+                oidcAuthentication(Map.of("name", "Demo", "groups", List.of("/services/compta", "admins", 42))));
+        verify(recordUserLogin).record("sub-1", "Demo", null, Set.of("TENANT_ADMIN"), Set.of("/services/compta", "admins"));
+
+        var custom = new KnownUserRecordingSuccessHandler(recordUserLogin, new TenantProperties("tenant_dev"), delegate, "service");
+        custom.onAuthenticationSuccess(request, response, oidcAuthentication(Map.of("name", "Solo", "service", "RH")));
+        verify(recordUserLogin).record("sub-1", "Solo", null, Set.of("TENANT_ADMIN"), Set.of("RH"));
     }
 
     @Test
     void recordingFailureNeverBlocksLogin() throws Exception {
-        doThrow(new IllegalStateException("db down")).when(recordUserLogin).record(any(), any(), any(), any());
+        doThrow(new IllegalStateException("db down")).when(recordUserLogin).record(any(), any(), any(), any(), any());
         var authentication = oidcAuthentication(Map.of("name", "Demo User"));
 
         handler.onAuthenticationSuccess(request, response, authentication);

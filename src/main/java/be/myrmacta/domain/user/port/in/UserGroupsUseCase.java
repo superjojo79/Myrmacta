@@ -29,4 +29,10 @@ public interface UserGroupsUseCase {
 
     /** Codes des groupes dont l'utilisateur est membre, listé ou par un groupe de son jeton. */
     Set<String> groupsOf(String userId);
+
+    /**
+     * TODO §115 (D-DEADLINE-ESCALATE) — membres effectifs d'un groupe : membres listés, plus les utilisateurs de l'annuaire dont la
+     * dernière connexion portait le groupe de l'IdP repris (D-GROUP-SOURCE).
+     */
+    Set<String> membersOf(String code);
 }

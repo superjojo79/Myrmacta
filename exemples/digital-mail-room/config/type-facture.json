@@ -23,6 +23,14 @@
       "width": "FULL"
     },
     {
+      "name": "echeance",
+      "label": "Échéance",
+      "type": "DATE",
+      "required": false,
+      "group": "Facture",
+      "width": "HALF"
+    },
+    {
       "name": "montant",
       "label": "Montant",
       "type": "MONEY",

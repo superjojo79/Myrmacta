@@ -2,5 +2,6 @@
   { "code": "COURRIER", "label": "Mail room (file de tri)", "idpGroup": null },
   { "code": "COMPTABILITE", "label": "Comptabilité", "idpGroup": null },
   { "code": "RH", "label": "Ressources humaines", "idpGroup": null },
-  { "code": "JURIDIQUE", "label": "Service juridique", "idpGroup": null }
+  { "code": "JURIDIQUE", "label": "Service juridique", "idpGroup": null },
+  { "code": "DIRECTION_FINANCIERE", "label": "Direction financière (escalade)", "idpGroup": null }
 ]

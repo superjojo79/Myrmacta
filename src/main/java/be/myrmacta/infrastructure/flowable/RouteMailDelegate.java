@@ -1,12 +1,15 @@
 package be.myrmacta.infrastructure.flowable;
 
 import be.myrmacta.application.workflow.ManualStartOrchestrator;
+import be.myrmacta.domain.deadline.model.DeadlineSetting;
+import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.DuplicateDossierRelationException;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.FieldType;
 import be.myrmacta.domain.dossier.model.RelationType;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierFieldsUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierStatusUseCase;
@@ -44,7 +47,8 @@ import org.springframework.stereotype.Component;
  *
  * <ul>
  *   <li>{@code OUVRIR} : crée le dossier métier lié au courrier ({@code LINKED}), y démarre le process avec le groupe
- *       destinataire (D-GROUP-LINK), renseigne {@code service} et {@code echeance} du courrier ;
+ *       destinataire (D-GROUP-LINK), renseigne {@code service} et {@code echeance} du courrier ; l'échéance va aussi dans
+ *       le champ que le type du dossier métier désigne (TODO §115, D-DEADLINE-FIELD) ;
  *   <li>sinon, ou si une valeur est hors catalogue : envoie le courrier à la file de tri ({@code groupeTri}, paramètre
  *       littéral de la brique, devient le groupe du lien de tri). Une erreur de configuration n'arrête jamais le courrier.
  * </ul>
@@ -81,6 +85,7 @@ class RouteMailDelegate implements JavaDelegate {
     private final WorkflowLinkGroupRepository linkGroups;
     private final UpdateDossierFieldsUseCase updateFields;
     private final UpdateDossierStatusUseCase updateStatus;
+    private final DeadlineSettings deadlineSettings;
     private final TenantProperties tenantProperties;
     private final Clock clock;
 
@@ -95,9 +100,10 @@ class RouteMailDelegate implements JavaDelegate {
             WorkflowLinkGroupRepository linkGroups,
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
+            DeadlineSettings deadlineSettings,
             TenantProperties tenantProperties) {
         this(confirmer, orchestrator, dossierRepository, typeRepository, deploymentPort, groups, linkGroups, updateFields,
-                updateStatus, tenantProperties, Clock.systemUTC());
+                updateStatus, deadlineSettings, tenantProperties, Clock.systemUTC());
     }
 
     RouteMailDelegate(
@@ -110,8 +116,10 @@ class RouteMailDelegate implements JavaDelegate {
             WorkflowLinkGroupRepository linkGroups,
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
+            DeadlineSettings deadlineSettings,
             TenantProperties tenantProperties,
             Clock clock) {
+        this.deadlineSettings = Objects.requireNonNull(deadlineSettings, "deadlineSettings");
         this.confirmer = Objects.requireNonNull(confirmer, "confirmer");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -146,7 +154,7 @@ class RouteMailDelegate implements JavaDelegate {
         Map<String, Object> patch = new LinkedHashMap<>();
         patch.put("service", plan.group());
         if (plan.delayDays() != null) {
-            patch.put("echeance", LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC).plusDays(plan.delayDays()).toString());
+            patch.put("echeance", deadline(plan.delayDays()));
         }
         patchDeclaredFields(mailType, mail, patch);
         execution.setVariable(RESULT, "ROUTE");
@@ -184,6 +192,9 @@ class RouteMailDelegate implements JavaDelegate {
                 fields.put(definition.name(), mail.fields().get(definition.name()));
             }
         }
+        if (delay != null) {
+            deadlineField(type.get()).ifPresent(field -> fields.put(field, deadline(delay)));
+        }
         for (FieldDefinition definition : type.get().fieldDefinitions()) {
             boolean unconditional = definition.requiredWhen() == null || definition.requiredWhen().isBlank();
             if (definition.required() && unconditional && !definition.hasDefaultValue() && !fields.containsKey(definition.name())) {
@@ -191,6 +202,17 @@ class RouteMailDelegate implements JavaDelegate {
             }
         }
         return new Plan(group, typeCode, process, delay, fields, label(mail, copyable), null);
+    }
+
+    private String deadline(int delayDays) {
+        return LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC).plusDays(delayDays).toString();
+    }
+
+    /** TODO §115 (D-DEADLINE-FIELD) — le champ {@code DATE} que le type du dossier métier désigne comme échéance, s'il en a un. */
+    private Optional<String> deadlineField(DossierType type) {
+        return deadlineSettings.find(tenantProperties.id(), type.code()).map(DeadlineSetting::fieldName)
+                .filter(field -> type.fieldDefinitions().stream()
+                        .anyMatch(definition -> definition.name().equals(field) && definition.type() == FieldType.DATE));
     }
 
     private void toSorting(DelegateExecution execution, DossierType mailType, Dossier mail, String reason) {

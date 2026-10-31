@@ -138,6 +138,18 @@ une minuscule, puis lettres, chiffres ou `_` ; une clé invalide ou en double bl
 **sensible** n'est jamais lu par une pré-vérification automatique. Retirer un type ne supprime aucune pièce : celles de ce
 type redeviennent *Non classées*.
 
+**Échéance (TODO §115).** La section **Échéance** du panneau **Modifier les champs** désigne le champ date qui porte
+l'échéance des dossiers de ce type (la liste ne propose que les champs de type date) :
+
+- **Rappel (jours avant)** : les personnes qui ont une tâche sur le dossier reçoivent une notification N jours avant le
+  terme. 0 = pas de rappel.
+- **Groupe d'escalade** : le lendemain du terme, si le dossier n'est pas clôturé, ses tâches ouvertes passent à ce
+  groupe, dont les membres sont prévenus. Une note dans l'historique du dossier dit quelles tâches ont été réaffectées.
+
+Chaque rappel et chaque escalade n'a lieu qu'une fois ; reporter l'échéance (corriger le champ) en relance de nouveaux.
+Les délais sont en jours calendaires (week-ends et jours fériés compris). Un dossier en brouillon, clôturé ou archivé n'est
+pas suivi. Ce réglage n'est pas encore transporté par la promotion de configuration.
+
 **Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
 un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :
 

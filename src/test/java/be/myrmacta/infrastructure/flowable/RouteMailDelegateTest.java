@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import be.myrmacta.application.workflow.ManualStartOrchestrator;
+import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
@@ -54,6 +55,7 @@ class RouteMailDelegateTest {
     private final WorkflowLinkGroupRepository linkGroups = mock(WorkflowLinkGroupRepository.class);
     private final UpdateDossierFieldsUseCase updateFields = mock(UpdateDossierFieldsUseCase.class);
     private final UpdateDossierStatusUseCase updateStatus = mock(UpdateDossierStatusUseCase.class);
+    private final DeadlineSettings deadlineSettings = mock(DeadlineSettings.class);
     private final DelegateExecution execution = mock(DelegateExecution.class);
     private final Map<String, Object> variables = new HashMap<>();
     private final Map<String, Object> written = new HashMap<>();
@@ -64,7 +66,7 @@ class RouteMailDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new RouteMailDelegate(confirmer, orchestrator, dossiers, types, deployments, groups, linkGroups, updateFields,
-                updateStatus, new TenantProperties(TENANT));
+                updateStatus, deadlineSettings, new TenantProperties(TENANT));
         variables.put("dossierId", mailId.toString());
         variables.put("dossierWorkflowLinkId", linkId.toString());
         variables.put("routageAction", "OUVRIR");

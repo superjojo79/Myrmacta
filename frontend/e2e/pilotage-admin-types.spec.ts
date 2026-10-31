@@ -389,3 +389,38 @@ test('E2E-MAILROOM-REPLY-2 a refused reply workflow shows the server message', a
   await panel.getByTestId('reply-workflow-save').click()
   await expect(panel.getByTestId('reply-workflow-error')).toHaveText('Unknown child dossier type: X')
 })
+
+test('E2E-DEADLINE-1 admin designates a date field as the deadline, with reminder and escalation group', async ({ page }) => {
+  let saved: unknown = null
+  await mockSession(page)
+  await page.route('**/api/dossier-types/CLAIM/deadline', async (route) => {
+    if (route.request().method() === 'PUT') {
+      saved = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ dossierTypeCode: 'CLAIM', ...(saved as object) }),
+      })
+      return
+    }
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await page.getByTestId('type-edit-fields').click()
+  const editor = page.getByTestId('type-edit-fields-panel')
+  const deadline = page.getByTestId('deadline-panel')
+  await expect(deadline.getByTestId('deadline-no-date-field')).toBeVisible()
+  await editor.getByTestId('field-def-add').click()
+  await editor.getByTestId('field-def-name').nth(1).fill('echeance')
+  await editor.getByTestId('field-def-label').nth(1).fill('Échéance')
+  await editor.getByTestId('field-def-type').nth(1).selectOption('DATE')
+  await deadline.getByTestId('deadline-field').selectOption('echeance')
+  await deadline.getByTestId('deadline-reminder-days').fill('5')
+  const group = deadline.getByTestId('deadline-escalation-group')
+  const firstGroup = await group.locator('option').nth(1).getAttribute('value')
+  await group.selectOption(firstGroup ?? '')
+  await deadline.getByTestId('deadline-save').click()
+  await expect(deadline.getByTestId('deadline-saved')).toBeVisible()
+  await expect.poll(() => saved).toEqual({ fieldName: 'echeance', reminderDays: 5, escalationGroup: firstGroup })
+})

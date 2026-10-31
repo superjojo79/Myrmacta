@@ -540,6 +540,13 @@
                             </excludedTestClasses>
                             <threads>${pit.threads}</threads>
                             <mutationThreshold>${pit.mutationThreshold}</mutationThreshold>
+                            <!-- D-44 : même drapeau qu'au démarrage Surefire. PIT ne reprend pas
+                                 systemPropertyVariables, et le JDK fige ce drapeau au premier
+                                 HttpURLConnection. Sans lui, WebhookRestAdapterUrlConnectionTest
+                                 échoue avant toute mutation. -->
+                            <jvmArgs>
+                                <value>-Dsun.net.http.allowRestrictedHeaders=true</value>
+                            </jvmArgs>
                             <timestampedReports>false</timestampedReports>
                             <outputFormats>
                                 <param>HTML</param>

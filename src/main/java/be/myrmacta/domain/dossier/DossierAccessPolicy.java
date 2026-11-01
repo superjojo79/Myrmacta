@@ -48,6 +48,11 @@ public final class DossierAccessPolicy {
         return hasPermission(tenantId, dossierTypeCode, ctx, DossierPermission.VIEW);
     }
 
+    /** TODO §113 (D-MAILROOM-DEPOSIT) — EDIT sur un type, sans exception : points de dépôt proposés à l'utilisateur. */
+    public boolean canEditType(String tenantId, String dossierTypeCode, AccessContext ctx) {
+        return hasPermission(tenantId, dossierTypeCode, ctx, DossierPermission.EDIT);
+    }
+
     private void assertPermission(
             String tenantId, String dossierTypeCode, AccessContext ctx, DossierPermission required) {
         if (ctx instanceof AccessContext.Service) {

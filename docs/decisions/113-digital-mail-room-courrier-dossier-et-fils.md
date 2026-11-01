@@ -160,9 +160,26 @@ partenaire dans un dossier SFTP deviennent des courriers, par un connecteur d'en
 - **Limite connue, la même que l'e-mail :** une panne entre la création du courrier et le déplacement du PDF fait
   retraiter ce PDF au passage suivant.
 
-**D-MAILROOM-DEPOSIT** (tranché par l'utilisateur, lot 5b, 2026-10-31) — un agent dépose à la main un ou plusieurs PDF
-depuis un écran « Déposer ». Chaque PDF devient un courrier (canal `PAPIER`), qui suit le même tri que l'e-mail. Le type,
-le process et les champs viennent d'un connecteur de dépôt. La conception détaillée est faite au lot 5b.
+**D-MAILROOM-DEPOSIT** (tranché par l'utilisateur, lot 5b, 2026-10-31 ; conçu au lot 5b) — un agent dépose à la main un ou
+plusieurs PDF depuis un écran « Déposer ». Chaque PDF devient un courrier (canal `PAPIER`), qui suit le même tri que
+l'e-mail :
+
+- **Point de dépôt :** une instance active du connecteur `mail-deposit`. Elle porte le type de dossier, le process, les
+  champs qui reçoivent l'expéditeur et l'objet saisis (`senderField`, `subjectField`) et des valeurs constantes
+  (`defaultFields`). Le connecteur ne se déclenche jamais seul.
+- **Droit :** un agent ne voit et n'utilise que les points dont il peut créer le type de dossier (ACL EDIT du type, comme
+  pour créer un dossier).
+- **Même chemin qu'un connecteur d'entrée :** `ConnectorTriggerRuntime.deliver` crée le dossier au nom du connecteur,
+  contrôle le PDF comme une pièce jointe d'e-mail (types, signature, antivirus) et met le process en file. Le déposant est
+  tracé dans la variable `courrierDeposePar`, et le nom du fichier dans `courrierFichier`.
+- **Un fichier, une transaction :** un fichier refusé n'empêche pas les autres, et la réponse donne le sort de chacun
+  (courrier créé ou raison du refus).
+  - Refusés avant toute écriture : un fichier qui n'est pas un PDF, un fichier trop volumineux
+    (`app.inbound.max-attachment-bytes`), un nom invalide.
+  - Refusé ensuite : un champ obligatoire manquant.
+  - 20 fichiers au plus par dépôt. L'objet vaut, à défaut, le nom du fichier.
+- **API :** `GET /api/mail-deposit-points`, `POST /api/mail-deposit-points/{id}/deposits` (multipart `files`,
+  `expediteur`, `objet`).
 
 **Reste à trancher à la conception de leur lot :**
 

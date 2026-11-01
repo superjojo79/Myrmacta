@@ -88,7 +88,17 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
         }
     }
 
-    private void handle(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
+    @Override
+    public UUID deliver(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
+        Objects.requireNonNull(instance, "instance");
+        Objects.requireNonNull(event, "event");
+        if (!(catalog.get(instance.connectorType()) instanceof TriggerConnector)) {
+            throw new ConnectorValidationException("Connector type does not support TRIGGER: " + instance.connectorType());
+        }
+        return handle(instance, event);
+    }
+
+    private UUID handle(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
         if (!event.attachments().isEmpty() && attachInboundFiles == null) {
             throw new ConnectorValidationException("attachments are not supported by this trigger runtime");
         }
@@ -115,6 +125,7 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
                 event.processKey(),
                 variables,
                 "connector:" + instance.id()));
+        return dossierId;
     }
 
     /** Un identifiant illisible ou trop long n'est pas inscrit : il ne rattachera rien, sans empêcher le courrier. */

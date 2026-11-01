@@ -1066,6 +1066,48 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/NotificationWebhookResponse"
+  /api/mail-deposit-points/{id}/deposits:
+    post:
+      tags:
+      - mail-deposit-controller
+      operationId: depositMail
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: expediteur
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: objet
+        in: query
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+              - files
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DepositResponse"
   /api/m2m/connectors/{id}/execute:
     post:
       tags:
@@ -3076,6 +3118,20 @@ paths:
             text/event-stream:
               schema:
                 $ref: "#/components/schemas/SseEmitter"
+  /api/mail-deposit-points:
+    get:
+      tags:
+      - mail-deposit-controller
+      operationId: listMailDepositPoints
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepositPointResponse"
   /api/dossiers/{id}:
     get:
       tags:
@@ -4352,6 +4408,25 @@ components:
         updatedAt:
           type: string
           format: date-time
+    DepositResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DepositResultResponse"
+    DepositResultResponse:
+      type: object
+      properties:
+        filename:
+          type: string
+        dossierId:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        refusal:
+          type: string
     ExecuteConnectorRequest:
       type: object
       properties:
@@ -6236,6 +6311,16 @@ components:
         totalPages:
           type: integer
           format: int32
+    DepositPointResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        dossierTypeCode:
+          type: string
     DossierPageResponse:
       type: object
       properties:

@@ -23,6 +23,11 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/pilotage/RapportsView.vue'),
   },
   {
+    path: '/mail-deposit',
+    name: 'mail-deposit',
+    component: () => import('@/views/pilotage/MailDepositView.vue'),
+  },
+  {
     path: '/dossiers/new',
     name: 'dossier-create',
     component: () => import('@/views/pilotage/CreateDossierView.vue'),

@@ -32,6 +32,31 @@ class ConfigurationPromotionToolsTest {
     private static final AccessContext.User AGENT = AccessContext.user("agent-1", Set.of("API_SERVICE"));
     private final McpAccessContextFactory factory = new McpAccessContextFactory();
 
+    /** TODO §117 (D-PROMO-MCP-TEMPLATE, revue de clôture #279 M2) — jamais de corps HTML de template par MCP. */
+    @Test
+    void exportListsTemplatesWithoutTheirHtml() {
+        ExportConfigurationUseCase export = mock(ExportConfigurationUseCase.class);
+        var bundle = new ConfigurationBundle(2, Instant.parse("2026-11-01T10:00:00Z"), "recette", "v", List.of(
+                new BundleEntry(ArtifactType.DMN, "grid", "<dmn/>".getBytes(StandardCharsets.UTF_8)),
+                new BundleEntry(ArtifactType.DOCUMENT_TEMPLATE, "accuse._.fr",
+                        "{\"htmlContent\":\"<p>secret-html</p>\"}".getBytes(StandardCharsets.UTF_8))));
+        when(export.export(any(), eq("recette"))).thenReturn(bundle);
+
+        Map<String, Object> result = McpActorScope.call(AGENT, () -> new ExportConfigurationTool(export, factory).exportConfiguration("recette"));
+
+        assertThat(result.toString()).doesNotContain("secret-html");
+        @SuppressWarnings("unchecked")
+        var entries = (List<Map<String, Object>>) result.get("entries");
+        assertThat(entries).extracting(e -> e.get("type")).containsExactly("DMN");
+        @SuppressWarnings("unchecked")
+        var omitted = (List<Map<String, Object>>) result.get("omitted");
+        assertThat(omitted).singleElement().satisfies(o -> {
+            assertThat(o).containsEntry("type", "DOCUMENT_TEMPLATE").containsEntry("key", "accuse._.fr").containsKey("sha256");
+            assertThat(o.get("reason").toString()).contains("ZIP export");
+        });
+        assertThat(result).containsEntry("bundleSha256", bundle.sha256());
+    }
+
     @Test
     void exportReturnsTheFilesAsTextWithTheirChecksums() {
         ExportConfigurationUseCase export = mock(ExportConfigurationUseCase.class);

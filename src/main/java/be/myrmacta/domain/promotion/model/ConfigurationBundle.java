@@ -17,7 +17,11 @@ public record ConfigurationBundle(
     public static final int FORMAT_VERSION = 2;
     public static final int MIN_FORMAT_VERSION = 1;
     public static final int MAX_ENTRIES = 2000;
-    public static final int MAX_ENTRY_BYTES = 5 * 1024 * 1024;
+    /**
+     * TODO §117 (D-PROMO-TEMPLATE, revue de clôture #279 M3) — 12 Mio : un template actif peut peser 5 Mio de HTML, que l'encodage
+     * JSON (guillemets et sauts de ligne échappés) peut doubler. Le total du bundle reste borné à 50 Mio.
+     */
+    public static final int MAX_ENTRY_BYTES = 12 * 1024 * 1024;
     public static final long MAX_TOTAL_BYTES = 50L * 1024 * 1024;
     public static final int MAX_LABEL_CHARS = 200;
 

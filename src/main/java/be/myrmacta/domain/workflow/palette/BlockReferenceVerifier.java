@@ -60,7 +60,7 @@ public final class BlockReferenceVerifier {
                 inactive.add(new InactiveBlockReference(
                         usage.activityId(), usage.parameter(), usage.valueSource(), usage.value()));
             } else if (status != ReferenceStatus.ACTIVE) {
-                throw new UnknownBlockReferenceException(usage.activityId(), usage.parameter(), usage.value());
+                throw new UnknownBlockReferenceException(usage.activityId(), usage.parameter(), usage.valueSource(), usage.value());
             }
         }
         return List.copyOf(inactive);

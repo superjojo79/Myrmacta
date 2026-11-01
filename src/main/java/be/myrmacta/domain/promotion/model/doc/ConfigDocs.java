@@ -131,7 +131,8 @@ public final class ConfigDocs {
             java.util.Objects.requireNonNull(templateKey, "templateKey");
             variantKey = be.myrmacta.domain.document.DocumentTemplateSupport.normalizeOptional(variantKey);
             locale = be.myrmacta.domain.document.DocumentTemplateSupport.normalizeOptional(locale);
-            htmlContent = htmlContent == null ? "" : htmlContent;
+            // comme CreateDocumentTemplateUseCase, qui enregistre le contenu sans blancs de tête ni de fin (revue de clôture #279, B7)
+            htmlContent = htmlContent == null ? "" : htmlContent.trim();
         }
     }
 

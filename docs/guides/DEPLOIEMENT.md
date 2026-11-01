@@ -529,7 +529,7 @@ Procédure type (rôle TENANT_ADMIN des deux côtés) :
    Le groupe de l'IdP d'un groupe peut être un paramètre (`{{idp_compta}}`), comme une adresse de connecteur.
    Bundle au format 2 depuis #279 : une instance antérieure le refuse, et l'instance courante lit toujours le format 1.
 
-Intégrité : chaque fichier porte son SHA-256 dans `manifest.json` (altération détectée) ; le bundle **n'est pas signé**. Limites : 2 000 artefacts, 5 Mo par fichier, 50 Mo au total ;
+Intégrité : chaque fichier porte son SHA-256 dans `manifest.json` (altération détectée) ; le bundle **n'est pas signé**. Limites : 2 000 artefacts, 12 Mio par fichier, 50 Mio au total ;
 la taille d'envoi reste plafonnée par `spring.servlet.multipart.max-file-size`. La migration 032 crée le journal `config_import` (additif, retour arrière fourni). Un import ne retire jamais
 une clé de configuration d'un connecteur existant (fusion) et ne change pas son état activé.
 

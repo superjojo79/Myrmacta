@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.mcp.tool;
 
+import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigurationBundle;
 import be.myrmacta.domain.promotion.port.in.ExportConfigurationUseCase;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Component;
 /**
  * TODO §83 (D4) — {@code export_configuration} : la configuration du tenant (types de dossier, schémas de questions, connecteurs
  * sans secrets, tables DMN et processus BPMN déployés, configurations de workflow) sous forme de fichiers texte. Lecture seule ;
- * jamais de secret. Un export volumineux se télécharge depuis l'écran d'administration (ZIP).
+ * jamais de secret. Un export volumineux se télécharge depuis l'écran d'administration (ZIP). TODO §117 — avec la tranche 2 :
+ * groupes (sans membres), réglages de type, parcours ; les templates de documents sont seulement listés dans {@code omitted},
+ * sans leur HTML ({@code bundleSha256} reste celui du bundle complet, celui du ZIP).
  */
 @Component
 public class ExportConfigurationTool {
@@ -33,16 +36,30 @@ public class ExportConfigurationTool {
 
     @McpTool(
             name = "export_configuration",
-            description = "Export this instance's configuration as a versioned bundle of text files: dossier types, task question "
-                    + "schemas, connector instances (secret fields removed), deployed DMN tables and BPMN processes, workflow "
-                    + "configurations. Read-only, never contains secrets. Feed the entries to import_configuration on another "
-                    + "instance (dry-run plan first). Too large an export is refused: use the admin screen's ZIP export.")
+            description = "Export this instance's configuration as a versioned bundle of text files: user groups (without "
+                    + "members), dossier types, task question schemas, connector instances (secret fields removed), deployed DMN "
+                    + "tables and BPMN processes, workflow configurations, reply workflows and deadlines of dossier types, "
+                    + "journey (parcours) definitions. Document templates are listed under 'omitted' without their HTML (never "
+                    + "returned through MCP): use the admin screen's ZIP export to carry them. Read-only, never contains secrets. "
+                    + "Feed the entries to import_configuration on another instance (dry-run plan first). Too large an export is "
+                    + "refused: use the admin screen's ZIP export.")
     public Map<String, Object> exportConfiguration(
             @McpToolParam(required = false, description = "Free label of this environment (e.g. recette)") String sourceLabel) {
         ConfigurationBundle bundle = exportUseCase.export(accessContextFactory.currentActor(), sourceLabel);
         long chars = 0;
         List<Map<String, Object>> entries = new java.util.ArrayList<>();
+        List<Map<String, Object>> omitted = new java.util.ArrayList<>();
         for (BundleEntry e : bundle.entries()) {
+            if (e.type() == ArtifactType.DOCUMENT_TEMPLATE) {
+                // TODO §117 (D-PROMO-MCP-TEMPLATE, revue de clôture #279 M2) — jamais de corps HTML de template par MCP (D-TPLED-NO-ACTIVATE)
+                Map<String, Object> skipped = new LinkedHashMap<>();
+                skipped.put("type", e.type().name());
+                skipped.put("key", e.key());
+                skipped.put("sha256", e.sha256());
+                skipped.put("reason", "template HTML is never returned through MCP: use the admin screen's ZIP export");
+                omitted.add(skipped);
+                continue;
+            }
             String text = e.text();
             chars += text.length();
             if (chars > MAX_TOTAL_CHARS) {
@@ -62,6 +79,7 @@ public class ExportConfigurationTool {
         result.put("sourceLabel", bundle.sourceLabel());
         result.put("bundleSha256", bundle.sha256());
         result.put("entries", entries);
+        result.put("omitted", omitted);
         return result;
     }
 }

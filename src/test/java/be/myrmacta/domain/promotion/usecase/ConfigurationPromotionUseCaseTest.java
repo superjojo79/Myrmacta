@@ -192,13 +192,18 @@ class ConfigurationPromotionUseCaseTest {
         groupRefs = mock(GroupReferenceExtractor.class);
         when(groupRefs.fromBpmn(any())).thenReturn(Set.of());
         when(groupRefs.fromDmn(any())).thenReturn(Set.of());
-        useCase = new ImportConfigurationUseCaseImpl(TENANT, Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), ZoneOffset.UTC),
+        useCase = newUseCase(CODEC);
+    }
+
+    /** @param templateCodec codec des templates (un codec qui compte les lectures mesure le coût du plan) */
+    private ImportConfigurationUseCaseImpl newUseCase(be.myrmacta.domain.promotion.port.out.ArtifactCodec templateCodec) {
+        return new ImportConfigurationUseCaseImpl(TENANT, Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), ZoneOffset.UTC),
                 new TenantAdminGuard(), CODEC, types, createType, updateType, compat, schemas, saveSchema, connectors,
                 manageConnector, catalog, dmnDeployment, mock(DmnParserPort.class), workflowDeployment, bpmnParser, workflowConfigs,
                 saveWorkflowConfig, propose, journalRepo,
                 new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs),
                         new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines),
-                        new DocumentTemplateArtifacts(TENANT, CODEC, templateRepo, createTemplate, templateSyntax, 1000),
+                        new DocumentTemplateArtifacts(TENANT, templateCodec, templateRepo, createTemplate, templateSyntax, 1000),
                         new ParcoursArtifacts(TENANT, CODEC, parcoursRepo, manageParcours, workflowDeployment)));
     }
 
@@ -889,7 +894,8 @@ class ConfigurationPromotionUseCaseTest {
     @Test
     void aBpmnNeedingATemplateThatOnlyTheBundleBringsIsBlockedWithTheOrderToFollow() {
         when(propose.validateBpmn(any(), org.mockito.ArgumentMatchers.eq("wf"), any(), any())).thenThrow(
-                new be.myrmacta.domain.workflow.model.UnknownBlockReferenceException("generer", "documentType", "accuse"));
+                new be.myrmacta.domain.workflow.model.UnknownBlockReferenceException("generer", "documentType", "documentTemplates",
+                        "accuse"));
         var b = bundle(templateEntry("accuse", null, null, "Accusé", "<p/>"),
                 new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
                 json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
@@ -963,5 +969,104 @@ class ConfigurationPromotionUseCaseTest {
                 null, Channel.MCP);
         assertThat(report.entries().getFirst().outcome()).isEqualTo(ImportOutcome.SKIPPED);
         verify(manageParcours, never()).save(any(), any());
+    }
+
+    // ---- revue de clôture #279 : tests de régression ----
+
+    /** M1 — les fichiers de template sont lus un nombre de fois proportionnel au bundle, pas une fois par type de dossier. */
+    @Test
+    void planningManyTypesDoesNotDecodeTheTemplatesOnceForEachType() {
+        java.util.concurrent.atomic.AtomicInteger templateReads = new java.util.concurrent.atomic.AtomicInteger();
+        var counting = new be.myrmacta.domain.promotion.port.out.ArtifactCodec() {
+            @Override
+            public byte[] encode(Object doc) {
+                return CODEC.encode(doc);
+            }
+
+            @Override
+            public <T> T decode(byte[] content, Class<T> type) {
+                templateReads.incrementAndGet();
+                return CODEC.decode(content, type);
+            }
+        };
+        List<BundleEntry> entries = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            entries.add(json(ArtifactType.DOSSIER_TYPE, "T" + i, new DossierTypeDoc("T" + i, "L", "wf", true, false, List.of(), null,
+                    false, null, i % 2 == 0 ? List.of("accuse") : List.of())));
+        }
+        entries.add(templateEntry("accuse", null, null, "A", "<p/>"));
+
+        newUseCase(counting).plan(ADMIN, bundle(entries.toArray(BundleEntry[]::new)), Map.of());
+
+        assertThat(templateReads.get()).isLessThanOrEqualTo(4);
+    }
+
+    /** M3 — un template de 5 Mio, même plein de caractères échappés en JSON, tient dans un fichier de bundle. */
+    @Test
+    void aTemplateAtTheHtmlSizeLimitStillFitsInABundleFile() {
+        templatesHere.add(template("lourd", null, null, "L", "\"".repeat(5 * 1024 * 1024), 1, TemplateStatus.ACTIVE));
+        var artifacts = new DocumentTemplateArtifacts(TENANT, CODEC, templateRepo, createTemplate, templateSyntax, 5 * 1024 * 1024);
+
+        var exported = artifacts.export();
+
+        assertThat(exported).singleElement().satisfies(e -> assertThat(e.content().length)
+                .isGreaterThan(10 * 1024 * 1024).isLessThanOrEqualTo(ConfigurationBundle.MAX_ENTRY_BYTES));
+        assertThat(bundle(exported.toArray(BundleEntry[]::new)).entries()).hasSize(1);
+    }
+
+    /** B5 — une variante ou une langue littérale « _ » ne prend pas le nom de fichier de la valeur par défaut. */
+    @Test
+    void aLiteralUnderscoreVariantDoesNotCollideWithTheDefault() {
+        String byDefault = DocumentTemplateArtifacts.entryKey(new DocumentTemplateDoc("k", null, "fr", "", ""));
+        String literal = DocumentTemplateArtifacts.entryKey(new DocumentTemplateDoc("k", "_", "fr", "", ""));
+        assertThat(byDefault).isEqualTo("k._.fr");
+        assertThat(literal).startsWith("k._.fr-").isNotEqualTo(byDefault);
+    }
+
+    /** B6 — la consigne « relancez » ne vaut que pour un template du bundle, non bloqué, référencé comme template. */
+    @Test
+    void theRerunHintOnlyCoversAnApplicableTemplateOfTheBundle() {
+        org.mockito.Mockito.doThrow(new InvalidTemplateSyntaxException("refusé")).when(templateSyntax).check("<p th:x>");
+        when(propose.validateBpmn(any(), org.mockito.ArgumentMatchers.eq("wf"), any(), any())).thenThrow(
+                new be.myrmacta.domain.workflow.model.UnknownBlockReferenceException("appel", "connectorInstanceId",
+                        "connectorInstances", "accuse"));
+        when(propose.validateBpmn(any(), org.mockito.ArgumentMatchers.eq("wf2"), any(), any())).thenThrow(
+                new be.myrmacta.domain.workflow.model.UnknownBlockReferenceException("generer", "documentType",
+                        "documentTemplates", "casse"));
+        var b = bundle(templateEntry("accuse", null, null, "A", "<p/>"), templateEntry("casse", null, null, "C", "<p th:x>"),
+                new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)), json(ArtifactType.WORKFLOW_CONFIG, "wf", WF),
+                new BundleEntry(ArtifactType.BPMN, "wf2", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf2", new WorkflowConfigDoc("wf2", "Flow", WF.statusDefinitions(),
+                        WF.allowedDossierStatuses(), null, List.of())));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+
+        assertThat(plan.find(ArtifactType.BPMN, "wf").orElseThrow().reason()).contains("does not exist").doesNotContain("run the import again");
+        assertThat(plan.find(ArtifactType.BPMN, "wf2").orElseThrow().reason()).contains("does not exist").doesNotContain("run the import again");
+    }
+
+    /** B7 — une valeur que l'écriture normalise (blancs) est comparée normalisée : rejouer converge. */
+    @Test
+    void valuesNormalisedOnWriteCompareNormalised_soReplayingConverges() {
+        templatesHere.add(template("accuse", null, null, "A", "<p>v1</p>", 1, TemplateStatus.ACTIVE));
+        groupsHere.add(new UserGroup(TENANT, "COMPTA", "Compta", "sg-compta", Set.of()));
+
+        var plan = useCase.plan(ADMIN, bundle(templateEntry("accuse", null, null, "A", "<p>v1</p>\n"),
+                group("COMPTA", "  Compta ", "{{idp}}")), Map.of("idp", " sg-compta "));
+
+        assertThat(plan.entries()).extracting(e -> e.action()).containsOnly(PlanAction.UNCHANGED);
+        assertThat(plan.entries()).allSatisfy(e -> assertThat(e.reason()).doesNotContain("kept"));
+    }
+
+    /** B10 — l'empreinte d'un bundle de format 1 (journalisée par la tranche 1) ne dépend pas des artefacts ajoutés depuis. */
+    @Test
+    void theChecksumOfAFormat1BundleIsStable() {
+        assertThat(List.of(ArtifactType.DOSSIER_TYPE, ArtifactType.TASK_QUESTION_SCHEMA, ArtifactType.CONNECTOR_INSTANCE, ArtifactType.DMN,
+                ArtifactType.BPMN, ArtifactType.WORKFLOW_CONFIG)).extracting(Enum::ordinal).containsExactly(0, 1, 2, 3, 4, 5);
+        var dmn = new BundleEntry(ArtifactType.DMN, "grid", "<dmn/>".getBytes(StandardCharsets.UTF_8));
+        var type = new BundleEntry(ArtifactType.DOSSIER_TYPE, "T1", "{}\n".getBytes(StandardCharsets.UTF_8));
+        var v1 = new ConfigurationBundle(1, Instant.parse("2026-10-01T09:00:00Z"), "recette", "t", List.of(dmn, type));
+        String canonical = "DOSSIER_TYPE/T1:" + type.sha256() + "\nDMN/grid:" + dmn.sha256() + "\n";
+        assertThat(v1.sha256()).isEqualTo(BundleEntry.sha256(canonical.getBytes(StandardCharsets.UTF_8)));
     }
 }

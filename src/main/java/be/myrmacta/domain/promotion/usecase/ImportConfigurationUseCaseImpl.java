@@ -171,16 +171,19 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 .toList();
         List<PlanEntry> entries = new ArrayList<>();
         Set<String> targetGroups = additional.groups().existingCodes();
+        // Revue de clôture #279 (M1) : les clés de template du bundle sont lues une fois par plan, pas une fois par type
+        Set<String> bundleTemplateKeys = additional.templates().templateKeysIn(bundle);
+        Set<String> stagedTemplateKeys = new HashSet<>();
         for (BundleEntry entry : ordered) {
             PlanEntry planned = switch (entry.type()) {
                 case USER_GROUP -> additional.groups().plan(entry, parameters, tenantId);
-                case DOSSIER_TYPE -> warnOrphanTemplateKeys(planDossierType(entry), entry, bundle);
+                case DOSSIER_TYPE -> warnOrphanTemplateKeys(planDossierType(entry), entry, bundleTemplateKeys);
                 case TASK_QUESTION_SCHEMA -> planSchema(entry);
-                case DOCUMENT_TEMPLATE -> additional.templates().plan(entry);
+                case DOCUMENT_TEMPLATE -> stageTemplate(additional.templates().plan(entry), entry, stagedTemplateKeys);
                 case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets, names);
                 case DMN -> warnUnknownGroups(planDmn(actor, entry),
                         known -> additional.groupReferences().dmnWarning(entry.content(), known), targetGroups, byKey);
-                case BPMN -> warnUnknownGroups(planBpmn(actor, entry, bundle, byKey),
+                case BPMN -> warnUnknownGroups(planBpmn(actor, entry, bundle, byKey, stagedTemplateKeys),
                         known -> additional.groupReferences().bpmnWarning(entry.content(), known), targetGroups, byKey);
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
                 case REPLY_WORKFLOW -> additional.typeSettings().planReplyWorkflow(entry, byKey);
@@ -216,13 +219,16 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
      * TODO §117 (D-PROMO-ORPHAN) — une clé de template d'un type sans version active ici ni template dans le bundle : le type est
      * appliqué, la génération de ce document échouera tant que le template n'existe pas.
      */
-    private PlanEntry warnOrphanTemplateKeys(PlanEntry planned, BundleEntry entry, ConfigurationBundle bundle) {
+    private PlanEntry warnOrphanTemplateKeys(PlanEntry planned, BundleEntry entry, Set<String> bundleTemplateKeys) {
         if (planned.action() == PlanAction.BLOCKED || planned.action() == PlanAction.CONFLICT) {
             return planned;
         }
         List<String> keys = decode(entry, DossierTypeDoc.class).documentTemplateKeys();
+        if (keys.isEmpty()) {
+            return planned;
+        }
         Set<String> known = new HashSet<>(additional.templates().activeKeys(keys));
-        known.addAll(additional.templates().templateKeysIn(bundle));
+        known.addAll(bundleTemplateKeys);
         List<String> missing = keys.stream().filter(k -> !known.contains(k)).distinct().sorted().toList();
         return missing.isEmpty()
                 ? planned
@@ -230,11 +236,23 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                         + "bundle: " + missing + " (generating these documents will fail).");
     }
 
-    /** La ressource manquante d'un BPMN est un template que ce bundle apporte : il sera créé en brouillon par cet import. */
-    private Optional<String> templateFromBundle(RuntimeException e, ConfigurationBundle bundle) {
+    /** Mémorise la clé d'un template du bundle que cet import déposera (ou a déjà déposé) en brouillon. */
+    private PlanEntry stageTemplate(PlanEntry planned, BundleEntry entry, Set<String> stagedTemplateKeys) {
+        if (planned.action() != PlanAction.BLOCKED && planned.action() != PlanAction.CONFLICT) {
+            stagedTemplateKeys.add(additional.templates().templateKeyOf(entry));
+        }
+        return planned;
+    }
+
+    /**
+     * La ressource manquante d'un BPMN est un template (source {@code documentTemplates}) que ce bundle dépose en brouillon : un
+     * second passage l'acceptera. Revue de clôture #279 (B6) : ni une autre source homonyme, ni un template bloqué du bundle.
+     */
+    private static Optional<String> templateFromBundle(RuntimeException e, Set<String> stagedTemplateKeys) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof be.myrmacta.domain.workflow.model.UnknownBlockReferenceException unknown
-                    && additional.templates().templateKeysIn(bundle).contains(unknown.value())) {
+                    && "documentTemplates".equals(unknown.valueSource())
+                    && stagedTemplateKeys.contains(unknown.value())) {
                 return Optional.of(unknown.value());
             }
         }
@@ -421,7 +439,12 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 : new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, "saved as a draft to publish");
     }
 
-    private PlanEntry planBpmn(AccessContext.User actor, BundleEntry entry, ConfigurationBundle bundle, Map<String, PlanEntry> planned) {
+    private PlanEntry planBpmn(
+            AccessContext.User actor,
+            BundleEntry entry,
+            ConfigurationBundle bundle,
+            Map<String, PlanEntry> planned,
+            Set<String> stagedTemplateKeys) {
         String xml = entry.text();
         Optional<BundleEntry> configEntry = bundle.find(ArtifactType.WORKFLOW_CONFIG, entry.key());
         ProposedWorkflowConfig config = configEntry.map(e -> toProposed(decode(e, WorkflowConfigDoc.class))).orElse(null);
@@ -440,7 +463,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             }
             inactive = propose.validateBpmn(actor, entry.key(), xml, config);
         } catch (RuntimeException e) {
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, cap(templateFromBundle(e, bundle)
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, cap(templateFromBundle(e, stagedTemplateKeys)
                     .map(key -> "depends on the document template '" + key + "', which this import saves as a draft: once it is "
                             + "saved, run the import again (and activate the template before publishing this process)")
                     .orElse(e.getMessage())));
@@ -527,7 +550,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                         planned.reason()));
                 case CREATE, UPDATE -> report.add(channel == Channel.MCP && !mcpMayApply(planned)
                         ? new ReportEntry(planned.type(), planned.key(), ImportOutcome.SKIPPED,
-                                "not applied through MCP (only BPMN and DMN drafts are): use the admin import screen")
+                                "not applied through MCP (only BPMN, DMN and document template drafts are): use the admin import "
+                                + "screen")
                         : applyOne(actor, planned, entry, bundle, plan, params, providedSecrets, outcomes));
             }
             outcomes.put(planned.type() + "/" + planned.key(), report.get(before).outcome());
@@ -539,7 +563,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
 
     /**
      * D-PROMO-MCP : le canal MCP ne dépose que des brouillons BPMN/DMN (relus avant mise en ligne) — avec la configuration de
-     * workflow qui leur est jointe. Types de dossier, schémas, connecteurs et configurations autonomes passent par l'écran.
+     * workflow qui leur est jointe — et, TODO §117 (D-PROMO-MCP-TEMPLATE), des brouillons de templates (activés par un humain).
+     * Types de dossier, schémas, connecteurs, configurations autonomes, groupes, réglages de type et parcours passent par l'écran.
      */
     private static boolean mcpMayApply(PlanEntry planned) {
         return planned.type() == ArtifactType.BPMN

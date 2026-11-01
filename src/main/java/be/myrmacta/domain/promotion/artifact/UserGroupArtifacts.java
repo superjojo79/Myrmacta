@@ -47,10 +47,11 @@ public final class UserGroupArtifacts {
     public PlanEntry plan(BundleEntry entry, Map<String, String> parameters, String tenantId) {
         UserGroupDoc raw = PromotionSupport.decode(codec, entry, UserGroupDoc.class);
         PromotionSupport.requireSameKey(entry, raw.code());
-        UserGroupDoc doc;
+        UserGroup doc;
         try {
-            doc = substitute(raw, parameters);
-            new UserGroup(tenantId, doc.code(), doc.label(), doc.idpGroup(), Set.of());
+            // comparé tel que le domaine l'enregistrerait : libellé et groupe de l'IdP sans blancs (revue de clôture #279, B7)
+            UserGroupDoc substituted = substitute(raw, parameters);
+            doc = new UserGroup(tenantId, substituted.code(), substituted.label(), substituted.idpGroup(), Set.of());
         } catch (EnvironmentParameters.MissingParameterException | IllegalArgumentException e) {
             return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, PromotionSupport.cap(e.getMessage()));
         }

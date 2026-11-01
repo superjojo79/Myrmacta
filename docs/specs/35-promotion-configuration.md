@@ -92,7 +92,8 @@ import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.
 
 - L'export écrit le format 2. L'import lit les formats 1 et 2. Un bundle de format 1 qui contient un artefact de la
   tranche 2 est refusé.
-- Le format est contrôlé avant les types : une instance plus ancienne dit « formatVersion 2 ».
+- Le format est contrôlé avant les types à partir de cette version. Une instance de la tranche 1 refuse un bundle de format 2
+  par « unknown artifact type ».
 - Le rang des constantes d'`ArtifactType`, et donc l'empreinte d'un bundle déjà journalisé, ne change pas. L'ordre
   d'application est un rang à part.
 
@@ -119,7 +120,9 @@ import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.
 - **Repérage des groupes :** `XmlGroupReferenceExtractor` (StAX, sans DTD ni entité externe) ne retient que les valeurs
   littérales en forme de code de groupe.
 - **Canal MCP (D-PROMO-MCP-TEMPLATE) :** il applique les brouillons BPMN, DMN et de templates. Groupes, parcours,
-  workflows « réponse » et échéances restent réservés à l'écran.
+  workflows « réponse » et échéances restent réservés à l'écran. `export_configuration` ne renvoie jamais le HTML d'un
+  template : il le liste dans `omitted`.
+- **Taille d'un fichier :** 12 Mio au plus (un template de 5 Mio, encodé en JSON) ; 50 Mio pour le bundle.
 - **Rien n'est jamais supprimé.** Restent hors du bundle : ACL, réglages du tenant (rétention par défaut, alertes SLA,
   webhooks), membres des groupes, historique des versions de templates, signature du bundle.
 

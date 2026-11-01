@@ -71,6 +71,11 @@ public final class DocumentTemplateArtifacts {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /** Clé de template d'un fichier du bundle. */
+    public String templateKeyOf(BundleEntry entry) {
+        return PromotionSupport.decode(codec, entry, DocumentTemplateDoc.class).templateKey();
+    }
+
     /** Clés qui ont une version active sur la cible. */
     public Set<String> activeKeys(List<String> keys) {
         if (keys.isEmpty()) {
@@ -135,7 +140,12 @@ public final class DocumentTemplateArtifacts {
         String plain = key + "." + variant + "." + locale;
         String original = doc.templateKey() + "." + (doc.variantKey() == null ? "_" : doc.variantKey()) + "."
                 + (doc.locale() == null ? "_" : doc.locale());
-        return plain.equals(original) ? plain : plain + "-" + hash(original);
+        // Revue de clôture #279 (B5) : une variante ou une langue littérale « _ » se distingue de la valeur par défaut
+        boolean literalDefault = "_".equals(doc.variantKey()) || "_".equals(doc.locale());
+        if (plain.equals(original) && !literalDefault) {
+            return plain;
+        }
+        return plain + "-" + hash(doc.templateKey() + "\u0000" + doc.variantKey() + "\u0000" + doc.locale());
     }
 
     private static String part(String value) {

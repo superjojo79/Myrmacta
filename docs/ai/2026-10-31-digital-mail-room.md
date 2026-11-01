@@ -190,7 +190,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | #273 |
 | 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | livré | #274 |
 | 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur `mail-deposit`, `ConnectorTriggerRuntime.deliver` | livré | #275 |
-| 6 | MCP lecture et actions gardées (§113 D-MAILROOM-MCP) : `list_my_tasks`, `get_mail_thread`, `reassign_task_to_group`, `attach_mail_to_dossier`, `complete_task` ; `security-review` | en cours | |
+| 6 | MCP lecture et actions gardées (§113 D-MAILROOM-MCP) : `list_my_tasks`, `get_mail_thread`, `reassign_task_to_group`, `attach_mail_to_dossier`, `complete_task` ; `security-review` | livré | à ouvrir |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
 
@@ -306,7 +306,7 @@ Appris pendant le lot 6 :
 - Une violation de contrainte unique condamne la transaction PostgreSQL de l'appelant : attraper l'exception ne suffit
   pas, il faut vérifier avant d'insérer.
 
-Prochaine action : preuves du lot 6, PR, puis lot 7 (démo reproductible, spec 49, guides, clôture et revue
+Prochaine action : PR du lot 6, puis lot 7 (démo reproductible, spec 49, guides, clôture et revue
 indépendante).
 La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a été mergée en §116.
 
@@ -350,6 +350,11 @@ La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a
 | 2026-11-01 | lot 5b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 145 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-11-01 | lot 5b — `npm run lint && npm run test` puis `npx playwright test` | vert : 849 Vitest, 158 Playwright |
 | 2026-11-01 | lot 5b — `scripts/check-docs.sh` | vert |
+| 2026-11-01 | lot 6 — `security-review` du diff | aucun critique ni haut ; SR-1 (moyen) et SR-4 (faible) corrigés avec tests, SR-3 atténué, SR-2 préexistant documenté (§113) |
+| 2026-11-01 | lot 6 — `MailRoomMcpToolsTest`, `MailRoomExampleIT`, `AttachToThreadDelegateTest`, `McpEndpointApiTest`, `McpToolModesTest` | vert : 7 + 6 + 7 + 7 + 3 ; rattachement à blanc puis réel, nouvel essai sans effet, tâche hors de mes groupes refusée, tri terminé et courrier clôturé |
+| 2026-11-01 | lot 6 — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 153 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-11-01 | lot 6 — `npm run lint && npm run test` puis `npx playwright test` | vert : 849 Vitest, 158 Playwright |
+| 2026-11-01 | lot 6 — `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

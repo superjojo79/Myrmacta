@@ -70,6 +70,8 @@ class ConfigurationPromotionApiTest {
     @Autowired private be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase propose;
     @Autowired private be.myrmacta.domain.user.port.in.UserGroupsUseCase userGroups;
     @Autowired private be.myrmacta.domain.user.port.in.RecordUserLoginUseCase recordLogin;
+    @Autowired private be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase replyWorkflows;
+    @Autowired private be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase deadlines;
 
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
@@ -361,5 +363,62 @@ class ConfigurationPromotionApiTest {
         // rejouer avec un autre groupe de l'IdP ne remplace pas celui de la cible : « inchangé », avec la différence signalée
         String replay = planJson(bundle, "{\"idp_groupe\":\"sg-autre\"}");
         assertThat(replay).contains("UNCHANGED").contains("sg-prod-" + s);
+    }
+
+    /**
+     * TODO §117 (D-PROMO-TYPE-SETTINGS) — un seul passage crée le type, sa configuration de workflow (sans BPMN, appliquée
+     * directement), le groupe d'escalade, puis le workflow « réponse » et l'échéance qui en dépendent ; l'export les restitue et
+     * rejouer converge.
+     */
+    @Test
+    void replyWorkflowAndDeadlineTravelWithTheTypeTheyDependOn() throws Exception {
+        String s = suffix().toUpperCase();
+        String typeCode = "PROMO_RW_" + s;
+        String wfKey = "promoReply" + s.toLowerCase();
+        String groupCode = "PROMO_ESC_" + s;
+        ConfigurationBundle bundle = new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-01T10:00:00Z"),
+                "recette", "test", List.of(
+                        json(ArtifactType.USER_GROUP, groupCode,
+                                new be.myrmacta.domain.promotion.model.doc.ConfigDocs.UserGroupDoc(groupCode, "Escalade", null)),
+                        json(ArtifactType.DOSSIER_TYPE, typeCode, new DossierTypeDoc(typeCode, "Type " + s, wfKey, true, false,
+                                List.of(new FieldDefinition("terme", "Terme", FieldType.DATE, false, null, null, null, false)), null, false,
+                                null, List.of())),
+                        json(ArtifactType.WORKFLOW_CONFIG, wfKey, new WorkflowConfigDoc(wfKey, "Réponse " + s,
+                                List.of(new WorkflowStatusDefinition("RECU", "Reçu", true, StatusOutcome.NONE)),
+                                List.of(DossierStatus.OUVERT), null, List.of())),
+                        json(ArtifactType.REPLY_WORKFLOW, typeCode, new be.myrmacta.domain.promotion.model.doc.ConfigDocs.ReplyWorkflowDoc(
+                                typeCode, be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting.Mode.SUR_DOSSIER, wfKey, null)),
+                        json(ArtifactType.DEADLINE, typeCode,
+                                new be.myrmacta.domain.promotion.model.doc.ConfigDocs.DeadlineDoc(typeCode, "terme", 3, groupCode))));
+
+        String plan = planJson(bundle, null);
+        assertThat(plan).doesNotContain("BLOCKED").doesNotContain("CONFLICT");
+
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(bundle)).param("expectedBundleSha256", bundle.sha256())
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[?(@.type=='REPLY_WORKFLOW')].outcome").value("APPLIED"))
+                .andExpect(jsonPath("$.entries[?(@.type=='DEADLINE')].outcome").value("APPLIED"));
+        assertThat(replyWorkflows.get(typeCode)).hasValueSatisfying(r -> assertThat(r.workflowKey()).isEqualTo(wfKey));
+        assertThat(deadlines.get(typeCode)).hasValueSatisfying(d -> {
+            assertThat(d.fieldName()).isEqualTo("terme");
+            assertThat(d.reminderDays()).isEqualTo(3);
+            assertThat(d.escalationGroup()).isEqualTo(groupCode);
+        });
+
+        // l'export les restitue, à l'identique : rejouer converge
+        ConfigurationBundle exported = bundleCodec.read(mockMvc.perform(get("/api/admin/configuration/export")
+                .with(user("alice", "TENANT_ADMIN"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        assertThat(exported.find(ArtifactType.REPLY_WORKFLOW, typeCode)).isPresent();
+        assertThat(exported.find(ArtifactType.DEADLINE, typeCode)).isPresent();
+        var node = tools.jackson.databind.json.JsonMapper.builder().build().readTree(planJson(bundle, null));
+        for (var entry : node.get("entries")) {
+            assertThat(entry.get("action").asString()).as(entry.get("type").asString() + " " + entry.get("key").asString())
+                    .isEqualTo("UNCHANGED");
+        }
+
+        // un réglage retiré de la cible revient au prochain import
+        deadlines.clear(typeCode);
+        assertThat(planJson(bundle, null)).contains("\"type\":\"DEADLINE\"").contains("\"CREATE\"");
     }
 }

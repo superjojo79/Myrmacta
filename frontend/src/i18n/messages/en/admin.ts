@@ -327,6 +327,8 @@ const admin: typeof fr = {
       BPMN: 'BPMN process',
       WORKFLOW_CONFIG: 'Workflow config.',
       USER_GROUP: 'User group',
+      REPLY_WORKFLOW: 'Reply workflow',
+      DEADLINE: 'Deadline',
     },
     planActions: { CREATE: 'Create', UPDATE: 'Update', UNCHANGED: 'Unchanged', CONFLICT: 'Conflict', BLOCKED: 'Blocked' },
     outcomes: { APPLIED: 'Applied', UNCHANGED: 'Unchanged', SKIPPED: 'Skipped', FAILED: 'Failed' },

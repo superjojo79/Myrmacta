@@ -38,7 +38,7 @@ import java.util.Set;
  * TODO §83 (D4) — export de la configuration du tenant en bundle. <b>Jamais de secret</b> : les champs de connecteur de type
  * mot de passe / secret sont retirés (leurs noms sont conservés pour que l'import sache quoi demander). Les processus et tables de
  * décision exportés sont la dernière version <b>déployée</b>, pas un brouillon. TODO §117 — tranche 2 : groupes d'utilisateurs
- * (sans membres).
+ * (sans membres), workflows « réponse » et échéances des types.
  */
 public final class ExportConfigurationUseCaseImpl implements ExportConfigurationUseCase {
 
@@ -119,6 +119,7 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
         for (WorkflowTypeConfig config : configs) {
             entries.add(new BundleEntry(ArtifactType.WORKFLOW_CONFIG, config.workflowKey(), codec.encode(workflowDoc(config))));
         }
+        entries.addAll(additional.typeSettings().export());
         return new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, clock.instant(), sourceLabel, appVersion, entries);
     }
 

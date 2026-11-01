@@ -11,6 +11,8 @@ export type ArtifactType =
   | 'BPMN'
   | 'WORKFLOW_CONFIG'
   | 'USER_GROUP'
+  | 'REPLY_WORKFLOW'
+  | 'DEADLINE'
 
 export interface PlanEntry {
   type: ArtifactType

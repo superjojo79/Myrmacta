@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.config;
 import be.myrmacta.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
 import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
+import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
 import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
@@ -10,7 +11,9 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
+import be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase;
 import be.myrmacta.domain.promotion.port.in.ExportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
@@ -52,9 +55,17 @@ class PromotionConfig {
 
     /** TODO §117 — artefacts de la tranche 2, partagés par l'export et l'import. */
     @Bean
-    AdditionalArtifacts additionalPromotionArtifacts(UserGroupsUseCase userGroups, ArtifactCodec codec) {
+    AdditionalArtifacts additionalPromotionArtifacts(
+            TenantProperties tenantProperties,
+            UserGroupsUseCase userGroups,
+            ArtifactCodec codec,
+            DossierTypeRepository types,
+            WorkflowTypeConfigRepository workflowConfigs,
+            ManageReplyWorkflowUseCase replyWorkflows,
+            ManageDeadlineUseCase deadlines) {
         return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
-                new GroupReferenceCheck(new XmlGroupReferenceExtractor()));
+                new GroupReferenceCheck(new XmlGroupReferenceExtractor()),
+                new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines));
     }
 
     @Bean

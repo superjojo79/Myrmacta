@@ -100,4 +100,24 @@ public final class ConfigDocs {
             idpGroup = idpGroup == null || idpGroup.isBlank() ? null : idpGroup;
         }
     }
+
+    /** TODO §117 (D-PROMO-TYPE-SETTINGS) — workflow « réponse » d'un type de dossier (D-MAILROOM-REPLY-WORKFLOW). */
+    public record ReplyWorkflowDoc(
+            String dossierTypeCode,
+            be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting.Mode mode,
+            String workflowKey,
+            String childTypeCode) {
+
+        public ReplyWorkflowDoc {
+            java.util.Objects.requireNonNull(dossierTypeCode, "dossierTypeCode");
+        }
+    }
+
+    /** TODO §117 (D-PROMO-TYPE-SETTINGS) — échéance d'un type de dossier (D-DEADLINE-FIELD). */
+    public record DeadlineDoc(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup) {
+
+        public DeadlineDoc {
+            java.util.Objects.requireNonNull(dossierTypeCode, "dossierTypeCode");
+        }
+    }
 }

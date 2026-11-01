@@ -1,0 +1,15 @@
+{
+  "_commentaire": "Point de dépôt de l'écran « Déposer » (§113 D-MAILROOM-DEPOSIT). Chaque PDF déposé par un agent devient un courrier (canal PAPIER) qui suit le même tri que l'e-mail. L'expéditeur saisi va dans le champ expediteur, l'objet dans objet (à défaut, le nom du fichier). Seuls les agents qui ont l'ACL EDIT du type COURRIER voient ce point de dépôt.",
+  "name": "Courrier papier (accueil)",
+  "connectorType": "mail-deposit",
+  "enabled": true,
+  "config": {
+    "processKey": "triCourrier",
+    "dossierTypeCode": "COURRIER",
+    "senderField": "expediteur",
+    "subjectField": "objet",
+    "defaultFields": {
+      "canal": "PAPIER"
+    }
+  }
+}

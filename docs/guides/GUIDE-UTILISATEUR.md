@@ -449,6 +449,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
 | `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
 | `sftp-pdf-inbound` | trigger (PDF numérisés, SFTP) | `sftpHost`, `sftpPort`, `sftpUsername`, `sftpAuthType`, `sftpPassword` ou `sftpPrivateKey`, `sftpHostKeyFingerprint`, `remoteDirectory`, `processedDirectory`, `rejectedDirectory`, `indexFormat` (JSON / CSV / NONE), `csvPattern`, `csvFileColumn`, `requireIndex`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping`, `defaultFields` |
+| `mail-deposit` | trigger (écran « Déposer ») | `processKey`, `dossierTypeCode`, `senderField` (défaut `expediteur`), `subjectField` (défaut `objet`), `defaultFields` |
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
 
 **Appeler une application depuis un processus : instance « service seul » et URL de base (TODO §112, issue #260).** Pour un
@@ -596,6 +597,30 @@ en pièce jointe, puis suit le process indiqué (`processKey`), comme un e-mail.
   - le nom du PDF est aussi dans la variable `courrierFichier`.
 - **Sécurité :** l'empreinte de la clé hôte SFTP est obligatoire, et vérifiée à chaque connexion.
 - **Exemple :** [`exemples/digital-mail-room/config/connecteur-sftp-pdf.exemple.json`](../../exemples/digital-mail-room/config/connecteur-sftp-pdf.exemple.json).
+
+### Déposer un courrier papier : l'écran « Déposer un courrier » et le connecteur `mail-deposit` (TODO §113)
+
+Un agent qui reçoit un courrier papier déjà numérisé le dépose depuis **Déposer un courrier** (menu principal) :
+
+1. choisir le **point de dépôt** (choisi d'office s'il n'y en a qu'un) ;
+2. joindre un ou plusieurs **PDF**, 20 au plus ;
+3. saisir l'**expéditeur** et l'**objet**, tous deux facultatifs ; l'objet vaut, à défaut, le nom du fichier ;
+4. **Déposer**.
+
+Chaque PDF devient un courrier, avec le PDF en pièce jointe, et suit le même tri que l'e-mail. Le résultat donne, fichier
+par fichier, la référence du courrier créé (avec un lien) ou la raison du refus : pas un PDF, trop volumineux, champ
+obligatoire manquant. Un fichier refusé n'empêche pas les autres.
+
+**Créer un point de dépôt (administrateur) :** créer un connecteur **Dépôt manuel de courrier** (`mail-deposit`) avec :
+
+- le type de dossier et le process ;
+- les champs qui reçoivent l'expéditeur et l'objet ;
+- des valeurs fixes, par exemple `{"canal": "PAPIER"}`.
+
+Puis donner l'ACL **EDIT** de ce type aux agents concernés : un agent ne voit que les points de dépôt dont il peut créer
+le type.
+
+Exemple : [`exemples/digital-mail-room/config/connecteur-depot.exemple.json`](../../exemples/digital-mail-room/config/connecteur-depot.exemple.json).
 
 ### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
 

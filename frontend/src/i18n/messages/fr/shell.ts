@@ -12,6 +12,7 @@ export default {
     signatures: 'Mes signatures',
     reports: 'Rapports & SLA',
     newDossier: 'Nouveau dossier',
+    mailDeposit: 'Déposer un courrier',
     types: 'Types',
     templates: 'Templates',
     connectors: 'Connecteurs',

@@ -188,8 +188,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
 | 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
 | 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | #273 |
-| 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | livré | à ouvrir |
-| 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur de dépôt | à faire | |
+| 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | livré | #274 |
+| 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur `mail-deposit`, `ConnectorTriggerRuntime.deliver` | livré | à ouvrir |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
@@ -288,7 +288,13 @@ Fait dans le lot 5a :
 - exemple : `config/connecteur-sftp-pdf.exemple.json` ; `MailRoomExampleIT` fait passer un PDF et son index jusqu'à la file
   de tri.
 
-Prochaine action : PR du lot 5a, puis lot 5b (écran « Déposer »).
+Fait dans le lot 5b :
+- D-MAILROOM-DEPOSIT conçu (§113) : point de dépôt = connecteur `mail-deposit`, droit = ACL EDIT du type ;
+- `ConnectorTriggerRuntime.deliver` (remise d'un événement construit, renvoie le dossier) ; `DepositMailUseCase`,
+  `MailDepositController` (une transaction par fichier, sort de chacun) ; `DossierAccessPolicy.canEditType` ;
+- SPA : écran « Déposer un courrier » (menu principal) ; exemple `config/connecteur-depot.exemple.json`.
+
+Prochaine action : PR du lot 5b, puis lot 6 (MCP lecture et actions gouvernées, avec `security-review`).
 La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a été mergée en §116.
 
 ## Preuves
@@ -327,6 +333,10 @@ La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a
 | 2026-11-01 | lot 5a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | rouge au premier passage (`ConnectorAdminApiTest` : 11 → 12 types), corrigé ; puis vert : 4 128 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-11-01 | lot 5a — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
 | 2026-11-01 | lot 5a — `scripts/check-docs.sh` | vert |
+| 2026-11-01 | lot 5b — `DepositMailUseCaseImplTest`, `ConnectorTriggerRuntimeImplTest`, `MailRoomExampleIT` | vert : 4 + 12 + 5 ; un PDF déposé devient un courrier PAPIER jusqu'à la file de tri, un faux PDF est refusé, un agent sans ACL reçoit 403 et ne voit aucun point |
+| 2026-11-01 | lot 5b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | vert : 4 145 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-11-01 | lot 5b — `npm run lint && npm run test` puis `npx playwright test` | vert : 849 Vitest, 158 Playwright |
+| 2026-11-01 | lot 5b — `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

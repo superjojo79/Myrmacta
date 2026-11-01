@@ -95,6 +95,24 @@ class ConnectorTriggerRuntimeImplTest {
         assertThat(payload.getValue().connectorInstanceId()).isEqualTo(instance.id());
     }
 
+    /** TODO §113 (D-MAILROOM-DEPOSIT) — un événement déjà construit est remis tel quel ; le dossier créé est renvoyé. */
+    @Test
+    void deliverHandsOverASingleEventAndReturnsTheDossier_onlyForATriggerConnector() {
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        UUID dossierId = UUID.randomUUID();
+        when(createDossier.create(any(), any())).thenReturn(dossier(dossierId));
+
+        assertThat(runtime.deliver(instance, new WorkflowTriggerEvent("triCourrier", "COURRIER", Map.of(), Map.of(), null)))
+                .isEqualTo(dossierId);
+        verify(outboxRepository).savePending(any());
+
+        when(catalog.get("http-rest")).thenReturn(mock(ConnectorDefinition.class));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> runtime.deliver(instance,
+                        new WorkflowTriggerEvent("triCourrier", "COURRIER", Map.of(), Map.of(), null)))
+                .isInstanceOf(be.myrmacta.domain.connector.model.ConnectorValidationException.class);
+    }
+
     /** TODO §113 (D-MAILROOM-INDEX) — l'e-mail qui crée un courrier est inscrit dans l'index des fils (Message-ID et conversation). */
     @Test
     void anEmailEventRecordsItsIdentityForTheCreatedDossier() {

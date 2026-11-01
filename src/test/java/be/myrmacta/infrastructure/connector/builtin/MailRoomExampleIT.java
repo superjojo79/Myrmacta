@@ -264,6 +264,47 @@ class MailRoomExampleIT {
                 .containsEntry("filResultat", "NOUVEAU").containsEntry("routageResultat", "A_TRIER");
     }
 
+    /** TODO §113 (D-MAILROOM-DEPOSIT) — un agent dépose deux fichiers : le PDF devient un courrier PAPIER, l'autre est refusé. */
+    @Test
+    void anAgentDepositsAPaperMail_fromTheDepositScreen() throws Exception {
+        configureTheExample();
+        ObjectNode point = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/connecteur-depot.exemple.json").toFile());
+        point.remove("_commentaire");
+        String pointId = JSON.readTree(mockMvc.perform(post("/api/connectors").with(user("admin-courrier", "TENANT_ADMIN")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(point)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+
+        RequestPostProcessor operator = user(OPERATOR, "DOSSIER_MANAGER");
+        assertThat(read(get("/api/mail-deposit-points")).toString()).contains(pointId);
+        assertThat(JSON.readTree(mockMvc.perform(get("/api/mail-deposit-points").with(user("passant", "DOSSIER_MANAGER")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())).isEmpty();
+        mockMvc.perform(multipart("/api/mail-deposit-points/{id}/deposits", pointId)
+                        .file(new MockMultipartFile("files", "lettre.pdf", "application/pdf", "%PDF-1.4 x".getBytes(StandardCharsets.US_ASCII)))
+                        .with(user("passant", "DOSSIER_MANAGER")).with(csrf()))
+                .andExpect(status().isForbidden());
+
+        JsonNode results = JSON.readTree(mockMvc.perform(multipart("/api/mail-deposit-points/{id}/deposits", pointId)
+                        .file(new MockMultipartFile("files", "mise-en-demeure.pdf", "application/pdf",
+                                "%PDF-1.4 mise en demeure".getBytes(StandardCharsets.US_ASCII)))
+                        .file(new MockMultipartFile("files", "photo.pdf", "application/pdf", "JFIF pas un pdf".getBytes(StandardCharsets.US_ASCII)))
+                        .param("expediteur", "avocat@cabinet.example").param("objet", "Mise en demeure 2026-12")
+                        .with(operator).with(csrf()))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("results");
+
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).get("reference").asString()).contains("COURRIER");
+        assertThat(results.get(1).get("refusal").asString()).isEqualTo("pas un PDF");
+        String mailId = results.get(0).get("dossierId").asString();
+        JsonNode dossier = read(get("/api/dossiers/{id}", mailId));
+        assertThat(dossier.get("fields").get("canal").asString()).isEqualTo("PAPIER");
+        assertThat(dossier.get("fields").get("objet").asString()).isEqualTo("Mise en demeure 2026-12");
+        assertThat(read(get("/api/dossiers/{id}/elements", mailId)).toString()).contains("mise-en-demeure.pdf");
+        awaitMailDossierByField("objet", "Mise en demeure 2026-12");
+        ProcessInstance sorting = awaitSortingTask(mailId);
+        assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("courrierDeposePar", OPERATOR)
+                .containsEntry("routageResultat", "A_TRIER");
+    }
+
     /** Le courrier dont un champ vaut cette valeur, une fois le relais de l'outbox terminé (voir {@link #awaitMailDossier}). */
     private String awaitMailDossierByField(String field, String value) throws Exception {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(20));

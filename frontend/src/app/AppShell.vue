@@ -25,6 +25,7 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
       <RouterLink class="app-shell__link" to="/signatures">{{ t('shell.nav.signatures') }}</RouterLink>
       <RouterLink v-if="canSeeReports" class="app-shell__link" to="/rapports">{{ t('shell.nav.reports') }}</RouterLink>
       <RouterLink class="app-shell__link" to="/dossiers/new">{{ t('shell.nav.newDossier') }}</RouterLink>
+      <RouterLink class="app-shell__link" to="/mail-deposit">{{ t('shell.nav.mailDeposit') }}</RouterLink>
       <template v-if="isTenantAdmin || isWorkflowAdmin">
         <p class="app-shell__section">{{ t('shell.sections.admin') }}</p>
         <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/dossier-types">

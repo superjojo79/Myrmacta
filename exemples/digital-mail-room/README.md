@@ -14,12 +14,14 @@ Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une en
 
 Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Dossiers → filtre « Type : Courrier entrant »).
 
-État : **lots 1 à 5a** de la feature.
+État : **lots 1 à 5b** de la feature.
 
 - **Ce que fait déjà l'exemple :**
   - un e-mail devient un courrier, avec ses pièces ;
   - un PDF numérisé déposé par le partenaire sur SFTP, avec son index JSON, devient un courrier « papier » qui suit le
     même tri (`config/connecteur-sftp-pdf.exemple.json`) ;
+  - un agent dépose un PDF papier depuis l'écran « Déposer un courrier » : il devient un courrier « papier » qui suit le
+    même tri (`config/connecteur-depot.exemple.json`) ;
   - la **table de routage** (`routage-courrier.dmn`) décide du sort du courrier :
     - une facture d'un fournisseur connu ouvre un **dossier « facture » lié**, dont la tâche va au groupe COMPTABILITE, avec
       une échéance à 30 jours ;
@@ -38,7 +40,6 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     table (30 jours) ; les personnes qui ont la tâche sont rappelées 5 jours avant ; le lendemain du terme, la tâche passe
     au groupe DIRECTION_FINANCIERE, avec une note dans le dossier.
 - **Ce qui viendra :**
-  - le dépôt manuel de PDF depuis l'écran « Déposer » (lot 5b) ;
   - les outils MCP (lot 6).
 
 ## Contenu
@@ -55,6 +56,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
 | `config/reponse-facture.json` | Workflow réponse du type FACTURE (corps de `PUT /api/dossier-types/FACTURE/reply-workflow`, sans `_commentaire`) |
 | `config/echeance-facture.json` | Échéance du type FACTURE : champ `echeance`, rappel J-5, escalade à DIRECTION_FINANCIERE (corps de `PUT /api/dossier-types/FACTURE/deadline`, sans `_commentaire`) |
 | `config/connecteur-imap.exemple.json` | Connecteur `imap-inbound` vers une boîte générique (**non créé**) |
+| `config/connecteur-depot.exemple.json` | Point de dépôt `mail-deposit` de l'écran « Déposer un courrier » (**non créé**) |
 | `config/connecteur-sftp-pdf.exemple.json` | Connecteur `sftp-pdf-inbound` vers le dossier SFTP du partenaire de numérisation, index JSON compagnon (**non créé**) |
 
 ## Installer
@@ -72,6 +74,8 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
    `trustedAuthservId` de votre serveur de réception.
 7. Pour les PDF numérisés, créer le connecteur depuis `config/connecteur-sftp-pdf.exemple.json` : serveur, compte, secret et
    empreinte de la clé hôte du partenaire.
+8. Pour le dépôt à la main, créer le point de dépôt depuis `config/connecteur-depot.exemple.json`. Les agents qui ont l'ACL
+   `EDIT` du type COURRIER le voient dans « Déposer un courrier ».
 
 Adapter la table à son organisation se fait sans code : une ligne par règle (canal, domaine de l'expéditeur), avec le
 service, le type de dossier, le process et le délai.
@@ -86,4 +90,4 @@ service, le type de dossier, le process et le délai.
 - **Canal :** il vaut `EMAIL` par défaut. Le connecteur SFTP le pose à `PAPIER` (`defaultFields`). La table de routage de
   l'exemple n'a de règle que pour l'e-mail : un courrier papier part donc à la file de tri.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri.
+Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre).

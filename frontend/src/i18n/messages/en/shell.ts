@@ -14,6 +14,7 @@ const shell: typeof fr = {
     signatures: 'My signatures',
     reports: 'Reports & SLA',
     newDossier: 'New dossier',
+    mailDeposit: 'Deposit mail',
     types: 'Types',
     templates: 'Templates',
     connectors: 'Connectors',

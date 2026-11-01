@@ -3,7 +3,11 @@ package be.myrmacta.infrastructure.connector.builtin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
+import be.myrmacta.domain.connector.port.out.SftpClientPort;
 import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
@@ -67,6 +72,7 @@ class MailRoomExampleIT {
     private static final String OPERATOR = "operateur-courrier";
 
     @MockitoBean private ImapMailbox mailbox;
+    @MockitoBean private SftpClientPort sftp;
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ConnectorTriggerRuntime triggerRuntime;
@@ -225,6 +231,51 @@ class MailRoomExampleIT {
                 .containsEntry("filResultat", "NOUVEAU")
                 .containsEntry("filMotif", "domaine de l'expéditeur différent de celui du fil");
         assertThat(read(get("/api/dossiers/{id}/relations", intruder))).isEmpty();
+    }
+
+    /** TODO §113 (D-MAILROOM-PDF-SFTP) — un PDF numérisé et son index JSON deviennent un courrier PAPIER, qui part au tri. */
+    @Test
+    void aScannedPdfWithItsIndexBecomesAPaperMail_sentToTheSortingQueue() throws Exception {
+        configureTheExample();
+        JsonNode example = JSON.readTree(EXAMPLE.resolve("config/connecteur-sftp-pdf.exemple.json").toFile());
+        Map<String, Object> config = JSON.convertValue(example.get("config"), Map.class);
+        ConnectorInstanceData scans = new ConnectorInstanceData(UUID.randomUUID(), TENANT, example.get("name").asString(),
+                example.get("connectorType").asString(), true, config);
+        byte[] pdf = "%PDF-1.4 lettre recommandée".getBytes(StandardCharsets.US_ASCII);
+        byte[] index = "{\"expediteur\":\"greffe@tribunal.example\",\"objet\":\"Convocation 2026-77\"}".getBytes(StandardCharsets.UTF_8);
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{pdf,PDF}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/convocation.pdf", pdf.length)));
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{json,JSON}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/convocation.json", index.length)));
+        when(sftp.download(any(), eq("/scans/entree/convocation.pdf"), anyLong())).thenReturn(pdf);
+        when(sftp.download(any(), eq("/scans/entree/convocation.json"), anyLong())).thenReturn(index);
+
+        triggerRuntime.onIncomingEvent(scans, Map.of());
+
+        verify(sftp).archive(any(), eq("/scans/entree/convocation.pdf"), eq("/scans/traites"));
+        verify(sftp).archive(any(), eq("/scans/entree/convocation.json"), eq("/scans/traites"));
+        String mailId = awaitMailDossierByField("objet", "Convocation 2026-77");
+        JsonNode dossier = read(get("/api/dossiers/{id}", mailId));
+        assertThat(dossier.get("fields").get("canal").asString()).isEqualTo("PAPIER");
+        assertThat(dossier.get("fields").get("expediteur").asString()).isEqualTo("greffe@tribunal.example");
+        assertThat(read(get("/api/dossiers/{id}/elements", mailId)).toString()).contains("convocation.pdf");
+        ProcessInstance sorting = awaitSortingTask(mailId);
+        assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("courrierFichier", "convocation.pdf")
+                .containsEntry("filResultat", "NOUVEAU").containsEntry("routageResultat", "A_TRIER");
+    }
+
+    /** Le courrier dont un champ vaut cette valeur, une fois le relais de l'outbox terminé (voir {@link #awaitMailDossier}). */
+    private String awaitMailDossierByField(String field, String value) throws Exception {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
+        while (Instant.now().isBefore(deadline)) {
+            Integer pending = jdbc.queryForObject("select count(*) from outbox_event where status = 'PENDING'", Integer.class);
+            JsonNode found = read(get("/api/dossiers").param("dossierTypeCode", "COURRIER").param("f." + field, value)).get("content");
+            if (pending != null && pending == 0 && found.size() == 1) {
+                return found.get(0).get("id").asString();
+            }
+            Thread.sleep(200);
+        }
+        throw new AssertionError("no mail dossier with " + field + " = " + value);
     }
 
     private void deliver(ImapMailbox.Mail mail) throws Exception {

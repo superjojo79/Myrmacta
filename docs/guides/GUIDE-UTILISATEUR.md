@@ -448,6 +448,7 @@ connecteurs eux-mêmes — leurs instances configurées). Types fournis de base 
 | `document-storage` | service | aucun champ d'instance (réutilise le stockage documents déjà configuré) ; depuis un process, ne relit que ce qu'il a stocké pour le même dossier |
 | `graph-mail-inbound` | trigger (e-mail entrant, Microsoft Graph) | `mailbox`, `graphBaseUrl`, `folder`, `processedFolder`, `rejectedFolder`, OAuth2 (`oauthTokenUrl`, `oauthClientId`, `oauthClientSecret` ou certificat, `oauthScope`), puis les mêmes réglages de routage que `imap-inbound` (`pollSeconds`, `maxAttachments`, `requireAuthenticatedSender`, `trustedAuthservId`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping`) |
 | `imap-inbound` | trigger (e-mail entrant) | `host`, `port`, `security` (SSL / STARTTLS), `username`, `authMode` (mot de passe ou OAuth2), `password`, `folder`, `processedFolder`, `rejectedFolder`, `pollSeconds`, `referencePattern`, `processKey`, `dossierTypeCode`, `mapping` |
+| `sftp-pdf-inbound` | trigger (PDF numérisés, SFTP) | `sftpHost`, `sftpPort`, `sftpUsername`, `sftpAuthType`, `sftpPassword` ou `sftpPrivateKey`, `sftpHostKeyFingerprint`, `remoteDirectory`, `processedDirectory`, `rejectedDirectory`, `indexFormat` (JSON / CSV / NONE), `csvPattern`, `csvFileColumn`, `requireIndex`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping`, `defaultFields` |
 | `azure-service-bus` | trigger (bus Azure) | `namespaceHost`, `entityPath`, `authMode` (SAS ou OAuth2), `sasKeyName`, `sasKey`, `pollSeconds`, `processKey`, `dossierTypeCode`, `mapping` |
 
 **Appeler une application depuis un processus : instance « service seul » et URL de base (TODO §112, issue #260).** Pour un
@@ -573,6 +574,28 @@ toutes les `pollSeconds` secondes (30 au minimum).
   (encodage inconnu, MIME trop imbriqué) y va aussi, sans bloquer les autres. Une instance en échec (mot de passe expiré, hôte injoignable) est réessayée à son propre intervalle
   `pollSeconds`, jamais plus souvent. Il n'y a pas de détection des doublons par `Message-ID`. Les e-mails envoyés par Myrmacta portent `Auto-Submitted: auto-generated` : ils ne
   rebouclent pas.
+
+### Recevoir des PDF numérisés : le connecteur `sftp-pdf-inbound` (TODO §113)
+
+Le partenaire de numérisation dépose ses PDF dans un dossier SFTP. Chaque PDF y devient un dossier (un courrier) avec le PDF
+en pièce jointe, puis suit le process indiqué (`processKey`), comme un e-mail.
+
+- **Rangement :** un PDF pris en charge passe dans `processedDirectory`, un PDF refusé dans `rejectedDirectory`. Rien
+  n'est supprimé. Sont refusés : un fichier qui n'est pas un PDF, un fichier trop volumineux, un index illisible et un champ
+  mappé vide sans valeur par défaut.
+- **Index du partenaire (`indexFormat`) :**
+  - `JSON` : un fichier de même nom à côté du PDF (`facture-117.pdf` et `facture-117.json`) ;
+  - `CSV` : un fichier par lot, une ligne par PDF, avec une colonne `fichier` (réglable : `csvFileColumn`) qui nomme le
+    PDF. Déposez le CSV **après** les PDF : une ligne dont le PDF n'est pas encore là est ignorée ;
+  - `NONE` : pas d'index.
+- **Index obligatoire (`requireIndex`, coché par défaut) :** un PDF sans index attend le sien. Décoché, il est traité
+  tout de suite, sans métadonnées.
+- **Champs du dossier :**
+  - `mapping` lit `{"fichier": nom du PDF, "index": {…}}`, par exemple `"expediteur": "$.index.expediteur"` ;
+  - `defaultFields` donne des valeurs fixes, par exemple `{"canal": "PAPIER"}` ;
+  - le nom du PDF est aussi dans la variable `courrierFichier`.
+- **Sécurité :** l'empreinte de la clé hôte SFTP est obligatoire, et vérifiée à chaque connexion.
+- **Exemple :** [`exemples/digital-mail-room/config/connecteur-sftp-pdf.exemple.json`](../../exemples/digital-mail-room/config/connecteur-sftp-pdf.exemple.json).
 
 ### Recevoir des événements du bus Azure : le connecteur `azure-service-bus` (TODO §87)
 

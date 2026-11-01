@@ -187,8 +187,9 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 3a | Fils : index des identifiants reçus et envoyés (changeset 043), brique « Rattacher au fil », modes 1 et 2 (`courrierRecu`) | livré | #268 |
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
 | 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
-| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | à ouvrir |
-| 5 | Canal PDF : dépôt manuel + dossier SFTP surveillé ; point du registre à écrire | à faire | |
+| 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | #273 |
+| 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | en cours | |
+| 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur de dépôt | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
@@ -279,11 +280,17 @@ Appris pendant le lot 4b :
 - Flowable accepte une chaîne ISO 8601 renvoyée par l'expression d'un `timeDate` ; le minuteur se crée avec cet instant
   exact (vérifié par `MailRoomExampleIT`).
 
-Prochaine action : PR du lot 4b (ferme #186), puis lot 5 (canal PDF). Arbitrages de l'utilisateur pour le lot 5
-(2026-10-31) : index du partenaire en JSON compagnon ET en CSV par lot, au choix dans le connecteur ; écran « Déposer »
-pour le dépôt manuel (un courrier PAPIER par PDF, même tri que l'e-mail). Calendrier de jours ouvrables : issue #270
-(D-DEADLINE-CALENDAR). Les preuves sont locales (`./mvnw verify` hors root, tests frontend, `check-docs`) tant que le
-runner de CI est en panne (accord de l'utilisateur, 2026-10-31).
+Fait dans le lot 5a :
+- points D-MAILROOM-PDF-SFTP et D-MAILROOM-DEPOSIT écrits dans §113 ;
+- connecteur `sftp-pdf-inbound` (`PollingTriggerConnector`, interrogé avec l'e-mail) : remise avant rangement (traités /
+  refusés), index JSON compagnon ou CSV par lot, `requireIndex`, `defaultFields`, signature `%PDF-`, limites
+  `app.inbound.*` ;
+- exemple : `config/connecteur-sftp-pdf.exemple.json` ; `MailRoomExampleIT` fait passer un PDF et son index jusqu'à la file
+  de tri.
+
+Prochaine action : preuves du lot 5a, PR, puis lot 5b (écran « Déposer »).
+Collision : la PR #272 (agent Cursor, `D-HTTP-PATCH`) a pris aussi le numéro §115, désormais publié pour les échéances ;
+elle doit passer en §116 (signalé à l'utilisateur).
 
 ## Preuves
 

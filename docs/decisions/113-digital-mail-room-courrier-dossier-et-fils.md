@@ -130,11 +130,43 @@ tourne déjà, trois réactions se choisissent et se combinent :
    n'attend : rien d'autre ne se passe, ce n'est pas une erreur.
 3. **Si le type de dossier en déclare un :** un workflow « réponse » démarre sur le même dossier.
 
+**D-MAILROOM-PDF-SFTP** (tranché par l'utilisateur, lot 5a, 2026-10-31) — les PDF déjà numérisés déposés par un
+partenaire dans un dossier SFTP deviennent des courriers, par un connecteur d'entrée `sftp-pdf-inbound` :
+
+- **Interrogation, remise avant rangement :** même mécanique que l'e-mail (`PollingTriggerConnector`, §87). Chaque PDF
+  est remis au runtime avant d'être déplacé : dans `processedDirectory` s'il est pris en charge, dans `rejectedDirectory`
+  sinon. Rien n'est supprimé.
+- **Index du partenaire, au choix dans la configuration (`indexFormat`) :**
+  - `JSON` : un fichier compagnon de même nom (`facture-117.pdf` et `facture-117.json`, 64 Ko au plus, un objet) ;
+  - `CSV` : un index par lot (`csvPattern`, par défaut `*.csv`), une ligne par PDF, dont la colonne `csvFileColumn` (par
+    défaut `fichier`) nomme le fichier. Le partenaire dépose l'index **après** ses PDF ; une ligne sans PDF est ignorée et
+    journalisée, et l'index est rangé une fois lu ;
+  - `NONE` : pas d'index.
+- **Sans index** (`requireIndex`, vrai par défaut) : le PDF attend son index et reste en place. Avec `requireIndex=false`,
+  il est traité aussitôt, sans métadonnées. Le partenaire doit alors déposer l'index avant le PDF, ou par renommage
+  atomique.
+- **Champs :**
+  - le mapping (`mapping.fields`, `mapping.variables`) lit la charge `{"fichier": nom, "index": {…}}` avec les mêmes
+    chemins `$.…` que les autres connecteurs ;
+  - `defaultFields` donne des valeurs constantes, par exemple `{"canal": "PAPIER"}`, prises quand le mapping ne donne
+    rien ;
+  - un champ mappé vide, sans défaut, fait refuser le PDF, comme un e-mail.
+- **Contrôles :**
+  - la signature `%PDF-` est vérifiée ;
+  - la taille est bornée par `app.inbound.max-attachment-bytes`, et le nombre par interrogation par
+    `app.inbound.max-messages-per-poll` ;
+  - le PDF suit le chemin des pièces jointes de l'e-mail, antivirus compris ;
+  - le connecteur SFTP exige l'empreinte de la clé hôte, comme `batch-import`.
+- **Limite connue, la même que l'e-mail :** une panne entre la création du courrier et le déplacement du PDF fait
+  retraiter ce PDF au passage suivant.
+
+**D-MAILROOM-DEPOSIT** (tranché par l'utilisateur, lot 5b, 2026-10-31) — un agent dépose à la main un ou plusieurs PDF
+depuis un écran « Déposer ». Chaque PDF devient un courrier (canal `PAPIER`), qui suit le même tri que l'e-mail. Le type,
+le process et les champs viennent d'un connecteur de dépôt. La conception détaillée est faite au lot 5b.
+
 **Reste à trancher à la conception de leur lot :**
 
-- échéances et minuteurs à expression (#186) : l'allowlist refuse tout `${…}` dans un minuteur (§69) ;
-- outils MCP d'action ;
-- dépôt SFTP de PDF ;
+- outils MCP d'action (lot 6) ;
 - OCR.
 
 **Impacte :** nouvelle spec `docs/specs/49-digital-mail-room.md`, `docs/guides/GUIDE-UTILISATEUR.md`,

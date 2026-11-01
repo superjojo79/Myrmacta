@@ -1,4 +1,4 @@
-package be.myrmacta.domain.promotion.usecase;
+package be.myrmacta.domain.promotion.artifact;
 
 import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
@@ -31,7 +31,7 @@ public final class UserGroupArtifacts {
         this.codec = Objects.requireNonNull(codec, "codec");
     }
 
-    List<BundleEntry> export() {
+    public List<BundleEntry> export() {
         return groups.list().stream()
                 .sorted(Comparator.comparing(UserGroup::code))
                 .map(g -> new BundleEntry(ArtifactType.USER_GROUP, g.code(),
@@ -40,11 +40,11 @@ public final class UserGroupArtifacts {
     }
 
     /** Codes des groupes de la cible. */
-    Set<String> existingCodes() {
+    public Set<String> existingCodes() {
         return groups.list().stream().map(UserGroup::code).collect(Collectors.toUnmodifiableSet());
     }
 
-    PlanEntry plan(BundleEntry entry, Map<String, String> parameters, String tenantId) {
+    public PlanEntry plan(BundleEntry entry, Map<String, String> parameters, String tenantId) {
         UserGroupDoc raw = PromotionSupport.decode(codec, entry, UserGroupDoc.class);
         PromotionSupport.requireSameKey(entry, raw.code());
         UserGroupDoc doc;
@@ -70,7 +70,7 @@ public final class UserGroupArtifacts {
         return new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, PromotionSupport.cap(reason));
     }
 
-    String apply(BundleEntry entry, PlanAction action, Map<String, String> parameters) {
+    public String apply(BundleEntry entry, PlanAction action, Map<String, String> parameters) {
         UserGroupDoc doc = substitute(PromotionSupport.decode(codec, entry, UserGroupDoc.class), parameters);
         if (action == PlanAction.CREATE) {
             groups.create(doc.code(), doc.label(), doc.idpGroup());

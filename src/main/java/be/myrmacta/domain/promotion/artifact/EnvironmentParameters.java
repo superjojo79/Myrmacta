@@ -1,4 +1,4 @@
-package be.myrmacta.domain.promotion.usecase;
+package be.myrmacta.domain.promotion.artifact;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * liste. Un paramètre absent lève {@link MissingParameterException} : l'artefact qui le porte est bloqué. Partagé par les
  * connecteurs et, TODO §117 (D-PROMO-GROUP), le groupe de l'IdP d'un groupe d'utilisateurs.
  */
-final class EnvironmentParameters {
+public final class EnvironmentParameters {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([A-Za-z0-9_.-]{1,64})}}");
 
@@ -19,7 +19,7 @@ final class EnvironmentParameters {
 
     /** @param owner ce qui porte la valeur, pour le message (« connector 'X' », « user group 'Y' ») */
     @SuppressWarnings("unchecked")
-    static Object substitute(Object value, Map<String, String> parameters, String owner) {
+    public static Object substitute(Object value, Map<String, String> parameters, String owner) {
         if (value instanceof String s) {
             Matcher m = PLACEHOLDER.matcher(s);
             StringBuilder sb = new StringBuilder();
@@ -44,7 +44,7 @@ final class EnvironmentParameters {
         return value;
     }
 
-    static final class MissingParameterException extends RuntimeException {
+    public static final class MissingParameterException extends RuntimeException {
         MissingParameterException(String message) {
             super(message);
         }

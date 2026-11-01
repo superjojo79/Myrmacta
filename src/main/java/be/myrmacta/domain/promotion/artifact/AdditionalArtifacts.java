@@ -1,4 +1,4 @@
-package be.myrmacta.domain.promotion.usecase;
+package be.myrmacta.domain.promotion.artifact;
 
 import java.util.Objects;
 

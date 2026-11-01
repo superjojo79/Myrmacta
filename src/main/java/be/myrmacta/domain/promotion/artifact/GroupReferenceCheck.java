@@ -1,4 +1,4 @@
-package be.myrmacta.domain.promotion.usecase;
+package be.myrmacta.domain.promotion.artifact;
 
 import be.myrmacta.domain.promotion.port.out.GroupReferenceExtractor;
 import java.util.Objects;
@@ -20,7 +20,7 @@ public final class GroupReferenceCheck {
     }
 
     /** @param known groupes de la cible et du bundle (non bloqués) */
-    String bpmnWarning(byte[] xml, Set<String> known) {
+    public String bpmnWarning(byte[] xml, Set<String> known) {
         Set<String> missing = missing(extractor.fromBpmn(xml), known);
         return missing.isEmpty()
                 ? ""
@@ -28,7 +28,7 @@ public final class GroupReferenceCheck {
                         + " (their tasks stay unassigned, mail goes to the sorting queue).";
     }
 
-    String dmnWarning(byte[] xml, Set<String> known) {
+    public String dmnWarning(byte[] xml, Set<String> known) {
         Set<String> missing = missing(extractor.fromDmn(xml), known);
         return missing.isEmpty()
                 ? ""

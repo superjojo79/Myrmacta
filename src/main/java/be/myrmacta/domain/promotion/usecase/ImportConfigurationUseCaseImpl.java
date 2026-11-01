@@ -11,6 +11,9 @@ import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUse
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
+import be.myrmacta.domain.promotion.artifact.EnvironmentParameters;
+import be.myrmacta.domain.promotion.artifact.PromotionSupport;
 import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigImportRecord;

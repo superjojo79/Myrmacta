@@ -1,4 +1,4 @@
-package be.myrmacta.domain.promotion.usecase;
+package be.myrmacta.domain.promotion.artifact;
 
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.InvalidBundleException;
@@ -6,15 +6,15 @@ import be.myrmacta.domain.promotion.model.PlanEntry;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
 
 /** TODO §117 — outils partagés par les artefacts de la tranche 2 (mêmes règles que l'import de la tranche 1). */
-final class PromotionSupport {
+public final class PromotionSupport {
 
-    static final int MAX_REASON_CHARS = 400;
+    public static final int MAX_REASON_CHARS = 400;
     /** Préfixe d'un avertissement dans la raison d'une ligne du plan (D-PROMO-ORPHAN) : toujours en tête, jamais tronqué. */
-    static final String WARNING = "WARNING: ";
+    public static final String WARNING = "WARNING: ";
 
     private PromotionSupport() {}
 
-    static <T> T decode(ArtifactCodec codec, BundleEntry entry, Class<T> type) {
+    public static <T> T decode(ArtifactCodec codec, BundleEntry entry, Class<T> type) {
         try {
             return codec.decode(entry.content(), type);
         } catch (InvalidBundleException e) {
@@ -24,20 +24,20 @@ final class PromotionSupport {
         }
     }
 
-    static void requireSameKey(BundleEntry entry, String docIdentity) {
+    public static void requireSameKey(BundleEntry entry, String docIdentity) {
         if (!entry.key().equals(docIdentity)) {
             throw new InvalidBundleException(entry.type() + " file '" + entry.key() + "' describes '" + docIdentity
                     + "': the file name and its content must agree");
         }
     }
 
-    static String cap(String text) {
+    public static String cap(String text) {
         String t = text == null ? "" : text;
         return t.length() > MAX_REASON_CHARS ? t.substring(0, MAX_REASON_CHARS) + "…" : t;
     }
 
     /** Ajoute un avertissement en tête de la raison, sans changer l'action : seule la suite peut être tronquée. */
-    static PlanEntry warn(PlanEntry planned, String warning) {
+    public static PlanEntry warn(PlanEntry planned, String warning) {
         if (warning == null || warning.isBlank()) {
             return planned;
         }

@@ -32,7 +32,11 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -40,7 +44,8 @@ import tools.jackson.databind.ObjectMapper;
  * TODO §113 (D-MAILROOM-PDF-SFTP) — connecteur TRIGGER « PDF numérisés » : interroge un dossier SFTP ; chaque PDF devient un
  * courrier, avec l'index du partenaire s'il en fournit un (JSON compagnon ou CSV par lot). Chaque PDF est remis au runtime AVANT
  * d'être déplacé : dans {@code processedDirectory} s'il est pris en charge, dans {@code rejectedDirectory} sinon. Rien n'est
- * supprimé. Le PDF suit le chemin des pièces jointes de l'e-mail (types, signature, antivirus).
+ * supprimé. Le PDF suit le chemin des pièces jointes de l'e-mail (types, signature, antivirus) ; s'il y est écarté, sa remise
+ * est annulée et il part dans {@code rejectedDirectory} (issue #277).
  */
 @Component
 public class SftpPdfInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
@@ -59,13 +64,27 @@ public class SftpPdfInboundConnector implements ConnectorDefinition, PollingTrig
     private final SimpleJsonPathMapper mapper;
     private final ObjectMapper objectMapper;
     private final InboundConnectorProperties inbound;
+    private final TransactionOperations transactions;
 
+    @Autowired
     public SftpPdfInboundConnector(SftpClientPort sftp, SimpleJsonPathMapper mapper, ObjectMapper objectMapper,
+            InboundConnectorProperties inbound, PlatformTransactionManager transactionManager) {
+        this(sftp, mapper, objectMapper, inbound, new TransactionTemplate(transactionManager));
+    }
+
+    /** Sans transaction : tests du connecteur seul. */
+    SftpPdfInboundConnector(SftpClientPort sftp, SimpleJsonPathMapper mapper, ObjectMapper objectMapper,
             InboundConnectorProperties inbound) {
+        this(sftp, mapper, objectMapper, inbound, TransactionOperations.withoutTransaction());
+    }
+
+    SftpPdfInboundConnector(SftpClientPort sftp, SimpleJsonPathMapper mapper, ObjectMapper objectMapper,
+            InboundConnectorProperties inbound, TransactionOperations transactions) {
         this.sftp = Objects.requireNonNull(sftp, "sftp");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.inbound = Objects.requireNonNull(inbound, "inbound");
+        this.transactions = Objects.requireNonNull(transactions, "transactions");
     }
 
     @Override
@@ -344,11 +363,26 @@ public class SftpPdfInboundConnector implements ConnectorDefinition, PollingTrig
             }
             variables.keySet().removeAll(InboundMailRouting.PLATFORM_VARIABLES);
             variables.put("courrierFichier", name);
+            WorkflowTriggerEvent event = new WorkflowTriggerEvent(text(config, "processKey"), text(config, "dossierTypeCode"), fields,
+                    variables, null, List.of(new InboundAttachment(name, "application/pdf", content)), true);
+            Integer rejectedAttachments;
             try {
-                delivery.deliver(new WorkflowTriggerEvent(text(config, "processKey"), text(config, "dossierTypeCode"), fields, variables,
-                        null, List.of(new InboundAttachment(name, "application/pdf", content)), true));
+                // Issue #277 : une transaction par PDF. Le PDF est le seul contenu du courrier : écarté par les contrôles des pièces
+                // (type, contenu, antivirus, stockage), la remise est annulée — ni courrier vide, ni process — comme à l'écran
+                // « Déposer » (D-MAILROOM-DEPOSIT), et le partenaire le retrouve dans « refusés ».
+                rejectedAttachments = transactions.execute(status -> {
+                    int rejected = delivery.deliverAndReport(event).rejectedAttachments();
+                    if (rejected > 0) {
+                        status.setRollbackOnly();
+                    }
+                    return rejected;
+                });
             } catch (RuntimeException failure) {
                 reject(pdf, companion, "prise en charge impossible (" + failure.getClass().getSimpleName() + ")");
+                return;
+            }
+            if (rejectedAttachments != null && rejectedAttachments > 0) {
+                reject(pdf, companion, "pièce refusée par les contrôles (type, contenu ou antivirus)");
                 return;
             }
             move(pdf, companion, processed);

@@ -279,7 +279,7 @@ class ConnectorTriggerRuntimeImplTest {
 
     // ---- revue D3c/D3d, H2 : un connecteur d'interrogation acquitte APRÈS l'enregistrement ----
 
-    private static final class RecordingPoller implements be.myrmacta.domain.connector.model.PollingTriggerConnector {
+    private static class RecordingPoller implements be.myrmacta.domain.connector.model.PollingTriggerConnector {
         final List<String> log = new java.util.ArrayList<>();
         final List<WorkflowTriggerEvent> toDeliver;
 
@@ -342,6 +342,30 @@ class ConnectorTriggerRuntimeImplTest {
         @Override public void poll(be.myrmacta.domain.connector.model.ConnectorInstanceData instance, EventDelivery delivery) {
             poller.poll(instance, delivery);
         }
+    }
+
+    /** Issue #277 — par la relève, la remise dit au connecteur combien de pièces ont été écartées par les contrôles. */
+    @Test
+    void aPollingDeliveryReportsTheAttachmentsRejectedByTheChecks() {
+        var attach = mock(be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase.class);
+        var withAttach = new ConnectorTriggerRuntimeImpl(catalog, createDossier, getDossier, outboxRepository, attach);
+        var file = new be.myrmacta.domain.connector.model.InboundAttachment("a.pdf", "application/pdf", new byte[] {1});
+        List<Integer> reported = new java.util.ArrayList<>();
+        var poller = new RecordingPoller(List.of()) {
+            @Override
+            public void poll(be.myrmacta.domain.connector.model.ConnectorInstanceData instance, EventDelivery delivery) {
+                reported.add(delivery.deliverAndReport(new WorkflowTriggerEvent("p", "SINISTRE", Map.of(), Map.of(), null,
+                        List.of(file))).rejectedAttachments());
+            }
+        };
+        when(catalog.get("http-rest")).thenReturn(new PollingDefinition(poller));
+        when(createDossier.create(any(), any())).thenReturn(dossier(UUID.randomUUID()));
+        when(attach.attach(any(), any(), any()))
+                .thenReturn(new be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase.Report(0, List.of("a.pdf: virus")));
+
+        withAttach.onIncomingEvent(instance(), Map.of());
+
+        assertThat(reported).containsExactly(1);
     }
 
     @Test

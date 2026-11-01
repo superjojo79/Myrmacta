@@ -17,6 +17,20 @@ public interface PollingTriggerConnector extends TriggerConnector {
     interface EventDelivery {
         /** @throws RuntimeException l'événement n'a pas pu être pris en charge (le message ne sera pas acquitté comme traité) */
         void deliver(WorkflowTriggerEvent event);
+
+        /**
+         * Issue #277 — remet l'événement et dit combien de ses pièces ont été écartées par les contrôles (type, contenu, antivirus,
+         * stockage). Le runtime le compte ; une remise qui ne sait pas compter (repli, tests) n'en signale aucune.
+         *
+         * @throws RuntimeException comme {@link #deliver}
+         */
+        default Outcome deliverAndReport(WorkflowTriggerEvent event) {
+            deliver(event);
+            return new Outcome(0);
+        }
+
+        /** Sort d'une remise : le nombre de pièces écartées. */
+        record Outcome(int rejectedAttachments) {}
     }
 
     @Override

@@ -80,7 +80,18 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
 
         if (trigger instanceof PollingTriggerConnector polling) {
             // Source interrogée : chaque événement est enregistré AVANT que le message ne soit rangé ou acquitté (revue D3c/D3d, H2).
-            polling.poll(instance, event -> handle(instance, event));
+            polling.poll(instance, new PollingTriggerConnector.EventDelivery() {
+                @Override
+                public void deliver(WorkflowTriggerEvent event) {
+                    handle(instance, event);
+                }
+
+                // Issue #277 : le connecteur peut annuler la remise d'un événement dont les pièces ont été écartées
+                @Override
+                public Outcome deliverAndReport(WorkflowTriggerEvent event) {
+                    return new Outcome(handle(instance, event).rejectedAttachments());
+                }
+            });
             return;
         }
         for (WorkflowTriggerEvent event : trigger.onEvent(instance, rawPayload)) {

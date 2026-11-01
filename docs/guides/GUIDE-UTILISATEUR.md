@@ -608,8 +608,9 @@ Le partenaire de numérisation dépose ses PDF dans un dossier SFTP. Chaque PDF 
 en pièce jointe, puis suit le process indiqué (`processKey`), comme un e-mail.
 
 - **Rangement :** un PDF pris en charge passe dans `processedDirectory`, un PDF refusé dans `rejectedDirectory`. Rien
-  n'est supprimé. Sont refusés : un fichier qui n'est pas un PDF, un fichier trop volumineux, un index illisible et un champ
-  mappé vide sans valeur par défaut.
+  n'est supprimé. Sont refusés : un fichier qui n'est pas un PDF, un fichier trop volumineux, un index illisible, un champ
+  mappé vide sans valeur par défaut et un PDF écarté par les contrôles des pièces (antivirus, contenu). Un PDF refusé ne
+  crée pas de courrier.
 - **Index du partenaire (`indexFormat`) :**
   - `JSON` : un fichier de même nom à côté du PDF (`facture-117.pdf` et `facture-117.json`) ;
   - `CSV` : un fichier par lot, une ligne par PDF, avec une colonne `fichier` (réglable : `csvFileColumn`) qui nomme le

@@ -324,6 +324,7 @@ export default {
       DMN: 'Table DMN',
       BPMN: 'Processus BPMN',
       WORKFLOW_CONFIG: 'Config. de workflow',
+      USER_GROUP: "Groupe d'utilisateurs",
     },
     planActions: { CREATE: 'Créer', UPDATE: 'Modifier', UNCHANGED: 'Inchangé', CONFLICT: 'Conflit', BLOCKED: 'Bloqué' },
     outcomes: { APPLIED: 'Appliqué', UNCHANGED: 'Inchangé', SKIPPED: 'Ignoré', FAILED: 'Échec' },

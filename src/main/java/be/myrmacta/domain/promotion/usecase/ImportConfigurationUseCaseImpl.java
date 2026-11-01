@@ -57,8 +57,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * TODO §83 (D4) — import d'un bundle : plan à blanc puis application, par les cas d'usage existants (jamais d'écriture directe).
@@ -76,7 +74,6 @@ import java.util.regex.Pattern;
  */
 public final class ImportConfigurationUseCaseImpl implements ImportConfigurationUseCase {
 
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([A-Za-z0-9_.-]{1,64})}}");
     private static final int MAX_REASON_CHARS = 400;
 
     private final String tenantId;
@@ -100,6 +97,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     private final SaveWorkflowTypeConfigUseCase saveWorkflowConfig;
     private final ProposeDraftUseCase propose;
     private final ConfigImportLogRepository journal;
+    private final AdditionalArtifacts additional;
 
     public ImportConfigurationUseCaseImpl(
             String tenantId,
@@ -122,7 +120,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             WorkflowTypeConfigRepository workflowConfigs,
             SaveWorkflowTypeConfigUseCase saveWorkflowConfig,
             ProposeDraftUseCase propose,
-            ConfigImportLogRepository journal) {
+            ConfigImportLogRepository journal,
+            AdditionalArtifacts additional) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.guard = Objects.requireNonNull(guard, "guard");
@@ -144,6 +143,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         this.saveWorkflowConfig = Objects.requireNonNull(saveWorkflowConfig, "saveWorkflowConfig");
         this.propose = Objects.requireNonNull(propose, "propose");
         this.journal = Objects.requireNonNull(journal, "journal");
+        this.additional = Objects.requireNonNull(additional, "additional");
     }
 
     // ------------------------------------------------------------------ plan
@@ -164,22 +164,45 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         Set<String> names = connectorNames(bundle);
         Map<String, PlanEntry> byKey = new LinkedHashMap<>();
         List<BundleEntry> ordered = bundle.entries().stream()
-                .sorted(Comparator.comparing((BundleEntry e) -> e.type().ordinal()).thenComparing(BundleEntry::key))
+                .sorted(Comparator.comparing((BundleEntry e) -> e.type().applyRank()).thenComparing(BundleEntry::key))
                 .toList();
         List<PlanEntry> entries = new ArrayList<>();
+        Set<String> targetGroups = additional.groups().existingCodes();
         for (BundleEntry entry : ordered) {
             PlanEntry planned = switch (entry.type()) {
+                case USER_GROUP -> additional.groups().plan(entry, parameters, tenantId);
                 case DOSSIER_TYPE -> planDossierType(entry);
                 case TASK_QUESTION_SCHEMA -> planSchema(entry);
                 case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets, names);
-                case DMN -> planDmn(actor, entry);
-                case BPMN -> planBpmn(actor, entry, bundle, byKey);
+                case DMN -> warnUnknownGroups(planDmn(actor, entry),
+                        known -> additional.groupReferences().dmnWarning(entry.content(), known), targetGroups, byKey);
+                case BPMN -> warnUnknownGroups(planBpmn(actor, entry, bundle, byKey),
+                        known -> additional.groupReferences().bpmnWarning(entry.content(), known), targetGroups, byKey);
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
             };
             byKey.put(entry.type() + "/" + entry.key(), planned);
             entries.add(planned);
         }
         return new ImportPlan(bundle.sha256(), bundle.formatVersion(), bundle.sourceLabel(), entries);
+    }
+
+    /**
+     * TODO §117 (D-PROMO-ORPHAN) — un groupe nommé par le document, inconnu de la cible et absent du bundle (ou bloqué dans le
+     * bundle), est signalé en tête de la raison ; l'artefact reste appliqué.
+     */
+    private static PlanEntry warnUnknownGroups(
+            PlanEntry planned,
+            java.util.function.Function<Set<String>, String> warning,
+            Set<String> targetGroups,
+            Map<String, PlanEntry> planSoFar) {
+        if (planned.action() == PlanAction.BLOCKED || planned.action() == PlanAction.CONFLICT) {
+            return planned;
+        }
+        Set<String> known = new HashSet<>(targetGroups);
+        planSoFar.values().stream()
+                .filter(p -> p.type() == ArtifactType.USER_GROUP && p.action() != PlanAction.BLOCKED && p.action() != PlanAction.CONFLICT)
+                .forEach(p -> known.add(p.key()));
+        return PromotionSupport.warn(planned, warning.apply(known));
     }
 
     /** Un bundle ne porte aucun secret : un fichier de connecteur qui en contient est un bundle forgé ou mal exporté. */
@@ -257,7 +280,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         ConnectorDoc doc;
         try {
             doc = substitute(raw, parameters);
-        } catch (MissingParameterException e) {
+        } catch (EnvironmentParameters.MissingParameterException e) {
             return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, e.getMessage(), raw.secretFields(), raw.name());
         }
         List<ConnectorInstanceData> sameName = connectors.listByTenantId(tenantId).stream()
@@ -496,6 +519,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             Map<String, ImportOutcome> outcomes) {
         try {
             String message = switch (entry.type()) {
+                case USER_GROUP -> additional.groups().apply(entry, planned.action(), params);
                 case DOSSIER_TYPE -> applyDossierType(actor, entry, planned.action());
                 case TASK_QUESTION_SCHEMA -> applySchema(actor, entry, planned.action());
                 case CONNECTOR_INSTANCE -> applyConnector(actor, entry, planned.action(), params, secrets, connectorNames(bundle));
@@ -677,42 +701,10 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         Map<String, Object> out = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : doc.config().entrySet()) {
             if (e.getValue() != null) {
-                out.put(e.getKey(), ExportConfigurationUseCaseImpl.normalizeValue(substituteValue(e.getValue(), parameters, doc.name())));
+                out.put(e.getKey(), ExportConfigurationUseCaseImpl.normalizeValue(
+                        EnvironmentParameters.substitute(e.getValue(), parameters, "connector '" + doc.name() + "'")));
             }
         }
         return new ConnectorDoc(doc.name(), doc.connectorType(), doc.enabled(), out, doc.secretFields());
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object substituteValue(Object value, Map<String, String> parameters, String connectorName) {
-        if (value instanceof String s) {
-            Matcher m = PLACEHOLDER.matcher(s);
-            StringBuilder sb = new StringBuilder();
-            while (m.find()) {
-                String replacement = parameters.get(m.group(1));
-                if (replacement == null) {
-                    throw new MissingParameterException("connector '" + connectorName + "' needs the environment parameter '"
-                            + m.group(1) + "'");
-                }
-                m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-            }
-            m.appendTail(sb);
-            return sb.toString();
-        }
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            ((Map<String, Object>) map).forEach((k, v) -> copy.put(k, substituteValue(v, parameters, connectorName)));
-            return copy;
-        }
-        if (value instanceof List<?> list) {
-            return list.stream().map(v -> substituteValue(v, parameters, connectorName)).toList();
-        }
-        return value;
-    }
-
-    private static final class MissingParameterException extends RuntimeException {
-        MissingParameterException(String message) {
-            super(message);
-        }
     }
 }

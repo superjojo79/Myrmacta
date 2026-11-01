@@ -68,6 +68,8 @@ class ConfigurationPromotionApiTest {
     @Autowired private DossierTypeRepository typeRepository;
     @Autowired private GetWorkflowTypeConfigUseCase workflowConfigs;
     @Autowired private be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase propose;
+    @Autowired private be.myrmacta.domain.user.port.in.UserGroupsUseCase userGroups;
+    @Autowired private be.myrmacta.domain.user.port.in.RecordUserLoginUseCase recordLogin;
 
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
@@ -321,5 +323,43 @@ class ConfigurationPromotionApiTest {
                 .allMatch(e -> e.outcome() == be.myrmacta.domain.promotion.model.ImportOutcome.APPLIED);
         assertThat(typeRepository.findByCode("tenant_dev", "PROMO_" + s.toUpperCase())).isEmpty();
         assertThat(manageDrafts.listPending(ADMIN)).anyMatch(d -> d.key().equals("promoWf" + s) && d.provenance() == Provenance.IMPORT);
+    }
+
+    /** TODO §117 (D-PROMO-GROUP) — un groupe voyage sans ses membres ; son groupe de l'IdP est un paramètre, conservé en mise à jour. */
+    @Test
+    void aGroupTravelsWithoutItsMembers_andItsIdentityProviderGroupIsAnEnvironmentParameter() throws Exception {
+        String s = suffix().toUpperCase();
+        String code = "PROMO_GRP_" + s;
+        recordLogin.record("member-" + s, "Membre", "m@example.com", Set.of("DOSSIER_VIEWER"));
+        userGroups.create(code, "Groupe " + s, "sg-recette-" + s);
+        userGroups.addMember(code, "member-" + s);
+
+        byte[] zip = mockMvc.perform(get("/api/admin/configuration/export").with(user("alice", "TENANT_ADMIN")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        ConfigurationBundle exported = bundleCodec.read(zip);
+        assertThat(exported.formatVersion()).isEqualTo(2);
+        BundleEntry entry = exported.find(ArtifactType.USER_GROUP, code).orElseThrow();
+        assertThat(entry.text()).contains("Groupe " + s).contains("sg-recette-" + s).doesNotContain("member-" + s);
+
+        // sur « un autre environnement » : le groupe n'existe pas, son groupe de l'IdP vient d'un paramètre
+        String target = "PROMO_NEW_" + s;
+        ConfigurationBundle bundle = new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-01T10:00:00Z"),
+                "recette", "test", List.of(json(ArtifactType.USER_GROUP, target,
+                        new be.myrmacta.domain.promotion.model.doc.ConfigDocs.UserGroupDoc(target, "Nouveau " + s, "{{idp_groupe}}"))));
+        mockMvc.perform(multipart("/api/admin/configuration/plan").file(file(bundle)).with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].action").value("BLOCKED"));
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(bundle))
+                        .param("parameters", "{\"idp_groupe\":\"sg-prod-" + s + "\"}")
+                        .param("expectedBundleSha256", bundle.sha256())
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].outcome").value("APPLIED"));
+        assertThat(userGroups.get(target).idpGroup()).isEqualTo("sg-prod-" + s);
+        assertThat(userGroups.get(target).memberIds()).isEmpty();
+
+        // rejouer avec un autre groupe de l'IdP ne remplace pas celui de la cible : « inchangé », avec la différence signalée
+        String replay = planJson(bundle, "{\"idp_groupe\":\"sg-autre\"}");
+        assertThat(replay).contains("UNCHANGED").contains("sg-prod-" + s);
     }
 }

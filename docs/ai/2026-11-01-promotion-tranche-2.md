@@ -1,7 +1,6 @@
 # Promotion de configuration, tranche 2 — document de travail
 
-Issue : #279 · Spec du domaine : docs/specs/35-promotion-configuration.md · Points du registre : §83 (tranche 1), §117 (à
-créer à la conception)
+Issue : #279 · Spec du domaine : docs/specs/35-promotion-configuration.md · Points du registre : §83 (tranche 1), §117
 
 ## Cadrage
 
@@ -51,7 +50,7 @@ créer à la conception)
   - Documentation à mettre à jour : spec 35, spec 49 (limites), spec 04, GUIDE-UTILISATEUR § Promotion,
     `docs/decisions/identifiants.md`.
   - Frontend : libellés des nouveaux types dans l'écran Promotion.
-- **Validé par l'utilisateur le :** en attente.
+- **Validé par l'utilisateur le :** 2026-11-01.
 
 ## Questions ouvertes
 
@@ -62,14 +61,28 @@ créer à la conception)
 | Groupes : `idpGroup` ? | paramétrable, non remplacé en mise à jour / jamais / tel quel | paramétrable | tranchée (utilisateur) → §117 |
 | Références orphelines ? | selon l'effet / toujours bloqué / toujours avertir | selon l'effet | tranchée (utilisateur) → §117 |
 | Canal MCP ? | + brouillons de templates / statu quo / tout sauf groupes | + brouillons de templates | tranchée (utilisateur) → §117 |
-| Workflow « réponse » ou échéance absent du bundle mais présent sur la cible ? | effacer / laisser | laisser : l'import ne supprime jamais | hypothèse |
-| ACL et réglages du tenant ? | inclure / exclure | exclure (D-PROMO-SCOPE inchangé) | hypothèse |
-| Réglages de type : dans le document du type ou artefacts à part ? | dans le type / à part | à part, appliqués après les configurations de workflow et les groupes, dont ils dépendent ; le document du type et sa comparaison restent inchangés | hypothèse (conception) |
-| Version du format ? | rester en 1 / passer en 2 | passer en 2 : une instance ancienne refuse en clair (« formatVersion 2 ») ; la nouvelle lit 1 et 2 | hypothèse (conception) |
+| Workflow « réponse » ou échéance absent du bundle mais présent sur la cible ? | effacer / laisser | laisser : l'import ne supprime jamais | tranchée → §117 |
+| ACL et réglages du tenant ? | inclure / exclure | exclure (D-PROMO-SCOPE inchangé) | tranchée → §117 |
+| Réglages de type : dans le document du type ou artefacts à part ? | dans le type / à part | à part, appliqués après les configurations de workflow et les groupes, dont ils dépendent ; le document du type et sa comparaison restent inchangés | tranchée → §117 |
+| Version du format ? | rester en 1 / passer en 2 | passer en 2 : une instance ancienne refuse en clair (« formatVersion 2 ») ; la nouvelle lit 1 et 2 | tranchée → §117 |
 
 ## Conception
 
-À faire après validation du cadrage. Faits déjà vérifiés :
+Décisions : §117 (D-PROMO-FORMAT2, -GROUP, -TEMPLATE, -PARCOURS, -TYPE-SETTINGS, -ORPHAN, -MCP-TEMPLATE).
+
+- Composants :
+  - domaine `promotion` : `ArtifactType` (nouvelles constantes en fin, rang d'application explicite), `ConfigDocs`,
+    export et import ; dépendances ajoutées : `UserGroupsUseCase`, `ManageReplyWorkflowUseCase`,
+    `ManageDeadlineUseCase`, templates (dépôt et cas d'usage), parcours ;
+  - `ZipConfigurationBundleCodec` (version contrôlée avant les types) ; `ImportConfigurationTool` (MCP) ;
+  - frontend : `api/configuration.ts` et libellés i18n de l'écran Promotion.
+- Scénarios de test :
+  - unitaires : `ConfigurationPromotionUseCaseTest`, un par décision ;
+  - chaîne HTTP : `ConfigurationPromotionApiTest` ;
+  - aller-retour de la mail room de l'exemple (export, retrait des réglages, import, état reconstitué) ;
+  - Playwright : plan affichant les nouveaux types.
+
+Faits vérifiés :
 
 - `ArtifactType` : l'ordre de déclaration est l'ordre d'application. `ZipConfigurationBundleCodec` refuse un type
   inconnu du manifeste, et `ConfigurationBundle` refuse tout format autre que 1.
@@ -88,13 +101,19 @@ créer à la conception)
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
+| 1 | format 2, rang d'application, artefact groupe (`idpGroup` paramétrable), avertissements de groupes orphelins (DMN `routageService`, `groupeTri`, `candidateGroups`), libellés frontend | en cours | |
+| 2 | artefacts workflow « réponse » et échéance, blocages de dépendances | à faire | |
+| 3 | artefact template (brouillon), clés de template orphelines, raison BPMN, MCP | à faire | |
+| 4 | artefact parcours (définition seule, repère de synchronisation) | à faire | |
+| 5 | aller-retour de la mail room, Playwright, documentation, revue de clôture | à faire | |
 
-Prochaine action : validation du cadrage par l'utilisateur, puis conception (point §117, découpage en lots).
+Prochaine action : lot 1.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-11-01 | lot 1 — `cd frontend && npm run lint && npm run test:all` | vert (849 Vitest, 158 Playwright) |
 
 ## Revue de clôture
 

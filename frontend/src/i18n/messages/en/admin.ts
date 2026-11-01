@@ -326,6 +326,7 @@ const admin: typeof fr = {
       DMN: 'DMN table',
       BPMN: 'BPMN process',
       WORKFLOW_CONFIG: 'Workflow config.',
+      USER_GROUP: 'User group',
     },
     planActions: { CREATE: 'Create', UPDATE: 'Update', UNCHANGED: 'Unchanged', CONFLICT: 'Conflict', BLOCKED: 'Blocked' },
     outcomes: { APPLIED: 'Applied', UNCHANGED: 'Unchanged', SKIPPED: 'Skipped', FAILED: 'Failed' },

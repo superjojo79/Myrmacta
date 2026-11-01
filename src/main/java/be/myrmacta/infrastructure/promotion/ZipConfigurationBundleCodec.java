@@ -132,6 +132,8 @@ public final class ZipConfigurationBundleCodec implements ConfigurationBundleCod
             throw new InvalidBundleException(MANIFEST + " has no formatVersion");
         }
         int formatVersion = manifest.get("formatVersion").asInt();
+        // TODO §117 (D-PROMO-FORMAT2) — le format d'abord : un bundle trop récent est refusé pour ce motif, pas pour un type inconnu
+        ConfigurationBundle.requireReadable(formatVersion);
         JsonNode artifacts = manifest.path("artifacts");
         if (!artifacts.isArray()) {
             throw new InvalidBundleException(MANIFEST + " lists no artifacts");

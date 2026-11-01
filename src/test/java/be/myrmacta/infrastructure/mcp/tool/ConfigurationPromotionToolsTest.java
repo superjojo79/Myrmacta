@@ -94,13 +94,14 @@ class ConfigurationPromotionToolsTest {
     void importIsADryRunPlanByDefault() {
         ImportConfigurationUseCase use = mock(ImportConfigurationUseCase.class);
         var plan = new ImportPlan("sha", 1, "", List.of());
-        when(use.plan(any(), any(), any())).thenReturn(plan);
+        when(use.plan(any(), any(), any(), any())).thenReturn(plan);
 
         Map<String, Object> result = McpActorScope.call(AGENT, () -> new ImportConfigurationTool(use, factory)
                 .importConfiguration(entries(), "recette", Map.of("pk", 42), null, null));
 
         assertThat(result).containsKey("plan").doesNotContainKey("report");
-        verify(use).plan(any(), any(), eq(Map.of("pk", "42")));
+        // Issue #285 : le plan sait qu'il est calculé pour le canal MCP (qui n'applique jamais un groupe)
+        verify(use).plan(any(), any(), eq(Map.of("pk", "42")), eq(ImportConfigurationUseCase.Channel.MCP));
         verify(use, org.mockito.Mockito.never()).apply(any(), any(), any(), any(), any(), any());
     }
 

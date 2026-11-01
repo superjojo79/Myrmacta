@@ -63,7 +63,7 @@ public class ImportConfigurationTool {
             result.put("report", importUseCase.apply(
                     actor, bundle, Map.of(), params, expectedBundleSha256, ImportConfigurationUseCase.Channel.MCP));
         } else {
-            result.put("plan", importUseCase.plan(actor, bundle, params));
+            result.put("plan", importUseCase.plan(actor, bundle, params, ImportConfigurationUseCase.Channel.MCP));
         }
         return result;
     }

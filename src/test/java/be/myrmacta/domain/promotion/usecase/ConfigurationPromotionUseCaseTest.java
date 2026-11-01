@@ -662,6 +662,61 @@ class ConfigurationPromotionUseCaseTest {
                 .startsWith("WARNING: ").contains("[COMPTA]");
     }
 
+    /** Issue #285 — l'avertissement du plan figure dans le rapport d'application et dans le journal, l'artefact restant appliqué. */
+    @Test
+    void theWarningOfThePlanIsKeptInTheReportAndTheJournal_whetherTheArtifactIsAppliedOrUnchanged() {
+        when(parcoursRepo.findByKey(TENANT, "sinistre")).thenReturn(Optional.of(parcours("sinistre", "Sinistre", definition("avis"), 2)));
+        var type = new DossierTypeDoc("T1", "L", "wf", true, false, List.of(), null, false, null, List.of("absent"));
+        var b = bundle(json(ArtifactType.DOSSIER_TYPE, "T1", type),
+                parcoursEntry("sinistre", "Sinistre", definition("avis"), false));
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+
+        var applied = report.entries().stream().filter(e -> e.type() == ArtifactType.DOSSIER_TYPE).findFirst().orElseThrow();
+        assertThat(applied.outcome()).isEqualTo(ImportOutcome.APPLIED);
+        assertThat(applied.message()).startsWith("WARNING: ").contains("[absent]").endsWith("created");
+        var unchanged = report.entries().stream().filter(e -> e.type() == ArtifactType.PARCOURS).findFirst().orElseThrow();
+        assertThat(unchanged.outcome()).isEqualTo(ImportOutcome.UNCHANGED);
+        assertThat(unchanged.message()).startsWith("WARNING: ").contains("last compilation");
+        assertThat(journal.getFirst().reportJson()).contains("[absent]").contains("last compilation");
+    }
+
+    @Test
+    void theWarningOfAnEnabledConnectorsAddressIsKeptInTheReport() {
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(existing("ERP", true,
+                Map.of("processKey", "p", "baseUrl", "https://recette.example"))));
+        var doc = new ConnectorDoc("ERP", "http-rest", true, Map.of("processKey", "p", "baseUrl", "https://evil.example"), List.of());
+
+        var entry = useCase.apply(ADMIN, bundle(json(ArtifactType.CONNECTOR_INSTANCE, "erp", doc)), Map.of(), Map.of(), null,
+                Channel.ADMIN).entries().getFirst();
+
+        assertThat(entry.outcome()).isEqualTo(ImportOutcome.APPLIED);
+        assertThat(entry.message()).startsWith("WARNING: ").contains("ENABLED connector")
+                .doesNotContain("evil.example").endsWith("configuration updated (enabled state and secrets kept)");
+    }
+
+    /**
+     * Issue #285 — le canal MCP n'applique jamais un groupe : un groupe que seul le bundle apporte n'y compte pas comme connu, et
+     * l'avertissement le dit, au plan comme au rapport d'un {@code apply} sans plan préalable.
+     */
+    @Test
+    void throughMcpAGroupThatOnlyTheBundleBringsDoesNotCountAsKnown() {
+        when(groupRefs.fromDmn(any())).thenReturn(Set.of("COMPTA"));
+        var b = bundle(group("COMPTA", "Comptabilité", null),
+                new BundleEntry(ArtifactType.DMN, "routage", "<dmn/>".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DMN, "routage").orElseThrow().reason())
+                .as("par l'écran, le groupe sera créé").doesNotContain("WARNING");
+        assertThat(useCase.plan(ADMIN, b, Map.of(), Channel.MCP).find(ArtifactType.DMN, "routage").orElseThrow().reason())
+                .startsWith("WARNING: ").contains("[COMPTA]").contains("not applied through MCP");
+
+        var dmn = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.MCP).entries().stream()
+                .filter(e -> e.type() == ArtifactType.DMN).findFirst().orElseThrow();
+        assertThat(dmn.outcome()).isEqualTo(ImportOutcome.APPLIED);
+        assertThat(dmn.message()).startsWith("WARNING: ").contains("[COMPTA]").contains("not applied through MCP")
+                .endsWith("publish it from 'Brouillons à publier'");
+    }
+
     // ---- TODO §117 (D-PROMO-TYPE-SETTINGS) — workflow « réponse » et échéance d'un type ----
 
     private void typeHere(String code, FieldDefinition... fields) {

@@ -152,17 +152,20 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     // ------------------------------------------------------------------ plan
 
     @Override
-    public ImportPlan plan(AccessContext.User actor, ConfigurationBundle bundle, Map<String, String> parameters) {
+    public ImportPlan plan(
+            AccessContext.User actor, ConfigurationBundle bundle, Map<String, String> parameters, Channel channel) {
         guard.requireTenantAdminOrApiService(actor);
         Objects.requireNonNull(bundle, "bundle");
-        return computePlan(actor, bundle, parameters == null ? Map.of() : parameters, Map.of());
+        Objects.requireNonNull(channel, "channel");
+        return computePlan(actor, bundle, parameters == null ? Map.of() : parameters, Map.of(), channel);
     }
 
     private ImportPlan computePlan(
             AccessContext.User actor,
             ConfigurationBundle bundle,
             Map<String, String> parameters,
-            Map<String, Map<String, String>> secrets) {
+            Map<String, Map<String, String>> secrets,
+            Channel channel) {
         rejectSecretsInBundle(bundle);
         Set<String> names = connectorNames(bundle);
         Map<String, PlanEntry> byKey = new LinkedHashMap<>();
@@ -182,9 +185,9 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case DOCUMENT_TEMPLATE -> stageTemplate(additional.templates().plan(entry), entry, stagedTemplateKeys);
                 case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets, names);
                 case DMN -> warnUnknownGroups(planDmn(actor, entry),
-                        known -> additional.groupReferences().dmnWarning(entry.content(), known), targetGroups, byKey);
+                        known -> additional.groupReferences().dmnWarning(entry.content(), known), targetGroups, byKey, channel);
                 case BPMN -> warnUnknownGroups(planBpmn(actor, entry, bundle, byKey, stagedTemplateKeys),
-                        known -> additional.groupReferences().bpmnWarning(entry.content(), known), targetGroups, byKey);
+                        known -> additional.groupReferences().bpmnWarning(entry.content(), known), targetGroups, byKey, channel);
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
                 case REPLY_WORKFLOW -> additional.typeSettings().planReplyWorkflow(entry, byKey);
                 case DEADLINE -> additional.typeSettings().planDeadline(entry, bundle, byKey, targetGroups);
@@ -198,13 +201,15 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
 
     /**
      * TODO §117 (D-PROMO-ORPHAN) — un groupe nommé par le document, inconnu de la cible et absent du bundle (ou bloqué dans le
-     * bundle), est signalé en tête de la raison ; l'artefact reste appliqué.
+     * bundle), est signalé en tête de la raison ; l'artefact reste appliqué. Issue #285 : le canal MCP n'applique jamais un
+     * groupe, un groupe que seul le bundle apporte n'y compte pas comme connu, et l'avertissement le dit.
      */
     private static PlanEntry warnUnknownGroups(
             PlanEntry planned,
             java.util.function.Function<Set<String>, String> warning,
             Set<String> targetGroups,
-            Map<String, PlanEntry> planSoFar) {
+            Map<String, PlanEntry> planSoFar,
+            Channel channel) {
         if (planned.action() == PlanAction.BLOCKED || planned.action() == PlanAction.CONFLICT) {
             return planned;
         }
@@ -212,7 +217,15 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         planSoFar.values().stream()
                 .filter(p -> p.type() == ArtifactType.USER_GROUP && p.action() != PlanAction.BLOCKED && p.action() != PlanAction.CONFLICT)
                 .forEach(p -> known.add(p.key()));
-        return PromotionSupport.warn(planned, warning.apply(known));
+        if (channel != Channel.MCP) {
+            return PromotionSupport.warn(planned, warning.apply(known));
+        }
+        String throughMcp = warning.apply(targetGroups);
+        if (throughMcp != null && !throughMcp.isBlank() && !Objects.equals(throughMcp, warning.apply(known))) {
+            throughMcp = throughMcp.strip() + " The user groups of the bundle are not applied through MCP: import them from the "
+                    + "admin import screen.";
+        }
+        return PromotionSupport.warn(planned, throughMcp);
     }
 
     /**
@@ -369,11 +382,12 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             // ses secrets et les enverrait à une nouvelle adresse.
             boolean address = changes.keySet().stream().anyMatch(k -> isAddressKey(k, doc.config().get(k)));
             // L'avertissement en TÊTE : seule la liste des changements peut être tronquée (revue D4 M-B)
-            String warning = address && current.enabled()
-                    ? "WARNING: an address of an ENABLED connector changes, its secrets are kept and will be sent there. "
-                    : "";
-            String reason = warning + cap("configuration updated (enabled state and secrets kept): " + changes);
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, reason, List.of(), doc.name());
+            PlanEntry update = new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE,
+                    cap("configuration updated (enabled state and secrets kept): " + changes), List.of(), doc.name());
+            return address && current.enabled()
+                    ? PromotionSupport.warn(update, "an address of an ENABLED connector changes, its secrets are kept and will be "
+                            + "sent there.")
+                    : update;
         }
         Map<String, String> provided = secretsFor(secrets, doc.name(), entry.key(), bundleNames);
         Map<String, Object> candidate = new LinkedHashMap<>(doc.config());
@@ -538,14 +552,16 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             throw new IllegalArgumentException("the bundle differs from the one that was planned (expected "
                     + expectedBundleSha256 + ", got " + bundle.sha256() + "): plan it again");
         }
-        ImportPlan plan = computePlan(actor, bundle, params, providedSecrets);
+        ImportPlan plan = computePlan(actor, bundle, params, providedSecrets, channel);
         List<ReportEntry> report = new ArrayList<>();
         Map<String, ImportOutcome> outcomes = new java.util.HashMap<>();
         for (PlanEntry planned : plan.entries()) {
             BundleEntry entry = bundle.find(planned.type(), planned.key()).orElseThrow();
             int before = report.size();
             switch (planned.action()) {
-                case UNCHANGED -> report.add(new ReportEntry(planned.type(), planned.key(), ImportOutcome.UNCHANGED, ""));
+                // Issue #285 : les avertissements du plan figurent au rapport, donc au journal, l'artefact restant appliqué
+                case UNCHANGED -> report.add(new ReportEntry(planned.type(), planned.key(), ImportOutcome.UNCHANGED,
+                        PromotionSupport.withWarningsOf(planned, "")));
                 case CONFLICT, BLOCKED -> report.add(new ReportEntry(planned.type(), planned.key(), ImportOutcome.SKIPPED,
                         planned.reason()));
                 case CREATE, UPDATE -> report.add(channel == Channel.MCP && !mcpMayApply(planned)
@@ -597,7 +613,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case DEADLINE -> additional.typeSettings().applyDeadline(entry, planned.action());
                 case PARCOURS -> additional.parcours().apply(actor, entry, planned.action());
             };
-            return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, message);
+            return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, PromotionSupport.withWarningsOf(planned, message));
         } catch (RuntimeException e) {
             // Un refus à l'écriture n'arrête pas les autres artefacts : rapporté, et rejouer converge.
             return new ReportEntry(entry.type(), entry.key(), ImportOutcome.FAILED, cap(String.valueOf(e.getMessage())));

@@ -101,18 +101,20 @@ Faits vérifiés :
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | format 2, rang d'application, artefact groupe (`idpGroup` paramétrable), avertissements de groupes orphelins (DMN `routageService`, `groupeTri`, `candidateGroups`), libellés frontend | en cours | |
-| 2 | artefacts workflow « réponse » et échéance, blocages de dépendances | à faire | |
+| 1 | format 2, rang d'application, artefact groupe (`idpGroup` paramétrable), avertissements de groupes orphelins (DMN `routageService`, `groupeTri`, `candidateGroups`), libellés frontend | livré | lot 1 |
+| 2 | artefacts workflow « réponse » et échéance, blocages de dépendances | en cours | |
 | 3 | artefact template (brouillon), clés de template orphelines, raison BPMN, MCP | à faire | |
 | 4 | artefact parcours (définition seule, repère de synchronisation) | à faire | |
 | 5 | aller-retour de la mail room, Playwright, documentation, revue de clôture | à faire | |
 
-Prochaine action : lot 1.
+Prochaine action : lot 2.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-11-01 | lot 1 — `./mvnw verify -Dskip.frontend=true` | vert (4176 tests, 0 échec) |
+| 2026-11-01 | lot 1 — `scripts/check-docs.sh` | vert |
 | 2026-11-01 | lot 1 — `cd frontend && npm run lint && npm run test:all` | vert (849 Vitest, 158 Playwright) |
 
 ## Revue de clôture

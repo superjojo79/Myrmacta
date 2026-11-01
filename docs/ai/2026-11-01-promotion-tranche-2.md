@@ -103,16 +103,18 @@ Faits vérifiés :
 |---|---|---|---|
 | 1 | format 2, rang d'application, artefact groupe (`idpGroup` paramétrable), avertissements de groupes orphelins (DMN `routageService`, `groupeTri`, `candidateGroups`), libellés frontend | livré | lot 1 |
 | 2 | artefacts workflow « réponse » et échéance, blocages de dépendances | livré | lot 2 |
-| 3 | artefact template (brouillon), clés de template orphelines, raison BPMN, MCP | en cours | |
-| 4 | artefact parcours (définition seule, repère de synchronisation) | à faire | |
+| 3 | artefact template (brouillon), clés de template orphelines, raison BPMN, MCP | livré | lot 3 |
+| 4 | artefact parcours (définition seule, repère de synchronisation) | en cours | |
 | 5 | aller-retour de la mail room, Playwright, documentation, revue de clôture | à faire | |
 
-Prochaine action : lot 3.
+Prochaine action : lot 4.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-11-01 | lot 3 — `./mvnw verify -Dskip.frontend=true` | vert (4192 tests, 0 échec) |
+| 2026-11-01 | lot 3 — `cd frontend && npm run lint && npm run test:all` | vert (849 Vitest, 158 Playwright) |
 | 2026-11-01 | lot 2 — `./mvnw verify -Dskip.frontend=true` | vert (4184 tests, 0 échec) |
 | 2026-11-01 | lot 2 — `cd frontend && npm run lint && npm run test:all` | vert (849 Vitest, 158 Playwright) |
 | 2026-11-01 | lot 1 — `./mvnw verify -Dskip.frontend=true` | vert (4176 tests, 0 échec) |

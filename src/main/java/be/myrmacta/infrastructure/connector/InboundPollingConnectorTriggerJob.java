@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 class InboundPollingConnectorTriggerJob {
 
     private static final Logger log = LoggerFactory.getLogger(InboundPollingConnectorTriggerJob.class);
-    static final Set<String> TYPES = Set.of("imap-inbound", "graph-mail-inbound", "azure-service-bus");
+    static final Set<String> TYPES = Set.of("imap-inbound", "graph-mail-inbound", "azure-service-bus", "sftp-pdf-inbound");
     private static final int DEFAULT_POLL_SECONDS = 60;
 
     private final ConnectorInstanceRepository connectorInstanceRepository;

@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Exemple NON créé sur l'instance (§113 D-MAILROOM-PDF-SFTP) : choisir le serveur SFTP du partenaire de numérisation, son compte et l'empreinte de sa clé hôte. Chaque PDF déposé dans /scans/entree devient un courrier (canal PAPIER) qui suit le même tri que l'e-mail ; le fichier JSON de même nom porte l'index du partenaire. Un PDF pris en charge va dans /scans/traites, un PDF refusé (pas un PDF, champ vide, index illisible) dans /scans/refuses. Index CSV par lot : indexFormat CSV, une ligne par PDF avec une colonne « fichier ».",
+  "name": "Scans du partenaire de numérisation",
+  "connectorType": "sftp-pdf-inbound",
+  "enabled": true,
+  "config": {
+    "sftpHost": "sftp.partenaire.example",
+    "sftpUsername": "myrmacta",
+    "sftpAuthType": "PASSWORD",
+    "sftpPassword": "<secret>",
+    "sftpHostKeyFingerprint": "SHA256:<empreinte de la clé hôte>",
+    "remoteDirectory": "/scans/entree",
+    "processedDirectory": "/scans/traites",
+    "rejectedDirectory": "/scans/refuses",
+    "indexFormat": "JSON",
+    "requireIndex": true,
+    "pollSeconds": 300,
+    "processKey": "triCourrier",
+    "dossierTypeCode": "COURRIER",
+    "mapping": {
+      "fields": {
+        "expediteur": "$.index.expediteur",
+        "objet": "$.index.objet"
+      }
+    },
+    "defaultFields": {
+      "canal": "PAPIER"
+    }
+  }
+}

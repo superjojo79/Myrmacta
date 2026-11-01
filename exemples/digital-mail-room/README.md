@@ -1,6 +1,6 @@
 # Exemple — Digital Mail Room (courrier entrant)
 
-Le courrier entrant d'une organisation (e-mail aujourd'hui ; PDF numérisés et eBox ensuite) est **enregistré** comme un dossier
+Le courrier entrant d'une organisation (e-mail et PDF numérisés aujourd'hui ; eBox ensuite) est **enregistré** comme un dossier
 numéroté, puis **trié** et rattaché au bon dossier métier. Issue [#217](https://github.com/superjojo79/Myrmacta/issues/217),
 décisions [§113](../../docs/decisions/113-digital-mail-room-courrier-dossier-et-fils.md) et
 [§114](../../docs/decisions/114-groupes-d-utilisateurs-et-assignation-par-groupe.md).
@@ -14,10 +14,12 @@ Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une en
 
 Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Dossiers → filtre « Type : Courrier entrant »).
 
-État : **lots 1 à 4b** de la feature.
+État : **lots 1 à 5a** de la feature.
 
 - **Ce que fait déjà l'exemple :**
   - un e-mail devient un courrier, avec ses pièces ;
+  - un PDF numérisé déposé par le partenaire sur SFTP, avec son index JSON, devient un courrier « papier » qui suit le
+    même tri (`config/connecteur-sftp-pdf.exemple.json`) ;
   - la **table de routage** (`routage-courrier.dmn`) décide du sort du courrier :
     - une facture d'un fournisseur connu ouvre un **dossier « facture » lié**, dont la tâche va au groupe COMPTABILITE, avec
       une échéance à 30 jours ;
@@ -36,7 +38,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     table (30 jours) ; les personnes qui ont la tâche sont rappelées 5 jours avant ; le lendemain du terme, la tâche passe
     au groupe DIRECTION_FINANCIERE, avec une note dans le dossier.
 - **Ce qui viendra :**
-  - les PDF déposés (lot 5) ;
+  - le dépôt manuel de PDF depuis l'écran « Déposer » (lot 5b) ;
   - les outils MCP (lot 6).
 
 ## Contenu
@@ -53,6 +55,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
 | `config/reponse-facture.json` | Workflow réponse du type FACTURE (corps de `PUT /api/dossier-types/FACTURE/reply-workflow`, sans `_commentaire`) |
 | `config/echeance-facture.json` | Échéance du type FACTURE : champ `echeance`, rappel J-5, escalade à DIRECTION_FINANCIERE (corps de `PUT /api/dossier-types/FACTURE/deadline`, sans `_commentaire`) |
 | `config/connecteur-imap.exemple.json` | Connecteur `imap-inbound` vers une boîte générique (**non créé**) |
+| `config/connecteur-sftp-pdf.exemple.json` | Connecteur `sftp-pdf-inbound` vers le dossier SFTP du partenaire de numérisation, index JSON compagnon (**non créé**) |
 
 ## Installer
 
@@ -67,6 +70,8 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
    `config/reponse-facture.json`, puis son échéance (même panneau, section « Échéance »), selon `config/echeance-facture.json`.
 6. Créer le connecteur depuis `config/connecteur-imap.exemple.json` (Admin → Connecteurs) : hôte, compte, secret, et
    `trustedAuthservId` de votre serveur de réception.
+7. Pour les PDF numérisés, créer le connecteur depuis `config/connecteur-sftp-pdf.exemple.json` : serveur, compte, secret et
+   empreinte de la clé hôte du partenaire.
 
 Adapter la table à son organisation se fait sans code : une ligne par règle (canal, domaine de l'expéditeur), avec le
 service, le type de dossier, le process et le délai.
@@ -78,6 +83,7 @@ service, le type de dossier, le process et le délai.
   tri ouvre donc le courrier, le met en cours, puis le clôture une fois routé ou classé.
 - **Message sans objet :** il est rangé dans `Myrmacta-rejected`, puisque l'objet est mappé et qu'un champ mappé ne peut pas être vide. Remettez-le
   dans la boîte après lui avoir donné un objet.
-- **Canal :** il vaut `EMAIL` par défaut. Les autres canaux le poseront eux-mêmes.
+- **Canal :** il vaut `EMAIL` par défaut. Le connecteur SFTP le pose à `PAPIER` (`defaultFields`). La table de routage de
+  l'exemple n'a de règle que pour l'e-mail : un courrier papier part donc à la file de tri.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ».
+Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri.

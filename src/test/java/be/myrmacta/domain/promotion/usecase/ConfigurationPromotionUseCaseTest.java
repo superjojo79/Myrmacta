@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,7 +24,18 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
+import be.myrmacta.domain.deadline.model.DeadlineSetting;
+import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
+import be.myrmacta.domain.dossier.model.DossierType;
+import be.myrmacta.domain.dossier.model.FieldDefinition;
+import be.myrmacta.domain.dossier.model.FieldType;
+import be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting;
+import be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DeadlineDoc;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.ReplyWorkflowDoc;
+import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
 import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigImportRecord;
@@ -96,6 +108,8 @@ class ConfigurationPromotionUseCaseTest {
     private UserGroupsUseCase userGroups;
     private final List<UserGroup> groupsHere = new ArrayList<>();
     private GroupReferenceExtractor groupRefs;
+    private ManageReplyWorkflowUseCase replyWorkflows;
+    private ManageDeadlineUseCase deadlines;
 
     @BeforeEach
     void setUp() {
@@ -133,6 +147,10 @@ class ConfigurationPromotionUseCaseTest {
         when(userGroups.list()).thenAnswer(inv -> List.copyOf(groupsHere));
         when(userGroups.get(any())).thenAnswer(inv -> groupsHere.stream()
                 .filter(g -> g.code().equals(inv.getArgument(0))).findFirst().orElseThrow());
+        replyWorkflows = mock(ManageReplyWorkflowUseCase.class);
+        when(replyWorkflows.get(any())).thenReturn(Optional.empty());
+        deadlines = mock(ManageDeadlineUseCase.class);
+        when(deadlines.get(any())).thenReturn(Optional.empty());
         groupRefs = mock(GroupReferenceExtractor.class);
         when(groupRefs.fromBpmn(any())).thenReturn(Set.of());
         when(groupRefs.fromDmn(any())).thenReturn(Set.of());
@@ -140,7 +158,8 @@ class ConfigurationPromotionUseCaseTest {
                 new TenantAdminGuard(), CODEC, types, createType, updateType, compat, schemas, saveSchema, connectors,
                 manageConnector, catalog, dmnDeployment, mock(DmnParserPort.class), workflowDeployment, bpmnParser, workflowConfigs,
                 saveWorkflowConfig, propose, journalRepo,
-                new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs)));
+                new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs),
+                        new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines)));
     }
 
     private static BundleEntry json(ArtifactType type, String key, Object doc) {
@@ -596,5 +615,137 @@ class ConfigurationPromotionUseCaseTest {
 
         assertThat(useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DMN, "routage").orElseThrow().reason())
                 .startsWith("WARNING: ").contains("[COMPTA]");
+    }
+
+    // ---- TODO §117 (D-PROMO-TYPE-SETTINGS) — workflow « réponse » et échéance d'un type ----
+
+    private void typeHere(String code, FieldDefinition... fields) {
+        when(types.findByCode(TENANT, code)).thenReturn(Optional.of(new DossierType(java.util.UUID.randomUUID(), TENANT, code, "L",
+                "wf", true, false, List.of(fields), null, false, null, "t", "t")));
+    }
+
+    private void workflowConfigHere(String key) {
+        when(workflowConfigs.findByWorkflowKey(TENANT, key)).thenReturn(Optional.of(new WorkflowTypeConfig(java.util.UUID.randomUUID(),
+                TENANT, key, "Flow", WF.statusDefinitions(), WF.allowedDossierStatuses(), null, List.of(), "t", "t")));
+    }
+
+    private static FieldDefinition field(String name, FieldType type) {
+        return new FieldDefinition(name, name, type, false, null, null, null, false);
+    }
+
+    private static BundleEntry reply(String type, ReplyWorkflowSetting.Mode mode, String workflowKey, String child) {
+        return json(ArtifactType.REPLY_WORKFLOW, type, new ReplyWorkflowDoc(type, mode, workflowKey, child));
+    }
+
+    private static BundleEntry deadline(String type, String fieldName, int days, String group) {
+        return json(ArtifactType.DEADLINE, type, new DeadlineDoc(type, fieldName, days, group));
+    }
+
+    @Test
+    void aReplyWorkflowIsCreatedAfterTheWorkflowConfigurations_andAppliedByItsUseCase() {
+        typeHere("FACTURE");
+        workflowConfigHere("traiterReponse");
+        var b = bundle(reply("FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "traiterReponse", null),
+                json(ArtifactType.DOSSIER_TYPE, "T1", typeDoc("T1")));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+        assertThat(plan.entries().getLast().type()).isEqualTo(ArtifactType.REPLY_WORKFLOW);
+        assertThat(plan.entries().getLast().action()).isEqualTo(PlanAction.CREATE);
+
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+        verify(replyWorkflows).set("FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "traiterReponse", null);
+    }
+
+    @Test
+    void aReplyWorkflowWhoseConfigurationOnlyComesWithABpmnDraftIsBlockedUntilThatDraftIsPublished() {
+        typeHere("FACTURE");
+        var b = bundle(reply("FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf", null),
+                new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
+
+        var entry = useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.REPLY_WORKFLOW, "FACTURE").orElseThrow();
+
+        assertThat(entry.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(entry.reason()).contains("only exists once its BPMN draft is published");
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+        verify(replyWorkflows, never()).set(any(), any(), any(), any());
+    }
+
+    @Test
+    void aReplyWorkflowMayRelyOnATypeAndAConfigurationCreatedByTheSameBundle_butNotOnAMissingChildType() {
+        var created = bundle(json(ArtifactType.DOSSIER_TYPE, "REPONSE", typeDoc("REPONSE")), json(ArtifactType.WORKFLOW_CONFIG, "wf", WF),
+                reply("REPONSE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf", null));
+        assertThat(useCase.plan(ADMIN, created, Map.of()).find(ArtifactType.REPLY_WORKFLOW, "REPONSE").orElseThrow().action())
+                .isEqualTo(PlanAction.CREATE);
+
+        typeHere("FACTURE");
+        workflowConfigHere("wf2");
+        var child = useCase.plan(ADMIN, bundle(reply("FACTURE", ReplyWorkflowSetting.Mode.DOSSIER_ENFANT, "wf2", "ABSENT")), Map.of())
+                .entries().getFirst();
+        assertThat(child.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(child.reason()).contains("child dossier type 'ABSENT'");
+        var noType = useCase.plan(ADMIN, bundle(reply("NULLE_PART", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf2", null)), Map.of())
+                .entries().getFirst();
+        assertThat(noType.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(noType.reason()).contains("dossier type 'NULLE_PART'");
+    }
+
+    @Test
+    void anIdenticalReplyWorkflowIsUnchanged() {
+        typeHere("FACTURE");
+        workflowConfigHere("wf");
+        when(replyWorkflows.get("FACTURE")).thenReturn(Optional.of(
+                new ReplyWorkflowSetting(TENANT, "FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf", null)));
+
+        var plan = useCase.plan(ADMIN, bundle(reply("FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf", null)), Map.of());
+
+        assertThat(plan.entries().getFirst().action()).isEqualTo(PlanAction.UNCHANGED);
+    }
+
+    @Test
+    void aDeadlineNeedsADateFieldOfTheTypeAndAnExistingOrImportedEscalationGroup() {
+        typeHere("FACTURE", field("echeance", FieldType.DATE), field("montant", FieldType.NUMBER));
+        var plan = useCase.plan(ADMIN, bundle(
+                deadline("FACTURE", "montant", 5, null)), Map.of()).entries().getFirst();
+        assertThat(plan.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(plan.reason()).contains("not a DATE field");
+
+        var unknownGroup = useCase.plan(ADMIN, bundle(deadline("FACTURE", "echeance", 5, "DIRECTION")), Map.of()).entries().getFirst();
+        assertThat(unknownGroup.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(unknownGroup.reason()).contains("escalation group 'DIRECTION'");
+
+        var b = bundle(group("DIRECTION", "Direction", null), deadline("FACTURE", "echeance", 5, "DIRECTION"));
+        assertThat(useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DEADLINE, "FACTURE").orElseThrow().action())
+                .isEqualTo(PlanAction.CREATE);
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+        verify(deadlines).set("FACTURE", "echeance", 5, "DIRECTION");
+    }
+
+    @Test
+    void aDeadlineReadsTheFieldsOfTheTypeAsTheBundleWritesThem_andAnIdenticalOneIsUnchanged() {
+        var newType = new DossierTypeDoc("NOUVEAU", "N", "wf", true, false, List.of(field("terme", FieldType.DATE)), null, false, null,
+                List.of());
+        assertThat(useCase.plan(ADMIN, bundle(json(ArtifactType.DOSSIER_TYPE, "NOUVEAU", newType), deadline("NOUVEAU", "terme", 0, null)),
+                Map.of()).find(ArtifactType.DEADLINE, "NOUVEAU").orElseThrow().action()).isEqualTo(PlanAction.CREATE);
+
+        typeHere("FACTURE", field("echeance", FieldType.DATE));
+        when(deadlines.get("FACTURE")).thenReturn(Optional.of(new DeadlineSetting(TENANT, "FACTURE", "echeance", 5, null)));
+        assertThat(useCase.plan(ADMIN, bundle(deadline("FACTURE", "echeance", 5, null)), Map.of()).entries().getFirst().action())
+                .isEqualTo(PlanAction.UNCHANGED);
+        assertThat(useCase.plan(ADMIN, bundle(deadline("FACTURE", "echeance", 7, null)), Map.of()).entries().getFirst().action())
+                .isEqualTo(PlanAction.UPDATE);
+    }
+
+    @Test
+    void theMcpChannelNeverAppliesTypeSettings() {
+        typeHere("FACTURE", field("echeance", FieldType.DATE));
+        workflowConfigHere("wf");
+        var b = bundle(reply("FACTURE", ReplyWorkflowSetting.Mode.SUR_DOSSIER, "wf", null), deadline("FACTURE", "echeance", 3, null));
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.MCP);
+
+        assertThat(report.entries()).extracting(e -> e.outcome()).containsOnly(ImportOutcome.SKIPPED);
+        verify(replyWorkflows, never()).set(any(), any(), any(), any());
+        verify(deadlines, never()).set(any(), any(), anyInt(), any());
     }
 }

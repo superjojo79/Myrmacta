@@ -11,6 +11,8 @@ public final class PromotionSupport {
     public static final int MAX_REASON_CHARS = 400;
     /** Préfixe d'un avertissement dans la raison d'une ligne du plan (D-PROMO-ORPHAN) : toujours en tête, jamais tronqué. */
     public static final String WARNING = "WARNING: ";
+    /** Raison d'une configuration de workflow jointe à un brouillon BPMN : elle n'existera qu'à sa publication (D-PROMO-WFCONFIG). */
+    public static final String JOINED_TO_DRAFT = "joined to the BPMN draft";
 
     private PromotionSupport() {}
 

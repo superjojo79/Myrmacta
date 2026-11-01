@@ -325,6 +325,8 @@ export default {
       BPMN: 'Processus BPMN',
       WORKFLOW_CONFIG: 'Config. de workflow',
       USER_GROUP: "Groupe d'utilisateurs",
+      REPLY_WORKFLOW: 'Workflow « réponse »',
+      DEADLINE: 'Échéance',
     },
     planActions: { CREATE: 'Créer', UPDATE: 'Modifier', UNCHANGED: 'Inchangé', CONFLICT: 'Conflit', BLOCKED: 'Bloqué' },
     outcomes: { APPLIED: 'Appliqué', UNCHANGED: 'Inchangé', SKIPPED: 'Ignoré', FAILED: 'Échec' },

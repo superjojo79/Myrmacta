@@ -182,6 +182,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case BPMN -> warnUnknownGroups(planBpmn(actor, entry, bundle, byKey),
                         known -> additional.groupReferences().bpmnWarning(entry.content(), known), targetGroups, byKey);
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
+                case REPLY_WORKFLOW -> additional.typeSettings().planReplyWorkflow(entry, byKey);
+                case DEADLINE -> additional.typeSettings().planDeadline(entry, bundle, byKey, targetGroups);
             };
             byKey.put(entry.type() + "/" + entry.key(), planned);
             entries.add(planned);
@@ -452,7 +454,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                     "its BPMN process is blocked: the configuration is not applied alone on top of the old diagram");
         }
         if (action != PlanAction.UNCHANGED && bpmn != null && bpmn.applicable()) {
-            return new PlanEntry(entry.type(), entry.key(), action, "joined to the BPMN draft, applied when it is published");
+            return new PlanEntry(entry.type(), entry.key(), action, PromotionSupport.JOINED_TO_DRAFT + ", applied when it is published");
         }
         return new PlanEntry(entry.type(), entry.key(), action, "");
     }
@@ -508,7 +510,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     private static boolean mcpMayApply(PlanEntry planned) {
         return planned.type() == ArtifactType.BPMN
                 || planned.type() == ArtifactType.DMN
-                || (planned.type() == ArtifactType.WORKFLOW_CONFIG && planned.reason().startsWith("joined to the BPMN draft"));
+                || (planned.type() == ArtifactType.WORKFLOW_CONFIG && planned.reason().startsWith(PromotionSupport.JOINED_TO_DRAFT));
     }
 
     private ReportEntry applyOne(
@@ -529,6 +531,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case DMN -> applyDmn(actor, entry, bundle);
                 case BPMN -> applyBpmn(actor, entry, bundle);
                 case WORKFLOW_CONFIG -> applyWorkflowConfig(actor, entry, plan, outcomes);
+                case REPLY_WORKFLOW -> additional.typeSettings().applyReplyWorkflow(entry, planned.action());
+                case DEADLINE -> additional.typeSettings().applyDeadline(entry, planned.action());
             };
             return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, message);
         } catch (RuntimeException e) {
@@ -624,12 +628,12 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     private String applyWorkflowConfig(
             AccessContext.User actor, BundleEntry entry, ImportPlan plan, Map<String, ImportOutcome> outcomes) {
         PlanEntry planned = plan.find(entry.type(), entry.key()).orElseThrow();
-        if (planned.reason().startsWith("joined to the BPMN draft")) {
+        if (planned.reason().startsWith(PromotionSupport.JOINED_TO_DRAFT)) {
             // Revue D4 L3 : « appliquée » seulement si le brouillon BPMN qui la porte a bien été enregistré
             if (outcomes.get(ArtifactType.BPMN + "/" + entry.key()) != ImportOutcome.APPLIED) {
                 throw new IllegalStateException("its BPMN draft was not saved, so the configuration was not applied");
             }
-            return "joined to the BPMN draft, applied when it is published";
+            return PromotionSupport.JOINED_TO_DRAFT + ", applied when it is published";
         }
         WorkflowConfigDoc d = decode(entry, WorkflowConfigDoc.class);
         Optional<WorkflowTypeConfig> existing = workflowConfigs.findByWorkflowKey(tenantId, d.workflowKey());

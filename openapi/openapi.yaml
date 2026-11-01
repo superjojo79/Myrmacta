@@ -5159,6 +5159,8 @@ components:
           - BPMN
           - WORKFLOW_CONFIG
           - USER_GROUP
+          - REPLY_WORKFLOW
+          - DEADLINE
         key:
           type: string
         action:
@@ -5202,6 +5204,8 @@ components:
           - BPMN
           - WORKFLOW_CONFIG
           - USER_GROUP
+          - REPLY_WORKFLOW
+          - DEADLINE
         key:
           type: string
         outcome:

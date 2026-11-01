@@ -47,9 +47,11 @@ porter une échéance calculée :
 
 - La brique **« Calculer une échéance »** (`computeDeadlineTask`) lit, en paramètres littéraux, un champ date non sensible
   du dossier (`champEcheance`) ou un délai (`delaiJours`, repli si le champ est vide), et un rappel (`rappelJours`).
-- Elle écrit trois variables **réservées** (`WorkflowVariables`) : `echeance` (date), `echeanceRappel` et
-  `echeanceDepassee` (instants ISO 8601, 00:00 UTC ; dépassée = lendemain de l'échéance, comme D-DEADLINE-ESCALATE).
-  Réservées, elles ne peuvent être posées ni au démarrage ni par une complétion de tâche, qui repousserait le minuteur.
+- Elle écrit trois variables : `echeance` (date, pour l'affichage), `echeanceRappel` et `echeanceDepassee` (instants ISO
+  8601, 00:00 UTC ; dépassée = lendemain de l'échéance, comme D-DEADLINE-ESCALATE). Les deux instants sont **réservés**
+  (`WorkflowVariables`) : ni un démarrage ni une complétion de tâche ne peut les poser, donc repousser le minuteur.
+  `echeance` ne l'est pas : la revue de clôture a relevé que des configurations existantes utilisent déjà ce nom, et
+  aucun minuteur ne le lit.
 - Le `timeDate` d'un minuteur peut valoir **exactement** `${echeanceRappel}` ou `${echeanceDepassee}` :
   - c'est la troisième exception à la règle « aucune expression » (§69) ;
   - un nom nu ne peut ni appeler une méthode ni désigner un bean (aucun bean ne porte ces noms) ;

@@ -89,7 +89,7 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
     }
 
     @Override
-    public UUID deliver(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
+    public Delivery deliver(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
         Objects.requireNonNull(instance, "instance");
         Objects.requireNonNull(event, "event");
         if (!(catalog.get(instance.connectorType()) instanceof TriggerConnector)) {
@@ -98,15 +98,15 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
         return handle(instance, event);
     }
 
-    private UUID handle(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
+    private Delivery handle(ConnectorInstanceData instance, WorkflowTriggerEvent event) {
         if (!event.attachments().isEmpty() && attachInboundFiles == null) {
             throw new ConnectorValidationException("attachments are not supported by this trigger runtime");
         }
         UUID dossierId = resolveOrCreateDossier(instance, event);
         recordInboundMail(instance, event, dossierId);
         Map<String, Object> variables = event.variables();
+        int rejected = 0;
         if (!event.attachments().isEmpty()) {
-            int rejected;
             try {
                 rejected = attachInboundFiles.attach(dossierId, "connector:" + instance.id(), event.attachments()).rejections().size();
             } catch (RuntimeException storageFailure) {
@@ -125,7 +125,7 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
                 event.processKey(),
                 variables,
                 "connector:" + instance.id()));
-        return dossierId;
+        return new Delivery(dossierId, rejected);
     }
 
     /** Un identifiant illisible ou trop long n'est pas inscrit : il ne rattachera rien, sans empêcher le courrier. */

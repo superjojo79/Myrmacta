@@ -26,7 +26,9 @@ import be.myrmacta.domain.user.model.UserGroupNotFoundException;
 import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.model.ProcessDeploymentInfo;
 import be.myrmacta.domain.workflow.port.out.WorkflowDeploymentPort;
+import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
 import be.myrmacta.domain.workflow.port.out.WorkflowLinkGroupRepository;
+import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.time.Instant;
@@ -56,6 +58,7 @@ class RouteMailDelegateTest {
     private final UpdateDossierFieldsUseCase updateFields = mock(UpdateDossierFieldsUseCase.class);
     private final UpdateDossierStatusUseCase updateStatus = mock(UpdateDossierStatusUseCase.class);
     private final DeadlineSettings deadlineSettings = mock(DeadlineSettings.class);
+    private final WorkflowTypeConfigRepository workflowConfigs = mock(WorkflowTypeConfigRepository.class);
     private final DelegateExecution execution = mock(DelegateExecution.class);
     private final Map<String, Object> variables = new HashMap<>();
     private final Map<String, Object> written = new HashMap<>();
@@ -66,7 +69,7 @@ class RouteMailDelegateTest {
     @BeforeEach
     void setUp() {
         delegate = new RouteMailDelegate(confirmer, orchestrator, dossiers, types, deployments, groups, linkGroups, updateFields,
-                updateStatus, deadlineSettings, new TenantProperties(TENANT));
+                updateStatus, deadlineSettings, workflowConfigs, new TenantProperties(TENANT));
         variables.put("dossierId", mailId.toString());
         variables.put("dossierWorkflowLinkId", linkId.toString());
         variables.put("routageAction", "OUVRIR");
@@ -85,6 +88,31 @@ class RouteMailDelegateTest {
         when(groups.get(anyString())).thenAnswer(call -> new UserGroup(TENANT, call.getArgument(0), "Groupe", null, Set.of()));
         when(deployments.findDeploymentInfo(TENANT, "traiterFacture"))
                 .thenReturn(Optional.of(new ProcessDeploymentInfo("traiterFacture", 1, 0)));
+        WorkflowTypeConfig config = mock(WorkflowTypeConfig.class);
+        when(config.allowsDossierStatus(any())).thenReturn(true);
+        when(workflowConfigs.findByWorkflowKey(TENANT, "traiterFacture")).thenReturn(Optional.of(config));
+    }
+
+    /** Revue de clôture : ce que le démarrage refuserait est refusé avant la création du dossier métier. */
+    @Test
+    void aProcessWithoutConfig_refusingOpen_orRefusingItsStartVariablesSendsTheMailToSorting() {
+        when(workflowConfigs.findByWorkflowKey(TENANT, "traiterFacture")).thenReturn(Optional.empty());
+        assertSentToSorting("configuration de workflow absente : traiterFacture");
+
+        WorkflowTypeConfig closedOnly = mock(WorkflowTypeConfig.class);
+        when(workflowConfigs.findByWorkflowKey(TENANT, "traiterFacture")).thenReturn(Optional.of(closedOnly));
+        written.clear();
+        org.mockito.Mockito.clearInvocations(linkGroups, updateFields);
+        assertSentToSorting("statut OUVERT refusé par traiterFacture");
+
+        WorkflowTypeConfig open = mock(WorkflowTypeConfig.class);
+        when(open.allowsDossierStatus(any())).thenReturn(true);
+        when(workflowConfigs.findByWorkflowKey(TENANT, "traiterFacture")).thenReturn(Optional.of(open));
+        when(orchestrator.bindStartVariables(eq("traiterFacture"), any()))
+                .thenThrow(new IllegalArgumentException("Workflow start variable is required: montant"));
+        written.clear();
+        org.mockito.Mockito.clearInvocations(linkGroups, updateFields);
+        assertSentToSorting("variables de démarrage refusées par traiterFacture : Workflow start variable is required: montant");
     }
 
     @Test
@@ -139,7 +167,8 @@ class RouteMailDelegateTest {
         assertThat(written).containsEntry("routageResultat", "A_TRIER").containsEntry("routageMotif", reason);
         verify(linkGroups).assign(TENANT, linkId, "COURRIER");
         verify(updateFields).update(any(), any());
-        verifyNoInteractions(confirmer, orchestrator, updateStatus);
+        verifyNoInteractions(confirmer, updateStatus);
+        verify(orchestrator, never()).start(any(), any(), any(), any(), any(), any());
         verify(dossiers, never()).save(any());
         verify(linkGroups, never()).assign(eq(TENANT), eq(linkId), eq("COMPTABILITE"));
     }

@@ -1069,7 +1069,7 @@ D-DEADLINE-ESCALATE).
 - **Minuteur à expression (lot 4b, D-DEADLINE-TIMER).**
   - La brique « Calculer une échéance » (`ComputeDeadlineDelegate`, `computeDeadlineTask`, paramètres littéraux
     seulement) relit un champ date non sensible du dossier, ou applique `delaiJours`.
-  - Elle pose les variables réservées `echeance`, `echeanceRappel` et `echeanceDepassee`.
+  - Elle pose `echeance` et les variables réservées `echeanceRappel` et `echeanceDepassee`.
   - `BpmnExpressionSurfaceScanner` admet ces deux derniers noms, nus, dans le `timeDate` d'un minuteur, et rien d'autre.
   - Tests :
     - `ComputeDeadlineDelegateTest` ;

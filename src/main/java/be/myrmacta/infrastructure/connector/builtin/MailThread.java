@@ -34,9 +34,9 @@ record MailThread(String inReplyTo, List<String> references, String conversation
     }
 
     static MailThread of(String inReplyTo, String references, String conversationId) {
-        List<String> replyIds = ids(inReplyTo);
+        List<String> replyIds = ids(inReplyTo, false);
         Deque<String> kept = new ArrayDeque<>();
-        for (String id : ids(references)) {
+        for (String id : ids(references, true)) {
             if (kept.size() == MAX_REFERENCES) {
                 kept.removeFirst();
             }
@@ -54,11 +54,13 @@ record MailThread(String inReplyTo, List<String> references, String conversation
         return inReplyTo.isEmpty() && references.isEmpty() && conversationId.isEmpty();
     }
 
-    private static List<String> ids(String header) {
+    /** @param fromEnd vrai pour References : les identifiants les plus récents sont en fin d'en-tête (revue de clôture de #217) */
+    private static List<String> ids(String header, boolean fromEnd) {
         if (header == null || header.isBlank()) {
             return List.of();
         }
-        String bounded = header.length() > MAX_HEADER_CHARS ? header.substring(0, MAX_HEADER_CHARS) : header;
+        String bounded = header.length() <= MAX_HEADER_CHARS ? header
+                : fromEnd ? header.substring(header.length() - MAX_HEADER_CHARS) : header.substring(0, MAX_HEADER_CHARS);
         Matcher matcher = MESSAGE_ID.matcher(bounded);
         List<String> found = new ArrayList<>();
         while (matcher.find()) {

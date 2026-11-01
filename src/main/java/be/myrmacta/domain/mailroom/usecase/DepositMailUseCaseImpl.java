@@ -90,8 +90,15 @@ public final class DepositMailUseCaseImpl implements DepositMailUseCase {
         }
         fields.put(text(config.get("subjectField"), "objet"), subject == null || subject.isBlank() ? baseName(name) : subject.strip());
         Map<String, Object> variables = Map.of("courrierFichier", name, "courrierDeposePar", actor.userId());
-        UUID dossierId = runtime.deliver(instance, new WorkflowTriggerEvent(text(config.get("processKey"), null), point.dossierTypeCode(),
-                fields, variables, null, List.of(new InboundAttachment(name, "application/pdf", file.content())), true));
+        ConnectorTriggerRuntime.Delivery delivery = runtime.deliver(instance, new WorkflowTriggerEvent(text(config.get("processKey"), null),
+                point.dossierTypeCode(), fields, variables, null, List.of(new InboundAttachment(name, "application/pdf", file.content())),
+                true));
+        if (delivery.rejectedAttachments() > 0) {
+            // Revue de clôture : le PDF écarté (antivirus, type, contenu, stockage) n'est pas un courrier « créé ». L'exception
+            // annule la transaction du fichier : ni dossier vide, ni process.
+            throw new DepositRefusedException("pièce refusée par les contrôles (type, contenu ou antivirus)");
+        }
+        UUID dossierId = delivery.dossierId();
         String reference = dossiers.findById(dossierId).map(dossier -> dossier.reference()).orElse(null);
         return DepositResult.created(name, dossierId, reference);
     }

@@ -56,10 +56,12 @@ class MailThreadTest {
     }
 
     @Test
-    void anOverlongHeaderIsReadOnlyUpToItsBound() {
-        String huge = "<ok@example.org> " + "x".repeat(100_000) + " <late@example.org>";
+    void anOverlongHeaderIsReadOnlyUpToItsBound_theEndOfReferences_theStartOfInReplyTo() {
+        String huge = "<early@example.org> " + "x".repeat(100_000) + " <late@example.org>";
 
-        assertThat(MailThread.of("", huge, "").references()).containsExactly("<ok@example.org>");
+        // Revue de clôture de #217 : References se lit de la fin (les identifiants les plus récents y sont), In-Reply-To du début.
+        assertThat(MailThread.of("", huge, "").references()).containsExactly("<late@example.org>");
+        assertThat(MailThread.of(huge, "", "").inReplyTo()).isEqualTo("<early@example.org>");
     }
 
     @Test

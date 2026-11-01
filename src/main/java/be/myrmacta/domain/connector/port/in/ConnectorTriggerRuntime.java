@@ -12,7 +12,10 @@ public interface ConnectorTriggerRuntime {
      * TODO §113 (D-MAILROOM-DEPOSIT) — remet un seul événement déjà construit (dépôt manuel), comme une interrogation le ferait :
      * dossier créé, pièces contrôlées, process mis en file. Le type de l'instance doit être un connecteur TRIGGER.
      *
-     * @return le dossier créé ou alimenté
+     * @return le dossier créé ou alimenté, et le nombre de pièces écartées par les contrôles (type, contenu, antivirus, stockage)
      */
-    UUID deliver(ConnectorInstanceData instance, WorkflowTriggerEvent event);
+    Delivery deliver(ConnectorInstanceData instance, WorkflowTriggerEvent event);
+
+    /** Sort d'une remise : le dossier, et les pièces écartées (revue de clôture de #217 : l'appelant doit pouvoir le dire). */
+    record Delivery(UUID dossierId, int rejectedAttachments) {}
 }

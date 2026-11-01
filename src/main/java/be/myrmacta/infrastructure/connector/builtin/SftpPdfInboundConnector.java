@@ -195,27 +195,43 @@ public class SftpPdfInboundConnector implements ConnectorDefinition, PollingTrig
         Set<String> referenced = new HashSet<>();
         String column = InboundMailRouting.stringOr(run.config.get("csvFileColumn"), "fichier");
         String pattern = InboundMailRouting.stringOr(run.config.get("csvPattern"), "*.csv");
+        int taken = 0;
+        int cap = inbound.maxMessagesPerPoll();
         for (RemoteFile csv : sorted(sftp.listFiles(run.connection, run.directory, pattern))) {
+            if (taken >= cap) {
+                return;
+            }
             List<Map<String, Object>> rows = readCsv(csv, run);
             if (rows == null) {
                 sftp.archive(run.connection, csv.path(), run.rejected);
                 continue;
             }
+            boolean finished = true;
             for (Map<String, Object> row : rows) {
                 String name = String.valueOf(row.getOrDefault(column, "")).strip();
                 RemoteFile pdf = byName.get(name);
                 if (pdf == null || name.contains("/") || referenced.contains(name)) {
-                    log.warn("{}: instance {} index {} names a missing or repeated file, line ignored", TYPE, run.instance.id(),
+                    // Absent : pas encore déposé, ou déjà traité lors d'un passage précédent (index entamé).
+                    log.debug("{}: instance {} index {} names a missing or repeated file, line skipped", TYPE, run.instance.id(),
                             fileName(csv.path()));
                     continue;
                 }
+                if (taken >= cap) {
+                    // Revue de clôture : le plafond par interrogation vaut aussi pour un index ; l'index reste en place et ses
+                    // lignes restantes sont reprises au passage suivant.
+                    finished = false;
+                    break;
+                }
                 referenced.add(name);
                 run.take(pdf, row, null);
+                taken++;
             }
-            sftp.archive(run.connection, csv.path(), run.processed);
+            if (finished) {
+                sftp.archive(run.connection, csv.path(), run.processed);
+            }
         }
-        if (!run.requireIndex) {
-            pdfs.stream().filter(pdf -> !referenced.contains(fileName(pdf.path()))).limit(inbound.maxMessagesPerPoll())
+        if (!run.requireIndex && taken < cap) {
+            pdfs.stream().filter(pdf -> !referenced.contains(fileName(pdf.path()))).limit(cap - taken)
                     .forEach(pdf -> run.take(pdf, Map.of(), null));
         }
     }

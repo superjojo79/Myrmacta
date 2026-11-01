@@ -65,7 +65,7 @@ class DepositMailUseCaseImplTest {
     @Test
     void aPdfBecomesAMailWithTheDefaults_theSender_andTheFileNameAsSubjectWhenNoneIsGiven() {
         UUID created = UUID.randomUUID();
-        when(runtime.deliver(eq(point), any())).thenReturn(created);
+        when(runtime.deliver(eq(point), any())).thenReturn(new ConnectorTriggerRuntime.Delivery(created, 0));
 
         var result = useCase.deposit(point.id(), new DepositFile("scan-0042.pdf", PDF), " greffe@tribunal.example ", " ", agent);
 
@@ -77,6 +77,15 @@ class DepositMailUseCaseImplTest {
                 .containsEntry("expediteur", "greffe@tribunal.example").containsEntry("objet", "scan-0042");
         assertThat(event.getValue().variables()).containsEntry("courrierFichier", "scan-0042.pdf").containsEntry("courrierDeposePar", "agent");
         assertThat(event.getValue().attachments()).singleElement().satisfies(a -> assertThat(a.contentType()).isEqualTo("application/pdf"));
+    }
+
+    /** Revue de clôture : un PDF écarté par les contrôles (antivirus…) est refusé, ce qui annule la transaction du fichier. */
+    @Test
+    void aPdfRejectedByTheAttachmentChecksIsRefused_notReportedAsCreated() {
+        when(runtime.deliver(eq(point), any())).thenReturn(new ConnectorTriggerRuntime.Delivery(UUID.randomUUID(), 1));
+
+        assertThatThrownBy(() -> useCase.deposit(point.id(), new DepositFile("infecte.pdf", PDF), null, null, agent))
+                .isInstanceOf(DepositRefusedException.class).hasMessageContaining("antivirus");
     }
 
     @Test

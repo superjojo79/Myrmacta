@@ -104,9 +104,28 @@ Précisions du lot 7 (2026-11-01, tranché par l'utilisateur) :
 - **Référence dans l'objet, en secours (3e moyen de D-MAILROOM-THREAD).** Les références de dossier
   (`DOS-<type>-<année>-<séquence>`) sont séquentielles, donc devinables. Une référence lue dans l'objet ne rattache donc
   que si le dossier a **déjà échangé un e-mail**, reçu ou envoyé (index), avec le domaine de l'expéditeur. Les autres
-  conditions sont celles des deux premiers moyens : expéditeur attesté, dossier ouvert.
+  conditions sont celles des deux premiers moyens : expéditeur attesté, dossier ouvert. L'échange peut être inscrit au nom
+  du dossier ou d'un courrier qui lui est lié.
   - Bornes : 300 caractères d'objet lus, 3 références essayées, 50 échanges par dossier.
   - Écarté par l'utilisateur : l'expéditeur attesté seul (n'importe quel domaine), et l'abandon de ce moyen.
+- **Revue de clôture indépendante** (`/code-review`, 2026-11-01) : 10 constats, aucun critique ni haut. Correctifs, chacun
+  avec un test de régression :
+  - la référence dans l'objet tient aussi compte des e-mails reçus par les courriers **liés** au dossier référencé (un
+    e-mail reçu est inscrit au nom de son courrier). Bornes : 20 dossiers liés ;
+  - un identifiant reçu déjà connu n'est pas réinscrit, et `find` préfère un e-mail envoyé, sinon le premier inscrit. Un
+    tiers qui réutilise le Message-ID d'un fil ne le masque plus ;
+  - `References` trop long se lit par la fin (les plus récents), `In-Reply-To` par le début ;
+  - « Router le courrier » vérifie avant la première écriture la configuration du workflow, le statut `OUVERT` et les
+    variables de démarrage déclarées (§111) ;
+  - le workflow « réponse » vérifie les variables de démarrage, et refuse un type enfant qui a un champ obligatoire sous
+    condition ;
+  - un PDF écarté par les contrôles (antivirus…) est **refusé** à l'écran « Déposer », la transaction du fichier étant
+    annulée (`ConnectorTriggerRuntime.Delivery`). Côté SFTP, il crée un courrier signalé et part dans « traités », comme
+    l'e-mail : issue #277 ;
+  - un index CSV respecte le plafond par interrogation. Un index entamé reste en place et se termine aux passages
+    suivants ;
+  - un groupe supprimé depuis le routage ne reçoit plus de tâche : elle reste libre, visible des éditeurs du dossier ;
+  - `echeance` n'est plus réservée (§115) ; le job d'échéances ignore les dossiers déjà escaladés pour leur date.
 - **Signalement d'une réponse non rattachée.** Le signal est `filResultat=NOUVEAU` avec la raison dans `filMotif` (par
   exemple « expéditeur non attesté »), et non une variable `mailThreadIgnored` comme l'annonçait le cadrage.
 **D-MAILROOM-REPLY-WORKFLOW** (tranché par l'utilisateur, lot 3b, 2026-10-31) — le mode 3 bute sur une règle existante : un

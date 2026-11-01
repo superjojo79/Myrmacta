@@ -72,6 +72,7 @@ class AttachToThreadDelegate implements JavaDelegate {
     private static final int MAX_SUBJECT_SCAN = 300;
     private static final int MAX_SUBJECT_REFERENCES = 3;
     private static final int SUBJECT_EXCHANGES_SCANNED = 50;
+    private static final int SUBJECT_LINKED_SCANNED = 20;
 
     private static final AccessContext SYSTEM = AccessContext.system("flowable-delegate");
 
@@ -199,6 +200,14 @@ class AttachToThreadDelegate implements JavaDelegate {
             replyNotStarted(execution, "configuration de workflow absente : " + setting.workflowKey());
             return;
         }
+        try {
+            // Revue de clôture : un process qui déclare ses variables de démarrage (§111) sans courrierId / courrierReference
+            // refuserait le démarrage APRÈS le rattachement, qui serait alors annulé avec lui.
+            orchestrator.bindStartVariables(setting.workflowKey(), variables);
+        } catch (IllegalArgumentException refused) {
+            replyNotStarted(execution, "variables de démarrage refusées par " + setting.workflowKey() + " : " + refused.getMessage());
+            return;
+        }
         if (setting.mode() == ReplyWorkflowSetting.Mode.SUR_DOSSIER) {
             if (links.findActiveByDossierId(target.id()).isPresent()) {
                 replyNotStarted(execution, "un process est déjà actif sur " + target.reference());
@@ -218,8 +227,10 @@ class AttachToThreadDelegate implements JavaDelegate {
             return;
         }
         for (FieldDefinition definition : childType.get().fieldDefinitions()) {
-            boolean unconditional = definition.requiredWhen() == null || definition.requiredWhen().isBlank();
-            if (definition.required() && unconditional && !definition.hasDefaultValue()) {
+            // Le dossier enfant naît sans valeur : un champ obligatoire sans défaut, ou obligatoire sous condition (revue de
+            // clôture), ferait échouer sa création après le rattachement.
+            boolean conditional = definition.requiredWhen() != null && !definition.requiredWhen().isBlank();
+            if ((definition.required() && !definition.hasDefaultValue()) || conditional) {
                 replyNotStarted(execution, "champ obligatoire du type enfant : " + definition.name());
                 return;
             }
@@ -289,10 +300,34 @@ class AttachToThreadDelegate implements JavaDelegate {
         Matcher matcher = SUBJECT_REFERENCE.matcher(subject.length() > MAX_SUBJECT_SCAN ? subject.substring(0, MAX_SUBJECT_SCAN) : subject);
         for (int candidates = 0; candidates < MAX_SUBJECT_REFERENCES && matcher.find(); candidates++) {
             Optional<Dossier> referenced = dossiers.findByReference(tenantId, matcher.group());
-            if (referenced.isEmpty()) {
-                continue;
+            if (referenced.isPresent()) {
+                Optional<MailIndexEntry> exchange = exchangeWith(tenantId, referenced.get().id(), senderDomain);
+                if (exchange.isPresent()) {
+                    // L'entrée désigne le dossier référencé lui-même (sens OUT : il est le dossier du fil), avec l'interlocuteur
+                    // qui prouve l'échange ; la suite (attestation, domaine, dossier ouvert) s'applique comme pour les autres moyens.
+                    MailIndexEntry proof = exchange.get();
+                    return Optional.of(new MailIndexEntry(tenantId, proof.kind(), proof.key(), MailIndexEntry.Direction.OUT,
+                            referenced.get().id(), proof.counterpart(), proof.recordedAt()));
+                }
             }
-            for (MailIndexEntry entry : index.findByDossier(tenantId, referenced.get().id(), SUBJECT_EXCHANGES_SCANNED)) {
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Un e-mail échangé avec ce domaine : inscrit au nom du dossier (envoyé par « Notifier », ou reçu directement), ou au nom
+     * d'un courrier qui lui est lié (un e-mail reçu est inscrit au nom de son courrier, routé ensuite vers le dossier métier).
+     */
+    private Optional<MailIndexEntry> exchangeWith(String tenantId, UUID dossierId, String senderDomain) {
+        List<UUID> candidates = new ArrayList<>();
+        candidates.add(dossierId);
+        for (DossierRelation relation : relations.findByDossier(tenantId, dossierId)) {
+            if (relation.type() == RelationType.LINKED && candidates.size() <= SUBJECT_LINKED_SCANNED) {
+                candidates.add(dossierId.equals(relation.sourceDossierId()) ? relation.targetDossierId() : relation.sourceDossierId());
+            }
+        }
+        for (UUID candidate : candidates) {
+            for (MailIndexEntry entry : index.findByDossier(tenantId, candidate, SUBJECT_EXCHANGES_SCANNED)) {
                 if (senderDomain.equalsIgnoreCase(entry.counterpartDomain())) {
                     return Optional.of(entry);
                 }

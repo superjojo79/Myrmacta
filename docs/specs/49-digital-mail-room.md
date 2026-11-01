@@ -24,7 +24,7 @@ capture (scanners, OCR, chez des partenaires) et le métier : il ouvre un vrai d
 |---|---|---|
 | E-mail (IMAP, Microsoft Graph) | connecteurs `imap-inbound`, `graph-mail-inbound` ; en-têtes de fil (`In-Reply-To`, `References`, `conversationId`) en variables `mail*`, réservées à la plateforme | §87, D-MAILROOM-THREAD |
 | PDF par SFTP | connecteur `sftp-pdf-inbound` : un courrier par PDF, remis avant rangement (traités / refusés), index du partenaire en JSON compagnon ou CSV par lot | D-MAILROOM-PDF-SFTP |
-| PDF déposé à la main | écran « Déposer un courrier », point de dépôt = connecteur `mail-deposit` ; une transaction par fichier | D-MAILROOM-DEPOSIT |
+| PDF déposé à la main | écran « Déposer un courrier », point de dépôt = connecteur `mail-deposit` ; une transaction par fichier ; un PDF écarté par l'antivirus est refusé | D-MAILROOM-DEPOSIT |
 
 Tous passent par `ConnectorTriggerRuntime` : dossier créé au nom du connecteur, pièces contrôlées (types, signature,
 antivirus), process mis en file par l'outbox. `ConnectorTriggerRuntime.deliver` remet un événement déjà construit (dépôt).
@@ -50,8 +50,10 @@ courrier, la réaffecte à un autre groupe (D-GROUP-REASSIGN, note de trace : qu
 
 - Chaque message reste un courrier. Les identifiants des e-mails **reçus** (connecteur) et **envoyés** (« Notifier »,
   Message-ID renvoyé par `EmailPort`) sont inscrits dans `mail_message_index`, avec le dossier et l'interlocuteur.
-- Le fil se reconnaît par `In-Reply-To`, puis `References`, puis `conversationId`. En secours, il se reconnaît par une
-  référence de dossier lue dans l'objet, mais seulement si ce dossier a déjà échangé avec le domaine de l'expéditeur.
+- Le fil se reconnaît par `In-Reply-To`, puis `References` (les plus récents, en fin d'en-tête), puis `conversationId`. En
+  secours, il se reconnaît par une référence de dossier lue dans l'objet, mais seulement si ce dossier, ou un courrier qui
+  lui est lié, a déjà échangé avec le domaine de l'expéditeur.
+- Un identifiant reçu déjà connu n'est pas réinscrit : un tiers ne peut pas masquer un fil en réutilisant son Message-ID.
 - **Conditions :** expéditeur attesté (`Authentication-Results` du serveur de réception), même domaine que l'interlocuteur
   du fil, dossier du fil ouvert. Sinon : nouveau courrier routé, raison dans `filMotif`.
 - **Effets** (`MailThreadAttacher`, partagé avec l'outil MCP) : lien `LINKED`, pièces copiées (contrôles des pièces
@@ -119,7 +121,7 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 | 4a, 4b | #271, #273 | échéances plateforme (045), `DeadlineAlertJob`, `computeDeadlineTask`, minuteurs `${echeance…}` |
 | 5a, 5b | #274, #275 | `sftp-pdf-inbound`, `mail-deposit`, écran « Déposer un courrier » |
 | 6 | #276 | `MailRoomMcpTools`, `MailThreadAttacher`, revue de sécurité |
-| 7 | (cette PR) | référence dans l'objet en secours, test MCP par la chaîne HTTP, démo, spec, clôture |
+| 7 | (cette PR) | référence dans l'objet en secours, test MCP par la chaîne HTTP, démo, spec, revue de clôture et ses correctifs |
 
 **Tests de référence :**
 
@@ -139,5 +141,6 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 - la promotion de configuration ne transporte ni le workflow « réponse » ni l'échéance d'un type ;
 - une panne entre la création d'un courrier et le rangement de son message (boîte, SFTP) fait retraiter ce message au
   passage suivant ;
+- un PDF SFTP écarté par l'antivirus crée un courrier signalé et part dans « traités » (#277) ;
 - la claim « overage » d'Entra ID (trop de groupes) n'est pas lue ;
 - OCR, eBox (#213 à #216) et classification IA restent hors de cette feature.

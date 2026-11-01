@@ -190,3 +190,8 @@ désormais empêcher devient ce test et sort de la liste.
   (commit `e79fafd`, TODO §106).
 - **Auto-revue de fin de cycle qui laisse passer délais, relances et bail** (#211) : la revue de clôture se fait
   dans un contexte qui n'a pas écrit le code (`myrmacta-feature`, étape 4).
+- **Test instable par course avec le relais de l'outbox** (#217, lot 4b) : un test qui exécute lui-même les jobs Flowable
+  (exécuteur asynchrone coupé) attend d'abord que l'outbox n'ait plus d'événement `PENDING`. Le relais démarre le process
+  puis confirme le lien dans une seconde transaction ; un job exécuté entre les deux échoue sur le verrou optimiste.
+- **Violation d'unicité attrapée trop tard** (#217, lot 6) : sous PostgreSQL, une contrainte unique violée condamne la
+  transaction de l'appelant, même si l'exception est attrapée. Chercher l'existant avant d'insérer.

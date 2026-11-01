@@ -19,7 +19,9 @@ import be.myrmacta.domain.user.model.UserGroupNotFoundException;
 import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.port.out.WorkflowDeploymentPort;
+import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
 import be.myrmacta.domain.workflow.port.out.WorkflowLinkGroupRepository;
+import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.time.Clock;
@@ -86,6 +88,7 @@ class RouteMailDelegate implements JavaDelegate {
     private final UpdateDossierFieldsUseCase updateFields;
     private final UpdateDossierStatusUseCase updateStatus;
     private final DeadlineSettings deadlineSettings;
+    private final WorkflowTypeConfigRepository workflowConfigs;
     private final TenantProperties tenantProperties;
     private final Clock clock;
 
@@ -101,9 +104,10 @@ class RouteMailDelegate implements JavaDelegate {
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
             DeadlineSettings deadlineSettings,
+            WorkflowTypeConfigRepository workflowConfigs,
             TenantProperties tenantProperties) {
         this(confirmer, orchestrator, dossierRepository, typeRepository, deploymentPort, groups, linkGroups, updateFields,
-                updateStatus, deadlineSettings, tenantProperties, Clock.systemUTC());
+                updateStatus, deadlineSettings, workflowConfigs, tenantProperties, Clock.systemUTC());
     }
 
     RouteMailDelegate(
@@ -117,9 +121,11 @@ class RouteMailDelegate implements JavaDelegate {
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
             DeadlineSettings deadlineSettings,
+            WorkflowTypeConfigRepository workflowConfigs,
             TenantProperties tenantProperties,
             Clock clock) {
         this.deadlineSettings = Objects.requireNonNull(deadlineSettings, "deadlineSettings");
+        this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
         this.confirmer = Objects.requireNonNull(confirmer, "confirmer");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -180,6 +186,19 @@ class RouteMailDelegate implements JavaDelegate {
         String process = text(execution.getVariable(PROCESS));
         if (process == null || deploymentPort.findDeploymentInfo(tenantProperties.id(), process).isEmpty()) {
             return Plan.refused("process non déployé : " + process);
+        }
+        // Revue de clôture : ce que le démarrage vérifiera, vérifié ici, avant la création du dossier métier.
+        Optional<WorkflowTypeConfig> config = workflowConfigs.findByWorkflowKey(tenantProperties.id(), process);
+        if (config.isEmpty()) {
+            return Plan.refused("configuration de workflow absente : " + process);
+        }
+        if (!config.get().allowsDossierStatus(DossierStatus.OUVERT)) {
+            return Plan.refused("statut OUVERT refusé par " + process);
+        }
+        try {
+            orchestrator.bindStartVariables(process, Map.of());
+        } catch (IllegalArgumentException refused) {
+            return Plan.refused("variables de démarrage refusées par " + process + " : " + refused.getMessage());
         }
         Integer delay = delayDays(execution.getVariable(DELAY_DAYS));
         if (execution.getVariable(DELAY_DAYS) != null && delay == null) {

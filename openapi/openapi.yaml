@@ -5162,6 +5162,7 @@ components:
           - REPLY_WORKFLOW
           - DEADLINE
           - DOCUMENT_TEMPLATE
+          - PARCOURS
         key:
           type: string
         action:
@@ -5208,6 +5209,7 @@ components:
           - REPLY_WORKFLOW
           - DEADLINE
           - DOCUMENT_TEMPLATE
+          - PARCOURS
         key:
           type: string
         outcome:

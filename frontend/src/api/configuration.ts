@@ -14,6 +14,7 @@ export type ArtifactType =
   | 'REPLY_WORKFLOW'
   | 'DEADLINE'
   | 'DOCUMENT_TEMPLATE'
+  | 'PARCOURS'
 
 export interface PlanEntry {
   type: ArtifactType

@@ -330,6 +330,7 @@ const admin: typeof fr = {
       REPLY_WORKFLOW: 'Reply workflow',
       DEADLINE: 'Deadline',
       DOCUMENT_TEMPLATE: 'Document template',
+      PARCOURS: 'Journey',
     },
     planActions: { CREATE: 'Create', UPDATE: 'Update', UNCHANGED: 'Unchanged', CONFLICT: 'Conflict', BLOCKED: 'Blocked' },
     outcomes: { APPLIED: 'Applied', UNCHANGED: 'Unchanged', SKIPPED: 'Skipped', FAILED: 'Failed' },

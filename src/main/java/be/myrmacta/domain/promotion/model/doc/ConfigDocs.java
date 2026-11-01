@@ -134,4 +134,16 @@ public final class ConfigDocs {
             htmlContent = htmlContent == null ? "" : htmlContent;
         }
     }
+
+    /**
+     * TODO §117 (D-PROMO-PARCOURS) — définition d'un parcours. {@code inSync} (repère de l'export, hors comparaison) : faux si, sur
+     * la source, la définition a changé depuis sa dernière compilation ou si le processus déployé n'est pas cette compilation.
+     */
+    public record ParcoursDoc(String key, String label, be.myrmacta.domain.parcours.model.ParcoursDefinition definition, Boolean inSync) {
+
+        public ParcoursDoc {
+            java.util.Objects.requireNonNull(key, "key");
+            java.util.Objects.requireNonNull(definition, "definition");
+        }
+    }
 }

@@ -15,9 +15,12 @@ import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.ParcoursArtifacts;
 import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
 import be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase;
+import be.myrmacta.domain.parcours.port.in.ManageParcoursUseCase;
+import be.myrmacta.domain.parcours.port.out.ParcoursRepository;
 import be.myrmacta.domain.promotion.port.in.ExportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
@@ -69,12 +72,16 @@ class PromotionConfig {
             ManageDeadlineUseCase deadlines,
             DocumentTemplateRepository templates,
             CreateDocumentTemplateUseCase createTemplate,
-            TemplateSyntaxChecker templateSyntax) {
+            TemplateSyntaxChecker templateSyntax,
+            ParcoursRepository parcoursRepository,
+            ManageParcoursUseCase manageParcours,
+            WorkflowDeploymentPort workflowDeployment) {
         return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
                 new GroupReferenceCheck(new XmlGroupReferenceExtractor()),
                 new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines),
                 new DocumentTemplateArtifacts(tenantProperties.id(), codec, templates, createTemplate, templateSyntax,
-                        DocumentConfig.MAX_HTML_BYTES));
+                        DocumentConfig.MAX_HTML_BYTES),
+                new ParcoursArtifacts(tenantProperties.id(), codec, parcoursRepository, manageParcours, workflowDeployment));
     }
 
     @Bean

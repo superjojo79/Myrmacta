@@ -429,6 +429,8 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
    - un groupe nommé par une table de routage, l'attribut `groupeTri` ou un `candidateGroups` ;
    - une clé de template d'un type sans version active.
 
+   L'avertissement est repris dans le rapport d'application et dans l'historique des imports.
+
    Un workflow « réponse » ou une échéance dont le type, le process, le type enfant, le champ date ou le groupe d'escalade manque est
    *Bloqué*.
 3. **Paramètres d'environnement** : une valeur de la forme `{{url_erp}}` est remplacée à l'import par le paramètre du même nom (JSON

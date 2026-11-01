@@ -117,6 +117,10 @@ import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.
 
 - **Références orphelines (D-PROMO-ORPHAN) :** une référence absente de la cible et du bundle bloque quand l'écriture
   serait refusée. Sinon elle produit un avertissement `WARNING:` en tête de la raison, et l'artefact reste appliqué.
+  L'avertissement est séparé de la suite par ` | ` ; la ligne du rapport d'application le reprend avant son message, donc
+  le journal `config_import` aussi, que l'artefact soit *Appliqué* ou *Inchangé* (issue #285). Le plan connaît le canal :
+  par MCP, un groupe que seul le bundle apporte ne compte pas comme connu, puisque ce canal n'applique pas les groupes, et
+  l'avertissement le dit.
 - **Repérage des groupes :** `XmlGroupReferenceExtractor` (StAX, sans DTD ni entité externe) ne retient que les valeurs
   littérales en forme de code de groupe.
 - **Canal MCP (D-PROMO-MCP-TEMPLATE) :** il applique les brouillons BPMN, DMN et de templates. Groupes, parcours,

@@ -92,6 +92,11 @@ est traitée selon son effet :
   - attribut `groupeTri` de « Router le courrier » ;
   - `candidateGroups` littéraux d'une tâche ;
   - clé de template d'un type de dossier sans version active ni template dans le bundle.
+- **Rapport et journal** (issue [#285](https://github.com/superjojo79/Myrmacta/issues/285)) : l'avertissement, séparé de la
+  suite de la raison par ` | `, est repris en tête du message de la ligne du rapport, *Appliqué* comme *Inchangé*, donc dans
+  le journal `config_import`. Un `apply` MCP sans plan préalable le montre ainsi aussi.
+- **Canal :** le plan reçoit le canal qui l'appliquera. Par MCP, qui n'applique jamais un groupe, un groupe que seul le
+  bundle apporte ne compte pas comme connu ; l'avertissement renvoie vers l'écran d'import.
 
 **D-PROMO-MCP-TEMPLATE** (tranché par l'utilisateur, 2026-11-01) — par le canal MCP, `import_configuration` applique aussi les
 **brouillons de templates**. Comme un brouillon BPMN ou DMN, ils ne s'exécutent pas avant qu'un humain les active
@@ -121,5 +126,6 @@ l'éditeur de templates (D-TPLED-NO-ACTIVATE : pas de corps HTML par MCP). `bund
     - comparaisons non normalisées ;
     - textes MCP obsolètes ;
     - empreinte des bundles de format 1 non figée.
-- **Repris dans l'issue [#285](https://github.com/superjojo79/Myrmacta/issues/285) :** les avertissements du plan ne figurent pas dans le rapport d'application ni dans le
-  journal ; par MCP, un groupe du bundle compte comme connu alors que ce canal ne l'applique pas.
+- **Repris dans l'issue [#285](https://github.com/superjojo79/Myrmacta/issues/285), corrigé depuis (voir D-PROMO-ORPHAN) :**
+  les avertissements du plan ne figuraient pas dans le rapport d'application ni dans le journal ; par MCP, un groupe du
+  bundle comptait comme connu alors que ce canal ne l'applique pas.

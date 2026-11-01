@@ -14,12 +14,14 @@ Un courrier est un **dossier de type `COURRIER`** (D-MAILROOM-MODEL), pas une en
 
 Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Dossiers → filtre « Type : Courrier entrant »).
 
-État : **lots 1 à 5b** de la feature.
+État : **lots 1 à 6** de la feature.
 
 - **Ce que fait déjà l'exemple :**
   - un e-mail devient un courrier, avec ses pièces ;
   - un PDF numérisé déposé par le partenaire sur SFTP, avec son index JSON, devient un courrier « papier » qui suit le
     même tri (`config/connecteur-sftp-pdf.exemple.json`) ;
+  - un agent (ou un assistant) travaille la file de tri par le serveur MCP : `list_my_tasks`, `get_mail_thread`,
+    `attach_mail_to_dossier`, `reassign_task_to_group`, `complete_task` (§113 D-MAILROOM-MCP) ;
   - un agent dépose un PDF papier depuis l'écran « Déposer un courrier » : il devient un courrier « papier » qui suit le
     même tri (`config/connecteur-depot.exemple.json`) ;
   - la **table de routage** (`routage-courrier.dmn`) décide du sort du courrier :
@@ -40,7 +42,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     table (30 jours) ; les personnes qui ont la tâche sont rappelées 5 jours avant ; le lendemain du terme, la tâche passe
     au groupe DIRECTION_FINANCIERE, avec une note dans le dossier.
 - **Ce qui viendra :**
-  - les outils MCP (lot 6).
+  - la démonstration reproductible et la spec de la feature (lot 7).
 
 ## Contenu
 
@@ -90,4 +92,4 @@ service, le type de dossier, le process et le délai.
 - **Canal :** il vaut `EMAIL` par défaut. Le connecteur SFTP le pose à `PAPIER` (`defaultFields`). La table de routage de
   l'exemple n'a de règle que pour l'e-mail : un courrier papier part donc à la file de tri.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre).
+Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre) ; un agent travaille la file de tri par les outils MCP (fil d'une facture, rattachement à blanc puis réel, réaffectation, fin de la tâche de tri).

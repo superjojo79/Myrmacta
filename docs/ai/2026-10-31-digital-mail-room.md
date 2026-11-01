@@ -189,8 +189,8 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
 | 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | #273 |
 | 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | livré | #274 |
-| 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur `mail-deposit`, `ConnectorTriggerRuntime.deliver` | livré | à ouvrir |
-| 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
+| 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur `mail-deposit`, `ConnectorTriggerRuntime.deliver` | livré | #275 |
+| 6 | MCP lecture et actions gardées (§113 D-MAILROOM-MCP) : `list_my_tasks`, `get_mail_thread`, `reassign_task_to_group`, `attach_mail_to_dossier`, `complete_task` ; `security-review` | en cours | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
 | plus tard | OCR intégré ; gabarits de notification (#185) ; classification IA | à faire | |
 
@@ -294,7 +294,20 @@ Fait dans le lot 5b :
   `MailDepositController` (une transaction par fichier, sort de chacun) ; `DossierAccessPolicy.canEditType` ;
 - SPA : écran « Déposer un courrier » (menu principal) ; exemple `config/connecteur-depot.exemple.json`.
 
-Prochaine action : PR du lot 5b, puis lot 6 (MCP lecture et actions gouvernées, avec `security-review`).
+Fait dans le lot 6 (gouvernance choisie par l'utilisateur : comme les outils MCP d'écriture) :
+- D-MAILROOM-MCP (§113) ; `MailRoomMcpTools` (5 outils, mode opération) ; `MailThreadAttacher` extrait de la brique
+  « Rattacher au fil » (même code pour le rattachement manuel) ; `ReassignTaskToGroupUseCase.check` ;
+  `MailMessageIndex.findByDossier` ;
+- revue de sécurité : SR-1 corrigé (rattachement idempotent, lien cherché avant insertion), SR-4 corrigé par choix de
+  l'utilisateur (`complete_task` limité aux files de mes groupes), SR-3 atténué (descriptions), SR-2 préexistant
+  documenté (M2M = `API_SERVICE`, `trustedClientIds`).
+
+Appris pendant le lot 6 :
+- Une violation de contrainte unique condamne la transaction PostgreSQL de l'appelant : attraper l'exception ne suffit
+  pas, il faut vérifier avant d'insérer.
+
+Prochaine action : preuves du lot 6, PR, puis lot 7 (démo reproductible, spec 49, guides, clôture et revue
+indépendante).
 La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a été mergée en §116.
 
 ## Preuves

@@ -21,6 +21,7 @@ import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
 import be.myrmacta.domain.connector.port.out.SftpClientPort;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
 import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
 import be.myrmacta.infrastructure.mcp.McpActorScope;
 import be.myrmacta.infrastructure.mcp.tool.MailRoomMcpTools;
@@ -87,6 +88,7 @@ class MailRoomExampleIT {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private DeadlineAlertJob deadlineAlertJob;
     @Autowired private MailRoomMcpTools mailRoomTools;
+    @Autowired private RecordUserLoginUseCase recordLogin;
 
     private static boolean configured;
 
@@ -331,6 +333,11 @@ class MailRoomExampleIT {
         Task sortingTask = taskService.createTaskQuery().processInstanceId(sorting.getId()).taskDefinitionKey("trierCourrier").singleResult();
         String linkId = String.valueOf(runtimeService.getVariable(sorting.getId(), "dossierWorkflowLinkId"));
         AccessContext.User agent = AccessContext.user(OPERATOR, Set.of("DOSSIER_MANAGER"));
+        // complete_task ne termine qu'une tâche de la file d'un de mes groupes (SR-4) : l'agent est membre de COURRIER.
+        recordLogin.record(OPERATOR, "Opérateur courrier", null, Set.of("DOSSIER_MANAGER"));
+        mockMvc.perform(put("/api/user-groups/{code}/members/{userId}", "COURRIER", OPERATOR).with(user("admin-courrier", "TENANT_ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().is2xxSuccessful());
 
         var thread = McpActorScope.call(agent, () -> mailRoomTools.getMailThread(invoiceId));
         assertThat(thread.linkedDossiers()).extracting(MailRoomMcpTools.LinkedDossier::dossierId)
@@ -341,17 +348,24 @@ class MailRoomExampleIT {
         assertThat(read(get("/api/dossiers/{id}/relations", mailId))).isEmpty();
         McpActorScope.call(agent, () -> mailRoomTools.attachMailToDossier(mailId, invoiceId, false));
         assertThat(read(get("/api/dossiers/{id}/relations", mailId)).get(0).get("relatedDossier").get("id").asString()).isEqualTo(invoiceId);
+        // SR-1 : un nouvel essai de l'agent ne refait rien (pas de seconde tâche « Prendre connaissance », pas de seconde note).
+        assertThat(McpActorScope.call(agent, () -> mailRoomTools.attachMailToDossier(mailId, invoiceId, false)))
+                .containsEntry("done", false).containsEntry("alreadyAttached", true);
         String invoiceProcess = runtimeService.createProcessInstanceQuery().processDefinitionKey("traiterFacture")
                 .variableValueEquals("dossierId", invoiceId).singleResult().getId();
         assertThat(taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("lireCourrier").count()).isEqualTo(1);
         assertThat(read(get("/api/dossiers/{id}/elements", invoiceId)).toString()).contains("rattaché par " + OPERATOR);
 
+        assertThat(McpActorScope.call(agent, () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), true))).containsEntry("done", false);
+        assertThat(taskService.createTaskQuery().taskId(sortingTask.getId()).count()).isEqualTo(1);
         McpActorScope.call(agent, () -> mailRoomTools.reassignTaskToGroup(linkId, sortingTask.getId(), "JURIDIQUE", false));
         assertThat(taskService.getIdentityLinksForTask(sortingTask.getId()))
                 .anySatisfy(identity -> assertThat(identity.getGroupId()).isEqualTo("JURIDIQUE"));
+        // Réaffectée à JURIDIQUE, la tâche n'est plus dans la file de l'agent : il ne peut plus la terminer (SR-4) ; on la remet.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> McpActorScope.call(agent,
+                () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), false))).hasMessageContaining("queue of one of your user groups");
+        McpActorScope.call(agent, () -> mailRoomTools.reassignTaskToGroup(linkId, sortingTask.getId(), "COURRIER", false));
 
-        assertThat(McpActorScope.call(agent, () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), true))).containsEntry("done", false);
-        assertThat(taskService.createTaskQuery().taskId(sortingTask.getId()).count()).isEqualTo(1);
         McpActorScope.call(agent, () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), false));
         assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(sorting.getId()).count()).isZero();
         assertThat(read(get("/api/dossiers/{id}", mailId)).get("status").asString()).isEqualTo("CLOTURE");

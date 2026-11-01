@@ -66,26 +66,41 @@ public class MailThreadAttacher {
     }
 
     /**
+     * Si le courrier est déjà lié à ce dossier (rejeu, ou nouvel essai d'un agent MCP), rien n'est refait : ni pièces recopiées,
+     * ni participants prévenus, ni message remis (revue de sécurité du lot 6, SR-1).
+     *
      * @param idempotencyKey un rejeu avec la même clé ne recrée pas le lien
      * @param createdBy auteur du lien ({@code workflow} pour la brique, l'utilisateur pour l'outil MCP)
+     * @return vrai si le lien vient d'être créé (et les effets appliqués), faux s'il existait déjà
      */
-    public void attach(String tenantId, Dossier mail, Dossier target, String idempotencyKey, String createdBy) {
-        link(tenantId, mail.id(), target.id(), idempotencyKey, createdBy);
+    public boolean attach(String tenantId, Dossier mail, Dossier target, String idempotencyKey, String createdBy) {
+        if (!link(tenantId, mail.id(), target.id(), idempotencyKey, createdBy)) {
+            return false;
+        }
         copyPieces(tenantId, mail, target);
         warnParticipants(tenantId, mail, target);
         engine.correlateMessageToAllWaiting(MESSAGE, target.id().toString(),
                 Map.of("courrierId", mail.id().toString(), "courrierReference", mail.reference()));
+        return true;
     }
 
-    private void link(String tenantId, UUID mailId, UUID targetId, String idempotencyKey, String createdBy) {
+    private boolean link(String tenantId, UUID mailId, UUID targetId, String idempotencyKey, String createdBy) {
         if (relations.findByIdempotencyKey(tenantId, mailId, idempotencyKey).isPresent()) {
-            return;
+            return false;
+        }
+        // Déjà lié, par le fil ou à la main : vérifié AVANT l'insertion, car la violation de uq_dossier_relation condamnerait
+        // la transaction PostgreSQL de l'appelant.
+        boolean linked = relations.findByDossier(tenantId, mailId).stream().anyMatch(relation -> relation.type() == RelationType.LINKED
+                && (targetId.equals(relation.targetDossierId()) || targetId.equals(relation.sourceDossierId())));
+        if (linked) {
+            return false;
         }
         try {
             createRelation.create(new CreateDossierRelationUseCase.CreateDossierRelationCommand(tenantId, mailId, targetId,
                     RelationType.LINKED, createdBy, idempotencyKey), SYSTEM);
+            return true;
         } catch (DuplicateDossierRelationException alreadyLinked) {
-            // Rejeu : le lien existe déjà.
+            return false;
         }
     }
 

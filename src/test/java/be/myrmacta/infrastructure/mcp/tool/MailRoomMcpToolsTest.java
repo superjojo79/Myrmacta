@@ -22,6 +22,7 @@ import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierWorkflowLinkRepository;
 import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.shared.PageResult;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.model.WorkflowTaskView;
 import be.myrmacta.domain.workflow.port.in.ClaimWorkflowTaskUseCase;
 import be.myrmacta.domain.workflow.port.in.CompleteTaskUseCase;
@@ -59,6 +60,7 @@ class MailRoomMcpToolsTest {
     private final DossierAccessPolicy policy = mock(DossierAccessPolicy.class);
     private final DossierElementRepository elements = mock(DossierElementRepository.class);
     private final MailThreadAttacher attacher = mock(MailThreadAttacher.class);
+    private final UserGroupsUseCase groups = mock(UserGroupsUseCase.class);
     private final AccessContext.User agent = AccessContext.user("agent", Set.of("DOSSIER_MANAGER"));
     private final Dossier mail = dossier("DOS-COURRIER-1", DossierStatus.EN_COURS);
     private final Dossier invoice = dossier("DOS-FACTURE-1", DossierStatus.EN_COURS);
@@ -74,8 +76,9 @@ class MailRoomMcpToolsTest {
             }
         };
         tools = new MailRoomMcpTools(mock(ListMyTasksUseCase.class), getDossier, mock(ListDossierRelationsUseCase.class),
-                mock(MailMessageIndex.class), reassign, workflowTasks, claim, complete, links, policy, elements, attacher,
+                mock(MailMessageIndex.class), reassign, workflowTasks, claim, complete, links, policy, elements, attacher, groups,
                 new TenantProperties(TENANT), new McpAccessContextFactory(), inline, Clock.systemUTC());
+        when(groups.groupsOf("agent")).thenReturn(Set.of("COURRIER"));
         when(getDossier.get(eq(mail.id()), any())).thenReturn(mail);
         when(getDossier.get(eq(invoice.id()), any())).thenReturn(invoice);
         when(links.findById(linkId)).thenReturn(Optional.of(new DossierWorkflowLink(linkId, mail.id(), TENANT, "pi-1", "triCourrier", 1,
@@ -112,7 +115,7 @@ class MailRoomMcpToolsTest {
     @Test
     void aTaskWithAFormStaysInTheUi_andATaskAssignedToSomeoneElseIsNotTaken() {
         tasks(new WorkflowTaskView("t1", "Répondre", null, "q", Instant.EPOCH, "user-question:avis", List.of()),
-                new WorkflowTaskView("t2", "Trier le courrier", "bob", "trierCourrier", Instant.EPOCH, null, List.of()));
+                new WorkflowTaskView("t2", "Trier le courrier", "bob", "trierCourrier", Instant.EPOCH, null, List.of("COURRIER")));
 
         assertThatThrownBy(() -> as(() -> tools.completeTask(linkId.toString(), "t1", false))).hasMessageContaining("has a form");
         assertThatThrownBy(() -> as(() -> tools.completeTask(linkId.toString(), "t2", false))).hasMessageContaining("someone else");
@@ -122,7 +125,7 @@ class MailRoomMcpToolsTest {
 
     @Test
     void aFreeTaskWithoutFormIsClaimed_traced_thenCompleted_butNotOnADryRun() {
-        tasks(new WorkflowTaskView("t2", "Trier le courrier", null, "trierCourrier", Instant.EPOCH, null, List.of()));
+        tasks(new WorkflowTaskView("t2", "Trier le courrier", null, "trierCourrier", Instant.EPOCH, null, List.of("COURRIER")));
 
         assertThat(as(() -> tools.completeTask(linkId.toString(), "t2", true))).containsEntry("done", false);
         verifyNoInteractions(claim, complete, elements);
@@ -131,6 +134,27 @@ class MailRoomMcpToolsTest {
         verify(claim).claim(linkId, "t2", agent);
         verify(elements).save(any());
         verify(complete).complete("t2", mail.id().toString(), Map.of(), agent);
+    }
+
+    /** SR-4 — hors de la file d'un de mes groupes, une tâche sans formulaire reste à l'interface. */
+    @Test
+    void aTaskOutsideMyGroupsIsRefused() {
+        tasks(new WorkflowTaskView("t3", "Valider", null, "valider", Instant.EPOCH, null, List.of("DIRECTION")),
+                new WorkflowTaskView("t4", "Sans groupe", null, "libre", Instant.EPOCH, null, List.of()));
+
+        assertThatThrownBy(() -> as(() -> tools.completeTask(linkId.toString(), "t3", false))).hasMessageContaining("your user groups");
+        assertThatThrownBy(() -> as(() -> tools.completeTask(linkId.toString(), "t4", false))).hasMessageContaining("your user groups");
+        verifyNoInteractions(claim, complete, elements);
+    }
+
+    /** SR-1 — un courrier déjà lié au dossier : rien n'est refait, pas de note. */
+    @Test
+    void attachingAnAlreadyLinkedMailDoesNothing() {
+        when(attacher.attach(any(), eq(mail), eq(invoice), any(), any())).thenReturn(false);
+
+        assertThat(as(() -> tools.attachMailToDossier(mail.id().toString(), invoice.id().toString(), false)))
+                .containsEntry("done", false).containsEntry("alreadyAttached", true);
+        verifyNoInteractions(elements);
     }
 
     @Test

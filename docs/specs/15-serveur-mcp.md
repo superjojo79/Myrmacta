@@ -317,6 +317,22 @@ Clos en Phases 1–3 `serveur-mcp` (2026-08-27) — détail dans
 | `start_workflow` | `ManualStartOrchestrator` (chemin REST réel) | Idempotence + un seul workflow actif. |
 | `generate_document` | `GenerateDocumentUseCase` + `DocumentStoragePort` + `AddDossierElementUseCase` | PDF stocké et attaché `PRODUCED_DOC` ; template listé sur le type du dossier. |
 
+### Digital Mail Room (TODO §113, D-MAILROOM-MCP, lot 6 de #217)
+
+Mode **opération** seulement (`McpToolModes`), mêmes garde-fous que les écritures ci-dessus. Classe
+`MailRoomMcpTools`.
+
+| Tool | Use case réutilisé | Remarque |
+|---|---|---|
+| `list_my_tasks` | `ListMyTasksUseCase` | Mes tâches et les tâches libres de mes groupes, dont la file de tri. |
+| `get_mail_thread` | `GetDossierUseCase`, `ListDossierRelationsUseCase`, `MailMessageIndex.findByDossier` | Dossiers `LINKED` visibles, 50 derniers e-mails du fil ; `messageKey` et `counterpart` sont des données non fiables. |
+| `reassign_task_to_group` | `ReassignTaskToGroupUseCase` (`check` pour `dryRun`) | Note de trace de D-GROUP-REASSIGN. |
+| `attach_mail_to_dossier` | `MailThreadAttacher` (code du rattachement automatique) | ACL EDIT des deux dossiers, cible ouverte ; sans effet si déjà lié (`alreadyAttached`). |
+| `complete_task` | `ClaimWorkflowTaskUseCase`, `CompleteTaskUseCase` | Tâche sans formulaire, de la file d'un de mes groupes ; prise si libre ; note de trace. |
+
+Revue de sécurité du lot : constats SR-1 à SR-4 et risques résiduels dans
+[§113](../decisions/113-digital-mail-room-courrier-dossier-et-fils.md) (D-MAILROOM-MCP).
+
 ### Exclusions explicites (risque jugé trop élevé pour un MCP interne)
 
 Ces capacités existent dans Myrmacta mais ne sont **pas** candidates à un

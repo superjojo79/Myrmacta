@@ -7,6 +7,7 @@ import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigurationBundle;
@@ -36,7 +37,8 @@ import java.util.Set;
 /**
  * TODO §83 (D4) — export de la configuration du tenant en bundle. <b>Jamais de secret</b> : les champs de connecteur de type
  * mot de passe / secret sont retirés (leurs noms sont conservés pour que l'import sache quoi demander). Les processus et tables de
- * décision exportés sont la dernière version <b>déployée</b>, pas un brouillon.
+ * décision exportés sont la dernière version <b>déployée</b>, pas un brouillon. TODO §117 — tranche 2 : groupes d'utilisateurs
+ * (sans membres).
  */
 public final class ExportConfigurationUseCaseImpl implements ExportConfigurationUseCase {
 
@@ -52,6 +54,7 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
     private final DmnDeploymentPort dmnDeployment;
     private final WorkflowTypeConfigRepository workflowConfigs;
     private final WorkflowDeploymentPort workflowDeployment;
+    private final AdditionalArtifacts additional;
 
     public ExportConfigurationUseCaseImpl(
             String tenantId,
@@ -65,7 +68,8 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
             ConnectorCatalog catalog,
             DmnDeploymentPort dmnDeployment,
             WorkflowTypeConfigRepository workflowConfigs,
-            WorkflowDeploymentPort workflowDeployment) {
+            WorkflowDeploymentPort workflowDeployment,
+            AdditionalArtifacts additional) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.appVersion = appVersion == null ? "" : appVersion;
         this.clock = Objects.requireNonNull(clock, "clock");
@@ -78,12 +82,13 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
         this.dmnDeployment = Objects.requireNonNull(dmnDeployment, "dmnDeployment");
         this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
         this.workflowDeployment = Objects.requireNonNull(workflowDeployment, "workflowDeployment");
+        this.additional = Objects.requireNonNull(additional, "additional");
     }
 
     @Override
     public ConfigurationBundle export(AccessContext.User actor, String sourceLabel) {
         guard.requireTenantAdminOrApiService(actor);
-        List<BundleEntry> entries = new ArrayList<>();
+        List<BundleEntry> entries = new ArrayList<>(additional.groups().export());
 
         types.findAll(tenantId).stream().sorted(Comparator.comparing(DossierType::code)).forEach(t ->
                 entries.add(new BundleEntry(ArtifactType.DOSSIER_TYPE, t.code(), codec.encode(typeDoc(t)))));

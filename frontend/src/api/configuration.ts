@@ -10,6 +10,7 @@ export type ArtifactType =
   | 'DMN'
   | 'BPMN'
   | 'WORKFLOW_CONFIG'
+  | 'USER_GROUP'
 
 export interface PlanEntry {
   type: ArtifactType

@@ -5158,6 +5158,7 @@ components:
           - DMN
           - BPMN
           - WORKFLOW_CONFIG
+          - USER_GROUP
         key:
           type: string
         action:
@@ -5200,6 +5201,7 @@ components:
           - DMN
           - BPMN
           - WORKFLOW_CONFIG
+          - USER_GROUP
         key:
           type: string
         outcome:

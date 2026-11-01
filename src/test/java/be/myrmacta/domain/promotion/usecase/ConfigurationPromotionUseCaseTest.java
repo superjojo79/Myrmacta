@@ -21,6 +21,9 @@ import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUse
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
+import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
 import be.myrmacta.domain.promotion.model.ArtifactType;
 import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigImportRecord;
@@ -31,9 +34,13 @@ import be.myrmacta.domain.promotion.model.PlanAction;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.ConnectorDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DossierTypeDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.TaskQuestionSchemaDoc;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.UserGroupDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.WorkflowConfigDoc;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase.Channel;
 import be.myrmacta.domain.promotion.port.out.ConfigImportLogRepository;
+import be.myrmacta.domain.promotion.port.out.GroupReferenceExtractor;
+import be.myrmacta.domain.user.model.UserGroup;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.model.StatusOutcome;
 import be.myrmacta.domain.workflow.model.WorkflowStatusDefinition;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
@@ -86,6 +93,9 @@ class ConfigurationPromotionUseCaseTest {
     private final List<ConfigImportRecord> journal = new ArrayList<>();
     private ConfigImportLogRepository journalRepo;
     private ImportConfigurationUseCaseImpl useCase;
+    private UserGroupsUseCase userGroups;
+    private final List<UserGroup> groupsHere = new ArrayList<>();
+    private GroupReferenceExtractor groupRefs;
 
     @BeforeEach
     void setUp() {
@@ -119,10 +129,18 @@ class ConfigurationPromotionUseCaseTest {
         when(dmnDeployment.findDeployedXml(any(), any())).thenReturn(Optional.empty());
         when(workflowDeployment.findDeployedXml(any(), any())).thenReturn(Optional.empty());
         when(bpmnParser.extractReferencedDecisionKeys(any())).thenReturn(Set.of());
+        userGroups = mock(UserGroupsUseCase.class);
+        when(userGroups.list()).thenAnswer(inv -> List.copyOf(groupsHere));
+        when(userGroups.get(any())).thenAnswer(inv -> groupsHere.stream()
+                .filter(g -> g.code().equals(inv.getArgument(0))).findFirst().orElseThrow());
+        groupRefs = mock(GroupReferenceExtractor.class);
+        when(groupRefs.fromBpmn(any())).thenReturn(Set.of());
+        when(groupRefs.fromDmn(any())).thenReturn(Set.of());
         useCase = new ImportConfigurationUseCaseImpl(TENANT, Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), ZoneOffset.UTC),
                 new TenantAdminGuard(), CODEC, types, createType, updateType, compat, schemas, saveSchema, connectors,
                 manageConnector, catalog, dmnDeployment, mock(DmnParserPort.class), workflowDeployment, bpmnParser, workflowConfigs,
-                saveWorkflowConfig, propose, journalRepo);
+                saveWorkflowConfig, propose, journalRepo,
+                new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs)));
     }
 
     private static BundleEntry json(ArtifactType type, String key, Object doc) {
@@ -130,7 +148,7 @@ class ConfigurationPromotionUseCaseTest {
     }
 
     private static ConfigurationBundle bundle(BundleEntry... entries) {
-        return new ConfigurationBundle(1, Instant.parse("2026-10-01T09:00:00Z"), "recette", "t", List.of(entries));
+        return new ConfigurationBundle(2, Instant.parse("2026-10-01T09:00:00Z"), "recette", "t", List.of(entries));
     }
 
     private static DossierTypeDoc typeDoc(String code) {
@@ -301,7 +319,12 @@ class ConfigurationPromotionUseCaseTest {
 
     @Test
     void bundleInvariantsAreEnforced() {
-        assertThatThrownBy(() -> new ConfigurationBundle(2, Instant.now(), "", "", List.of())).hasMessageContaining("unsupported");
+        assertThatThrownBy(() -> new ConfigurationBundle(3, Instant.now(), "", "", List.of())).hasMessageContaining("unsupported");
+        assertThatThrownBy(() -> new ConfigurationBundle(0, Instant.now(), "", "", List.of())).hasMessageContaining("unsupported");
+        // TODO §117 (D-PROMO-FORMAT2) — un bundle de format 1 ne porte que les artefacts de la première tranche
+        assertThat(new ConfigurationBundle(2, Instant.now(), "", "", List.of()).formatVersion()).isEqualTo(2);
+        assertThatThrownBy(() -> new ConfigurationBundle(1, Instant.now(), "", "", List.of(json(ArtifactType.USER_GROUP, "COMPTA",
+                new UserGroupDoc("COMPTA", "Comptabilité", null))))).hasMessageContaining("formatVersion 1 cannot contain USER_GROUP");
         assertThatThrownBy(() -> bundle(json(ArtifactType.DOSSIER_TYPE, "T1", typeDoc("T1")), json(ArtifactType.DOSSIER_TYPE, "T1", typeDoc("T1"))))
                 .hasMessageContaining("duplicate");
         for (String bad : List.of("../x", "a/b", ".hidden", "a..b", "", "x".repeat(200), "a b")) {
@@ -489,5 +512,89 @@ class ConfigurationPromotionUseCaseTest {
         var forged = new BundleEntry(ArtifactType.CONNECTOR_INSTANCE, "x",
                 "{\"config\":{},\"connectorType\":\"http-rest\",\"enabled\":true,\"secretFields\":[]}".getBytes(StandardCharsets.UTF_8));
         assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(forged), Map.of())).isInstanceOf(InvalidBundleException.class);
+    }
+
+    // ---- TODO §117 (D-PROMO-GROUP, D-PROMO-ORPHAN) — groupes d'utilisateurs ----
+
+    private static BundleEntry group(String code, String label, String idpGroup) {
+        return json(ArtifactType.USER_GROUP, code, new UserGroupDoc(code, label, idpGroup));
+    }
+
+    @Test
+    void aGroupIsCreatedWithoutMembersAndItsIdentityProviderGroupComesFromAParameter() {
+        var b = bundle(group("COMPTA", "Comptabilité", "{{groupe_compta}}"));
+
+        var blocked = useCase.plan(ADMIN, b, Map.of()).entries().getFirst();
+        assertThat(blocked.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(blocked.reason()).contains("user group 'COMPTA'").contains("groupe_compta");
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of("groupe_compta", "sg-compta-prod"), b.sha256(), Channel.ADMIN);
+
+        assertThat(report.entries().getFirst().outcome()).isEqualTo(ImportOutcome.APPLIED);
+        verify(userGroups).create("COMPTA", "Comptabilité", "sg-compta-prod");
+    }
+
+    @Test
+    void anExistingGroupOnlyChangesItsLabel_itsIdentityProviderGroupAndMembersAreKept() {
+        groupsHere.add(new UserGroup(TENANT, "COMPTA", "Compta", "sg-compta-prod", Set.of("u1")));
+        var b = bundle(group("COMPTA", "Comptabilité", "sg-compta-recette"));
+
+        var entry = useCase.plan(ADMIN, b, Map.of()).entries().getFirst();
+        assertThat(entry.action()).isEqualTo(PlanAction.UPDATE);
+        assertThat(entry.reason()).contains("'sg-compta-prod' here").contains("'sg-compta-recette' in the bundle");
+
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+        verify(userGroups).update("COMPTA", "Comptabilité", "sg-compta-prod");
+        verify(userGroups, never()).create(any(), any(), any());
+    }
+
+    @Test
+    void aGroupWithTheSameLabelIsUnchanged_andAnInvalidOneIsBlocked() {
+        groupsHere.add(new UserGroup(TENANT, "COMPTA", "Comptabilité", null, Set.of()));
+        var plan = useCase.plan(ADMIN, bundle(group("COMPTA", "Comptabilité", null), group("RH", " ", null)), Map.of());
+
+        assertThat(plan.find(ArtifactType.USER_GROUP, "COMPTA").orElseThrow().action()).isEqualTo(PlanAction.UNCHANGED);
+        assertThat(plan.find(ArtifactType.USER_GROUP, "RH").orElseThrow().action()).isEqualTo(PlanAction.BLOCKED);
+    }
+
+    @Test
+    void groupsArePlannedFirstAndTheMcpChannelNeverAppliesThem() {
+        var b = bundle(json(ArtifactType.DOSSIER_TYPE, "T1", typeDoc("T1")), group("COMPTA", "Comptabilité", null));
+
+        assertThat(useCase.plan(ADMIN, b, Map.of()).entries().getFirst().type()).isEqualTo(ArtifactType.USER_GROUP);
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.MCP);
+
+        assertThat(report.entries().getFirst().outcome()).isEqualTo(ImportOutcome.SKIPPED);
+        verify(userGroups, never()).create(any(), any(), any());
+    }
+
+    @Test
+    void aProcessOrATableNamingAGroupUnknownHereAndAbsentFromTheBundleIsAppliedWithAWarning() {
+        groupsHere.add(new UserGroup(TENANT, "COURRIER", "Courrier", null, Set.of()));
+        when(groupRefs.fromBpmn(any())).thenReturn(Set.of("COURRIER", "JURIDIQUE", "COMPTA"));
+        when(groupRefs.fromDmn(any())).thenReturn(Set.of("COMPTA", "RH"));
+        var b = bundle(group("COMPTA", "Comptabilité", null),
+                new BundleEntry(ArtifactType.DMN, "routage", "<dmn/>".getBytes(StandardCharsets.UTF_8)),
+                new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+
+        var dmn = plan.find(ArtifactType.DMN, "routage").orElseThrow();
+        assertThat(dmn.action()).isEqualTo(PlanAction.CREATE);
+        assertThat(dmn.reason()).startsWith("WARNING: ").contains("[RH]").contains("sorting queue").contains("saved as a draft");
+        var bpmn = plan.find(ArtifactType.BPMN, "wf").orElseThrow();
+        assertThat(bpmn.action()).isEqualTo(PlanAction.CREATE);
+        assertThat(bpmn.reason()).startsWith("WARNING: ").contains("[JURIDIQUE]").doesNotContain("COURRIER").doesNotContain("COMPTA");
+    }
+
+    @Test
+    void aGroupBlockedInTheBundleDoesNotCountAsKnown() {
+        when(groupRefs.fromDmn(any())).thenReturn(Set.of("COMPTA"));
+        var b = bundle(group("COMPTA", "Comptabilité", "{{absent}}"),
+                new BundleEntry(ArtifactType.DMN, "routage", "<dmn/>".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DMN, "routage").orElseThrow().reason())
+                .startsWith("WARNING: ").contains("[COMPTA]");
     }
 }

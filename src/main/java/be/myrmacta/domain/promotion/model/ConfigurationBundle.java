@@ -7,13 +7,15 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * TODO §83 (D4) — bundle de configuration versionné. Sans secret (D-PROMO-SECRETS). {@code formatVersion} : seul le format connu
- * de l'instance est accepté (D-PROMO-FORMAT).
+ * TODO §83 (D4) — bundle de configuration versionné. Sans secret (D-PROMO-SECRETS). {@code formatVersion} : seuls les formats
+ * connus de l'instance sont acceptés (D-PROMO-FORMAT). TODO §117 (D-PROMO-FORMAT2) — l'export écrit le format 2, l'import lit 1 et 2 ;
+ * un bundle de format 1 ne porte que les artefacts de la première tranche.
  */
 public record ConfigurationBundle(
         int formatVersion, Instant generatedAt, String sourceLabel, String appVersion, List<BundleEntry> entries) {
 
-    public static final int FORMAT_VERSION = 1;
+    public static final int FORMAT_VERSION = 2;
+    public static final int MIN_FORMAT_VERSION = 1;
     public static final int MAX_ENTRIES = 2000;
     public static final int MAX_ENTRY_BYTES = 5 * 1024 * 1024;
     public static final long MAX_TOTAL_BYTES = 50L * 1024 * 1024;
@@ -24,10 +26,7 @@ public record ConfigurationBundle(
         entries = List.copyOf(Objects.requireNonNull(entries, "entries"));
         sourceLabel = sourceLabel == null ? "" : sourceLabel.strip();
         appVersion = appVersion == null ? "" : appVersion.strip();
-        if (formatVersion != FORMAT_VERSION) {
-            throw new InvalidBundleException("unsupported bundle formatVersion " + formatVersion + " (this instance reads "
-                    + FORMAT_VERSION + ")");
-        }
+        requireReadable(formatVersion);
         if (sourceLabel.length() > MAX_LABEL_CHARS || appVersion.length() > MAX_LABEL_CHARS) {
             throw new InvalidBundleException("bundle labels are limited to " + MAX_LABEL_CHARS + " characters");
         }
@@ -37,6 +36,10 @@ public record ConfigurationBundle(
         Set<String> seen = new HashSet<>();
         long total = 0;
         for (BundleEntry entry : entries) {
+            if (entry.type().sinceFormatVersion() > formatVersion) {
+                throw new InvalidBundleException("a bundle of formatVersion " + formatVersion + " cannot contain " + entry.type()
+                        + " artifacts (introduced by formatVersion " + entry.type().sinceFormatVersion() + ")");
+            }
             if (!seen.add(entry.type() + "/" + entry.key())) {
                 throw new InvalidBundleException("duplicate artifact: " + entry.type() + " " + entry.key());
             }
@@ -49,6 +52,14 @@ public record ConfigurationBundle(
         }
         if (total > MAX_TOTAL_BYTES) {
             throw new InvalidBundleException("bundle exceeds " + MAX_TOTAL_BYTES + " bytes");
+        }
+    }
+
+    /** Refuse un format que cette instance ne sait pas lire. */
+    public static void requireReadable(int formatVersion) {
+        if (formatVersion < MIN_FORMAT_VERSION || formatVersion > FORMAT_VERSION) {
+            throw new InvalidBundleException("unsupported bundle formatVersion " + formatVersion + " (this instance reads "
+                    + MIN_FORMAT_VERSION + " to " + FORMAT_VERSION + ")");
         }
     }
 

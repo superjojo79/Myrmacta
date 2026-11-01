@@ -8,6 +8,9 @@ import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUse
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
+import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
 import be.myrmacta.domain.promotion.port.in.ExportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
@@ -15,6 +18,7 @@ import be.myrmacta.domain.promotion.port.out.ConfigImportLogRepository;
 import be.myrmacta.domain.promotion.port.out.ConfigurationBundleCodec;
 import be.myrmacta.domain.promotion.usecase.ExportConfigurationUseCaseImpl;
 import be.myrmacta.domain.promotion.usecase.ImportConfigurationUseCaseImpl;
+import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveTaskQuestionSchemaUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
@@ -25,6 +29,7 @@ import be.myrmacta.domain.workflow.port.out.TaskQuestionSchemaRepository;
 import be.myrmacta.domain.workflow.port.out.WorkflowDeploymentPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.promotion.JsonArtifactCodec;
+import be.myrmacta.infrastructure.promotion.XmlGroupReferenceExtractor;
 import be.myrmacta.infrastructure.promotion.ZipConfigurationBundleCodec;
 import java.time.Clock;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +50,13 @@ class PromotionConfig {
         return new ZipConfigurationBundleCodec();
     }
 
+    /** TODO §117 — artefacts de la tranche 2, partagés par l'export et l'import. */
+    @Bean
+    AdditionalArtifacts additionalPromotionArtifacts(UserGroupsUseCase userGroups, ArtifactCodec codec) {
+        return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
+                new GroupReferenceCheck(new XmlGroupReferenceExtractor()));
+    }
+
     @Bean
     ExportConfigurationUseCase exportConfigurationUseCase(
             TenantProperties tenantProperties,
@@ -57,9 +69,10 @@ class PromotionConfig {
             ConnectorCatalog catalog,
             DmnDeploymentPort dmnDeployment,
             WorkflowTypeConfigRepository workflowConfigs,
-            WorkflowDeploymentPort workflowDeployment) {
+            WorkflowDeploymentPort workflowDeployment,
+            AdditionalArtifacts additional) {
         return new ExportConfigurationUseCaseImpl(tenantProperties.id(), appVersion, Clock.systemUTC(), guard, codec, types, schemas,
-                connectors, catalog, dmnDeployment, workflowConfigs, workflowDeployment);
+                connectors, catalog, dmnDeployment, workflowConfigs, workflowDeployment, additional);
     }
 
     @Bean
@@ -83,9 +96,10 @@ class PromotionConfig {
             WorkflowTypeConfigRepository workflowConfigs,
             SaveWorkflowTypeConfigUseCase saveWorkflowConfig,
             ProposeDraftUseCase propose,
-            ConfigImportLogRepository journal) {
+            ConfigImportLogRepository journal,
+            AdditionalArtifacts additional) {
         return new ImportConfigurationUseCaseImpl(tenantProperties.id(), Clock.systemUTC(), guard, codec, types, createType, updateType,
                 compatibility, schemas, saveSchema, connectors, manageConnector, catalog, dmnDeployment, dmnParser,
-                workflowDeployment, bpmnParser, workflowConfigs, saveWorkflowConfig, propose, journal);
+                workflowDeployment, bpmnParser, workflowConfigs, saveWorkflowConfig, propose, journal, additional);
     }
 }

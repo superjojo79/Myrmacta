@@ -88,4 +88,16 @@ public final class ConfigDocs {
             observerUserIds = observerUserIds == null ? List.of() : List.copyOf(observerUserIds);
         }
     }
+
+    /**
+     * TODO §117 (D-PROMO-GROUP) — groupe d'utilisateurs, <b>sans ses membres</b>. {@code idpGroup} peut porter {@code {{paramètre}}},
+     * remplacé à l'import ; il n'est appliqué qu'à la création.
+     */
+    public record UserGroupDoc(String code, String label, String idpGroup) {
+
+        public UserGroupDoc {
+            java.util.Objects.requireNonNull(code, "code");
+            idpGroup = idpGroup == null || idpGroup.isBlank() ? null : idpGroup;
+        }
+    }
 }

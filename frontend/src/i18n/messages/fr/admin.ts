@@ -316,7 +316,7 @@ export default {
     lastImports: 'Derniers imports',
     noImport: 'Aucun import enregistré.',
     logLine: '{applied} appliqué(s), {unchanged} inchangé(s), {skipped} ignoré(s), {failed} échec(s)',
-    confirmApply: 'Appliquer ce bundle ({count} artefact(s) à créer ou modifier) ? Les processus BPMN et tables DMN arrivent en brouillons à publier.',
+    confirmApply: 'Appliquer ce bundle ({count} artefact(s) à créer ou modifier) ? Les processus BPMN et tables DMN arrivent en brouillons à publier, les templates de documents en brouillons à activer.',
     artifacts: {
       DOSSIER_TYPE: 'Type de dossier',
       TASK_QUESTION_SCHEMA: 'Schéma de questions',
@@ -327,6 +327,7 @@ export default {
       USER_GROUP: "Groupe d'utilisateurs",
       REPLY_WORKFLOW: 'Workflow « réponse »',
       DEADLINE: 'Échéance',
+      DOCUMENT_TEMPLATE: 'Template de document',
     },
     planActions: { CREATE: 'Créer', UPDATE: 'Modifier', UNCHANGED: 'Inchangé', CONFLICT: 'Conflit', BLOCKED: 'Bloqué' },
     outcomes: { APPLIED: 'Appliqué', UNCHANGED: 'Inchangé', SKIPPED: 'Ignoré', FAILED: 'Échec' },

@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * TODO §83 (D4, D-PROMO-MCP) — {@code import_configuration} : plan à blanc par défaut ; avec {@code apply=true}, seuls les
- * brouillons BPMN et DMN (avec la configuration de workflow jointe) sont déposés — ils attendent la publication humaine. Types
- * de dossier, schémas, connecteurs et configurations autonomes passent par l'écran d'administration. Aucun secret n'est accepté.
+ * brouillons BPMN et DMN (avec la configuration de workflow jointe) sont déposés — ils attendent la publication humaine — et,
+ * TODO §117 (D-PROMO-MCP-TEMPLATE), les brouillons de templates, qui attendent leur activation. Types de dossier, schémas,
+ * connecteurs, configurations autonomes, groupes et réglages de type passent par l'écran d'administration. Aucun secret n'est
+ * accepté.
  */
 @Component
 public class ImportConfigurationTool {
@@ -37,16 +39,17 @@ public class ImportConfigurationTool {
             name = "import_configuration",
             description = "Dry-run (default) or stage a configuration bundle produced by export_configuration. entries: list of "
                     + "{type, key, content} (type: DOSSIER_TYPE, TASK_QUESTION_SCHEMA, CONNECTOR_INSTANCE, DMN, BPMN, "
-                    + "WORKFLOW_CONFIG, USER_GROUP, REPLY_WORKFLOW, DEADLINE; content: the file text). The plan says per artifact CREATE, UPDATE, UNCHANGED, CONFLICT "
-                    + "or BLOCKED and why. apply=true only saves BPMN and DMN DRAFTS (a human publishes them); everything else "
-                    + "is applied from the admin import screen. Secrets are never accepted. parameters replace {{name}} "
+                    + "WORKFLOW_CONFIG, USER_GROUP, REPLY_WORKFLOW, DEADLINE, DOCUMENT_TEMPLATE; content: the file text). The plan "
+                    + "says per artifact CREATE, UPDATE, UNCHANGED, CONFLICT or BLOCKED and why. apply=true only saves BPMN, DMN and "
+                    + "document template DRAFTS (a human publishes or activates them); everything else is applied from the admin "
+                    + "import screen. Secrets are never accepted. parameters replace {{name}} "
                     + "placeholders in connector configuration and in the identity-provider group of a user group.")
     public Map<String, Object> importConfiguration(
             @McpToolParam(required = true, description = "Bundle files: [{type, key, content}]") List<Map<String, Object>> entries,
             @McpToolParam(required = false, description = "Label of the source environment") String sourceLabel,
             @McpToolParam(required = false, description = "Environment parameters for {{name}} placeholders")
                     Map<String, Object> parameters,
-            @McpToolParam(required = false, description = "false (default): dry-run plan. true: save BPMN/DMN drafts") Boolean apply,
+            @McpToolParam(required = false, description = "false (default): dry-run plan. true: save BPMN, DMN and template drafts") Boolean apply,
             @McpToolParam(required = false, description = "bundleSha256 returned by the plan you reviewed") String expectedBundleSha256) {
         ConfigurationBundle bundle = toBundle(entries, sourceLabel);
         Map<String, String> params = new LinkedHashMap<>();

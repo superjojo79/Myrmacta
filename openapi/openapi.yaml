@@ -5161,6 +5161,7 @@ components:
           - USER_GROUP
           - REPLY_WORKFLOW
           - DEADLINE
+          - DOCUMENT_TEMPLATE
         key:
           type: string
         action:
@@ -5206,6 +5207,7 @@ components:
           - USER_GROUP
           - REPLY_WORKFLOW
           - DEADLINE
+          - DOCUMENT_TEMPLATE
         key:
           type: string
         outcome:

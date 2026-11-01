@@ -21,11 +21,13 @@ public enum ArtifactType {
     /** TODO §117 (D-PROMO-TYPE-SETTINGS) — workflow « réponse » d'un type de dossier (clé = code du type). */
     REPLY_WORKFLOW("reply-workflows", ".json", 2),
     /** TODO §117 (D-PROMO-TYPE-SETTINGS) — échéance d'un type de dossier (clé = code du type). */
-    DEADLINE("deadlines", ".json", 2);
+    DEADLINE("deadlines", ".json", 2),
+    /** TODO §117 (D-PROMO-TEMPLATE) — version active d'un template de document, importée en brouillon. */
+    DOCUMENT_TEMPLATE("document-templates", ".json", 2);
 
     /** Ordre d'application : une dépendance passe avant ce qui la référence. */
     private static final List<ArtifactType> APPLY_ORDER =
-            List.of(USER_GROUP, DOSSIER_TYPE, TASK_QUESTION_SCHEMA, CONNECTOR_INSTANCE, DMN, BPMN, WORKFLOW_CONFIG, REPLY_WORKFLOW,
+            List.of(USER_GROUP, DOSSIER_TYPE, TASK_QUESTION_SCHEMA, DOCUMENT_TEMPLATE, CONNECTOR_INSTANCE, DMN, BPMN, WORKFLOW_CONFIG, REPLY_WORKFLOW,
                     DEADLINE);
 
     private final String directory;

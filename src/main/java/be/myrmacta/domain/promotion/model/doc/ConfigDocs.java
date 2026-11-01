@@ -120,4 +120,18 @@ public final class ConfigDocs {
             java.util.Objects.requireNonNull(dossierTypeCode, "dossierTypeCode");
         }
     }
+
+    /**
+     * TODO §117 (D-PROMO-TEMPLATE) — version active d'un template pour une combinaison (clé, variante, langue) ; variante et langue
+     * vides = valeur par défaut, comme à la création d'un template.
+     */
+    public record DocumentTemplateDoc(String templateKey, String variantKey, String locale, String label, String htmlContent) {
+
+        public DocumentTemplateDoc {
+            java.util.Objects.requireNonNull(templateKey, "templateKey");
+            variantKey = be.myrmacta.domain.document.DocumentTemplateSupport.normalizeOptional(variantKey);
+            locale = be.myrmacta.domain.document.DocumentTemplateSupport.normalizeOptional(locale);
+            htmlContent = htmlContent == null ? "" : htmlContent;
+        }
+    }
 }

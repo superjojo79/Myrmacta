@@ -72,6 +72,9 @@ class ConfigurationPromotionApiTest {
     @Autowired private be.myrmacta.domain.user.port.in.RecordUserLoginUseCase recordLogin;
     @Autowired private be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase replyWorkflows;
     @Autowired private be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase deadlines;
+    @Autowired private be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase createTemplate;
+    @Autowired private be.myrmacta.domain.document.port.in.ActivateDocumentTemplateUseCase activateTemplate;
+    @Autowired private be.myrmacta.domain.document.port.out.DocumentTemplateRepository templateRepository;
 
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
@@ -420,5 +423,51 @@ class ConfigurationPromotionApiTest {
         // un réglage retiré de la cible revient au prochain import
         deadlines.clear(typeCode);
         assertThat(planJson(bundle, null)).contains("\"type\":\"DEADLINE\"").contains("\"CREATE\"");
+    }
+
+    /**
+     * TODO §117 (D-PROMO-TEMPLATE, D-PROMO-MCP-TEMPLATE) — la version active d'un template voyage ; l'import crée un brouillon, jamais
+     * activé ; rejouer converge ; le canal MCP dépose aussi ce brouillon.
+     */
+    @Test
+    void theActiveTemplateTravels_andIsImportedAsADraftThatAHumanActivates() throws Exception {
+        String key = "promo-tpl-" + suffix();
+        var v1 = createTemplate.create(new be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase.CreateCommand(
+                key, null, "fr", "Accusé", "<p>v1</p>", "alice"));
+        activateTemplate.activate(v1.id(), "tenant_dev", "alice");
+        createTemplate.create(new be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase.CreateCommand(
+                key, null, "fr", "Accusé", "<p>brouillon local</p>", "alice"));
+
+        ConfigurationBundle exported = bundleCodec.read(mockMvc.perform(get("/api/admin/configuration/export")
+                .with(user("alice", "TENANT_ADMIN"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        BundleEntry entry = exported.find(ArtifactType.DOCUMENT_TEMPLATE, key + "._.fr").orElseThrow();
+        assertThat(entry.text()).contains("<p>v1</p>").doesNotContain("brouillon local");
+
+        // la recette a fait évoluer le template : sur la cible, une nouvelle version DRAFT, l'active est inchangée
+        var doc = new be.myrmacta.domain.promotion.model.doc.ConfigDocs.DocumentTemplateDoc(key, null, "fr", "Accusé", "<p>v2</p>");
+        ConfigurationBundle bundle = new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-01T10:00:00Z"),
+                "recette", "test", List.of(json(ArtifactType.DOCUMENT_TEMPLATE, key + "._.fr", doc)));
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(bundle)).param("expectedBundleSha256", bundle.sha256())
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].outcome").value("APPLIED"));
+        var versions = templateRepository.listByTenantId("tenant_dev", key);
+        assertThat(versions).filteredOn(t -> t.status() == be.myrmacta.domain.document.model.TemplateStatus.ACTIVE)
+                .singleElement().satisfies(t -> assertThat(t.htmlContent()).isEqualTo("<p>v1</p>"));
+        assertThat(versions).anyMatch(t -> t.status() == be.myrmacta.domain.document.model.TemplateStatus.DRAFT
+                && t.htmlContent().equals("<p>v2</p>"));
+
+        // rejouer converge : le brouillon identique suffit
+        assertThat(planJson(bundle, null)).contains("UNCHANGED").contains("activate it");
+
+        // canal MCP : un autre template est déposé en brouillon
+        var mcpDoc = new be.myrmacta.domain.promotion.model.doc.ConfigDocs.DocumentTemplateDoc(key + "-mcp", null, null, "M", "<p/>");
+        var mcpBundle = new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-01T10:00:00Z"), "recette",
+                "test", List.of(json(ArtifactType.DOCUMENT_TEMPLATE, key + "-mcp._._", mcpDoc)));
+        var report = importUseCase.apply(AccessContext.user("agent-1", Set.of("API_SERVICE")), mcpBundle, Map.of(), Map.of(),
+                mcpBundle.sha256(), ImportConfigurationUseCase.Channel.MCP);
+        assertThat(report.entries().getFirst().outcome()).isEqualTo(be.myrmacta.domain.promotion.model.ImportOutcome.APPLIED);
+        assertThat(templateRepository.listByTenantId("tenant_dev", key + "-mcp"))
+                .singleElement().satisfies(t -> assertThat(t.status()).isEqualTo(be.myrmacta.domain.document.model.TemplateStatus.DRAFT));
     }
 }

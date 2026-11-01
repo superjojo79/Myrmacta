@@ -38,7 +38,8 @@ import java.util.Set;
  * TODO §83 (D4) — export de la configuration du tenant en bundle. <b>Jamais de secret</b> : les champs de connecteur de type
  * mot de passe / secret sont retirés (leurs noms sont conservés pour que l'import sache quoi demander). Les processus et tables de
  * décision exportés sont la dernière version <b>déployée</b>, pas un brouillon. TODO §117 — tranche 2 : groupes d'utilisateurs
- * (sans membres), workflows « réponse » et échéances des types.
+ * (sans membres), workflows « réponse » et échéances des types,
+ * version active des templates de documents.
  */
 public final class ExportConfigurationUseCaseImpl implements ExportConfigurationUseCase {
 
@@ -95,6 +96,8 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
 
         schemas.findAll(tenantId).stream().sorted(Comparator.comparing(TaskQuestionSchema::schemaKey)).forEach(s ->
                 entries.add(new BundleEntry(ArtifactType.TASK_QUESTION_SCHEMA, s.schemaKey(), codec.encode(schemaDoc(s)))));
+
+        entries.addAll(additional.templates().export());
 
         Set<String> usedKeys = new HashSet<>();
         connectors.listByTenantId(tenantId).stream()

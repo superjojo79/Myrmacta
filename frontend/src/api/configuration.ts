@@ -13,6 +13,7 @@ export type ArtifactType =
   | 'USER_GROUP'
   | 'REPLY_WORKFLOW'
   | 'DEADLINE'
+  | 'DOCUMENT_TEMPLATE'
 
 export interface PlanEntry {
   type: ArtifactType

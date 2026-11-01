@@ -4,12 +4,16 @@ import be.myrmacta.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
 import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
+import be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.out.DocumentTemplateRepository;
+import be.myrmacta.domain.document.port.out.TemplateSyntaxChecker;
 import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.port.in.CheckDossierTypeSchemaCompatibilityUseCase;
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
+import be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
 import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
@@ -62,10 +66,15 @@ class PromotionConfig {
             DossierTypeRepository types,
             WorkflowTypeConfigRepository workflowConfigs,
             ManageReplyWorkflowUseCase replyWorkflows,
-            ManageDeadlineUseCase deadlines) {
+            ManageDeadlineUseCase deadlines,
+            DocumentTemplateRepository templates,
+            CreateDocumentTemplateUseCase createTemplate,
+            TemplateSyntaxChecker templateSyntax) {
         return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
                 new GroupReferenceCheck(new XmlGroupReferenceExtractor()),
-                new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines));
+                new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines),
+                new DocumentTemplateArtifacts(tenantProperties.id(), codec, templates, createTemplate, templateSyntax,
+                        DocumentConfig.MAX_HTML_BYTES));
     }
 
     @Bean

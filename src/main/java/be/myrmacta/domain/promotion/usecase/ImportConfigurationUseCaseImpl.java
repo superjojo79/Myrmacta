@@ -174,8 +174,9 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         for (BundleEntry entry : ordered) {
             PlanEntry planned = switch (entry.type()) {
                 case USER_GROUP -> additional.groups().plan(entry, parameters, tenantId);
-                case DOSSIER_TYPE -> planDossierType(entry);
+                case DOSSIER_TYPE -> warnOrphanTemplateKeys(planDossierType(entry), entry, bundle);
                 case TASK_QUESTION_SCHEMA -> planSchema(entry);
+                case DOCUMENT_TEMPLATE -> additional.templates().plan(entry);
                 case CONNECTOR_INSTANCE -> planConnector(entry, parameters, secrets, names);
                 case DMN -> warnUnknownGroups(planDmn(actor, entry),
                         known -> additional.groupReferences().dmnWarning(entry.content(), known), targetGroups, byKey);
@@ -208,6 +209,35 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 .filter(p -> p.type() == ArtifactType.USER_GROUP && p.action() != PlanAction.BLOCKED && p.action() != PlanAction.CONFLICT)
                 .forEach(p -> known.add(p.key()));
         return PromotionSupport.warn(planned, warning.apply(known));
+    }
+
+    /**
+     * TODO §117 (D-PROMO-ORPHAN) — une clé de template d'un type sans version active ici ni template dans le bundle : le type est
+     * appliqué, la génération de ce document échouera tant que le template n'existe pas.
+     */
+    private PlanEntry warnOrphanTemplateKeys(PlanEntry planned, BundleEntry entry, ConfigurationBundle bundle) {
+        if (planned.action() == PlanAction.BLOCKED || planned.action() == PlanAction.CONFLICT) {
+            return planned;
+        }
+        List<String> keys = decode(entry, DossierTypeDoc.class).documentTemplateKeys();
+        Set<String> known = new HashSet<>(additional.templates().activeKeys(keys));
+        known.addAll(additional.templates().templateKeysIn(bundle));
+        List<String> missing = keys.stream().filter(k -> !known.contains(k)).distinct().sorted().toList();
+        return missing.isEmpty()
+                ? planned
+                : PromotionSupport.warn(planned, "document template key(s) without an active version here nor a template in the "
+                        + "bundle: " + missing + " (generating these documents will fail).");
+    }
+
+    /** La ressource manquante d'un BPMN est un template que ce bundle apporte : il sera créé en brouillon par cet import. */
+    private Optional<String> templateFromBundle(RuntimeException e, ConfigurationBundle bundle) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof be.myrmacta.domain.workflow.model.UnknownBlockReferenceException unknown
+                    && additional.templates().templateKeysIn(bundle).contains(unknown.value())) {
+                return Optional.of(unknown.value());
+            }
+        }
+        return Optional.empty();
     }
 
     /** Un bundle ne porte aucun secret : un fichier de connecteur qui en contient est un bundle forgé ou mal exporté. */
@@ -409,7 +439,10 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             }
             inactive = propose.validateBpmn(actor, entry.key(), xml, config);
         } catch (RuntimeException e) {
-            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, cap(e.getMessage()));
+            return new PlanEntry(entry.type(), entry.key(), PlanAction.BLOCKED, cap(templateFromBundle(e, bundle)
+                    .map(key -> "depends on the document template '" + key + "', which this import saves as a draft: once it is "
+                            + "saved, run the import again (and activate the template before publishing this process)")
+                    .orElse(e.getMessage())));
         }
         String draftReason = "saved as a draft to publish" + inactiveNote(inactive);
         Optional<byte[]> deployed = workflowDeployment.findDeployedXml(tenantId, entry.key());
@@ -510,6 +543,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
     private static boolean mcpMayApply(PlanEntry planned) {
         return planned.type() == ArtifactType.BPMN
                 || planned.type() == ArtifactType.DMN
+                // TODO §117 (D-PROMO-MCP-TEMPLATE) — un brouillon de template ne s'exécute pas avant qu'un humain l'active
+                || planned.type() == ArtifactType.DOCUMENT_TEMPLATE
                 || (planned.type() == ArtifactType.WORKFLOW_CONFIG && planned.reason().startsWith(PromotionSupport.JOINED_TO_DRAFT));
     }
 
@@ -526,6 +561,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
             String message = switch (entry.type()) {
                 case USER_GROUP -> additional.groups().apply(entry, planned.action(), params);
                 case DOSSIER_TYPE -> applyDossierType(actor, entry, planned.action());
+                case DOCUMENT_TEMPLATE -> additional.templates().apply(entry, actor.userId());
                 case TASK_QUESTION_SCHEMA -> applySchema(actor, entry, planned.action());
                 case CONNECTOR_INSTANCE -> applyConnector(actor, entry, planned.action(), params, secrets, connectorNames(bundle));
                 case DMN -> applyDmn(actor, entry, bundle);

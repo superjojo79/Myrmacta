@@ -7,11 +7,15 @@ import java.util.Objects;
  * l'import. Chacun porte ses propres dépendances.
  */
 public record AdditionalArtifacts(
-        UserGroupArtifacts groups, GroupReferenceCheck groupReferences, TypeSettingsArtifacts typeSettings) {
+        UserGroupArtifacts groups,
+        GroupReferenceCheck groupReferences,
+        TypeSettingsArtifacts typeSettings,
+        DocumentTemplateArtifacts templates) {
 
     public AdditionalArtifacts {
         Objects.requireNonNull(groups, "groups");
         Objects.requireNonNull(groupReferences, "groupReferences");
         Objects.requireNonNull(typeSettings, "typeSettings");
+        Objects.requireNonNull(templates, "templates");
     }
 }

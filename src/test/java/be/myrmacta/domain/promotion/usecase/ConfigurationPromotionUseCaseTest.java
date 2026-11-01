@@ -24,7 +24,15 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts;
 import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
+import be.myrmacta.domain.document.model.DocumentTemplate;
+import be.myrmacta.domain.document.model.InvalidTemplateSyntaxException;
+import be.myrmacta.domain.document.model.TemplateStatus;
+import be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.out.DocumentTemplateRepository;
+import be.myrmacta.domain.document.port.out.TemplateSyntaxChecker;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DocumentTemplateDoc;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
@@ -110,6 +118,10 @@ class ConfigurationPromotionUseCaseTest {
     private GroupReferenceExtractor groupRefs;
     private ManageReplyWorkflowUseCase replyWorkflows;
     private ManageDeadlineUseCase deadlines;
+    private DocumentTemplateRepository templateRepo;
+    private CreateDocumentTemplateUseCase createTemplate;
+    private TemplateSyntaxChecker templateSyntax;
+    private final List<DocumentTemplate> templatesHere = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -151,6 +163,17 @@ class ConfigurationPromotionUseCaseTest {
         when(replyWorkflows.get(any())).thenReturn(Optional.empty());
         deadlines = mock(ManageDeadlineUseCase.class);
         when(deadlines.get(any())).thenReturn(Optional.empty());
+        templateRepo = mock(DocumentTemplateRepository.class);
+        when(templateRepo.listByTenantId(any(), any())).thenAnswer(inv -> templatesHere.stream()
+                .filter(t -> inv.getArgument(1) == null || t.templateKey().equals(inv.getArgument(1))).toList());
+        when(templateRepo.findActiveByTemplateKeysIn(any(), any())).thenAnswer(inv -> templatesHere.stream()
+                .filter(t -> t.status() == TemplateStatus.ACTIVE && ((List<?>) inv.getArgument(1)).contains(t.templateKey())).toList());
+        createTemplate = mock(CreateDocumentTemplateUseCase.class);
+        when(createTemplate.create(any())).thenAnswer(inv -> {
+            CreateDocumentTemplateUseCase.CreateCommand c = inv.getArgument(0);
+            return template(c.templateKey(), c.variantKey(), c.locale(), c.label(), c.htmlContent(), 9, TemplateStatus.DRAFT);
+        });
+        templateSyntax = mock(TemplateSyntaxChecker.class);
         groupRefs = mock(GroupReferenceExtractor.class);
         when(groupRefs.fromBpmn(any())).thenReturn(Set.of());
         when(groupRefs.fromDmn(any())).thenReturn(Set.of());
@@ -159,7 +182,8 @@ class ConfigurationPromotionUseCaseTest {
                 manageConnector, catalog, dmnDeployment, mock(DmnParserPort.class), workflowDeployment, bpmnParser, workflowConfigs,
                 saveWorkflowConfig, propose, journalRepo,
                 new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs),
-                        new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines)));
+                        new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines),
+                        new DocumentTemplateArtifacts(TENANT, CODEC, templateRepo, createTemplate, templateSyntax, 1000)));
     }
 
     private static BundleEntry json(ArtifactType type, String key, Object doc) {
@@ -747,5 +771,116 @@ class ConfigurationPromotionUseCaseTest {
         assertThat(report.entries()).extracting(e -> e.outcome()).containsOnly(ImportOutcome.SKIPPED);
         verify(replyWorkflows, never()).set(any(), any(), any(), any());
         verify(deadlines, never()).set(any(), any(), anyInt(), any());
+    }
+
+    // ---- TODO §117 (D-PROMO-TEMPLATE, D-PROMO-MCP-TEMPLATE) — templates de documents ----
+
+    private static DocumentTemplate template(String key, String variant, String locale, String label, String html, int version,
+            TemplateStatus status) {
+        return new DocumentTemplate(java.util.UUID.randomUUID(), key, variant, locale, label, version, status, html, TENANT,
+                Instant.EPOCH, Instant.EPOCH, "t");
+    }
+
+    private static BundleEntry templateEntry(String key, String variant, String locale, String label, String html) {
+        var doc = new DocumentTemplateDoc(key, variant, locale, label, html);
+        return json(ArtifactType.DOCUMENT_TEMPLATE, DocumentTemplateArtifacts.entryKey(doc), doc);
+    }
+
+    @Test
+    void aTemplateIsImportedAsANewDraftVersion_neverActivated() {
+        templatesHere.add(template("accuse", null, "fr", "Accusé", "<p>v1</p>", 1, TemplateStatus.ACTIVE));
+        var b = bundle(templateEntry("accuse", null, "fr", "Accusé", "<p>v2</p>"), templateEntry("relance", "B2B", null, "Relance", "<p/>"));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+        var updated = plan.entries().stream().filter(e -> e.key().startsWith("accuse")).findFirst().orElseThrow();
+        assertThat(updated.action()).isEqualTo(PlanAction.UPDATE);
+        assertThat(updated.reason()).contains("draft").contains("activate it");
+        assertThat(plan.entries().stream().filter(e -> e.key().startsWith("relance")).findFirst().orElseThrow().action())
+                .isEqualTo(PlanAction.CREATE);
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+
+        assertThat(report.entries()).extracting(e -> e.outcome()).containsOnly(ImportOutcome.APPLIED);
+        verify(createTemplate).create(new CreateDocumentTemplateUseCase.CreateCommand("accuse", null, "fr", "Accusé", "<p>v2</p>", "alice"));
+        verify(createTemplate).create(new CreateDocumentTemplateUseCase.CreateCommand("relance", "B2B", null, "Relance", "<p/>", "alice"));
+    }
+
+    @Test
+    void anIdenticalActiveVersionOrAnAlreadyStagedDraftMakesTheTemplateUnchanged_soReplayingConverges() {
+        templatesHere.add(template("accuse", null, null, "Accusé", "<p>v1</p>", 1, TemplateStatus.ACTIVE));
+        templatesHere.add(template("relance", null, null, "Relance", "<p>v1</p>", 1, TemplateStatus.ACTIVE));
+        templatesHere.add(template("relance", null, null, "Relance", "<p>v2</p>", 2, TemplateStatus.DRAFT));
+        var b = bundle(templateEntry("accuse", null, null, "Accusé", "<p>v1</p>"), templateEntry("relance", null, null, "Relance", "<p>v2</p>"));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+
+        assertThat(plan.entries()).extracting(e -> e.action()).containsOnly(PlanAction.UNCHANGED);
+        assertThat(plan.entries().stream().filter(e -> e.key().startsWith("relance")).findFirst().orElseThrow().reason())
+                .contains("draft version 2");
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+        verify(createTemplate, never()).create(any());
+    }
+
+    @Test
+    void aTemplateTooLargeOrWithARefusedSyntaxIsBlocked() {
+        org.mockito.Mockito.doThrow(new InvalidTemplateSyntaxException("th:utext not allowed")).when(templateSyntax).check("<p th:x>");
+        var plan = useCase.plan(ADMIN, bundle(templateEntry("gros", null, null, "G", "x".repeat(1001)),
+                templateEntry("faux", null, null, "F", "<p th:x>")), Map.of());
+
+        assertThat(plan.entries()).extracting(e -> e.action()).containsOnly(PlanAction.BLOCKED);
+        assertThat(plan.entries()).anyMatch(e -> e.reason().contains("exceeds 1000 bytes"));
+        assertThat(plan.entries()).anyMatch(e -> e.reason().contains("th:utext not allowed"));
+    }
+
+    @Test
+    void theTemplateFileNameFollowsItsCombination_andAnUnsafeKeyStaysUnique() {
+        assertThat(DocumentTemplateArtifacts.entryKey(new DocumentTemplateDoc("accuse", null, "fr", "", ""))).isEqualTo("accuse._.fr");
+        String a = DocumentTemplateArtifacts.entryKey(new DocumentTemplateDoc("avis de passage", "B2B", null, "", ""));
+        String b = DocumentTemplateArtifacts.entryKey(new DocumentTemplateDoc("avis-de-passage", "B2B", null, "", ""));
+        assertThat(a).startsWith("avis-de-passage.B2B._-").isNotEqualTo(b);
+        new BundleEntry(ArtifactType.DOCUMENT_TEMPLATE, a, new byte[0]);
+        // le nom de fichier et le contenu doivent concorder
+        var forged = json(ArtifactType.DOCUMENT_TEMPLATE, "autre._._", new DocumentTemplateDoc("accuse", null, null, "", "<p/>"));
+        assertThatThrownBy(() -> useCase.plan(ADMIN, bundle(forged), Map.of())).hasMessageContaining("agree");
+    }
+
+    @Test
+    void theMcpChannelStagesTemplateDrafts() {
+        var b = bundle(templateEntry("accuse", null, null, "Accusé", "<p/>"), group("COMPTA", "Compta", null));
+
+        var report = useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.MCP);
+
+        assertThat(report.entries()).filteredOn(e -> e.type() == ArtifactType.DOCUMENT_TEMPLATE).singleElement()
+                .satisfies(e -> assertThat(e.outcome()).isEqualTo(ImportOutcome.APPLIED));
+        assertThat(report.entries()).filteredOn(e -> e.type() == ArtifactType.USER_GROUP).singleElement()
+                .satisfies(e -> assertThat(e.outcome()).isEqualTo(ImportOutcome.SKIPPED));
+    }
+
+    @Test
+    void aTypeNamingATemplateKeyWithoutActiveVersionNorTemplateInTheBundleIsAppliedWithAWarning() {
+        templatesHere.add(template("actif", null, null, "A", "<p/>", 1, TemplateStatus.ACTIVE));
+        templatesHere.add(template("brouillon", null, null, "B", "<p/>", 1, TemplateStatus.DRAFT));
+        var type = new DossierTypeDoc("T1", "L", "wf", true, false, List.of(), null, false, null,
+                List.of("actif", "apporte", "brouillon", "absent"));
+        var b = bundle(json(ArtifactType.DOSSIER_TYPE, "T1", type), templateEntry("apporte", "x", null, "Ap", "<p/>"));
+
+        var entry = useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DOSSIER_TYPE, "T1").orElseThrow();
+
+        assertThat(entry.action()).isEqualTo(PlanAction.CREATE);
+        assertThat(entry.reason()).startsWith("WARNING: ").contains("[absent, brouillon]").doesNotContain("actif").doesNotContain("apporte");
+    }
+
+    @Test
+    void aBpmnNeedingATemplateThatOnlyTheBundleBringsIsBlockedWithTheOrderToFollow() {
+        when(propose.validateBpmn(any(), org.mockito.ArgumentMatchers.eq("wf"), any(), any())).thenThrow(
+                new be.myrmacta.domain.workflow.model.UnknownBlockReferenceException("generer", "documentType", "accuse"));
+        var b = bundle(templateEntry("accuse", null, null, "Accusé", "<p/>"),
+                new BundleEntry(ArtifactType.BPMN, "wf", "<bpmn/>".getBytes(StandardCharsets.UTF_8)),
+                json(ArtifactType.WORKFLOW_CONFIG, "wf", WF));
+
+        var bpmn = useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.BPMN, "wf").orElseThrow();
+
+        assertThat(bpmn.action()).isEqualTo(PlanAction.BLOCKED);
+        assertThat(bpmn.reason()).contains("document template 'accuse'").contains("run the import again");
     }
 }

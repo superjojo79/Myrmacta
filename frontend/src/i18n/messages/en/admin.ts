@@ -318,7 +318,7 @@ const admin: typeof fr = {
     lastImports: 'Latest imports',
     noImport: 'No import recorded.',
     logLine: '{applied} applied, {unchanged} unchanged, {skipped} skipped, {failed} failed',
-    confirmApply: 'Apply this bundle ({count} artifact(s) to create or change)? BPMN processes and DMN tables arrive as drafts to publish.',
+    confirmApply: 'Apply this bundle ({count} artifact(s) to create or change)? BPMN processes and DMN tables arrive as drafts to publish, document templates as drafts to activate.',
     artifacts: {
       DOSSIER_TYPE: 'Dossier type',
       TASK_QUESTION_SCHEMA: 'Question schema',
@@ -329,6 +329,7 @@ const admin: typeof fr = {
       USER_GROUP: 'User group',
       REPLY_WORKFLOW: 'Reply workflow',
       DEADLINE: 'Deadline',
+      DOCUMENT_TEMPLATE: 'Document template',
     },
     planActions: { CREATE: 'Create', UPDATE: 'Update', UNCHANGED: 'Unchanged', CONFLICT: 'Conflict', BLOCKED: 'Blocked' },
     outcomes: { APPLIED: 'Applied', UNCHANGED: 'Unchanged', SKIPPED: 'Skipped', FAILED: 'Failed' },

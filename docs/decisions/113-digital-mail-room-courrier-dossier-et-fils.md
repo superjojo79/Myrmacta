@@ -1,8 +1,8 @@
 # §113 — Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-En cours (issue [#217](https://github.com/superjojo79/Myrmacta/issues/217)). Cadrage validé par l'utilisateur le
+Livré (issue [#217](https://github.com/superjojo79/Myrmacta/issues/217), lots 1 à 7 ; spec [49](../specs/49-digital-mail-room.md)). Cadrage validé par l'utilisateur le
 2026-10-31. Les canaux de la première livraison sont l'e-mail et les PDF déjà numérisés. L'eBox est une feature
 séparée (#213 à #216), et l'OCR viendra dans un lot ultérieur.
 
@@ -229,9 +229,8 @@ humain (option écartée par l'utilisateur).
     `trustedClientIds` (`M2mSecurityProperties`). Par l'assistant, ce sont les droits de l'utilisateur réel qui
     s'appliquent.
 
-**Reste à trancher à la conception de leur lot :**
-
-- OCR.
+**Hors de cette feature** (cadrage du 2026-10-31) : l'OCR intégré, futur lot à cadrer à part. Ce sera une nouvelle
+dépendance d'exécution, donc une pause et un point du registre.
 
 **Impacte :** nouvelle spec `docs/specs/49-digital-mail-room.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
 `docs/guides/GUIDE-CONCEPTION-BPMN.md`, `openapi/openapi.yaml`, nouveaux changesets, `exemples/digital-mail-room/`.

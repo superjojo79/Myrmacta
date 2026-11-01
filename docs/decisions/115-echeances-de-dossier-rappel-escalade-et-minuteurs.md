@@ -1,8 +1,8 @@
 # §115 — Échéances de dossier : rappel, escalade et minuteurs à expression
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-En cours : lot 4 de la Digital Mail Room ([§113](113-digital-mail-room-courrier-dossier-et-fils.md), issue
+Livré : lot 4 de la Digital Mail Room ([§113](113-digital-mail-room-courrier-dossier-et-fils.md), issue
 [#217](https://github.com/superjojo79/Myrmacta/issues/217)), absorbe l'issue
 [#186](https://github.com/superjojo79/Myrmacta/issues/186). Le cadrage du 2026-10-31 a retenu deux mécanismes, au choix
 du concepteur : l'échéance portée par la plateforme (lot 4a), et le minuteur BPMN à expression (lot 4b).

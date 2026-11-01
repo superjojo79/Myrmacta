@@ -540,6 +540,27 @@ APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/
   définir à `local` ou `staging`). Le serveur écoute 127.0.0.1 mais en authentification `trust` :
   réserver à une machine ou un conteneur non partagé.
 
+### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
+
+Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :
+
+```bash
+scripts/demo-mailroom.sh build      # jar embedded-db (une fois)
+scripts/demo-mailroom.sh start      # depuis la racine du dépôt, avec les variables OIDC du §3
+```
+
+- **Premier démarrage, base vide :** l'exemple [`exemples/digital-mail-room`](../../exemples/digital-mail-room/README.md)
+  est installé. Il comprend les groupes, les types, les configurations, la table de routage, les process, le workflow
+  réponse, l'échéance de la facture et un point de dépôt.
+- **Trois courriers arrivent par le vrai pipeline des connecteurs :**
+  - une facture par e-mail, routée vers la COMPTABILITE dans un dossier « facture » lié ;
+  - une amende déposée en PDF, qui va à la file de tri ;
+  - un e-mail non reconnu, qui va aussi à la file de tri.
+- **Démarrages suivants :** rien n'est réinstallé.
+- **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo-mailroom.sh reset` et `start`.
+- **Où :** `APP_DEMO_MAILROOM_DIR` désigne un autre répertoire d'exemple. Le profil n'existe que dans le build
+  `embedded-db` ; `scripts/check-no-embedded-db-in-jar.sh` vérifie qu'il n'est pas dans le jar de production.
+
 ## 19. CI sur un runner auto-hébergé (optionnel)
 
 Quand le compte n'a plus de minutes GitHub Actions, les workflows de `.github/workflows/` tournent tels quels sur une

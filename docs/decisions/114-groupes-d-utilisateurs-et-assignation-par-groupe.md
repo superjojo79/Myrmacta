@@ -1,8 +1,8 @@
 # §114 — Groupes d'utilisateurs et assignation par groupe
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-En cours : issue [#190](https://github.com/superjojo79/Myrmacta/issues/190), lot 2 de la Digital Mail Room
+Livré : issue [#190](https://github.com/superjojo79/Myrmacta/issues/190), lot 2 de la Digital Mail Room
 ([§113](113-digital-mail-room-courrier-dossier-et-fils.md)). Ce point complète le [§92](092-assignation-des-taches-m-assigner-et-annuaire.md)
 (« M'assigner », annuaire local).
 

@@ -16,9 +16,7 @@ import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.connector.mapping.SimpleJsonPathMapper;
 import be.myrmacta.infrastructure.notification.OutboundUrlGuard;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -31,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.net.ssl.HttpsURLConnection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -48,8 +45,8 @@ import tools.jackson.databind.ObjectMapper;
 public class HttpRestConnector implements ConnectorDefinition, TriggerConnector, ServiceConnector {
 
     private static final String STATIC_HEADER = "STATIC_HEADER";
-    /** TODO §112 (D-ORCH-DELETE) : DELETE sans corps ; PATCH attend un autre client HTTP (issue #261). */
-    private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
+    /** TODO §116 (D-HTTP-PATCH) : PATCH avec corps, comme POST et PUT. GET et DELETE restent sans corps (§112). */
+    private static final Set<String> SUPPORTED_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     private static final Set<String> BODYLESS_METHODS = Set.of("GET", "DELETE");
     /** TODO §112 — bornes d'une requête construite par le process (D-ORCH-BASEURL). */
     static final int MAX_PATH_PARAMS = 20;
@@ -64,12 +61,6 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     private static final Pattern HEADER_NAME = Pattern.compile("[!#$%&'*+.^_`|~0-9A-Za-z-]{1,256}");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_]{0,59})\\}");
 
-    static {
-        // Same as WebhookRestAdapter (D-44 / TODO §57 M3): allow setting the restricted Host
-        // header so the pinned-IP connection still presents the original hostname.
-        System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
-    }
-
     @FunctionalInterface
     interface HttpSender {
         HttpCallResponse send(HttpCallRequest request) throws IOException;
@@ -77,6 +68,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
 
     record HttpCallRequest(
             String url,
+            InetAddress pinnedAddress,
             String method,
             byte[] body,
             Map<String, String> headers,
@@ -100,7 +92,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             OutboundUrlGuard outboundUrlGuard,
             ObjectMapper objectMapper,
             ConnectorProperties connectorProperties) {
-        this(mapper, outboundUrlGuard, objectMapper, connectorProperties, urlConnectionSender());
+        this(mapper, outboundUrlGuard, objectMapper, connectorProperties, PinnedHttpClient.sender());
     }
 
     HttpRestConnector(
@@ -481,11 +473,11 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             assertHostAllowed(instance.config(), pinned.originalHost());
         }
 
-        HttpCallResponse response = call(instance, inputParams, pinned, method, requestBody, oauth);
+        HttpCallResponse response = call(instance, inputParams, urlString, pinned, method, requestBody, oauth);
         if (oauth && response.status() == 401) {
             // Jeton révoqué ou expiré côté IdP avant l'heure annoncée : un nouveau jeton, un seul nouvel essai.
             if (tokenProvider.invalidate(instance)) {
-                response = call(instance, inputParams, pinned, method, requestBody, true);
+                response = call(instance, inputParams, urlString, pinned, method, requestBody, true);
             }
         }
         byte[] responseBytes = response.body().getBytes(StandardCharsets.UTF_8);
@@ -772,6 +764,7 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
     private HttpCallResponse call(
             ConnectorInstanceData instance,
             Map<String, Object> inputParams,
+            String targetUrl,
             OutboundUrlGuard.PinnedEndpoint pinned,
             String method,
             byte[] requestBody,
@@ -790,7 +783,8 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
         headers.put("Host", pinned.originalHost());
         try {
             return httpSender.send(new HttpCallRequest(
-                    pinned.requestUrl(),
+                    targetUrl,
+                    pinned.address(),
                     method,
                     requestBody,
                     headers,
@@ -853,51 +847,6 @@ public class HttpRestConnector implements ConnectorDefinition, TriggerConnector,
             }
             target.put(name, value);
         }
-    }
-
-    static HttpSender urlConnectionSender() {
-        return request -> {
-            HttpURLConnection connection = null;
-            try {
-                connection = (HttpURLConnection) URI.create(request.url()).toURL().openConnection();
-                connection.setConnectTimeout(Math.toIntExact(request.connectTimeout().toMillis()));
-                connection.setReadTimeout(Math.toIntExact(request.requestTimeout().toMillis()));
-                connection.setInstanceFollowRedirects(false);
-                connection.setRequestMethod(request.method());
-                if (connection instanceof HttpsURLConnection https && request.tlsHostname() != null) {
-                    https.setHostnameVerifier((hostname, session) ->
-                            HttpsURLConnection.getDefaultHostnameVerifier()
-                                    .verify(request.tlsHostname(), session));
-                }
-                request.headers().forEach(connection::setRequestProperty);
-                if ("POST".equals(request.method()) || "PUT".equals(request.method())) {
-                    connection.setDoOutput(true);
-                    try (OutputStream output = connection.getOutputStream()) {
-                        output.write(request.body() == null ? new byte[0] : request.body());
-                    }
-                }
-                int status = connection.getResponseCode();
-                InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
-                byte[] bytes = readBounded(stream, request.maxResponseBytes());
-                return new HttpCallResponse(status, new String(bytes, StandardCharsets.UTF_8));
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-        };
-    }
-
-    private static byte[] readBounded(InputStream stream, long maxResponseBytes) throws IOException {
-        if (stream == null) {
-            return new byte[0];
-        }
-        int limit = Math.toIntExact(Math.min(maxResponseBytes, Integer.MAX_VALUE - 1) + 1);
-        byte[] bytes = stream.readNBytes(limit);
-        if (bytes.length > maxResponseBytes) {
-            throw new IOException("http-rest response exceeds maxResponseBytes");
-        }
-        return bytes;
     }
 
     private Map<String, Object> mapPaths(Object item, Map<String, Object> paths) {

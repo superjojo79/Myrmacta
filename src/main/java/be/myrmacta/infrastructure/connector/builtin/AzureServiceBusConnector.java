@@ -83,7 +83,7 @@ public class AzureServiceBusConnector implements ConnectorDefinition, PollingTri
         this.bus = Objects.requireNonNull(bus, "bus");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.tokenProvider = new OAuth2TokenProvider(
-                outboundUrlGuard, objectMapper, connectorProperties, HttpRestConnector.urlConnectionSender(), clock);
+                outboundUrlGuard, objectMapper, connectorProperties, PinnedHttpClient.sender(), clock);
     }
 
     @Override

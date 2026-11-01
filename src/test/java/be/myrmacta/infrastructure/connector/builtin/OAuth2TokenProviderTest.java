@@ -94,7 +94,8 @@ class OAuth2TokenProviderTest {
         assertThat(sender.requests).hasSize(1);
         HttpRestConnector.HttpCallRequest request = sender.requests.get(0);
         assertThat(request.method()).isEqualTo("POST");
-        assertThat(request.url()).isEqualTo("https://93.184.216.34/tenant-1/oauth2/v2.0/token");
+        assertThat(request.url()).isEqualTo(TOKEN_URL);
+        assertThat(request.pinnedAddress().getHostAddress()).isEqualTo("93.184.216.34");
         assertThat(request.headers()).containsEntry("Host", "login.example.com")
                 .containsEntry("Content-Type", "application/x-www-form-urlencoded")
                 .doesNotContainKey("Authorization");

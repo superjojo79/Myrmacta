@@ -257,7 +257,7 @@ final class OAuth2TokenProvider {
         HttpRestConnector.HttpCallResponse response;
         try {
             response = httpSender.send(new HttpRestConnector.HttpCallRequest(
-                    pinned.requestUrl(), "POST", body.toString().getBytes(StandardCharsets.UTF_8), headers,
+                    tokenUrl, pinned.address(), "POST", body.toString().getBytes(StandardCharsets.UTF_8), headers,
                     connectorProperties.http().connectTimeout(), connectorProperties.http().requestTimeout(),
                     pinned.originalHost(), maxBytes));
         } catch (IOException ex) {

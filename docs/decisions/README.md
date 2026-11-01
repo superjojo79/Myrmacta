@@ -135,7 +135,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 114 | [Groupes d'utilisateurs et assignation par groupe](114-groupes-d-utilisateurs-et-assignation-par-groupe.md) | clos | — |
 | 115 | [Échéances de dossier : rappel, escalade et minuteurs à expression](115-echeances-de-dossier-rappel-escalade-et-minuteurs.md) | clos | — |
 | 116 | [Méthode PATCH du connecteur http-rest](116-methode-patch-du-connecteur-http-rest.md) | clos | — |
-| 117 | [Promotion de configuration, tranche 2 : groupes, templates, parcours, réglages de type](117-promotion-de-configuration-tranche-2.md) | ouvert | — |
+| 117 | [Promotion de configuration, tranche 2 : groupes, templates, parcours, réglages de type](117-promotion-de-configuration-tranche-2.md) | clos | — |
 
 ## Sections de l'ancien registre
 

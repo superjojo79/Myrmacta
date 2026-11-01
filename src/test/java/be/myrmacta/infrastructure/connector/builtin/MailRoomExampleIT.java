@@ -89,6 +89,9 @@ class MailRoomExampleIT {
     @Autowired private DeadlineAlertJob deadlineAlertJob;
     @Autowired private MailRoomMcpTools mailRoomTools;
     @Autowired private RecordUserLoginUseCase recordLogin;
+    @Autowired private be.myrmacta.domain.promotion.port.out.ConfigurationBundleCodec bundleCodec;
+    @Autowired private be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase replyWorkflows;
+    @Autowired private be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase deadlines;
 
     private static boolean configured;
 
@@ -530,5 +533,93 @@ class MailRoomExampleIT {
     private static RequestPostProcessor user(String subject, String role) {
         return oidcLogin().idToken(token -> token.subject(subject).claim("tenant_id", TENANT))
                 .authorities(new SimpleGrantedAuthority("ROLE_" + role));
+    }
+
+    /**
+     * TODO §117 (issue #279) — l'exemple entier voyage dans un bundle : groupes (sans membres), types, configurations, table de
+     * routage, processus, workflow « réponse » et échéance. Relu sur la même instance, tout est inchangé et aucun groupe n'est
+     * signalé orphelin ; un réglage absent de la cible (autre environnement) est recréé par l'import.
+     */
+    @Test
+    void theWholeExampleTravelsInABundle_andMissingTypeSettingsAreRestoredByTheImport() throws Exception {
+        configureTheExample();
+        RequestPostProcessor admin = user("admin-courrier", "TENANT_ADMIN");
+        var bundle = bundleCodec.read(mockMvc.perform(get("/api/admin/configuration/export").with(admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+
+        assertThat(bundle.formatVersion()).isEqualTo(2);
+        for (JsonNode group : JSON.readTree(EXAMPLE.resolve("config/groupes.json").toFile())) {
+            var entry = bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.USER_GROUP, group.get("code").asString());
+            assertThat(entry).as(group.get("code").asString()).isPresent();
+            assertThat(entry.get().text()).doesNotContain("member").doesNotContain(OPERATOR);
+        }
+        assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.REPLY_WORKFLOW, "FACTURE")).isPresent();
+        assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.DEADLINE, "FACTURE")).isPresent();
+        assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.DMN, "routageCourrier")).isPresent();
+
+        JsonNode same = promotion("plan", bundle, admin);
+        for (JsonNode e : same.get("entries")) {
+            assertThat(e.get("action").asString()).as(e.get("type").asString() + " " + e.get("key").asString()).isEqualTo("UNCHANGED");
+            if (List.of("DMN", "BPMN").contains(e.get("type").asString())) {
+                assertThat(e.get("reason").asString()).as("no orphan group in the example").doesNotContain("WARNING");
+            }
+        }
+
+        // « autre environnement » : les réglages du type n'y existent pas encore
+        replyWorkflows.clear("FACTURE");
+        deadlines.clear("FACTURE");
+        try {
+            JsonNode plan = promotion("plan", bundle, admin);
+            assertThat(action(plan, "REPLY_WORKFLOW", "FACTURE")).isEqualTo("CREATE");
+            assertThat(action(plan, "DEADLINE", "FACTURE")).isEqualTo("CREATE");
+            JsonNode report = promotion("apply", bundle, admin);
+            assertThat(outcome(report, "REPLY_WORKFLOW", "FACTURE")).isEqualTo("APPLIED");
+            assertThat(outcome(report, "DEADLINE", "FACTURE")).isEqualTo("APPLIED");
+        } finally {
+            // les autres tests de la classe partagent l'exemple : il est remis en état même si l'import a échoué
+            JsonNode reply = JSON.readTree(EXAMPLE.resolve("config/reponse-facture.json").toFile());
+            if (replyWorkflows.get("FACTURE").isEmpty()) {
+                replyWorkflows.set("FACTURE", be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting.Mode.valueOf(
+                        reply.get("mode").asString()), reply.get("workflowKey").asString(), reply.path("childTypeCode").asString(null));
+            }
+            JsonNode deadline = JSON.readTree(EXAMPLE.resolve("config/echeance-facture.json").toFile());
+            if (deadlines.get("FACTURE").isEmpty()) {
+                deadlines.set("FACTURE", deadline.get("fieldName").asString(), deadline.get("reminderDays").asInt(),
+                        deadline.path("escalationGroup").asString(null));
+            }
+        }
+        assertThat(replyWorkflows.get("FACTURE")).hasValueSatisfying(r -> assertThat(r.workflowKey()).isEqualTo("traiterReponse"));
+        assertThat(deadlines.get("FACTURE")).isPresent();
+        for (JsonNode e : promotion("plan", bundle, admin).get("entries")) {
+            assertThat(e.get("action").asString()).as(e.get("type").asString() + " " + e.get("key").asString()).isEqualTo("UNCHANGED");
+        }
+    }
+
+    private JsonNode promotion(String step, be.myrmacta.domain.promotion.model.ConfigurationBundle bundle, RequestPostProcessor admin)
+            throws Exception {
+        var request = multipart("/api/admin/configuration/" + step)
+                .file(new MockMultipartFile("file", "bundle.zip", "application/zip", bundleCodec.write(bundle)))
+                .with(admin).with(csrf());
+        if (step.equals("apply")) {
+            request.param("expectedBundleSha256", bundle.sha256());
+        }
+        return JSON.readTree(mockMvc.perform(request).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    private static String action(JsonNode plan, String type, String key) {
+        return field(plan, type, key, "action");
+    }
+
+    private static String outcome(JsonNode report, String type, String key) {
+        return field(report, type, key, "outcome");
+    }
+
+    private static String field(JsonNode result, String type, String key, String name) {
+        for (JsonNode e : result.get("entries")) {
+            if (e.get("type").asString().equals(type) && e.get("key").asString().equals(key)) {
+                return e.get(name).asString();
+            }
+        }
+        throw new AssertionError(type + " " + key + " not found in " + result);
     }
 }

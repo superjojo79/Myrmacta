@@ -195,3 +195,6 @@ désormais empêcher devient ce test et sort de la liste.
   puis confirme le lien dans une seconde transaction ; un job exécuté entre les deux échoue sur le verrou optimiste.
 - **Violation d'unicité attrapée trop tard** (#217, lot 6) : sous PostgreSQL, une contrainte unique violée condamne la
   transaction de l'appelant, même si l'exception est attrapée. Chercher l'existant avant d'insérer.
+- **Deux Maven sur le même `target/`** (#279, lot 1) : un `mvnw test` lancé pendant un `mvnw verify` recompile les classes
+  sous ses pieds (dizaines de `NoClassDefFoundError`), et un `verify` avec le frontend réinstalle `node_modules` pendant un
+  lint. Un seul Maven à la fois ; `-Dskip.frontend=true` si les contrôles frontend tournent à part.

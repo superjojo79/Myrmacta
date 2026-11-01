@@ -289,7 +289,7 @@ export default {
   },
   promotion: {
     title: 'Promotion de configuration',
-    intro: 'Exportez la configuration d’un environnement (recette, par exemple), puis importez-la sur un autre : un plan à blanc montre ce qui serait créé, modifié ou bloqué avant toute écriture. Aucun secret n’est exporté ; les processus BPMN et tables DMN arrivent en {drafts} ; un connecteur est créé {disabled} (relisez ses adresses, puis activez-le).',
+    intro: 'Exportez la configuration d’un environnement (recette, par exemple), puis importez-la sur un autre : un plan à blanc montre ce qui serait créé, modifié ou bloqué avant toute écriture. Aucun secret n’est exporté ; les processus BPMN et tables DMN arrivent en {drafts}, les templates de documents en brouillons à activer ; un connecteur est créé {disabled} (relisez ses adresses, puis activez-le) ; un groupe arrive sans ses membres.',
     introDrafts: 'brouillons à publier',
     introDisabled: 'désactivé',
     export: 'Exporter',
@@ -298,7 +298,7 @@ export default {
     download: 'Télécharger le bundle (ZIP)',
     import: 'Importer',
     bundle: 'Bundle (ZIP)',
-    parameters: 'Paramètres d’environnement (JSON, pour les valeurs {example} des connecteurs)',
+    parameters: 'Paramètres d’environnement (JSON, pour les valeurs {example} des connecteurs et des groupes de l’IdP)',
     parametersInvalid: 'Les paramètres doivent être un objet JSON {\'{\'}nom: valeur{\'}\'}.',
     plan: 'Planifier (à blanc)',
     planTitle: 'Plan — rien n’est encore écrit',

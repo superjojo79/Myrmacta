@@ -291,7 +291,7 @@ const admin: typeof fr = {
   },
   promotion: {
     title: 'Configuration promotion',
-    intro: 'Export the configuration of one environment (acceptance, for instance), then import it into another: a dry-run plan shows what would be created, changed or blocked before anything is written. No secret is exported; BPMN processes and DMN tables arrive as {drafts}; a connector is created {disabled} (review its addresses, then enable it).',
+    intro: 'Export the configuration of one environment (acceptance, for instance), then import it into another: a dry-run plan shows what would be created, changed or blocked before anything is written. No secret is exported; BPMN processes and DMN tables arrive as {drafts}, document templates as drafts to activate; a connector is created {disabled} (review its addresses, then enable it); a group arrives without its members.',
     introDrafts: 'drafts to publish',
     introDisabled: 'disabled',
     export: 'Export',
@@ -300,7 +300,7 @@ const admin: typeof fr = {
     download: 'Download the bundle (ZIP)',
     import: 'Import',
     bundle: 'Bundle (ZIP)',
-    parameters: 'Environment parameters (JSON, for the {example} values of connectors)',
+    parameters: 'Environment parameters (JSON, for the {example} values of connectors and identity-provider groups)',
     parametersInvalid: 'Parameters must be a JSON object {\'{\'}name: value{\'}\'}.',
     plan: 'Plan (dry run)',
     planTitle: 'Plan — nothing is written yet',

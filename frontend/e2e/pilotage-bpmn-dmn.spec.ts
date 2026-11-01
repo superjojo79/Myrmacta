@@ -919,6 +919,47 @@ test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent o
   await expect(page.getByTestId('secret-erp-prod-webhookSecret')).toHaveValue('')
 })
 
+test('E2E-PROMO-2 the plan names the second-tranche artifacts and shows warnings first (#279)', async ({ page }) => {
+  await mockSession(page)
+  let planBody = ''
+  const plan = {
+    bundleSha256: 'sha-e2e-2',
+    formatVersion: 2,
+    sourceLabel: 'recette',
+    entries: [
+      { type: 'USER_GROUP', key: 'COMPTABILITE', action: 'BLOCKED', reason: "user group 'COMPTABILITE' needs the environment parameter 'idp_compta'", secretsRequired: [] },
+      { type: 'DOCUMENT_TEMPLATE', key: 'accuse._.fr', action: 'UPDATE', reason: "saved as a new draft version: activate it in 'Templates'", secretsRequired: [] },
+      { type: 'DMN', key: 'routageCourrier', action: 'CREATE', reason: 'WARNING: routes to user group(s) unknown here and absent from the bundle: [JURIDIQUE] (such mail goes to the sorting queue). saved as a draft to publish', secretsRequired: [] },
+      { type: 'REPLY_WORKFLOW', key: 'FACTURE', action: 'BLOCKED', reason: "the workflow configuration 'traiterReponse' only exists once its BPMN draft is published: publish it, then run the import again", secretsRequired: [] },
+      { type: 'DEADLINE', key: 'FACTURE', action: 'CREATE', reason: '', secretsRequired: [] },
+      { type: 'PARCOURS', key: 'sinistre', action: 'UNCHANGED', reason: '', secretsRequired: [] },
+    ],
+  }
+  await page.route('**/api/admin/configuration/imports**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  )
+  await page.route('**/api/admin/configuration/plan', async (route) => {
+    planBody = route.request().postData() ?? ''
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(plan) })
+  })
+
+  await openApp(page)
+  await page.getByRole('link', { name: 'Promotion' }).click()
+  await page.getByTestId('bundle-file').setInputFiles({ name: 'bundle.zip', mimeType: 'application/zip', buffer: Buffer.from('zip') })
+  await page.getByTestId('parameters').fill('{"idp_compta": "sg-compta"}')
+  await page.getByTestId('plan-button').click()
+
+  await expect(page.getByTestId('plan-USER_GROUP-COMPTABILITE')).toContainText("Groupe d'utilisateurs")
+  await expect(page.getByTestId('plan-USER_GROUP-COMPTABILITE')).toContainText('Bloqué')
+  await expect(page.getByTestId('plan-DOCUMENT_TEMPLATE-accuse._.fr')).toContainText('Template de document')
+  await expect(page.getByTestId('plan-DOCUMENT_TEMPLATE-accuse._.fr')).toContainText('activate it')
+  await expect(page.getByTestId('plan-DMN-routageCourrier')).toContainText('WARNING: routes to user group(s)')
+  await expect(page.getByTestId('plan-REPLY_WORKFLOW-FACTURE')).toContainText('Workflow « réponse »')
+  await expect(page.getByTestId('plan-DEADLINE-FACTURE')).toContainText('Échéance')
+  await expect(page.getByTestId('plan-PARCOURS-sinistre')).toContainText('Parcours')
+  expect(planBody).toContain('idp_compta')
+})
+
 test('E2E-ASSIST-1 design assistant: disabled notice, then a conversation that produces drafts to review (LC3)', async ({ page }) => {
   await mockSession(page)
   let enabled = false

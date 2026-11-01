@@ -289,8 +289,7 @@ Fait dans le lot 5a :
   de tri.
 
 Prochaine action : PR du lot 5a, puis lot 5b (écran « Déposer »).
-Collision : la PR #272 (agent Cursor, `D-HTTP-PATCH`) a pris aussi le numéro §115, désormais publié pour les échéances ;
-elle doit passer en §116 (signalé à l'utilisateur).
+La PR #272 (agent Cursor, `D-HTTP-PATCH`) visait aussi le numéro §115 ; elle a été mergée en §116.
 
 ## Preuves
 

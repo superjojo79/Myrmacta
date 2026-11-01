@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
+import be.myrmacta.domain.connector.model.PollingTriggerConnector;
 import be.myrmacta.domain.connector.model.SftpConnectionConfig;
 import be.myrmacta.domain.connector.model.SftpFileTooLargeException;
 import be.myrmacta.domain.connector.model.WorkflowTriggerEvent;
@@ -22,6 +23,9 @@ import java.util.TreeMap;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionOperations;
 import tools.jackson.databind.json.JsonMapper;
 
 /** TODO §113 (D-MAILROOM-PDF-SFTP) — un courrier par PDF, remis avant rangement ; index JSON compagnon ou CSV par lot. */
@@ -95,6 +99,55 @@ class SftpPdfInboundConnectorTest {
 
         assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/ko/a.pdf", "/ko/a.json", "/ko/b.pdf", "/ko/b.json", "/ko/c.pdf",
                 "/ko/c.json", "/ko/d.pdf", "/ko/d.json");
+    }
+
+    /**
+     * Issue #277 — un PDF écarté par les contrôles des pièces (antivirus, type, contenu, stockage) ne devient pas un courrier : sa
+     * remise est annulée et il est rangé dans « refusés », avec son index, comme à l'écran « Déposer ».
+     */
+    @Test
+    void aPdfRejectedByTheAttachmentChecksCreatesNoMail_andGoesToRejected() {
+        RecordingTransactions transactions = new RecordingTransactions();
+        connector = new SftpPdfInboundConnector(sftp, new SimpleJsonPathMapper(), JsonMapper.builder().build(),
+                InboundConnectorProperties.defaults(), transactions);
+        sftp.put("/in/infecte.pdf", PDF);
+        sftp.put("/in/infecte.json", "{\"expediteur\":\"x@y.example\",\"objet\":\"Infecté\"}");
+        sftp.put("/in/sain.pdf", PDF);
+        sftp.put("/in/sain.json", "{\"expediteur\":\"x@y.example\",\"objet\":\"Sain\"}");
+
+        connector.poll(instance(config("JSON")), new PollingTriggerConnector.EventDelivery() {
+            @Override
+            public void deliver(WorkflowTriggerEvent event) {
+                throw new AssertionError("the SFTP connector needs the outcome of the delivery");
+            }
+
+            @Override
+            public Outcome deliverAndReport(WorkflowTriggerEvent event) {
+                delivered.add(event);
+                return new Outcome(event.variables().get("courrierFichier").equals("infecte.pdf") ? 1 : 0);
+            }
+        });
+
+        assertThat(delivered).hasSize(2);
+        assertThat(transactions.rolledBack).containsExactly(true, false);
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/ko/infecte.pdf", "/ko/infecte.json", "/done/sain.pdf",
+                "/done/sain.json");
+    }
+
+    /** Une transaction par remise : enregistre si elle a été annulée. */
+    private static final class RecordingTransactions implements TransactionOperations {
+
+        private final List<Boolean> rolledBack = new ArrayList<>();
+
+        @Override
+        public <T> T execute(TransactionCallback<T> action) {
+            SimpleTransactionStatus status = new SimpleTransactionStatus(true);
+            try {
+                return action.doInTransaction(status);
+            } finally {
+                rolledBack.add(status.isRollbackOnly());
+            }
+        }
     }
 
     @Test

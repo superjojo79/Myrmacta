@@ -120,8 +120,8 @@ Précisions du lot 7 (2026-11-01, tranché par l'utilisateur) :
   - le workflow « réponse » vérifie les variables de démarrage, et refuse un type enfant qui a un champ obligatoire sous
     condition ;
   - un PDF écarté par les contrôles (antivirus…) est **refusé** à l'écran « Déposer », la transaction du fichier étant
-    annulée (`ConnectorTriggerRuntime.Delivery`). Côté SFTP, il crée un courrier signalé et part dans « traités », comme
-    l'e-mail : issue #277 ;
+    annulée (`ConnectorTriggerRuntime.Delivery`). Côté SFTP, il créait un courrier signalé et partait dans « traités » :
+    corrigé par l'issue #277 (D-MAILROOM-PDF-SFTP, PDF écarté) ;
   - un index CSV respecte le plafond par interrogation. Un index entamé reste en place et se termine aux passages
     suivants ;
   - un groupe supprimé depuis le routage ne reçoit plus de tâche : elle reste libre, visible des éditeurs du dossier ;
@@ -166,6 +166,13 @@ partenaire dans un dossier SFTP deviennent des courriers, par un connecteur d'en
 - **Interrogation, remise avant rangement :** même mécanique que l'e-mail (`PollingTriggerConnector`, §87). Chaque PDF
   est remis au runtime avant d'être déplacé : dans `processedDirectory` s'il est pris en charge, dans `rejectedDirectory`
   sinon. Rien n'est supprimé.
+- **PDF écarté par les contrôles des pièces** (type, contenu, antivirus, stockage ; issue #277, option tranchée par
+  l'utilisateur le 2026-11-01) : chaque PDF est remis dans sa propre transaction. S'il est écarté, la transaction est annulée,
+  sans courrier vide ni process, et le PDF part dans `rejectedDirectory` avec son index, comme à l'écran « Déposer »
+  (D-MAILROOM-DEPOSIT). Le connecteur lit le compte des pièces écartées par `EventDelivery.deliverAndReport`. Le PDF est le
+  seul contenu du courrier ; un e-mail, lui, reste un courrier quand une pièce jointe est écartée (§87). Écarté : ranger
+  seulement le PDF dans « refusés » en gardant le courrier signalé, car un nouveau dépôt du partenaire aurait créé un
+  doublon.
 - **Index du partenaire, au choix dans la configuration (`indexFormat`) :**
   - `JSON` : un fichier compagnon de même nom (`facture-117.pdf` et `facture-117.json`, 64 Ko au plus, un objet) ;
   - `CSV` : un index par lot (`csvPattern`, par défaut `*.csv`), une ligne par PDF, dont la colonne `csvFileColumn` (par

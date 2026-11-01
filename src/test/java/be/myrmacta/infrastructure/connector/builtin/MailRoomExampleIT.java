@@ -5,7 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -20,6 +23,8 @@ import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
 import be.myrmacta.domain.connector.port.out.SftpClientPort;
+import be.myrmacta.domain.dossier.port.out.AttachmentScanPort;
+import be.myrmacta.domain.dossier.port.out.AttachmentScanResult;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
 import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
@@ -33,6 +38,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +59,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.JsonNode;
@@ -78,6 +85,7 @@ class MailRoomExampleIT {
 
     @MockitoBean private ImapMailbox mailbox;
     @MockitoBean private SftpClientPort sftp;
+    @MockitoSpyBean private AttachmentScanPort scanPort;
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ConnectorTriggerRuntime triggerRuntime;
@@ -272,6 +280,40 @@ class MailRoomExampleIT {
         ProcessInstance sorting = awaitSortingTask(mailId);
         assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("courrierFichier", "convocation.pdf")
                 .containsEntry("filResultat", "NOUVEAU").containsEntry("routageResultat", "A_TRIER");
+    }
+
+    /**
+     * Issue #277 — un PDF numérisé écarté par l'antivirus ne crée pas de courrier : la remise est annulée (ni dossier, ni process
+     * en file) et le PDF part dans « refusés » avec son index.
+     */
+    @Test
+    void aScannedPdfRejectedByTheAntivirusCreatesNoMail_andGoesToTheRejectedDirectory() throws Exception {
+        configureTheExample();
+        JsonNode example = JSON.readTree(EXAMPLE.resolve("config/connecteur-sftp-pdf.exemple.json").toFile());
+        Map<String, Object> config = JSON.convertValue(example.get("config"), Map.class);
+        ConnectorInstanceData scans = new ConnectorInstanceData(UUID.randomUUID(), TENANT, example.get("name").asString(),
+                example.get("connectorType").asString(), true, config);
+        byte[] pdf = "%PDF-1.4 piece infectee".getBytes(StandardCharsets.US_ASCII);
+        byte[] index = "{\"expediteur\":\"pirate@malveillant.example\",\"objet\":\"Courrier infecte 2026-9\"}"
+                .getBytes(StandardCharsets.UTF_8);
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{pdf,PDF}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/infecte.pdf", pdf.length)));
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{json,JSON}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/infecte.json", index.length)));
+        when(sftp.download(any(), eq("/scans/entree/infecte.pdf"), anyLong())).thenReturn(pdf);
+        when(sftp.download(any(), eq("/scans/entree/infecte.json"), anyLong())).thenReturn(index);
+        doReturn(AttachmentScanResult.ofInfected("eicar-test-signature")).when(scanPort)
+                .scan(argThat(content -> content != null && Arrays.equals(content, pdf)), any());
+        Integer mailsBefore = jdbc.queryForObject("select count(*) from dossier", Integer.class);
+
+        triggerRuntime.onIncomingEvent(scans, Map.of());
+
+        verify(sftp).archive(any(), eq("/scans/entree/infecte.pdf"), eq("/scans/refuses"));
+        verify(sftp).archive(any(), eq("/scans/entree/infecte.json"), eq("/scans/refuses"));
+        verify(sftp, never()).archive(any(), eq("/scans/entree/infecte.pdf"), eq("/scans/traites"));
+        assertThat(jdbc.queryForObject("select count(*) from dossier", Integer.class)).isEqualTo(mailsBefore);
+        assertThat(read(get("/api/dossiers").param("dossierTypeCode", "COURRIER").param("f.objet", "Courrier infecte 2026-9"))
+                .get("content")).isEmpty();
     }
 
     /** TODO §113 (D-MAILROOM-DEPOSIT) — un agent dépose deux fichiers : le PDF devient un courrier PAPIER, l'autre est refusé. */

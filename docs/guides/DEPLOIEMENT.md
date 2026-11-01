@@ -613,7 +613,8 @@ par comparaison-échange (D5), une seule réplique lit une boîte ou une file à
 **PDF numérisés par SFTP (TODO §113, `sftp-pdf-inbound`).** Interrogé comme les connecteurs ci-dessus (`pollSeconds`, mêmes
 limites `APP_INBOUND_*` : taille d'un PDF, nombre par interrogation). Sortie 22 (ou le port configuré) vers le serveur SFTP du
 partenaire ; l'empreinte de la clé hôte est obligatoire. Les PDF traités sont déplacés dans `processedDirectory`, les refusés
-dans `rejectedDirectory` : la purge de ces dossiers reste à la charge du partenaire ou de l'exploitant.
+dans `rejectedDirectory`, y compris un PDF écarté par l'antivirus, qui ne crée pas de courrier : la purge de ces dossiers
+reste à la charge du partenaire ou de l'exploitant.
 
 **Échéances de dossier (TODO §115).** Le job `DeadlineAlertJob` passe toutes les 15 minutes (`APP_DEADLINES_SCAN_INTERVAL_MS`,
 défaut 900 000 ; premier passage après `APP_DEADLINES_INITIAL_DELAY_MS`, défaut 120 000). Il ne fait rien tant qu'aucun type

@@ -23,7 +23,7 @@ capture (scanners, OCR, chez des partenaires) et le métier : il ouvre un vrai d
 | Canal | Mécanisme | Décision |
 |---|---|---|
 | E-mail (IMAP, Microsoft Graph) | connecteurs `imap-inbound`, `graph-mail-inbound` ; en-têtes de fil (`In-Reply-To`, `References`, `conversationId`) en variables `mail*`, réservées à la plateforme | §87, D-MAILROOM-THREAD |
-| PDF par SFTP | connecteur `sftp-pdf-inbound` : un courrier par PDF, remis avant rangement (traités / refusés), index du partenaire en JSON compagnon ou CSV par lot | D-MAILROOM-PDF-SFTP |
+| PDF par SFTP | connecteur `sftp-pdf-inbound` : un courrier par PDF, remis avant rangement (traités / refusés), index du partenaire en JSON compagnon ou CSV par lot ; un PDF écarté par les contrôles (antivirus…) ne crée pas de courrier et part dans « refusés » (#277) | D-MAILROOM-PDF-SFTP |
 | PDF déposé à la main | écran « Déposer un courrier », point de dépôt = connecteur `mail-deposit` ; une transaction par fichier ; un PDF écarté par l'antivirus est refusé | D-MAILROOM-DEPOSIT |
 
 Tous passent par `ConnectorTriggerRuntime` : dossier créé au nom du connecteur, pièces contrôlées (types, signature,
@@ -151,6 +151,5 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 
 - une panne entre la création d'un courrier et le rangement de son message (boîte, SFTP) fait retraiter ce message au
   passage suivant ;
-- un PDF SFTP écarté par l'antivirus crée un courrier signalé et part dans « traités » (#277) ;
 - la claim « overage » d'Entra ID (trop de groupes) n'est pas lue ;
 - OCR, eBox (#213 à #216) et classification IA restent hors de cette feature.

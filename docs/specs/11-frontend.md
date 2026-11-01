@@ -11,7 +11,10 @@ Le nom commercial est **Myrmacta** (décision n° 105). La barre latérale, sur 
 affiche le logo sombre (`myrmacta-logo-dark.svg`, encre `#F3F4F6`, corail `#FF7A52`). Le portail,
 sur fond clair, affiche le logo clair (encre `#1E2A3A`, corail `#E4572E`). Fichiers :
 `frontend/src/assets/brand/`, favicon dans `frontend/public/`, copies documentaires dans
-`docs/brand/`. Le favicon est la tête corail à deux antennes ; la fourmi entière reste le logo.
+`docs/brand/`. Le guide des fichiers est [docs/brand/README.md](../brand/README.md).
+Le favicon validé le 25/10/2026 est la tête corail à deux antennes
+(`favicon/favicon-head-*`) ; la variante tête et thorax n'est pas validée.
+La fourmi entière reste le logo.
 Signature : « L'intelligence collective au service de vos dossiers et décisions ».
 
 ---

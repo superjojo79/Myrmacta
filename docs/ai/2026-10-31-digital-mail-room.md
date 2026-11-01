@@ -188,7 +188,7 @@ pour les échéances (lot 4), le dépôt de PDF (lot 5) et le MCP (lot 6) s'écr
 | 3b | Workflow « réponse » déclaré par le type de dossier (mode 3, D-MAILROOM-REPLY-WORKFLOW : `SUR_DOSSIER` ou `DOSSIER_ENFANT`, changeset 044) | livré | #269 |
 | 4a | Échéance plateforme (§115 D-DEADLINE-FIELD, D-DEADLINE-ESCALATE) : champ DATE désigné par le type, rappel J-n, escalade avec réaffectation au groupe, changeset 045 | livré | #271 |
 | 4b | Minuteur à expression (§115 D-DEADLINE-TIMER, #186) : brique « Calculer une échéance », `${echeanceRappel}` / `${echeanceDepassee}` dans un minuteur | livré | #273 |
-| 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | en cours | |
+| 5a | Canal PDF, dossier SFTP surveillé (§113 D-MAILROOM-PDF-SFTP) : connecteur `sftp-pdf-inbound`, index JSON compagnon ou CSV par lot | livré | à ouvrir |
 | 5b | Canal PDF, dépôt manuel (§113 D-MAILROOM-DEPOSIT) : écran « Déposer », connecteur de dépôt | à faire | |
 | 6 | MCP lecture + actions, `security-review` ; point du registre à écrire | à faire | |
 | 7 | Démo reproductible, spec 49, guides, clôture | à faire | |
@@ -288,7 +288,7 @@ Fait dans le lot 5a :
 - exemple : `config/connecteur-sftp-pdf.exemple.json` ; `MailRoomExampleIT` fait passer un PDF et son index jusqu'à la file
   de tri.
 
-Prochaine action : preuves du lot 5a, PR, puis lot 5b (écran « Déposer »).
+Prochaine action : PR du lot 5a, puis lot 5b (écran « Déposer »).
 Collision : la PR #272 (agent Cursor, `D-HTTP-PATCH`) a pris aussi le numéro §115, désormais publié pour les échéances ;
 elle doit passer en §116 (signalé à l'utilisateur).
 
@@ -324,6 +324,10 @@ elle doit passer en §116 (signalé à l'utilisateur).
 | 2026-10-31 | lot 4b — `ComputeDeadlineDelegateTest`, `FlowableBpmnParserAdapterUelSurfaceTest`, catalogue, `MailRoomExampleIT` | vert : 5 + 36 + 12 + 3 ; le minuteur `${echeanceDepassee}` de `traiterReponse` se crée à J+11 00:00 UTC et clôture la réponse « échue » |
 | 2026-10-31 | lot 4b — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | rouge deux fois : `BuildingBlockApiTest` (17 → 18 briques), puis `MailRoomExampleIT` instable (job du tri exécuté entre le démarrage et la confirmation du lien par le relais ; le test attend désormais la fin du relais) ; puis vert : 4 121 tests, 0 échec, 5 ignorés, couverture atteinte |
 | 2026-10-31 | lot 4b — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
+| 2026-11-01 | lot 5a — `SftpPdfInboundConnectorTest`, `MailRoomExampleIT` | vert : 6 + 4 ; un PDF et son index JSON deviennent un courrier PAPIER, rangés dans « traités », jusqu'à la file de tri |
+| 2026-11-01 | lot 5a — `./mvnw -Dmaven.compiler.release=21 verify` (frontend compris) | rouge au premier passage (`ConnectorAdminApiTest` : 11 → 12 types), corrigé ; puis vert : 4 128 tests, 0 échec, 5 ignorés, couverture atteinte |
+| 2026-11-01 | lot 5a — `npm run lint && npm run test` puis `npx playwright test` | vert : 845 Vitest, 156 Playwright |
+| 2026-11-01 | lot 5a — `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

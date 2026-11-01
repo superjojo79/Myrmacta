@@ -515,7 +515,7 @@ agent déployait directement, prévenir ses opérateurs : ses écrans de déploi
 
 ------
 
-## 14. Promouvoir la configuration de la recette vers la production (TODO §83)
+## 14. Promouvoir la configuration de la recette vers la production (TODO §83, §117)
 
 Procédure type (rôle TENANT_ADMIN des deux côtés) :
 
@@ -523,7 +523,11 @@ Procédure type (rôle TENANT_ADMIN des deux côtés) :
 2. Production : *Planifier* le bundle (`POST /api/admin/configuration/plan`, multipart `file` + `parameters` JSON optionnel) et relisez le plan.
 3. *Appliquer* (`POST /api/admin/configuration/apply`, mêmes parties + `secrets` JSON `{nomConnecteur: {champ: valeur}}` pour les créations + `expectedBundleSha256` du plan relu).
    Les secrets ne sont jamais écrits dans le bundle ni dans le journal ; transmettez-les par TLS.
-4. Publiez les brouillons BPMN/DMN déposés (*Admin → Brouillons*), relancez l'import tant que des artefacts restent *Bloqués* par une dépendance, activez les connecteurs après relecture de leurs adresses.
+4. Publiez les brouillons BPMN/DMN déposés (*Admin → Brouillons*) et activez les templates importés en brouillon (*Admin → Templates*).
+   Relancez l'import tant que des artefacts restent *Bloqués* par une dépendance. Activez les connecteurs après relecture de leurs adresses.
+   Ajoutez les membres des groupes créés : ils ne voyagent pas.
+   Le groupe de l'IdP d'un groupe peut être un paramètre (`{{idp_compta}}`), comme une adresse de connecteur.
+   Bundle au format 2 depuis #279 : une instance antérieure le refuse, et l'instance courante lit toujours le format 1.
 
 Intégrité : chaque fichier porte son SHA-256 dans `manifest.json` (altération détectée) ; le bundle **n'est pas signé**. Limites : 2 000 artefacts, 5 Mo par fichier, 50 Mo au total ;
 la taille d'envoi reste plafonnée par `spring.servlet.multipart.max-file-size`. La migration 032 crée le journal `config_import` (additif, retour arrière fourni). Un import ne retire jamais

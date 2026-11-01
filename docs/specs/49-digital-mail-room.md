@@ -101,7 +101,18 @@ groupes de l'utilisateur sur les dossiers qu'il peut modifier ; il peut les pren
 Revue de sécurité du lot 6 : constats SR-1 à SR-4 dans §113. Par le canal M2M, l'acteur `API_SERVICE` équivaut à un
 administrateur (risque A3-M2) : renseigner `trustedClientIds` avant d'ouvrir le MCP à un second client.
 
-## 9. Démo reproductible
+## 9. Promotion vers un autre environnement
+
+La promotion de configuration ([spec 35](35-promotion-configuration.md), §117) transporte toute la mail room :
+
+- les groupes, sans leurs membres ;
+- les types de dossier, les configurations de workflow, la table de routage et les processus ;
+- le workflow « réponse » et l'échéance d'un type.
+
+Le plan signale un groupe nommé par la table de routage ou par `groupeTri` qui n'existe ni sur la cible ni dans le bundle.
+Test : `MailRoomExampleIT` (aller-retour de l'exemple).
+
+## 10. Démo reproductible
 
 Profil `demo-mailroom` (build `embedded-db` seulement), avec `scripts/demo-mailroom.sh build | start | reset` :
 
@@ -121,7 +132,7 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 | 4a, 4b | #271, #273 | échéances plateforme (045), `DeadlineAlertJob`, `computeDeadlineTask`, minuteurs `${echeance…}` |
 | 5a, 5b | #274, #275 | `sftp-pdf-inbound`, `mail-deposit`, écran « Déposer un courrier » |
 | 6 | #276 | `MailRoomMcpTools`, `MailThreadAttacher`, revue de sécurité |
-| 7 | (cette PR) | référence dans l'objet en secours, test MCP par la chaîne HTTP, démo, spec, revue de clôture et ses correctifs |
+| 7 | #278 | référence dans l'objet en secours, test MCP par la chaîne HTTP, démo, spec, revue de clôture et ses correctifs |
 
 **Tests de référence :**
 
@@ -138,7 +149,6 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 
 **Limites connues :**
 
-- la promotion de configuration ne transporte ni le workflow « réponse » ni l'échéance d'un type ;
 - une panne entre la création d'un courrier et le rangement de son message (boîte, SFTP) fait retraiter ce message au
   passage suivant ;
 - un PDF SFTP écarté par l'antivirus crée un courrier signalé et part dans « traités » (#277) ;

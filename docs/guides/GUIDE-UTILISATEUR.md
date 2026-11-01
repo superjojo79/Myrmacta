@@ -148,7 +148,7 @@ l'échéance des dossiers de ce type (la liste ne propose que les champs de type
 
 Chaque rappel et chaque escalade n'a lieu qu'une fois ; reporter l'échéance (corriger le champ) en relance de nouveaux.
 Les délais sont en jours calendaires (week-ends et jours fériés compris). Un dossier en brouillon, clôturé ou archivé n'est
-pas suivi. Ce réglage n'est pas encore transporté par la promotion de configuration.
+pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
 
 **Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
 un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :
@@ -158,8 +158,7 @@ un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoin
 - **Dans un dossier enfant** : chaque réponse ouvre un dossier enfant du **type enfant** choisi, où le process démarre.
 
 Le bouton **Enregistrer la réponse** valide le réglage. Un process sans configuration de workflow, ou un type
-enfant inconnu, est refusé avec un message. Ce réglage n'est pas encore transporté par la promotion de configuration
-entre environnements : il faut le reposer sur l'environnement cible.
+enfant inconnu, est refusé avec un message. Ce réglage voyage avec la promotion de configuration (§ Promotion).
 
 ### Rétention (conformité RGPD)
 
@@ -408,24 +407,49 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
 - Les brouillons d'agent ou d'assistant non touchés depuis 30 jours sont purgés ; ceux de l'éditeur, jamais.
 - *Dernières publications* : qui a rédigé, qui a publié, quand, quelle version, et si la publication était relue ou **directe**.
 
-### Promotion de configuration — de la recette à la production (TODO §83)
+### Promotion de configuration — de la recette à la production (TODO §83, §117)
 
 *Admin → Promotion* (rôle TENANT_ADMIN) exporte la configuration d'un environnement et l'importe sur un autre.
 
-1. **Exporter** (sur la recette) : nommez l'environnement, téléchargez le bundle (ZIP). Il contient types de dossier, schémas de questions,
-   connecteurs **sans leurs secrets**, tables DMN et processus BPMN **déployés**, configurations de workflow — des fichiers lisibles que vous pouvez
-   versionner dans Git. Le bundle n'est pas signé : transportez-le par un canal de confiance. Ni ACL, ni réglages (rétention, SLA, webhooks), ni
-   templates de documents (première tranche).
+1. **Exporter** (sur la recette) : nommez l'environnement, puis téléchargez le bundle (ZIP). Ce sont des fichiers lisibles, que vous pouvez
+   versionner dans Git. Il contient :
+   - les groupes d'utilisateurs, **sans leurs membres** ;
+   - les types de dossier, avec leur workflow « réponse » et leur échéance ;
+   - les schémas de questions ;
+   - la **version active** des templates de documents ;
+   - les connecteurs, **sans leurs secrets** ;
+   - les tables DMN et les processus BPMN **déployés**, et les configurations de workflow ;
+   - la définition des parcours.
+
+   Le bundle n'est pas signé : transportez-le par un canal de confiance. Ni les ACL ni les réglages du tenant (rétention, SLA, webhooks) n'y figurent.
 2. **Planifier** (sur la production) : déposez le ZIP. Le plan **n'écrit rien** : pour chaque artefact, *Créer*, *Modifier*, *Inchangé*, *Conflit*
    (ex. un type dont le nouveau schéma casserait des dossiers existants — jamais forcé) ou *Bloqué* (secret requis, table DMN à publier d'abord,
    paramètre manquant, validation refusée), avec la raison.
-3. **Paramètres d'environnement** : dans les fichiers de connecteur du bundle, une valeur de la forme `{{url_erp}}` est remplacée à l'import par
-   le paramètre du même nom (JSON `{"url_erp": "https://…"}`) ; un paramètre absent bloque le connecteur.
-4. **Appliquer** : les types, schémas et connecteurs sont écrits ; **les BPMN et DMN deviennent des brouillons** (*Admin → Brouillons*, origine
-   « Import ») à relire et publier ; un connecteur est créé **désactivé** (relisez ses adresses, saisissez ses secrets si besoin, puis activez-le).
+   Le plan avertit aussi (`WARNING:` en tête du détail, l'artefact reste appliqué) quand une référence n'existe ni ici ni dans le bundle :
+   - un groupe nommé par une table de routage, l'attribut `groupeTri` ou un `candidateGroups` ;
+   - une clé de template d'un type sans version active.
+
+   Un workflow « réponse » ou une échéance dont le type, le process, le type enfant, le champ date ou le groupe d'escalade manque est
+   *Bloqué*.
+3. **Paramètres d'environnement** : une valeur de la forme `{{url_erp}}` est remplacée à l'import par le paramètre du même nom (JSON
+   `{"url_erp": "https://…"}`) ; un paramètre absent bloque l'artefact. Cela vaut pour les fichiers de connecteur et pour le groupe de
+   l'IdP d'un groupe d'utilisateurs, dont le nom diffère souvent entre recette et production.
+4. **Appliquer** :
+   - les types, schémas, groupes, workflows « réponse », échéances et parcours sont écrits ;
+   - **les BPMN et DMN deviennent des brouillons** (*Admin → Brouillons*, origine « Import ») à relire et publier ;
+   - **un template devient une nouvelle version brouillon**, à activer dans *Admin → Templates* ;
+   - un connecteur est créé **désactivé** : relisez ses adresses, saisissez ses secrets si besoin, puis activez-le ;
+   - un groupe est créé **sans membres**. S'il existe déjà, seul son libellé change : son groupe de l'IdP est conservé ;
+   - un parcours est enregistré **sans être compilé** : le processus qui tourne est le BPMN du bundle.
+
    Les secrets requis à la création se saisissent dans la page (envoyés avec l'application, jamais conservés) ou plus tard dans *Connecteurs*.
 5. **Rejouer est sans danger** : un second import converge (tout *Inchangé*). Si un artefact échoue, les autres sont appliqués et le rapport dit lequel ;
-   corrigez et relancez. Un BPMN qui dépend d'une table DMN encore en brouillon est *Bloqué* : publiez le brouillon DMN, puis relancez l'import.
+   corrigez et relancez. Plusieurs cas demandent un second passage :
+   - un BPMN qui dépend d'une table DMN encore en brouillon : publiez le brouillon, puis relancez l'import ;
+   - un BPMN qui dépend d'un template apporté par le bundle : relancez, puis activez le template avant de publier le processus ;
+   - un workflow « réponse » dont la configuration arrive avec un brouillon BPMN : publiez le brouillon, puis relancez.
+
+   Rien n'est jamais supprimé sur la cible.
 
 *Derniers imports* : qui, quand, quel bundle, combien d'artefacts appliqués, inchangés, ignorés, en échec.
 

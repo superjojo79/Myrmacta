@@ -1065,7 +1065,7 @@ D-DEADLINE-ESCALATE).
     d'agir, dans la transaction du dossier. Une échéance reportée ouvre de nouveaux paliers.
 - Tests : `EvaluateDeadlinesUseCaseImplTest`, `DossierTypeDeadlineApiTest`, `MailRoomExampleIT` (rappel, puis
   escalade réelle d'une tâche Flowable).
-- Limite : la promotion de configuration ne transporte pas encore ce réglage.
+- Promotion : le réglage voyage dans le bundle (artefact `DEADLINE`, §117 D-PROMO-TYPE-SETTINGS).
 - **Minuteur à expression (lot 4b, D-DEADLINE-TIMER).**
   - La brique « Calculer une échéance » (`ComputeDeadlineDelegate`, `computeDeadlineTask`, paramètres littéraux
     seulement) relit un champ date non sensible du dossier, ou applique `delaiJours`.

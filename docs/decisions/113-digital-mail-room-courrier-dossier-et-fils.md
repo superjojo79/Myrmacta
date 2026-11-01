@@ -181,9 +181,29 @@ l'e-mail :
 - **API :** `GET /api/mail-deposit-points`, `POST /api/mail-deposit-points/{id}/deposits` (multipart `files`,
   `expediteur`, `objet`).
 
+**D-MAILROOM-MCP** (tranché par l'utilisateur, lot 6, 2026-11-01) — la mail room s'expose au serveur MCP en lecture et en
+actions. Les actions ont les **mêmes garde-fous que les outils d'écriture déjà livrés** (§60) : droits de l'utilisateur du
+jeton, `dryRun` qui valide sans rien écrire, trace au nom de l'utilisateur. Il n'y a pas de proposition à valider par un
+humain (option écartée par l'utilisateur).
+
+- **Lecture :**
+  - le registre reste `search_dossiers` avec `dossierTypeCode=COURRIER` ;
+  - `list_my_tasks` : mes tâches et les tâches libres de mes groupes, dont la file de tri (D-GROUP-ASSIGN) ;
+  - `get_mail_thread` : pour un dossier visible, les courriers liés (`LINKED`) et les e-mails reçus et envoyés de son fil
+    (index, D-MAILROOM-INDEX).
+- **Actions** (ACL EDIT du dossier, `dryRun`, trace) :
+  - `reassign_task_to_group` : la réaffectation de D-GROUP-REASSIGN, avec sa note de trace ;
+  - `attach_mail_to_dossier` : rattache à la main un courrier à un dossier. Les effets sont ceux du rattachement
+    automatique, par le même code (`MailThreadAttacher`) : lien, pièces copiées, participants prévenus, `courrierRecu`
+    remis aux exécutions qui l'attendent. Une note au nom de l'utilisateur est ajoutée. Il faut l'ACL EDIT du courrier et
+    du dossier cible ; un dossier clôturé est refusé ;
+  - `complete_task` : termine une tâche **sans formulaire** (`formKey` vide), par exemple « Trier le courrier ». La tâche
+    est prise si elle est libre, puis terminée, avec une note de trace. Une tâche à formulaire (question, document,
+    signature) reste à l'interface.
+- **Hors périmètre :** les ACL, la purge et le statut des liens de workflow restent exclus du MCP (§60, spec 15).
+
 **Reste à trancher à la conception de leur lot :**
 
-- outils MCP d'action (lot 6) ;
 - OCR.
 
 **Impacte :** nouvelle spec `docs/specs/49-digital-mail-room.md`, `docs/guides/GUIDE-UTILISATEUR.md`,

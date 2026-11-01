@@ -20,7 +20,10 @@ import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
 import be.myrmacta.domain.connector.port.out.SftpClientPort;
+import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
+import be.myrmacta.infrastructure.mcp.McpActorScope;
+import be.myrmacta.infrastructure.mcp.tool.MailRoomMcpTools;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +34,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -82,6 +86,7 @@ class MailRoomExampleIT {
     @Autowired private ManagementService managementService;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private DeadlineAlertJob deadlineAlertJob;
+    @Autowired private MailRoomMcpTools mailRoomTools;
 
     private static boolean configured;
 
@@ -303,6 +308,54 @@ class MailRoomExampleIT {
         ProcessInstance sorting = awaitSortingTask(mailId);
         assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("courrierDeposePar", OPERATOR)
                 .containsEntry("routageResultat", "A_TRIER");
+    }
+
+    /**
+     * TODO §113 (D-MAILROOM-MCP) — un agent, par les outils MCP : lit le fil d'une facture, y rattache un courrier de la file de
+     * tri (à blanc d'abord), réaffecte puis termine la tâche de tri. Chaque action laisse une note à son nom.
+     */
+    @Test
+    void anAgentWorksTheSortingQueueThroughTheMcpTools() throws Exception {
+        configureTheExample();
+        deliver(new ImapMailbox.Mail("<f500@fournisseur.example>", "compta@fournisseur.example", "Fournisseur SA", "Facture 2026-500",
+                Instant.parse("2026-10-30T08:15:00Z"), "Notre facture.", false, "mx.example.com; dmarc=pass header.from=fournisseur.example",
+                List.of(), 0));
+        String invoiceMail = awaitMailDossier("Facture 2026-500");
+        awaitRouted(invoiceMail);
+        String invoiceId = read(get("/api/dossiers/{id}/relations", invoiceMail)).get(0).get("relatedDossier").get("id").asString();
+        deliver(new ImapMailbox.Mail("<q500@ailleurs.example>", "secretariat@ailleurs.example", "Secrétariat", "Courrier à classer 500",
+                Instant.parse("2026-10-31T09:00:00Z"), "Concerne la facture 2026-500.", false,
+                "mx.example.com; dmarc=pass header.from=ailleurs.example", List.of(), 0));
+        String mailId = awaitMailDossier("Courrier à classer 500");
+        ProcessInstance sorting = awaitSortingTask(mailId);
+        Task sortingTask = taskService.createTaskQuery().processInstanceId(sorting.getId()).taskDefinitionKey("trierCourrier").singleResult();
+        String linkId = String.valueOf(runtimeService.getVariable(sorting.getId(), "dossierWorkflowLinkId"));
+        AccessContext.User agent = AccessContext.user(OPERATOR, Set.of("DOSSIER_MANAGER"));
+
+        var thread = McpActorScope.call(agent, () -> mailRoomTools.getMailThread(invoiceId));
+        assertThat(thread.linkedDossiers()).extracting(MailRoomMcpTools.LinkedDossier::dossierId)
+                .containsExactly(java.util.UUID.fromString(invoiceMail));
+
+        assertThat(McpActorScope.call(agent, () -> mailRoomTools.attachMailToDossier(mailId, invoiceId, true)))
+                .containsEntry("dryRun", true).containsEntry("done", false);
+        assertThat(read(get("/api/dossiers/{id}/relations", mailId))).isEmpty();
+        McpActorScope.call(agent, () -> mailRoomTools.attachMailToDossier(mailId, invoiceId, false));
+        assertThat(read(get("/api/dossiers/{id}/relations", mailId)).get(0).get("relatedDossier").get("id").asString()).isEqualTo(invoiceId);
+        String invoiceProcess = runtimeService.createProcessInstanceQuery().processDefinitionKey("traiterFacture")
+                .variableValueEquals("dossierId", invoiceId).singleResult().getId();
+        assertThat(taskService.createTaskQuery().processInstanceId(invoiceProcess).taskDefinitionKey("lireCourrier").count()).isEqualTo(1);
+        assertThat(read(get("/api/dossiers/{id}/elements", invoiceId)).toString()).contains("rattaché par " + OPERATOR);
+
+        McpActorScope.call(agent, () -> mailRoomTools.reassignTaskToGroup(linkId, sortingTask.getId(), "JURIDIQUE", false));
+        assertThat(taskService.getIdentityLinksForTask(sortingTask.getId()))
+                .anySatisfy(identity -> assertThat(identity.getGroupId()).isEqualTo("JURIDIQUE"));
+
+        assertThat(McpActorScope.call(agent, () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), true))).containsEntry("done", false);
+        assertThat(taskService.createTaskQuery().taskId(sortingTask.getId()).count()).isEqualTo(1);
+        McpActorScope.call(agent, () -> mailRoomTools.completeTask(linkId, sortingTask.getId(), false));
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(sorting.getId()).count()).isZero();
+        assertThat(read(get("/api/dossiers/{id}", mailId)).get("status").asString()).isEqualTo("CLOTURE");
+        assertThat(read(get("/api/dossiers/{id}/elements", mailId)).toString()).contains("terminée par " + OPERATOR);
     }
 
     /** Le courrier dont un champ vaut cette valeur, une fois le relais de l'outbox terminé (voir {@link #awaitMailDossier}). */

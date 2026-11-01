@@ -57,9 +57,16 @@ public final class ReassignTaskToGroupUseCaseImpl implements ReassignTaskToGroup
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
-    /** Toutes les vérifications avant la première écriture ; l'appelant porte la transaction (moteur, lien, note ensemble). */
     @Override
-    public void reassign(UUID linkId, String taskId, String groupCode, AccessContext.User actor) {
+    public String check(UUID linkId, String taskId, String groupCode, AccessContext.User actor) {
+        Checked checked = validate(linkId, taskId, groupCode, actor);
+        engine.assertTaskOnInstance(checked.link().processInstanceId(), taskId, tenantId);
+        return checked.group();
+    }
+
+    private record Checked(DossierWorkflowLink link, Dossier dossier, String group) {}
+
+    private Checked validate(UUID linkId, String taskId, String groupCode, AccessContext.User actor) {
         Objects.requireNonNull(actor, "actor");
         if (taskId == null || taskId.isBlank()) {
             throw new IllegalArgumentException("taskId is required");
@@ -74,7 +81,16 @@ public final class ReassignTaskToGroupUseCaseImpl implements ReassignTaskToGroup
                 .filter(found -> tenantId.equals(found.tenantId()))
                 .orElseThrow(() -> new DossierNotFoundException("Dossier not found: " + link.dossierId()));
         accessPolicy.assertCanEdit(dossier, actor);
-        String group = knownGroup(groupCode);
+        return new Checked(link, dossier, knownGroup(groupCode));
+    }
+
+    /** Toutes les vérifications avant la première écriture ; l'appelant porte la transaction (moteur, lien, note ensemble). */
+    @Override
+    public void reassign(UUID linkId, String taskId, String groupCode, AccessContext.User actor) {
+        Checked checked = validate(linkId, taskId, groupCode, actor);
+        DossierWorkflowLink link = checked.link();
+        Dossier dossier = checked.dossier();
+        String group = checked.group();
 
         TaskGroupReassignment before = engine.reassignTaskToGroup(link.processInstanceId(), taskId, group, tenantId);
         linkGroups.assign(tenantId, link.id(), group);

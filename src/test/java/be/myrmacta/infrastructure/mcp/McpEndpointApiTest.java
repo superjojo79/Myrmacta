@@ -74,7 +74,13 @@ class McpEndpointApiTest {
             "list_parcours",
             "get_parcours",
             "define_parcours",
-            "compile_parcours");
+            "compile_parcours",
+            // TODO §113 (D-MAILROOM-MCP)
+            "list_my_tasks",
+            "get_mail_thread",
+            "reassign_task_to_group",
+            "attach_mail_to_dossier",
+            "complete_task");
 
     @Autowired
     private MockMvc mockMvc;

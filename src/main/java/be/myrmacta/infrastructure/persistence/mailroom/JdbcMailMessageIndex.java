@@ -40,4 +40,15 @@ class JdbcMailMessageIndex implements MailMessageIndex {
                 tenantId, kind.name(), key);
         return found.stream().findFirst();
     }
+
+    @Override
+    public List<MailIndexEntry> findByDossier(String tenantId, UUID dossierId, int limit) {
+        return jdbc.query("""
+                select tenant_id, kind, message_key, direction, dossier_id, counterpart, recorded_at from mail_message_index
+                where tenant_id = ? and dossier_id = ? order by recorded_at desc limit ?
+                """, (rs, i) -> new MailIndexEntry(rs.getString("tenant_id"), MailIndexEntry.Kind.valueOf(rs.getString("kind")),
+                        rs.getString("message_key"), MailIndexEntry.Direction.valueOf(rs.getString("direction")),
+                        rs.getObject("dossier_id", UUID.class), rs.getString("counterpart"), rs.getTimestamp("recorded_at").toInstant()),
+                tenantId, dossierId, Math.max(1, Math.min(limit, 200)));
+    }
 }

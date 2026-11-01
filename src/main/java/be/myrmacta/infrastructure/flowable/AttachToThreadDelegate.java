@@ -1,17 +1,14 @@
 package be.myrmacta.infrastructure.flowable;
 
 import be.myrmacta.application.workflow.ManualStartOrchestrator;
-import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
-import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DossierRelation;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.DuplicateDossierRelationException;
-import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
 import be.myrmacta.domain.dossier.model.RelationType;
 import be.myrmacta.domain.dossier.port.in.CreateDossierRelationUseCase;
@@ -25,8 +22,6 @@ import be.myrmacta.domain.mailroom.model.MailIndexEntry;
 import be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting;
 import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.mailroom.port.out.ReplyWorkflowSettings;
-import be.myrmacta.domain.notification.model.NotificationChannel;
-import be.myrmacta.domain.notification.model.NotificationEvent;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
@@ -36,6 +31,7 @@ import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
+import be.myrmacta.infrastructure.mailroom.MailThreadAttacher;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -43,7 +39,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -54,12 +49,13 @@ import org.springframework.stereotype.Component;
  * d'un courrier dans l'index (In-Reply-To, puis References de la plus récente à la plus ancienne, puis conversationId Graph).
  * Rattache si l'expéditeur est attesté, si son domaine est celui de l'interlocuteur inscrit, et si le dossier du fil est encore
  * ouvert : lien {@code LINKED}, copie des pièces (contrôles des pièces reçues), avertissement des participants, message
- * {@code courrierRecu} à toutes les exécutions du dossier qui l'attendent. Sinon le courrier suit le routage ordinaire.
+ * {@code courrierRecu} à toutes les exécutions du dossier qui l'attendent ({@link MailThreadAttacher}, partagé avec l'outil MCP).
+ * Sinon le courrier suit le routage ordinaire.
  */
 @Component("attachToThreadTask")
 class AttachToThreadDelegate implements JavaDelegate {
 
-    static final String MESSAGE = "courrierRecu";
+    static final String MESSAGE = MailThreadAttacher.MESSAGE;
     static final String RESULT = "filResultat";
     static final String THREAD_DOSSIER_ID = "filDossierId";
     static final String THREAD_DOSSIER_REFERENCE = "filDossierReference";
@@ -67,7 +63,7 @@ class AttachToThreadDelegate implements JavaDelegate {
     static final String REPLY_WORKFLOW = "filReponseWorkflow";
     static final String REPLY_DOSSIER_ID = "filReponseDossierId";
     static final String REPLY_REASON = "filReponseMotif";
-    static final int MAX_COPIED_PIECES = 20;
+    static final int MAX_COPIED_PIECES = MailThreadAttacher.MAX_COPIED_PIECES;
 
     private static final AccessContext SYSTEM = AccessContext.system("flowable-delegate");
 
@@ -90,6 +86,7 @@ class AttachToThreadDelegate implements JavaDelegate {
     private final ChildDossierRelationConfirmer childConfirmer;
     private final ManualStartOrchestrator orchestrator;
     private final UpdateDossierStatusUseCase updateStatus;
+    private final MailThreadAttacher attacher;
 
     AttachToThreadDelegate(
             MailMessageIndex index,
@@ -130,6 +127,8 @@ class AttachToThreadDelegate implements JavaDelegate {
         this.childConfirmer = Objects.requireNonNull(childConfirmer, "childConfirmer");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
         this.updateStatus = Objects.requireNonNull(updateStatus, "updateStatus");
+        this.attacher = new MailThreadAttacher(relations, createRelation, elements, storage, attachFiles, links, participants,
+                notifications, engine);
     }
 
     @Override
@@ -164,11 +163,7 @@ class AttachToThreadDelegate implements JavaDelegate {
         }
 
         String idempotencyKey = execution.getProcessInstanceId() + ":" + execution.getCurrentActivityId();
-        link(tenantId, mailId, target.id(), idempotencyKey);
-        copyPieces(tenantId, mail, target);
-        warnParticipants(tenantId, mail, target);
-        engine.correlateMessageToAllWaiting(MESSAGE, target.id().toString(),
-                Map.of("courrierId", mailId.toString(), "courrierReference", mail.reference()));
+        attacher.attach(tenantId, mail, target, idempotencyKey, "workflow");
         execution.setVariable(RESULT, "RATTACHE");
         execution.setVariable(THREAD_DOSSIER_ID, target.id().toString());
         execution.setVariable(THREAD_DOSSIER_REFERENCE, target.reference());
@@ -286,50 +281,6 @@ class AttachToThreadDelegate implements JavaDelegate {
             }
         }
         return origin;
-    }
-
-    private void link(String tenantId, UUID mailId, UUID targetId, String idempotencyKey) {
-        if (relations.findByIdempotencyKey(tenantId, mailId, idempotencyKey).isPresent()) {
-            return;
-        }
-        try {
-            createRelation.create(new CreateDossierRelationUseCase.CreateDossierRelationCommand(tenantId, mailId, targetId,
-                    RelationType.LINKED, "workflow", idempotencyKey), SYSTEM);
-        } catch (DuplicateDossierRelationException alreadyLinked) {
-            // Rejeu du job : le lien existe déjà.
-        }
-    }
-
-    /** Les pièces du courrier sont recopiées (relues dans le stockage), avec les contrôles des pièces reçues. */
-    private void copyPieces(String tenantId, Dossier mail, Dossier target) {
-        List<InboundAttachment> files = new ArrayList<>();
-        for (DossierElement element : elements.findByDossierIdOrderByAddedAtAsc(mail.id())) {
-            if (element.type() != ElementType.ATTACHMENT || element.storageRef() == null || files.size() == MAX_COPIED_PIECES) {
-                continue;
-            }
-            Object filename = element.metadata().get("filename");
-            Object contentType = element.metadata().get("contentType");
-            files.add(new InboundAttachment(filename == null ? element.label() : filename.toString(),
-                    contentType == null ? "application/octet-stream" : contentType.toString(),
-                    storage.retrieve(tenantId, element.storageRef())));
-        }
-        if (!files.isEmpty()) {
-            attachFiles.attach(target.id(), "mailroom:" + mail.reference(), files);
-        }
-    }
-
-    /** Mode 1 : les participants du workflow en cours du dossier (assignés, observateurs) sont prévenus. */
-    private void warnParticipants(String tenantId, Dossier mail, Dossier target) {
-        Set<String> recipients = new LinkedHashSet<>();
-        links.findActiveByDossierId(target.id()).ifPresent(link -> recipients.addAll(participants.findParticipantUserIds(link)));
-        for (String userId : recipients) {
-            notifications.send(new NotificationEvent(List.of(NotificationChannel.BROWSER), null, null, null, userId, null,
-                    Map.of("type", "MAIL_THREAD_REPLY",
-                            "title", "Nouveau courrier",
-                            "body", "Un courrier (" + mail.reference() + ") répond au fil du dossier " + target.reference() + ".",
-                            "dossierId", target.id().toString(),
-                            "courrierId", mail.id().toString())), tenantId);
-        }
     }
 
     private static void notThreaded(DelegateExecution execution, String reason) {

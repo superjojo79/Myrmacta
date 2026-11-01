@@ -74,7 +74,13 @@ public final class McpToolModes {
             Map.entry("cancel_signature_request", Mode.OPERATION),
             // TODO §106 (issue #211) : pré-vérification IA (données de dossier) — jamais en conception.
             Map.entry("run_dossier_precheck", Mode.OPERATION),
-            Map.entry("get_dossier_precheck", Mode.OPERATION));
+            Map.entry("get_dossier_precheck", Mode.OPERATION),
+            // TODO §113 (D-MAILROOM-MCP) : mail room — tâches, fil d'un dossier et actions gardées (données de dossiers).
+            Map.entry("list_my_tasks", Mode.OPERATION),
+            Map.entry("get_mail_thread", Mode.OPERATION),
+            Map.entry("reassign_task_to_group", Mode.OPERATION),
+            Map.entry("attach_mail_to_dossier", Mode.OPERATION),
+            Map.entry("complete_task", Mode.OPERATION));
 
     private McpToolModes() {}
 

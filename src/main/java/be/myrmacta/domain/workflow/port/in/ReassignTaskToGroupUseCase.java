@@ -10,4 +10,11 @@ import java.util.UUID;
 public interface ReassignTaskToGroupUseCase {
 
     void reassign(UUID linkId, String taskId, String groupCode, AccessContext.User actor);
+
+    /**
+     * TODO §113 (D-MAILROOM-MCP) — mêmes vérifications que {@link #reassign}, sans aucune écriture ({@code dryRun} de l'outil MCP).
+     *
+     * @return le code du groupe cible, tel qu'enregistré
+     */
+    String check(UUID linkId, String taskId, String groupCode, AccessContext.User actor);
 }

@@ -45,7 +45,8 @@ class McpToolModesTest {
         assertThat(design).doesNotContain("get_dossier", "search_dossiers", "create_dossier", "add_dossier_element",
                 "start_workflow", "generate_document", "evaluate_decision", "query_sla_summary",
                 "list_signature_requests", "get_signature_request", "cancel_signature_request",
-                "run_dossier_precheck", "get_dossier_precheck"); // TODO §106 (D-ASSIST-TOOLS)
+                "run_dossier_precheck", "get_dossier_precheck", // TODO §106 (D-ASSIST-TOOLS)
+                "list_my_tasks", "get_mail_thread", "reassign_task_to_group", "attach_mail_to_dossier", "complete_task"); // §113
         assertThat(design).contains("deploy_workflow", "deploy_decision_table", "list_pending_drafts", "list_dossier_types");
     }
 

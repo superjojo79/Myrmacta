@@ -71,6 +71,7 @@
 | 46 | Exposition MCP de la couche low-code — cadrage transverse (TODO §71) | [46-exposition-mcp-couche-low-code.md](46-exposition-mcp-couche-low-code.md) |
 | 47 | PostgreSQL embarqué (zonky) — tests sans H2/Docker, base persistante démo/QA — **livré** (TODO §91) | [47-postgresql-embarque-tests-demo.md](47-postgresql-embarque-tests-demo.md) |
 | 48 | Pré-vérification IA des dossiers et types de pièces — **livré** (TODO §106, issue #211) | [48-preverification-ia.md](48-preverification-ia.md) |
+| 49 | Digital Mail Room — courrier entrant multicanal, tri DMN, fils, échéances, MCP — **livré** (TODO §113 à §115, issue #217) | [49-digital-mail-room.md](49-digital-mail-room.md) |
 
 > Pour concevoir concrètement un diagramme BPMN pour Myrmacta (conventions, référence des
 > `serviceTask` disponibles, champs dynamiques, connecteurs, intervenants, génération de

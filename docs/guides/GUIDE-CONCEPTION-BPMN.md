@@ -735,7 +735,9 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
 - **Rattacher au fil.** La brique **Rattacher au fil** (`${attachToThreadTask}`, sans paramètre) se place en tête du tri, avant
   la table de routage.
   - **Recherche du fil.** Elle cherche le fil du courrier dans l'index des e-mails reçus et envoyés (`In-Reply-To`, puis
-    `References`, puis `conversationId` Graph).
+    `References`, puis `conversationId` Graph). En secours, elle lit une référence de dossier dans l'objet
+    (`DOS-FACTURE-2026-000007`). Cette référence ne compte que si ce dossier a déjà échangé un e-mail avec le domaine de
+    l'expéditeur.
   - **Conditions du rattachement :**
     - l'expéditeur est attesté ;
     - son domaine est celui de l'interlocuteur du fil ;
@@ -793,12 +795,12 @@ Deux mécanismes, au choix ou ensemble :
     - `champEcheance` : un champ date non sensible du dossier, relu au moment de l'exécution ;
     - `delaiJours` : aujourd'hui + N jours, utilisé si le champ est absent ou vide ;
     - `rappelJours` : nombre de jours avant l'échéance (0 par défaut).
-  - Elle pose trois variables réservées : `echeance` (`AAAA-MM-JJ`), `echeanceRappel` (`rappelJours` avant, 00:00 UTC) et
-    `echeanceDepassee` (lendemain de l'échéance, 00:00 UTC : le jour même est encore dans les temps).
+  - Elle pose `echeance` (`AAAA-MM-JJ`, pour l'affichage) et deux variables réservées : `echeanceRappel` (`rappelJours`
+    avant, 00:00 UTC) et `echeanceDepassee` (lendemain de l'échéance, 00:00 UTC : le jour même est encore dans les temps).
   - Sans date ni délai, la brique échoue : un incident est visible en supervision.
   - Un minuteur porte ensuite `${echeanceDepassee}` ou `${echeanceRappel}` dans son `timeDate`, et rien d'autre. Ni
     `timeDuration`, ni `timeCycle`, ni autre variable, ni appel de méthode.
-  - Ces variables sont réservées : ni un démarrage ni une complétion de tâche ne peut les poser, donc repousser le
+  - Les deux instants sont réservés : ni un démarrage ni une complétion de tâche ne peut les poser, donc repousser le
     minuteur.
   - Exemple, pris de [`traiter-reponse.bpmn20.xml`](../../exemples/digital-mail-room/traiter-reponse.bpmn20.xml) :
 

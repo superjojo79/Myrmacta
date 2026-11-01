@@ -199,6 +199,37 @@ class McpEndpointApiTest {
         assertThat(body).contains("\"isError\":true").contains("10000");
     }
 
+    /**
+     * TODO §113 (D-MAILROOM-MCP) — les outils de la mail room par la vraie chaîne HTTP et sécurité M2M : lecture, refus d'un
+     * dossier inconnu en erreur d'outil (pas en panne serveur), et appel sans JWT refusé avant tout outil.
+     */
+    @Test
+    void mailRoomTools_runThroughTheM2mChain_andAnUnauthenticatedCallIsRefused() throws Exception {
+        String sessionId = initializeSession();
+
+        String tasks = callMcp(sessionId, 8, "tools/call", """
+                {"name": "list_my_tasks", "arguments": {"size": 5}}
+                """).getResponse().getContentAsString();
+        assertThat(tasks).contains("\"isError\":false").contains("totalElements");
+
+        String thread = callMcp(sessionId, 9, "tools/call", """
+                {"name": "get_mail_thread", "arguments": {"dossierId": "00000000-0000-0000-0000-000000000000"}}
+                """).getResponse().getContentAsString();
+        assertThat(thread).contains("\"isError\":true").contains("not found");
+
+        String forms = callMcp(sessionId, 10, "tools/call", """
+                {"name": "complete_task", "arguments": {"linkId": "00000000-0000-0000-0000-000000000000", "taskId": "t1"}}
+                """).getResponse().getContentAsString();
+        assertThat(forms).contains("\"isError\":true").contains("Workflow link not found");
+
+        mockMvc.perform(post("/api/m2m/mcp")
+                        .accept(MediaType.APPLICATION_JSON, MediaType.valueOf("text/event-stream"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":"
+                                + "{\"name\":\"get_mail_thread\",\"arguments\":{\"dossierId\":\"x\"}}}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized());
+    }
+
     private String initializeSession() throws Exception {
         MvcResult init = callMcp(null, 1, "initialize", """
                 {

@@ -104,7 +104,7 @@ class ConnectorTriggerRuntimeImplTest {
         when(createDossier.create(any(), any())).thenReturn(dossier(dossierId));
 
         assertThat(runtime.deliver(instance, new WorkflowTriggerEvent("triCourrier", "COURRIER", Map.of(), Map.of(), null)))
-                .isEqualTo(dossierId);
+                .isEqualTo(new be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime.Delivery(dossierId, 0));
         verify(outboxRepository).savePending(any());
 
         when(catalog.get("http-rest")).thenReturn(mock(ConnectorDefinition.class));

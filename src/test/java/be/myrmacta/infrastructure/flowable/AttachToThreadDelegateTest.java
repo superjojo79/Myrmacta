@@ -2,7 +2,9 @@ package be.myrmacta.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -138,7 +140,7 @@ class AttachToThreadDelegateTest {
 
         assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filReponseWorkflow", "NON")
                 .containsEntry("filReponseMotif", "un process est déjà actif sur DOS-FACTURE-7");
-        verifyNoInteractions(orchestrator);
+        org.mockito.Mockito.verify(orchestrator, org.mockito.Mockito.never()).start(any(), any(), any(), any(), any());
 
         written.clear();
         when(links.findActiveByDossierId(threadId)).thenReturn(Optional.empty());
@@ -150,6 +152,27 @@ class AttachToThreadDelegateTest {
                 org.mockito.ArgumentMatchers.eq("relancerFacture"),
                 org.mockito.ArgumentMatchers.eq(Map.of("courrierId", mailId.toString(), "courrierReference", "DOS-COURRIER-1")),
                 any(), org.mockito.ArgumentMatchers.eq("workflow"));
+    }
+
+    /** Revue de clôture : des variables de démarrage refusées le sont AVANT toute écriture du workflow réponse ; le rattachement reste. */
+    @Test
+    void aReplyWorkflowThatWouldRefuseItsStartVariablesIsNotStarted_butTheReplyStaysAttached() {
+        attachable();
+        when(replySettings.find(TENANT, "FACTURE")).thenReturn(Optional.of(new ReplyWorkflowSetting(TENANT, "FACTURE",
+                ReplyWorkflowSetting.Mode.SUR_DOSSIER, "relancerFacture", null)));
+        when(deployments.findDeploymentInfo(TENANT, "relancerFacture"))
+                .thenReturn(Optional.of(new ProcessDeploymentInfo("relancerFacture", 1, 0)));
+        when(workflowConfigs.findByWorkflowKey(TENANT, "relancerFacture")).thenReturn(Optional.of(mock(WorkflowTypeConfig.class)));
+        when(orchestrator.bindStartVariables(any(), any()))
+                .thenThrow(new IllegalArgumentException("Workflow start variable is not declared: courrierId"));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filReponseWorkflow", "NON")
+                .containsEntry("filReponseMotif", "variables de démarrage refusées par relancerFacture : Workflow start variable is not "
+                        + "declared: courrierId");
+        org.mockito.Mockito.verify(createRelation).create(any(), any());
+        org.mockito.Mockito.verify(orchestrator, org.mockito.Mockito.never()).start(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -199,7 +222,67 @@ class AttachToThreadDelegateTest {
 
         assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filReponseWorkflow", "NON")
                 .containsEntry("filReponseMotif", "champ obligatoire du type enfant : montant");
-        verifyNoInteractions(orchestrator, childConfirmer, updateStatus);
+        verifyNoInteractions(childConfirmer, updateStatus);
+        org.mockito.Mockito.verify(orchestrator, org.mockito.Mockito.never()).start(any(), any(), any(), any(), any());
+    }
+
+    /**
+     * D-MAILROOM-THREAD, 3e moyen (lot 7) : la référence du dossier dans l'objet, en secours, seulement si ce dossier a déjà
+     * échangé un e-mail avec le domaine de l'expéditeur (les références sont séquentielles, donc devinables).
+     */
+    @Test
+    void aReferenceInTheSubjectJoinsTheThread_onlyWhenTheDossierAlreadyExchangedWithTheSenderDomain() {
+        attachable();
+        variables.remove("mailInReplyTo");
+        variables.put("mailSubject", "RE: votre dossier DOS-FACTURE-2026-000007 (rappel)");
+        Dossier thread = dossiers.findById(threadId).orElseThrow();
+        when(dossiers.findByReference(TENANT, "DOS-FACTURE-2026-000007")).thenReturn(Optional.of(thread));
+        when(index.findByDossier(eq(TENANT), eq(threadId), anyInt())).thenReturn(java.util.List.of(new MailIndexEntry(TENANT,
+                MailIndexEntry.Kind.MESSAGE_ID, "<f7@fournisseur.example>", MailIndexEntry.Direction.IN, threadId,
+                "compta@fournisseur.example", NOW)));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filDossierId", threadId.toString());
+    }
+
+    /** Revue de clôture : un dossier métier qui n'a que REÇU des e-mails les a inscrits au nom de ses courriers liés. */
+    @Test
+    void aReferenceInTheSubjectAlsoCountsTheMailsReceivedThroughTheLinkedMailItems() {
+        attachable();
+        variables.remove("mailInReplyTo");
+        variables.put("mailSubject", "Concerne DOS-FACTURE-2026-000007");
+        Dossier thread = dossiers.findById(threadId).orElseThrow();
+        UUID firstMail = UUID.randomUUID();
+        when(dossiers.findByReference(TENANT, "DOS-FACTURE-2026-000007")).thenReturn(Optional.of(thread));
+        when(index.findByDossier(eq(TENANT), eq(threadId), anyInt())).thenReturn(java.util.List.of());
+        when(relations.findByDossier(TENANT, threadId)).thenReturn(java.util.List.of(new be.myrmacta.domain.dossier.model.DossierRelation(
+                UUID.randomUUID(), firstMail, threadId, TENANT, be.myrmacta.domain.dossier.model.RelationType.LINKED, "workflow", NOW, "k")));
+        when(index.findByDossier(eq(TENANT), eq(firstMail), anyInt())).thenReturn(java.util.List.of(new MailIndexEntry(TENANT,
+                MailIndexEntry.Kind.MESSAGE_ID, "<f7@fournisseur.example>", MailIndexEntry.Direction.IN, firstMail,
+                "compta@fournisseur.example", NOW)));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filDossierId", threadId.toString());
+    }
+
+    @Test
+    void aGuessedReferenceFromADomainNeverExchangedWithIsANewMail() {
+        attachable();
+        variables.remove("mailInReplyTo");
+        variables.put("mailFrom", "escroc@autre.example");
+        variables.put("mailSubject", "RE: DOS-FACTURE-2026-000007");
+        Dossier thread = dossiers.findById(threadId).orElseThrow();
+        when(dossiers.findByReference(TENANT, "DOS-FACTURE-2026-000007")).thenReturn(Optional.of(thread));
+        when(index.findByDossier(eq(TENANT), eq(threadId), anyInt())).thenReturn(java.util.List.of(new MailIndexEntry(TENANT,
+                MailIndexEntry.Kind.MESSAGE_ID, "<f7@fournisseur.example>", MailIndexEntry.Direction.IN, threadId,
+                "compta@fournisseur.example", NOW)));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "NOUVEAU").containsEntry("filMotif", "hors fil");
+        verifyNoInteractions(createRelation, attachFiles, engine);
     }
 
     /** Un fil rattachable : dossier « facture » ouvert, sans pièce à copier ni participant. */

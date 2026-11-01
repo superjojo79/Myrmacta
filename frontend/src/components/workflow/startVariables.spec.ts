@@ -33,7 +33,6 @@ describe('validateStartVariables (TODO §93)', () => {
       'dossierFields',
       'connectorResult',
       'generatedDocumentId',
-      'echeance',
       'echeanceRappel',
       'echeanceDepassee',
     ])

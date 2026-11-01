@@ -19,21 +19,30 @@ class JdbcMailMessageIndex implements MailMessageIndex {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Un identifiant REÇU déjà connu n'est pas réinscrit (revue de clôture) : un Message-ID est choisi par l'expéditeur ; un
+     * tiers qui réutilise celui d'un fil ne doit pas masquer l'entrée légitime. Un identifiant ENVOYÉ (posé par la plateforme)
+     * est toujours inscrit.
+     */
     @Override
     public void record(MailIndexEntry entry) {
         jdbc.update("""
                 insert into mail_message_index (id, tenant_id, kind, message_key, direction, dossier_id, counterpart, recorded_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?)
+                select ?, ?, ?, ?, ?, ?, ?, ?
+                where ? = 'OUT' or not exists (
+                    select 1 from mail_message_index where tenant_id = ? and kind = ? and message_key = ?)
                 on conflict (tenant_id, kind, message_key, direction, dossier_id) do nothing
                 """, UUID.randomUUID(), entry.tenantId(), entry.kind().name(), entry.key(), entry.direction().name(), entry.dossierId(),
-                entry.counterpart(), Timestamp.from(entry.recordedAt()));
+                entry.counterpart(), Timestamp.from(entry.recordedAt()), entry.direction().name(), entry.tenantId(), entry.kind().name(),
+                entry.key());
     }
 
     @Override
     public Optional<MailIndexEntry> find(String tenantId, MailIndexEntry.Kind kind, String key) {
         List<MailIndexEntry> found = jdbc.query("""
                 select tenant_id, kind, message_key, direction, dossier_id, counterpart, recorded_at from mail_message_index
-                where tenant_id = ? and kind = ? and message_key = ? order by recorded_at desc limit 1
+                where tenant_id = ? and kind = ? and message_key = ?
+                order by case when direction = 'OUT' then 0 else 1 end, recorded_at asc limit 1
                 """, (rs, i) -> new MailIndexEntry(rs.getString("tenant_id"), MailIndexEntry.Kind.valueOf(rs.getString("kind")),
                         rs.getString("message_key"), MailIndexEntry.Direction.valueOf(rs.getString("direction")),
                         rs.getObject("dossier_id", UUID.class), rs.getString("counterpart"), rs.getTimestamp("recorded_at").toInstant()),

@@ -606,6 +606,15 @@ le point d'accès des jetons (`login.microsoftonline.com`). Les hôtes doivent r
 traités restent dans la boîte (dossier `Myrmacta-processed`) et sont à purger selon votre politique. **Plusieurs répliques** : le créneau d'interrogation est pris
 par comparaison-échange (D5), une seule réplique lit une boîte ou une file à la fois.
 
+**PDF numérisés par SFTP (TODO §113, `sftp-pdf-inbound`).** Interrogé comme les connecteurs ci-dessus (`pollSeconds`, mêmes
+limites `APP_INBOUND_*` : taille d'un PDF, nombre par interrogation). Sortie 22 (ou le port configuré) vers le serveur SFTP du
+partenaire ; l'empreinte de la clé hôte est obligatoire. Les PDF traités sont déplacés dans `processedDirectory`, les refusés
+dans `rejectedDirectory` : la purge de ces dossiers reste à la charge du partenaire ou de l'exploitant.
+
+**Échéances de dossier (TODO §115).** Le job `DeadlineAlertJob` passe toutes les 15 minutes (`APP_DEADLINES_SCAN_INTERVAL_MS`,
+défaut 900 000 ; premier passage après `APP_DEADLINES_INITIAL_DELAY_MS`, défaut 120 000). Il ne fait rien tant qu'aucun type
+de dossier n'a de réglage d'échéance. Plusieurs répliques : chaque palier (rappel, escalade) est pris une seule fois en base.
+
 ## 17. Langue de l'interface (TODO §90)
 
 L'interface existe en français et en anglais. Chaque utilisateur choisit sa langue (sélecteur en haut de page ; le choix reste dans son navigateur). Tant qu'il n'a rien choisi, la langue vient de

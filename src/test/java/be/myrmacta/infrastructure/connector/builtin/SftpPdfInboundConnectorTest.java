@@ -111,6 +111,27 @@ class SftpPdfInboundConnectorTest {
         assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/lot-1.pdf", "/done/lot-2.pdf", "/done/lot.csv", "/in/autre.pdf");
     }
 
+    /** Revue de clôture : le plafond par interrogation vaut aussi pour un index CSV ; un CSV entamé reste en place et se termine ensuite. */
+    @Test
+    void aCsvIndexRespectsThePerPollCap_andIsArchivedOnceAllItsLinesAreDone() {
+        connector = new SftpPdfInboundConnector(sftp, new SimpleJsonPathMapper(), JsonMapper.builder().build(),
+                new InboundConnectorProperties(2, 26214400, 20000, 10485760, 30, 1048576));
+        StringBuilder csv = new StringBuilder("fichier,expediteur,objet\n");
+        for (int i = 1; i <= 3; i++) {
+            sftp.put("/in/p" + i + ".pdf", PDF);
+            csv.append("p").append(i).append(".pdf,a@b.example,Objet ").append(i).append('\n');
+        }
+        sftp.put("/in/lot.csv", csv.toString());
+
+        connector.poll(instance(config("CSV")), delivered::add);
+        assertThat(delivered).hasSize(2);
+        assertThat(sftp.files).containsKeys("/in/lot.csv", "/in/p3.pdf");
+
+        connector.poll(instance(config("CSV")), delivered::add);
+        assertThat(delivered).extracting(event -> event.dossierFields().get("objet")).containsExactly("Objet 1", "Objet 2", "Objet 3");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/p1.pdf", "/done/p2.pdf", "/done/p3.pdf", "/done/lot.csv");
+    }
+
     @Test
     void anIndexTooLargeIsNeverDownloaded() {
         sftp.put("/in/e.pdf", PDF);

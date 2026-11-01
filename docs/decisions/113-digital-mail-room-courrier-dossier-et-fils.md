@@ -1,8 +1,8 @@
 # §113 — Digital Mail Room : le courrier est un dossier, fils de discussion et réaction des workflows
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-En cours (issue [#217](https://github.com/superjojo79/Myrmacta/issues/217)). Cadrage validé par l'utilisateur le
+Livré (issue [#217](https://github.com/superjojo79/Myrmacta/issues/217), lots 1 à 7 ; spec [49](../specs/49-digital-mail-room.md)). Cadrage validé par l'utilisateur le
 2026-10-31. Les canaux de la première livraison sont l'e-mail et les PDF déjà numérisés. L'eBox est une feature
 séparée (#213 à #216), et l'OCR viendra dans un lot ultérieur.
 
@@ -98,6 +98,36 @@ Précisions de conception du lot 3a (2026-10-31) :
 - **Les variables de fil sont posées par la plateforme.** Les variables `mail*` posées par le connecteur ne sont plus
   remplaçables par un mapping de connecteur.
 - **Reporté au lot 3b :** le workflow « réponse » déclaré par le type de dossier (mode 3).
+
+Précisions du lot 7 (2026-11-01, tranché par l'utilisateur) :
+
+- **Référence dans l'objet, en secours (3e moyen de D-MAILROOM-THREAD).** Les références de dossier
+  (`DOS-<type>-<année>-<séquence>`) sont séquentielles, donc devinables. Une référence lue dans l'objet ne rattache donc
+  que si le dossier a **déjà échangé un e-mail**, reçu ou envoyé (index), avec le domaine de l'expéditeur. Les autres
+  conditions sont celles des deux premiers moyens : expéditeur attesté, dossier ouvert. L'échange peut être inscrit au nom
+  du dossier ou d'un courrier qui lui est lié.
+  - Bornes : 300 caractères d'objet lus, 3 références essayées, 50 échanges par dossier.
+  - Écarté par l'utilisateur : l'expéditeur attesté seul (n'importe quel domaine), et l'abandon de ce moyen.
+- **Revue de clôture indépendante** (`/code-review`, 2026-11-01) : 10 constats, aucun critique ni haut. Correctifs, chacun
+  avec un test de régression :
+  - la référence dans l'objet tient aussi compte des e-mails reçus par les courriers **liés** au dossier référencé (un
+    e-mail reçu est inscrit au nom de son courrier). Bornes : 20 dossiers liés ;
+  - un identifiant reçu déjà connu n'est pas réinscrit, et `find` préfère un e-mail envoyé, sinon le premier inscrit. Un
+    tiers qui réutilise le Message-ID d'un fil ne le masque plus ;
+  - `References` trop long se lit par la fin (les plus récents), `In-Reply-To` par le début ;
+  - « Router le courrier » vérifie avant la première écriture la configuration du workflow, le statut `OUVERT` et les
+    variables de démarrage déclarées (§111) ;
+  - le workflow « réponse » vérifie les variables de démarrage, et refuse un type enfant qui a un champ obligatoire sous
+    condition ;
+  - un PDF écarté par les contrôles (antivirus…) est **refusé** à l'écran « Déposer », la transaction du fichier étant
+    annulée (`ConnectorTriggerRuntime.Delivery`). Côté SFTP, il crée un courrier signalé et part dans « traités », comme
+    l'e-mail : issue #277 ;
+  - un index CSV respecte le plafond par interrogation. Un index entamé reste en place et se termine aux passages
+    suivants ;
+  - un groupe supprimé depuis le routage ne reçoit plus de tâche : elle reste libre, visible des éditeurs du dossier ;
+  - `echeance` n'est plus réservée (§115) ; le job d'échéances ignore les dossiers déjà escaladés pour leur date.
+- **Signalement d'une réponse non rattachée.** Le signal est `filResultat=NOUVEAU` avec la raison dans `filMotif` (par
+  exemple « expéditeur non attesté »), et non une variable `mailThreadIgnored` comme l'annonçait le cadrage.
 **D-MAILROOM-REPLY-WORKFLOW** (tranché par l'utilisateur, lot 3b, 2026-10-31) — le mode 3 bute sur une règle existante : un
 seul workflow actif par dossier (`AttachWorkflowUseCaseImpl.reserve`, index unique en base). Cette règle ne change pas. Le type
 de dossier choisit l'un de deux modes :
@@ -218,9 +248,8 @@ humain (option écartée par l'utilisateur).
     `trustedClientIds` (`M2mSecurityProperties`). Par l'assistant, ce sont les droits de l'utilisateur réel qui
     s'appliquent.
 
-**Reste à trancher à la conception de leur lot :**
-
-- OCR.
+**Hors de cette feature** (cadrage du 2026-10-31) : l'OCR intégré, futur lot à cadrer à part. Ce sera une nouvelle
+dépendance d'exécution, donc une pause et un point du registre.
 
 **Impacte :** nouvelle spec `docs/specs/49-digital-mail-room.md`, `docs/guides/GUIDE-UTILISATEUR.md`,
 `docs/guides/GUIDE-CONCEPTION-BPMN.md`, `openapi/openapi.yaml`, nouveaux changesets, `exemples/digital-mail-room/`.

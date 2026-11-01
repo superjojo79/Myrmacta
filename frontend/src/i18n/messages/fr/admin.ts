@@ -328,6 +328,7 @@ export default {
       REPLY_WORKFLOW: 'Workflow « réponse »',
       DEADLINE: 'Échéance',
       DOCUMENT_TEMPLATE: 'Template de document',
+      PARCOURS: 'Parcours',
     },
     planActions: { CREATE: 'Créer', UPDATE: 'Modifier', UNCHANGED: 'Inchangé', CONFLICT: 'Conflit', BLOCKED: 'Bloqué' },
     outcomes: { APPLIED: 'Appliqué', UNCHANGED: 'Inchangé', SKIPPED: 'Ignoré', FAILED: 'Échec' },

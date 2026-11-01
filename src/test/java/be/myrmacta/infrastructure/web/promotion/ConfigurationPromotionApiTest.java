@@ -75,6 +75,8 @@ class ConfigurationPromotionApiTest {
     @Autowired private be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase createTemplate;
     @Autowired private be.myrmacta.domain.document.port.in.ActivateDocumentTemplateUseCase activateTemplate;
     @Autowired private be.myrmacta.domain.document.port.out.DocumentTemplateRepository templateRepository;
+    @Autowired private be.myrmacta.domain.parcours.port.in.ManageParcoursUseCase manageParcours;
+    @Autowired private be.myrmacta.domain.parcours.port.in.CompileParcoursUseCase compileParcours;
 
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
@@ -469,5 +471,59 @@ class ConfigurationPromotionApiTest {
         assertThat(report.entries().getFirst().outcome()).isEqualTo(be.myrmacta.domain.promotion.model.ImportOutcome.APPLIED);
         assertThat(templateRepository.listByTenantId("tenant_dev", key + "-mcp"))
                 .singleElement().satisfies(t -> assertThat(t.status()).isEqualTo(be.myrmacta.domain.document.model.TemplateStatus.DRAFT));
+    }
+
+    private static be.myrmacta.domain.parcours.model.ParcoursDefinition waitFor(String duration) {
+        return new be.myrmacta.domain.parcours.model.ParcoursDefinition(
+                List.of(new WorkflowStatusDefinition("OUVERT", "Ouvert", true, StatusOutcome.NONE)), List.of(DossierStatus.OUVERT), null,
+                List.of(new be.myrmacta.domain.parcours.model.ParcoursDefinition.Step("attente", "Attente",
+                        be.myrmacta.domain.parcours.model.ParcoursDefinition.Kind.WAIT, Map.of("duration", duration), null, null, null)));
+    }
+
+    /**
+     * TODO §117 (D-PROMO-PARCOURS) — la définition d'un parcours voyage ; l'export la dit « à jour » seulement si le processus déployé
+     * est sa dernière compilation ; l'import l'enregistre sans compiler et rejouer converge.
+     */
+    @Test
+    void aParcoursDefinitionTravels_withAMarkSayingWhetherItsDeployedProcessIsItsLastCompilation() throws Exception {
+        String key = "promoParcours" + suffix();
+        manageParcours.save(ADMIN, new be.myrmacta.domain.parcours.port.in.ManageParcoursUseCase.SaveCommand(key, "Parcours",
+                waitFor("PT1H"), null));
+
+        // jamais compilé : pas « à jour »
+        assertThat(exportedParcours(key)).contains("\"inSync\" : false");
+
+        // compilé puis publié : « à jour »
+        compileParcours.compile(ADMIN, Provenance.PARCOURS, key, false, false);
+        var draft = manageDrafts.listPending(ADMIN).stream().filter(d -> d.key().equals(key)).findFirst().orElseThrow();
+        manageDrafts.publish(ADMIN, DraftArtifactType.BPMN, key, draft.updatedAt(), PublicationMode.MANUAL);
+        assertThat(exportedParcours(key)).contains("\"inSync\" : true");
+
+        // la définition change ensuite sur la source : plus « à jour »
+        int version = manageParcours.get(ADMIN, key).version();
+        manageParcours.save(ADMIN, new be.myrmacta.domain.parcours.port.in.ManageParcoursUseCase.SaveCommand(key, "Parcours",
+                waitFor("PT2H"), version));
+        assertThat(exportedParcours(key)).contains("\"inSync\" : false");
+
+        // sur la cible : la définition du bundle remplace celle d'ici, sans compiler ; le plan avertit ; rejouer converge
+        var doc = new be.myrmacta.domain.promotion.model.doc.ConfigDocs.ParcoursDoc(key, "Parcours recette", waitFor("PT3H"), false);
+        ConfigurationBundle bundle = new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-01T10:00:00Z"),
+                "recette", "test", List.of(json(ArtifactType.PARCOURS, key, doc)));
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(bundle)).param("expectedBundleSha256", bundle.sha256())
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].outcome").value("APPLIED"))
+                .andExpect(jsonPath("$.entries[0].message").value(org.hamcrest.Matchers.containsString("not compiled")));
+        var saved = manageParcours.get(ADMIN, key);
+        assertThat(saved.label()).isEqualTo("Parcours recette");
+        assertThat(saved.definition().steps().getFirst().params()).containsEntry("duration", "PT3H");
+        String replay = planJson(bundle, null);
+        assertThat(replay).contains("UNCHANGED").contains("WARNING");
+    }
+
+    private String exportedParcours(String key) throws Exception {
+        ConfigurationBundle exported = bundleCodec.read(mockMvc.perform(get("/api/admin/configuration/export")
+                .with(user("alice", "TENANT_ADMIN"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        return exported.find(ArtifactType.PARCOURS, key).orElseThrow().text();
     }
 }

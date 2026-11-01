@@ -25,7 +25,13 @@ import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
 import be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts;
+import be.myrmacta.domain.promotion.artifact.ParcoursArtifacts;
 import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
+import be.myrmacta.domain.parcours.model.Parcours;
+import be.myrmacta.domain.parcours.model.ParcoursDefinition;
+import be.myrmacta.domain.parcours.port.in.ManageParcoursUseCase;
+import be.myrmacta.domain.parcours.port.out.ParcoursRepository;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.ParcoursDoc;
 import be.myrmacta.domain.document.model.DocumentTemplate;
 import be.myrmacta.domain.document.model.InvalidTemplateSyntaxException;
 import be.myrmacta.domain.document.model.TemplateStatus;
@@ -122,6 +128,8 @@ class ConfigurationPromotionUseCaseTest {
     private CreateDocumentTemplateUseCase createTemplate;
     private TemplateSyntaxChecker templateSyntax;
     private final List<DocumentTemplate> templatesHere = new ArrayList<>();
+    private ParcoursRepository parcoursRepo;
+    private ManageParcoursUseCase manageParcours;
 
     @BeforeEach
     void setUp() {
@@ -174,6 +182,13 @@ class ConfigurationPromotionUseCaseTest {
             return template(c.templateKey(), c.variantKey(), c.locale(), c.label(), c.htmlContent(), 9, TemplateStatus.DRAFT);
         });
         templateSyntax = mock(TemplateSyntaxChecker.class);
+        parcoursRepo = mock(ParcoursRepository.class);
+        when(parcoursRepo.findByKey(any(), any())).thenReturn(Optional.empty());
+        manageParcours = mock(ManageParcoursUseCase.class);
+        when(manageParcours.save(any(), any())).thenAnswer(inv -> {
+            ManageParcoursUseCase.SaveCommand c = inv.getArgument(1);
+            return parcours(c.key(), c.label(), c.definition(), c.expectedVersion() == null ? 1 : c.expectedVersion() + 1);
+        });
         groupRefs = mock(GroupReferenceExtractor.class);
         when(groupRefs.fromBpmn(any())).thenReturn(Set.of());
         when(groupRefs.fromDmn(any())).thenReturn(Set.of());
@@ -183,7 +198,8 @@ class ConfigurationPromotionUseCaseTest {
                 saveWorkflowConfig, propose, journalRepo,
                 new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs),
                         new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines),
-                        new DocumentTemplateArtifacts(TENANT, CODEC, templateRepo, createTemplate, templateSyntax, 1000)));
+                        new DocumentTemplateArtifacts(TENANT, CODEC, templateRepo, createTemplate, templateSyntax, 1000),
+                        new ParcoursArtifacts(TENANT, CODEC, parcoursRepo, manageParcours, workflowDeployment)));
     }
 
     private static BundleEntry json(ArtifactType type, String key, Object doc) {
@@ -882,5 +898,70 @@ class ConfigurationPromotionUseCaseTest {
 
         assertThat(bpmn.action()).isEqualTo(PlanAction.BLOCKED);
         assertThat(bpmn.reason()).contains("document template 'accuse'").contains("run the import again");
+    }
+
+    // ---- TODO §117 (D-PROMO-PARCOURS) — définitions de parcours ----
+
+    private static ParcoursDefinition definition(String schemaKey) {
+        return new ParcoursDefinition(List.of(new WorkflowStatusDefinition("OUVERT", "Ouvert", true, StatusOutcome.NONE)),
+                List.of(DossierStatus.OUVERT), null, List.of(new ParcoursDefinition.Step("saisie", "Saisie",
+                        ParcoursDefinition.Kind.QUESTION, Map.of("schemaKey", schemaKey), null, null, null)));
+    }
+
+    private static Parcours parcours(String key, String label, ParcoursDefinition definition, int version) {
+        return new Parcours(java.util.UUID.randomUUID(), TENANT, key, label, definition, version, "t", "t", Instant.EPOCH,
+                Instant.EPOCH, null, null);
+    }
+
+    private static BundleEntry parcoursEntry(String key, String label, ParcoursDefinition definition, Boolean inSync) {
+        return json(ArtifactType.PARCOURS, key, new ParcoursDoc(key, label, definition, inSync));
+    }
+
+    @Test
+    void aParcoursDefinitionIsSavedWithoutCompilation_andAnExistingOneIsReplacedAtItsCurrentVersion() {
+        when(parcoursRepo.findByKey(TENANT, "sinistre")).thenReturn(Optional.of(parcours("sinistre", "Sinistre", definition("avis"), 4)));
+        var b = bundle(parcoursEntry("nouveau", "Nouveau", definition("avis"), true),
+                parcoursEntry("sinistre", "Sinistre", definition("expertise"), true));
+
+        var plan = useCase.plan(ADMIN, b, Map.of());
+        assertThat(plan.find(ArtifactType.PARCOURS, "nouveau").orElseThrow().action()).isEqualTo(PlanAction.CREATE);
+        var update = plan.find(ArtifactType.PARCOURS, "sinistre").orElseThrow();
+        assertThat(update.action()).isEqualTo(PlanAction.UPDATE);
+        assertThat(update.reason()).contains("version 4").contains("not compiled");
+
+        useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
+
+        verify(manageParcours).save(ADMIN, new ManageParcoursUseCase.SaveCommand("nouveau", "Nouveau", definition("avis"), null));
+        verify(manageParcours).save(ADMIN, new ManageParcoursUseCase.SaveCommand("sinistre", "Sinistre", definition("expertise"), 4));
+        verify(propose, never()).proposeBpmn(any(), any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void anIdenticalDefinitionIsUnchangedWhateverItsSyncMark_butAnOutOfSyncSourceIsFlagged() {
+        when(parcoursRepo.findByKey(TENANT, "sinistre")).thenReturn(Optional.of(parcours("sinistre", "Sinistre", definition("avis"), 2)));
+
+        var inSync = useCase.plan(ADMIN, bundle(parcoursEntry("sinistre", "Sinistre", definition("avis"), true)), Map.of())
+                .entries().getFirst();
+        assertThat(inSync.action()).isEqualTo(PlanAction.UNCHANGED);
+        assertThat(inSync.reason()).isEmpty();
+
+        var outOfSync = useCase.plan(ADMIN, bundle(parcoursEntry("sinistre", "Sinistre", definition("avis"), false)), Map.of())
+                .entries().getFirst();
+        assertThat(outOfSync.action()).isEqualTo(PlanAction.UNCHANGED);
+        assertThat(outOfSync.reason()).startsWith("WARNING: ").contains("last compilation");
+    }
+
+    @Test
+    void anIncoherentParcoursIsBlocked_andTheMcpChannelNeverSavesOne() {
+        var broken = new ParcoursDefinition(List.of(new WorkflowStatusDefinition("OUVERT", "Ouvert", true, StatusOutcome.NONE)),
+                List.of(DossierStatus.OUVERT), null, List.of(new ParcoursDefinition.Step("saisie", "Saisie",
+                        ParcoursDefinition.Kind.QUESTION, Map.of("schemaKey", "avis"), "inconnue", null, null)));
+        assertThat(useCase.plan(ADMIN, bundle(parcoursEntry("casse", "Cassé", broken, null)), Map.of()).entries().getFirst().action())
+                .isEqualTo(PlanAction.BLOCKED);
+
+        var report = useCase.apply(ADMIN, bundle(parcoursEntry("nouveau", "Nouveau", definition("avis"), true)), Map.of(), Map.of(),
+                null, Channel.MCP);
+        assertThat(report.entries().getFirst().outcome()).isEqualTo(ImportOutcome.SKIPPED);
+        verify(manageParcours, never()).save(any(), any());
     }
 }

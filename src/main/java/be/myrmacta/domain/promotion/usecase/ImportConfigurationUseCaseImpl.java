@@ -185,6 +185,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case WORKFLOW_CONFIG -> planWorkflowConfig(entry, byKey);
                 case REPLY_WORKFLOW -> additional.typeSettings().planReplyWorkflow(entry, byKey);
                 case DEADLINE -> additional.typeSettings().planDeadline(entry, bundle, byKey, targetGroups);
+                case PARCOURS -> additional.parcours().plan(entry);
             };
             byKey.put(entry.type() + "/" + entry.key(), planned);
             entries.add(planned);
@@ -569,6 +570,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case WORKFLOW_CONFIG -> applyWorkflowConfig(actor, entry, plan, outcomes);
                 case REPLY_WORKFLOW -> additional.typeSettings().applyReplyWorkflow(entry, planned.action());
                 case DEADLINE -> additional.typeSettings().applyDeadline(entry, planned.action());
+                case PARCOURS -> additional.parcours().apply(actor, entry, planned.action());
             };
             return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, message);
         } catch (RuntimeException e) {

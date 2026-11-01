@@ -735,7 +735,9 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
 - **Rattacher au fil.** La brique **Rattacher au fil** (`${attachToThreadTask}`, sans paramètre) se place en tête du tri, avant
   la table de routage.
   - **Recherche du fil.** Elle cherche le fil du courrier dans l'index des e-mails reçus et envoyés (`In-Reply-To`, puis
-    `References`, puis `conversationId` Graph).
+    `References`, puis `conversationId` Graph). En secours, elle lit une référence de dossier dans l'objet
+    (`DOS-FACTURE-2026-000007`). Cette référence ne compte que si ce dossier a déjà échangé un e-mail avec le domaine de
+    l'expéditeur.
   - **Conditions du rattachement :**
     - l'expéditeur est attesté ;
     - son domaine est celui de l'interlocuteur du fil ;

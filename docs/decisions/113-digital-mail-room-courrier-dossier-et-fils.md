@@ -98,6 +98,17 @@ Précisions de conception du lot 3a (2026-10-31) :
 - **Les variables de fil sont posées par la plateforme.** Les variables `mail*` posées par le connecteur ne sont plus
   remplaçables par un mapping de connecteur.
 - **Reporté au lot 3b :** le workflow « réponse » déclaré par le type de dossier (mode 3).
+
+Précisions du lot 7 (2026-11-01, tranché par l'utilisateur) :
+
+- **Référence dans l'objet, en secours (3e moyen de D-MAILROOM-THREAD).** Les références de dossier
+  (`DOS-<type>-<année>-<séquence>`) sont séquentielles, donc devinables. Une référence lue dans l'objet ne rattache donc
+  que si le dossier a **déjà échangé un e-mail**, reçu ou envoyé (index), avec le domaine de l'expéditeur. Les autres
+  conditions sont celles des deux premiers moyens : expéditeur attesté, dossier ouvert.
+  - Bornes : 300 caractères d'objet lus, 3 références essayées, 50 échanges par dossier.
+  - Écarté par l'utilisateur : l'expéditeur attesté seul (n'importe quel domaine), et l'abandon de ce moyen.
+- **Signalement d'une réponse non rattachée.** Le signal est `filResultat=NOUVEAU` avec la raison dans `filMotif` (par
+  exemple « expéditeur non attesté »), et non une variable `mailThreadIgnored` comme l'annonçait le cadrage.
 **D-MAILROOM-REPLY-WORKFLOW** (tranché par l'utilisateur, lot 3b, 2026-10-31) — le mode 3 bute sur une règle existante : un
 seul workflow actif par dossier (`AttachWorkflowUseCaseImpl.reserve`, index unique en base). Cette règle ne change pas. Le type
 de dossier choisit l'un de deux modes :

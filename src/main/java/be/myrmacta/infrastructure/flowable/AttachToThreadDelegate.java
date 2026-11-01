@@ -40,13 +40,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.stereotype.Component;
 
 /**
  * TODO §113 (D-MAILROOM-THREAD, D-MAILROOM-REACT modes 1 et 2) — brique « Rattacher au fil », en tête du tri. Cherche le fil
- * d'un courrier dans l'index (In-Reply-To, puis References de la plus récente à la plus ancienne, puis conversationId Graph).
+ * d'un courrier dans l'index (In-Reply-To, puis References de la plus récente à la plus ancienne, puis conversationId Graph, puis
+ * en secours une référence de dossier dans l'objet si ce dossier a déjà échangé avec le domaine de l'expéditeur).
  * Rattache si l'expéditeur est attesté, si son domaine est celui de l'interlocuteur inscrit, et si le dossier du fil est encore
  * ouvert : lien {@code LINKED}, copie des pièces (contrôles des pièces reçues), avertissement des participants, message
  * {@code courrierRecu} à toutes les exécutions du dossier qui l'attendent ({@link MailThreadAttacher}, partagé avec l'outil MCP).
@@ -64,6 +67,11 @@ class AttachToThreadDelegate implements JavaDelegate {
     static final String REPLY_DOSSIER_ID = "filReponseDossierId";
     static final String REPLY_REASON = "filReponseMotif";
     static final int MAX_COPIED_PIECES = MailThreadAttacher.MAX_COPIED_PIECES;
+    /** Référence produite par {@code SequentialReferenceGenerator} ({@code DOS-<type>-<année>-<séquence>}) ; bornée, sans retour arrière coûteux. */
+    static final Pattern SUBJECT_REFERENCE = Pattern.compile("\\bDOS-[A-Za-z0-9_-]{1,64}-\\d{4}-\\d{6,12}\\b");
+    private static final int MAX_SUBJECT_SCAN = 300;
+    private static final int MAX_SUBJECT_REFERENCES = 3;
+    private static final int SUBJECT_EXCHANGES_SCANNED = 50;
 
     private static final AccessContext SYSTEM = AccessContext.system("flowable-delegate");
 
@@ -147,7 +155,7 @@ class AttachToThreadDelegate implements JavaDelegate {
         }
         MailIndexEntry entry = found.get();
         String senderDomain = domain(text(execution.getVariable("mailFrom")));
-        if (entry.counterpartDomain() == null || !entry.counterpartDomain().equals(senderDomain)) {
+        if (entry.counterpartDomain() == null || !entry.counterpartDomain().equalsIgnoreCase(senderDomain)) {
             notThreaded(execution, "domaine de l'expéditeur différent de celui du fil");
             return;
         }
@@ -262,7 +270,35 @@ class AttachToThreadDelegate implements JavaDelegate {
             }
         }
         String conversation = text(execution.getVariable("mailConversationId"));
-        return conversation == null ? Optional.empty() : index.find(tenantId, MailIndexEntry.Kind.CONVERSATION, conversation);
+        Optional<MailIndexEntry> byConversation =
+                conversation == null ? Optional.empty() : index.find(tenantId, MailIndexEntry.Kind.CONVERSATION, conversation);
+        return byConversation.isPresent() ? byConversation : bySubjectReference(tenantId, execution);
+    }
+
+    /**
+     * D-MAILROOM-THREAD, 3e moyen, en secours : une référence de dossier dans l'objet. Les références sont séquentielles, donc
+     * devinables : elle ne vaut que si ce dossier a déjà échangé un e-mail (reçu ou envoyé) avec le domaine de l'expéditeur. On
+     * renvoie alors cette entrée de l'index, et la suite (attestation, domaine, dossier ouvert) est celle des autres moyens.
+     */
+    private Optional<MailIndexEntry> bySubjectReference(String tenantId, DelegateExecution execution) {
+        String subject = text(execution.getVariable("mailSubject"));
+        String senderDomain = domain(text(execution.getVariable("mailFrom")));
+        if (subject == null || senderDomain == null) {
+            return Optional.empty();
+        }
+        Matcher matcher = SUBJECT_REFERENCE.matcher(subject.length() > MAX_SUBJECT_SCAN ? subject.substring(0, MAX_SUBJECT_SCAN) : subject);
+        for (int candidates = 0; candidates < MAX_SUBJECT_REFERENCES && matcher.find(); candidates++) {
+            Optional<Dossier> referenced = dossiers.findByReference(tenantId, matcher.group());
+            if (referenced.isEmpty()) {
+                continue;
+            }
+            for (MailIndexEntry entry : index.findByDossier(tenantId, referenced.get().id(), SUBJECT_EXCHANGES_SCANNED)) {
+                if (senderDomain.equalsIgnoreCase(entry.counterpartDomain())) {
+                    return Optional.of(entry);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /** Un e-mail envoyé désigne son dossier ; un e-mail reçu, le courrier d'origine ou le dossier métier où il a été routé. */

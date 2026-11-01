@@ -2,7 +2,9 @@ package be.myrmacta.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -200,6 +202,44 @@ class AttachToThreadDelegateTest {
         assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filReponseWorkflow", "NON")
                 .containsEntry("filReponseMotif", "champ obligatoire du type enfant : montant");
         verifyNoInteractions(orchestrator, childConfirmer, updateStatus);
+    }
+
+    /**
+     * D-MAILROOM-THREAD, 3e moyen (lot 7) : la référence du dossier dans l'objet, en secours, seulement si ce dossier a déjà
+     * échangé un e-mail avec le domaine de l'expéditeur (les références sont séquentielles, donc devinables).
+     */
+    @Test
+    void aReferenceInTheSubjectJoinsTheThread_onlyWhenTheDossierAlreadyExchangedWithTheSenderDomain() {
+        attachable();
+        variables.remove("mailInReplyTo");
+        variables.put("mailSubject", "RE: votre dossier DOS-FACTURE-2026-000007 (rappel)");
+        Dossier thread = dossiers.findById(threadId).orElseThrow();
+        when(dossiers.findByReference(TENANT, "DOS-FACTURE-2026-000007")).thenReturn(Optional.of(thread));
+        when(index.findByDossier(eq(TENANT), eq(threadId), anyInt())).thenReturn(java.util.List.of(new MailIndexEntry(TENANT,
+                MailIndexEntry.Kind.MESSAGE_ID, "<f7@fournisseur.example>", MailIndexEntry.Direction.IN, threadId,
+                "compta@fournisseur.example", NOW)));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filDossierId", threadId.toString());
+    }
+
+    @Test
+    void aGuessedReferenceFromADomainNeverExchangedWithIsANewMail() {
+        attachable();
+        variables.remove("mailInReplyTo");
+        variables.put("mailFrom", "escroc@autre.example");
+        variables.put("mailSubject", "RE: DOS-FACTURE-2026-000007");
+        Dossier thread = dossiers.findById(threadId).orElseThrow();
+        when(dossiers.findByReference(TENANT, "DOS-FACTURE-2026-000007")).thenReturn(Optional.of(thread));
+        when(index.findByDossier(eq(TENANT), eq(threadId), anyInt())).thenReturn(java.util.List.of(new MailIndexEntry(TENANT,
+                MailIndexEntry.Kind.MESSAGE_ID, "<f7@fournisseur.example>", MailIndexEntry.Direction.IN, threadId,
+                "compta@fournisseur.example", NOW)));
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("filResultat", "NOUVEAU").containsEntry("filMotif", "hors fil");
+        verifyNoInteractions(createRelation, attachFiles, engine);
     }
 
     /** Un fil rattachable : dossier « facture » ouvert, sans pièce à copier ni participant. */

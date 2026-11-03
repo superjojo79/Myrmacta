@@ -45,7 +45,8 @@ avant la publication.
   confirmation écrite sur demande ; **évaluation hors production de 90 jours** pour toute
   organisation, nouvelle période à chaque version majeure ; droit moral ; notices et marques ;
   composants tiers et clause de compatibilité LGPL ; responsabilité (dol, faute intentionnelle,
-  dommage corporel, consommateurs) ; notification d'une violation ; langue ; droit belge.
+  dommage corporel, responsabilités impératives dont celle du fait des produits défectueux,
+  consommateurs) ; notification d'une violation ; langue ; droit belge.
   Les intercommunales, régies et ASBL paralocales ne sont pas citées : l'addendum ne peut pas les
   exclure, elles relèvent du seul texte PolyForm (choix de Benoit). Deux lignes `Required Notice:` en
   tête de `NOTICE` imposent, par le mécanisme même de la PolyForm, que l'addendum accompagne toute
@@ -71,6 +72,17 @@ Les identifiants de ce point ne sont pas cités par le code : ils ne sont pas aj
 recommandée avant la publication. Dépôt de la marque Myrmacta (plus tard, choix de Benoit). Création
 d'une société et transmission des droits avant le premier contrat commercial. Droit d'auteur sur la
 part du code produite par des agents (§103), qui borne ce que toute licence peut protéger.
+
+**Responsabilité du fait des produits défectueux, pour l'avocat (ajout du 2026-11-03).** La
+directive (UE) 2024/2853, à transposer pour le 9 décembre 2026, range les logiciels parmi les
+produits et couvre aussi la perte ou la corruption de données d'un particulier. Ce régime ne peut
+pas être écarté par contrat. Elle exclut les logiciels libres et open source fournis hors d'une
+activité commerciale ; une licence non commerciale n'est pas open source et le titulaire exerce
+une activité d'indépendant complémentaire : l'exclusion n'est donc pas acquise. L'article 10 de
+l'addendum réserve désormais expressément cette responsabilité, pour que l'exonération de la
+PolyForm ne paraisse pas la viser ; il n'en crée aucune. À vérifier par l'avocat : application de
+la directive au Logiciel distribué gratuitement, qualité de « fabricant », et articulation avec le
+règlement (UE) 2024/2847 sur la cyberrésilience.
 
 **Impacte.** `LICENSE`, `LICENSE-ADDENDUM.md` (nouveau), `NOTICE`, `LICENSING.md`, `CONTRIBUTING.md`,
 `CLA.md` et `COMMERCIAL-LICENSE.md` (retirés), `README.md`, `TRADEMARKS.md`, `ROADMAP.md`, `pom.xml`

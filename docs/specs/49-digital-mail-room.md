@@ -85,7 +85,7 @@ groupes de l'utilisateur sur les dossiers qu'il peut modifier ; il peut les pren
     Chaque palier n'a lieu qu'une fois.
 - **Process :** la brique « Calculer une échéance » (`computeDeadlineTask`) pose `echeanceRappel` et `echeanceDepassee`. Un
   minuteur peut porter ces deux noms dans son `timeDate`, et rien d'autre (§69). Cela permet la course « traité ou échu ».
-- Jours calendaires, UTC. Le calendrier ouvrable est suivi par #270.
+- Jours calendaires, UTC. Le calendrier ouvrable est suivi par [#8](https://github.com/superjojo79/Myrmacta/issues/8).
 
 ## 8. MCP (D-MAILROOM-MCP)
 
@@ -152,4 +152,4 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 - une panne entre la création d'un courrier et le rangement de son message (boîte, SFTP) fait retraiter ce message au
   passage suivant ;
 - la claim « overage » d'Entra ID (trop de groupes) n'est pas lue ;
-- OCR, eBox (#213 à #216) et classification IA restent hors de cette feature.
+- OCR, eBox ([#11](https://github.com/superjojo79/Myrmacta/issues/11) à [#14](https://github.com/superjojo79/Myrmacta/issues/14)) et classification IA restent hors de cette feature.

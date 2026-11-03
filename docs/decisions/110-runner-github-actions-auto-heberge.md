@@ -5,6 +5,12 @@
 [x] clos (2026-10-28) : image [`docker/ci-runner`](../../docker/ci-runner/compose.yml), variable de dépôt `CI_RUNNER`
 lue par les trois workflows. Issue #219. Mode d'emploi : [GETTING-STARTED §19](../guides/GETTING-STARTED.md#19-ci-sur-un-runner-auto-hébergé-optionnel).
 
+> **Actualisation (2026-11-03).** Le dépôt est désormais public ([§118](118-licence-polyform-noncommercial-et-addendum-belge.md)) :
+> l'hypothèse d'isolation ci-dessous (« le dépôt est privé ») ne tient plus, puisqu'une PR venant d'un fork ferait
+> tourner son code sur la machine. La variable `CI_RUNNER` n'est pas définie sur le dépôt public, dont la CI tourne
+> sur les runners GitHub, gratuits pour un dépôt public. Le mécanisme reste disponible pour un dépôt privé.
+> L'énoncé daté n'est pas réécrit.
+
 **Constat.** Le compte n'a plus de minutes GitHub Actions : chaque job est refusé en 2 à 3 secondes, sans journal,
 `main` compris. La CI était rejouée à la main, job par job, et des PR ont été fusionnées sans contrôle automatique.
 

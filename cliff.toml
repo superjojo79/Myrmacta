@@ -38,7 +38,7 @@ commit_preprocessors = [
   { pattern = '^Merge pull request #(\d+) from \S+\n\n([^\n]+)', replace = "${2} (#${1})" },
 ]
 link_parsers = [
-  { pattern = '\(#(\d+)\)$', href = "https://github.com/superjojo79/FlowForge/pull/$1", text = "PR #$1" },
+  { pattern = '\(#(\d+)\)$', href = "https://github.com/superjojo79/Myrmacta/pull/$1", text = "PR #$1" },
 ]
 commit_parsers = [
   { message = '^Merge ', skip = true },

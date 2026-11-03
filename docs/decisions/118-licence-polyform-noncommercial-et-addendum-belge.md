@@ -77,6 +77,16 @@ recommandée avant la publication. Dépôt de la marque Myrmacta (plus tard, cho
 d'une société et transmission des droits avant le premier contrat commercial. Droit d'auteur sur la
 part du code produite par des agents (§103), qui borne ce que toute licence peut protéger.
 
+**Publication (2026-11-03).** Le dépôt public est `superjojo79/Myrmacta`. Son historique (1 290 commits, `main`
+seule) a été réécrit à partir du `main` de l'ancien dépôt, puis contrôlé : aucune mention de l'AGPL comme licence du
+projet, l'addendum présent dans chaque commit qui contient `LICENSE`, plus de `CLA.md` ni de `COMMERCIAL-LICENSE.md`,
+arbre final identique. Les tags annotés `pre-myrmacta` et `archive/docs-pre-remediation-2026-10` sont recréés,
+mêmes messages, sur les commits réécrits `964214f` et `04db5ec` (voir `docs/RENAMING.md`).
+L'ancien dépôt, renommé `myrmacta-archive`, reste privé avec ses pull requests et ses branches. Les 12 issues
+ouvertes y ont été transférées (nouveaux numéros 8 à 19). Un scan gitleaks de l'historique publié n'a trouvé que des
+faux positifs (clés générées par les tests, valeurs de test, exemples des skills, recette Keycloak locale) ;
+`.gitleaks.toml` les exclut par chemin. La CI tourne sur les runners GitHub ; `CI_RUNNER` n'est pas défini (§110).
+
 **Responsabilité du fait des produits défectueux, pour l'avocat (ajout du 2026-11-03).** La
 directive (UE) 2024/2853, à transposer pour le 9 décembre 2026, range les logiciels parmi les
 produits et couvre aussi la perte ou la corruption de données d'un particulier. Ce régime ne peut
@@ -93,5 +103,7 @@ règlement (UE) 2024/2847 sur la cyberrésilience.
 (`<licenses>`, copie de l'addendum dans le jar), `frontend/package.json`, `frontend/package-lock.json`,
 `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml`, `scripts/check-license-notice-in-jar.sh`,
 `docs/guides/DEPLOIEMENT.md`, `docs/specs/00-index.md`, `docs/specs/07-generation-documents.md`,
-`docs/analyses/audit-licences-2026-10-24.md` (actualisation), §103 (clos). Pas de code applicatif,
+`docs/analyses/audit-licences-2026-10-24.md` (actualisation), §103 (clos). Publication : `AGENTS.md`,
+`.project-skills/myrmacta-conventions`, `docs/RENAMING.md`, `cliff.toml`, `.gitleaks.toml`, §110 et
+`docs/guides/GETTING-STARTED.md` §19 (runner), liens vers les issues ouvertes. Pas de code applicatif,
 pas d'écran, pas de variable d'environnement, pas de changeSet Liquibase.

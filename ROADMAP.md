@@ -1,7 +1,7 @@
 # Myrmacta — Roadmap
 
 > Vision produit en une page. Le **suivi de ce qui reste à faire** est dans les
-> [issues GitHub](https://github.com/superjojo79/FlowForge/issues) (libellés `priorite-*`, `type-*`,
+> [issues GitHub](https://github.com/superjojo79/Myrmacta/issues) (libellés `priorite-*`, `type-*`,
 > `vague-*`) ; ce qui est livré est dans [CHANGELOG.md](CHANGELOG.md), les décisions dans le
 > [registre des décisions](docs/decisions/README.md). Version détaillée d'avant le 23 octobre 2026
 > (inventaire par catégorie, priorisation de la Vague D) :
@@ -38,22 +38,22 @@ seul » avec URL de base, `DELETE` ; exemple « arrivée d'un collaborateur » a
 ## Prochaines étapes
 
 État des issues ouvertes au 30 octobre 2026. Le détail et l'ordre réel restent la
-[liste d'issues](https://github.com/superjojo79/FlowForge/issues).
+[liste d'issues](https://github.com/superjojo79/Myrmacta/issues).
 
 1. **Prochain axe, Digital Mail Room ([#217](https://github.com/superjojo79/FlowForge/issues/217)) :** tout courrier entrant (e-mail, eBox, papier scanné)
    est enregistré, routé par DMN vers un service, rattaché à un dossier et suivi jusqu'à son échéance. Le canal
    e-mail existe déjà (IMAP et Microsoft Graph, [§87](docs/decisions/087-d3c-d3d-e-mail-entrant-bus-azure.md)).
    Sous-issues, dans l'ordre : assignation par groupe ([#190](https://github.com/superjojo79/FlowForge/issues/190)), échéances, rappels et escalade
-   ([#186](https://github.com/superjojo79/FlowForge/issues/186)), gabarits de notification ([#185](https://github.com/superjojo79/FlowForge/issues/185)). Canal eBox : [#215](https://github.com/superjojo79/FlowForge/issues/215), sous [#213](https://github.com/superjojo79/FlowForge/issues/213).
+   ([#186](https://github.com/superjojo79/FlowForge/issues/186)), gabarits de notification ([#19](https://github.com/superjojo79/Myrmacta/issues/19)). Canal eBox : [#12](https://github.com/superjojo79/Myrmacta/issues/12), sous [#14](https://github.com/superjojo79/Myrmacta/issues/14).
    L'exemple « autorisation riverain » reste un banc d'essai : on n'en retient que les besoins génériques.
 2. **À trancher avant code :** exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
-3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
+3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#18](https://github.com/superjojo79/Myrmacta/issues/18)).
    Licence choisie : PolyForm Noncommercial 1.0.0 avec addendum de droit belge, licence commerciale sur demande
    ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)). Contrat commercial à faire relire par un avocat avant le premier client.
-4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#248](https://github.com/superjojo79/FlowForge/issues/248)).
-5. **Sans priorité :** envoi vers l'eBox ([#214](https://github.com/superjojo79/FlowForge/issues/214)) ; réponses reçues par l'eBox, en attente de l'ONSS et de BOSA ([#216](https://github.com/superjojo79/FlowForge/issues/216)).
+4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#10](https://github.com/superjojo79/Myrmacta/issues/10)).
+5. **Sans priorité :** envoi vers l'eBox ([#13](https://github.com/superjojo79/Myrmacta/issues/13)) ; réponses reçues par l'eBox, en attente de l'ONSS et de BOSA ([#11](https://github.com/superjojo79/Myrmacta/issues/11)).
 
 ## Hors V1
 
 Redis et SSE multi-pods, OpenTelemetry, génération de client OpenAPI, export BI par JDBC, scripts en bac à
-sable (LC6), étapes avancées des parcours : écartés tant qu'un besoin réel ne les justifie pas (#194).
+sable (LC6), étapes avancées des parcours : écartés tant qu'un besoin réel ne les justifie pas ([#16](https://github.com/superjojo79/Myrmacta/issues/16)).

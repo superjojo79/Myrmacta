@@ -567,6 +567,11 @@ Quand le compte n'a plus de minutes GitHub Actions, les workflows de `.github/wo
 machine à vous (TODO §110) : Docker ou Podman, Linux x64 ou arm64 (Docker Desktop convient), 4 cœurs, 8 Go de
 mémoire et 20 Go de disque au moins.
 
+> **Dépôt public : ne pas utiliser.** Depuis la publication du dépôt (registre §118), une pull request ouverte depuis
+> un fork exécuterait son code sur votre machine. Ne définissez pas la variable `CI_RUNNER` sur le dépôt public :
+> les runners hébergés par GitHub y sont gratuits. Cette section ne vaut que pour un dépôt privé (fork privé,
+> archive).
+
 1. **Jeton.** Sur GitHub : dépôt → *Settings* → *Actions* → *Runners* → *New self-hosted runner*, copier la valeur
    qui suit `--token` (valable une heure, pour un seul enregistrement).
 2. **Démarrer.**

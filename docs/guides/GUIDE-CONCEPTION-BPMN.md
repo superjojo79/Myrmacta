@@ -814,7 +814,7 @@ Deux mécanismes, au choix ou ensemble :
 
   - Interrompant (`cancelActivity="true"`), le minuteur retire la tâche et suit sa branche. Non interrompant, avec
     `${echeanceRappel}`, il ouvre une tâche de relance à côté de la tâche principale.
-  - Jours calendaires (jours ouvrables : issue #270).
+  - Jours calendaires (jours ouvrables : issue [#8](https://github.com/superjojo79/Myrmacta/issues/8)).
 
 ## 4. Instancier / appeler un service externe
 
@@ -877,7 +877,7 @@ racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sen
   Ne désignez jamais la cible d'un `PUT` ou d'un `DELETE` par l'un d'eux sans précaution : retenez l'identifiant rendu par
   l'application dans une variable écrite par « Évaluer une expression », remise à `null` au début de l'orchestration, après
   la dernière tâche à formulaire libre (motif de l'exemple ci-dessous ; champs gérés par le workflow :
-  [#263](https://github.com/superjojo79/Myrmacta/issues/263)).
+  [#9](https://github.com/superjojo79/Myrmacta/issues/9)).
 - Le résultat doit être un objet : un texte, une liste ou une expression sans valeur fait échouer l'activité en la nommant.
   Une clé dont la valeur est absente (champ vide ou **sensible**) disparaît de l'objet : un champ sensible n'est jamais envoyé.
 - Les apostrophes délimitent les textes JSONata (`'POST'`) : pas besoin d'échapper des guillemets dans l'attribut XML.

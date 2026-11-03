@@ -1,0 +1,34 @@
+# Configuration gitleaks du dépôt (registre §118, publication).
+#
+# Garde toutes les règles par défaut de gitleaks et n'exclut que des chemins dont le contenu sensible
+# est factice par construction. Le scan du 2026-11-03 (42 alertes) n'y a trouvé que des faux positifs :
+# clés RSA générées à l'exécution des tests, mots de passe et jetons de test, exemples de code des
+# skills, comptes de la recette Keycloak locale.
+#
+# Un vrai secret ne va jamais dans ces chemins : un test lit un secret réel depuis l'environnement.
+# La « push protection » de GitHub bloque en plus les formats de jetons connus au moment du push.
+#
+# Usage : gitleaks git . (le fichier est lu automatiquement à la racine du dépôt).
+
+title = "Myrmacta"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Données de test, copies de skills et recette Keycloak locale : valeurs factices"
+paths = [
+  # Tests backend (dont l'historique sous com/flowforge/) et tests du profil base embarquée.
+  '''^src/test/''',
+  '''^src/embedded-test/''',
+  # Tests frontend : specs Vitest et scénarios Playwright.
+  '''^frontend/src/.*\.spec\.ts$''',
+  '''^frontend/e2e/''',
+  # Skills : documentation et exemples de code, sources et copies vendorisées.
+  '''^\.project-skills/''',
+  '''^\.agents/skills/''',
+  '''^\.claude/skills/''',
+  '''^\.cursor/skills/''',
+  # Recette Keycloak locale : comptes et mots de passe créés par le script sur localhost.
+  '''^scripts/keycloak-realm-smoke\.sh$''',
+]

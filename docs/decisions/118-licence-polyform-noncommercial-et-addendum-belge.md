@@ -80,7 +80,8 @@ part du code produite par des agents (§103), qui borne ce que toute licence peu
 **Publication (2026-11-03).** Le dépôt public est `superjojo79/Myrmacta`. Son historique (1 290 commits, `main`
 seule) a été réécrit à partir du `main` de l'ancien dépôt, puis contrôlé : aucune mention de l'AGPL comme licence du
 projet, l'addendum présent dans chaque commit qui contient `LICENSE`, plus de `CLA.md` ni de `COMMERCIAL-LICENSE.md`,
-arbre final identique. Les tags `pre-myrmacta` et `archive/docs-pre-remediation-2026-10` n'ont pas été repris.
+arbre final identique. Les tags annotés `pre-myrmacta` et `archive/docs-pre-remediation-2026-10` sont recréés,
+mêmes messages, sur les commits réécrits `964214f` et `04db5ec` (voir `docs/RENAMING.md`).
 L'ancien dépôt, renommé `myrmacta-archive`, reste privé avec ses pull requests et ses branches. Les 12 issues
 ouvertes y ont été transférées (nouveaux numéros 8 à 19). Un scan gitleaks de l'historique publié n'a trouvé que des
 faux positifs (clés générées par les tests, valeurs de test, exemples des skills, recette Keycloak locale) ;

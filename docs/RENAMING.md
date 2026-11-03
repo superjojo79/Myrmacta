@@ -8,8 +8,8 @@ décrivent ce que chaque PR a fait, dans l'ordre ; l'état courant est la sectio
 
 > **Actualisation (2026-11-03).** Le dépôt public est désormais `superjojo79/Myrmacta`, publié avec un
 > historique réécrit (registre [§118](decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)). L'ancien
-> dépôt `superjojo79/FlowForge` reste privé, en archive. Les SHA des commits ont changé : `pre-myrmacta` correspond
-> à `964214f` (ancien `54bac40`) et la base de l'archive documentaire à `04db5ec` (ancien `e91aa7b`). Les permaliens
+> dépôt `superjojo79/FlowForge` reste privé, en archive. Les SHA des commits ont changé : le tag `pre-myrmacta`, recréé,
+> désigne `964214f` (ancien `54bac40`) et le tag `archive/docs-pre-remediation-2026-10` désigne `04db5ec` (ancien `e91aa7b`). Les permaliens
 > et les liens `/pull/` ou `/issues/` vers `superjojo79/FlowForge` cités plus bas renvoient à ce dépôt privé, non
 > public. Les énoncés datés ci-dessous ne sont pas réécrits.
 

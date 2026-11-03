@@ -29,9 +29,10 @@ dans `target/classes/static/`) — pas d'étape manuelle séparée comme en dev 
 java -jar target/myrmacta-*.jar
 ```
 
-Ce jar embarque `LICENSE` (PolyForm-Noncommercial-1.0.0) et `NOTICE`, aux entrées `META-INF/LICENSE` et
-`META-INF/NOTICE` (mêmes octets que les fichiers à la racine du dépôt).
-`scripts/check-license-notice-in-jar.sh` échoue si l'un des deux manque ou s'il en diffère.
+Ce jar embarque `LICENSE` (PolyForm Noncommercial 1.0.0), `NOTICE` et `LICENSE-ADDENDUM.md`
+(addendum de droit belge), aux entrées `META-INF/LICENSE`, `META-INF/NOTICE` et
+`META-INF/LICENSE-ADDENDUM.md` (mêmes octets que les fichiers à la racine du dépôt).
+`scripts/check-license-notice-in-jar.sh` échoue si l'un des trois manque ou s'il en diffère.
 La CI lance ce contrôle après `./mvnw verify`, avec l'auto-test du script.
 
 ### Construire l'image conteneur

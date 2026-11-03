@@ -8,6 +8,16 @@ Chaque artefact est listé dans
 [l'annexe](audit-licences-2026-10-24-annexe.md) : coordonnées Maven, paquet npm, licence déclarée,
 et s'il entre dans un livrable.
 
+> **Actualisation (2026-11-03).** La licence publique du Logiciel est désormais la PolyForm
+> Noncommercial License 1.0.0 avec un addendum de droit belge
+> ([décision n° 118](../decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)), et non
+> l'AGPL : celle-ci n'a jamais été distribuée, le dépôt étant resté privé. L'inventaire des
+> composants tiers reste valable. Les conditions relevées ci-dessous pour une distribution sous
+> licence commerciale valent aussi pour la distribution sous PolyForm : notices, remplaçabilité des
+> bibliothèques LGPL (permise par l'article 9 de l'addendum), filigrane bpmn.io, police OFL. Les
+> passages qui raisonnent sur une distribution AGPL sont historiques. L'analyse datée n'est pas
+> réécrite.
+
 ## Verdict
 
 ### Liquibase — clos

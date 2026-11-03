@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Garde-fou CI : le jar de production embarque LICENSE (PolyForm-Noncommercial-1.0.0) et NOTICE, octets
-# identiques aux fichiers de la racine du dépôt, aux entrées META-INF/LICENSE et
-# META-INF/NOTICE (racine du jar, à côté du manifeste — pas la licence OFL d'une police).
+# Garde-fou CI (décisions n° 103 et 118) : le jar de production embarque LICENSE (PolyForm
+# Noncommercial 1.0.0), NOTICE et LICENSE-ADDENDUM.md (addendum de droit belge), octets identiques
+# aux fichiers de la racine du dépôt, aux entrées META-INF/LICENSE, META-INF/NOTICE et
+# META-INF/LICENSE-ADDENDUM.md (racine du jar, à côté du manifeste — pas la licence OFL d'une police).
 # Usage : scripts/check-license-notice-in-jar.sh [jar]
 #         scripts/check-license-notice-in-jar.sh --self-test
 set -euo pipefail
@@ -31,7 +32,7 @@ check_jar() {
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" RETURN
-  for name in LICENSE NOTICE; do
+  for name in LICENSE NOTICE LICENSE-ADDENDUM.md; do
     entry="META-INF/$name"
     src="$root/$name"
     if ! extract_exact "$jar" "$entry" "$tmp/$name" || [[ ! -s "$tmp/$name" ]]; then
@@ -47,27 +48,27 @@ check_jar() {
   if [[ "$failed" -ne 0 ]]; then
     exit 1
   fi
-  echo "OK : $jar contient META-INF/LICENSE et META-INF/NOTICE, identiques à la racine du dépôt."
+  echo "OK : $jar contient META-INF/LICENSE, META-INF/NOTICE et META-INF/LICENSE-ADDENDUM.md, identiques à la racine du dépôt."
 }
 
 self_test() {
-  local tmp bad only_license decoy mismatch status
+  local tmp bad only_license decoy mismatch noaddendum status
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" RETURN
   command -v jar >/dev/null || { echo "self-test : commande jar introuvable" >&2; exit 1; }
 
   mkdir -p "$tmp/bad/fonts" "$tmp/only/META-INF" "$tmp/decoy/META-INF" "$tmp/decoy/BOOT-INF/classes/META-INF" \
-    "$tmp/good/META-INF" "$tmp/mismatch/META-INF"
+    "$tmp/good/META-INF" "$tmp/mismatch/META-INF" "$tmp/noaddendum/META-INF"
   echo "SIL OFL" > "$tmp/bad/fonts/LICENSE-LiberationSans.txt"
   cp "$root/LICENSE" "$tmp/only/META-INF/LICENSE"
   cp "$root/LICENSE" "$tmp/decoy/BOOT-INF/classes/META-INF/LICENSE"
   cp "$root/NOTICE" "$tmp/decoy/BOOT-INF/classes/META-INF/NOTICE"
   printf 'pas la licence\n' > "$tmp/decoy/META-INF/LICENSE"
-  cp "$root/NOTICE" "$tmp/decoy/META-INF/NOTICE"
-  cp "$root/LICENSE" "$root/NOTICE" "$tmp/good/META-INF/"
-  cp "$root/LICENSE" "$tmp/mismatch/META-INF/LICENSE"
-  cp "$root/NOTICE" "$tmp/mismatch/META-INF/NOTICE"
+  cp "$root/NOTICE" "$root/LICENSE-ADDENDUM.md" "$tmp/decoy/META-INF/"
+  cp "$root/LICENSE" "$root/NOTICE" "$root/LICENSE-ADDENDUM.md" "$tmp/good/META-INF/"
+  cp "$root/LICENSE" "$root/NOTICE" "$root/LICENSE-ADDENDUM.md" "$tmp/mismatch/META-INF/"
+  cp "$root/LICENSE" "$root/NOTICE" "$tmp/noaddendum/META-INF/"
   printf '\n' >> "$tmp/mismatch/META-INF/NOTICE"
 
   # -C ne s'applique qu'au fichier qui suit : le répéter pour chaque entrée.
@@ -76,9 +77,13 @@ self_test() {
   jar --create --file "$tmp/decoy.jar" -C "$tmp/decoy" BOOT-INF/classes/META-INF/LICENSE \
     -C "$tmp/decoy" BOOT-INF/classes/META-INF/NOTICE \
     -C "$tmp/decoy" META-INF/LICENSE \
-    -C "$tmp/decoy" META-INF/NOTICE
-  jar --create --file "$tmp/good.jar" -C "$tmp/good" META-INF/LICENSE -C "$tmp/good" META-INF/NOTICE
-  jar --create --file "$tmp/mismatch.jar" -C "$tmp/mismatch" META-INF/LICENSE -C "$tmp/mismatch" META-INF/NOTICE
+    -C "$tmp/decoy" META-INF/NOTICE \
+    -C "$tmp/decoy" META-INF/LICENSE-ADDENDUM.md
+  jar --create --file "$tmp/good.jar" -C "$tmp/good" META-INF/LICENSE -C "$tmp/good" META-INF/NOTICE \
+    -C "$tmp/good" META-INF/LICENSE-ADDENDUM.md
+  jar --create --file "$tmp/mismatch.jar" -C "$tmp/mismatch" META-INF/LICENSE -C "$tmp/mismatch" META-INF/NOTICE \
+    -C "$tmp/mismatch" META-INF/LICENSE-ADDENDUM.md
+  jar --create --file "$tmp/noaddendum.jar" -C "$tmp/noaddendum" META-INF/LICENSE -C "$tmp/noaddendum" META-INF/NOTICE
 
   expect_fail() {
     local label="$1" subject="$2"
@@ -101,9 +106,10 @@ self_test() {
   expect_fail "un jar sans NOTICE" "$tmp/only.jar"
   expect_fail "un META-INF/LICENSE qui n'est pas le fichier de la racine" "$tmp/decoy.jar"
   expect_fail "un NOTICE différent de la racine" "$tmp/mismatch.jar"
+  expect_fail "un jar sans LICENSE-ADDENDUM.md" "$tmp/noaddendum.jar"
 
   "$0" "$tmp/good.jar" >"$tmp/out"
-  echo "OK : auto-test du contrôle LICENSE/NOTICE."
+  echo "OK : auto-test du contrôle LICENSE/NOTICE/LICENSE-ADDENDUM.md."
 }
 
 if [[ "${1:-}" == "--self-test" ]]; then

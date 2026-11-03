@@ -48,8 +48,8 @@ seul » avec URL de base, `DELETE` ; exemple « arrivée d'un collaborateur » a
    L'exemple « autorisation riverain » reste un banc d'essai : on n'en retient que les besoins génériques.
 2. **À trancher avant code :** exposition MCP résiduelle ([§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)).
 3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#192](https://github.com/superjojo79/FlowForge/issues/192)).
-   La double licence est choisie (PolyForm-Noncommercial-1.0.0 et commerciale sur demande) ; le registre [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
-   reste ouvert le temps de la revue de l'avocat.
+   Licence choisie : PolyForm Noncommercial 1.0.0 avec addendum de droit belge, licence commerciale sur demande
+   ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)). Contrat commercial à faire relire par un avocat avant le premier client.
 4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#248](https://github.com/superjojo79/FlowForge/issues/248)).
 5. **Sans priorité :** envoi vers l'eBox ([#214](https://github.com/superjojo79/FlowForge/issues/214)) ; réponses reçues par l'eBox, en attente de l'ONSS et de BOSA ([#216](https://github.com/superjojo79/FlowForge/issues/216)).
 

@@ -30,6 +30,10 @@ class MailRoomDemoSeederIT {
                 "--app.embedded-db.data-dir=" + baseDir,
                 "--app.embedded-db.port=0",
                 "--app.demo.mailroom.dir=exemples/digital-mail-room",
+                // Le profil test laisse l'exécuteur actif : sans cette coupure, un job « ouvrirCourrier » peut tourner entre le
+                // démarrage du process et la confirmation du lien par le relais de l'outbox (verrou optimiste sur le dossier),
+                // puis sa relance croise l'executeJob d'awaitTriage (précédent « course avec le relais de l'outbox »).
+                "--flowable.async-executor-activate=false",
                 "--server.port=0");
     }
 

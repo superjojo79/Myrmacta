@@ -42,9 +42,9 @@ RUN groupadd --system --gid 10001 myrmacta \
 
 WORKDIR /app
 COPY --from=build --chown=myrmacta:myrmacta /workspace/target/myrmacta-*.jar app.jar
-# LICENSE (PolyForm-Noncommercial-1.0.0) et NOTICE, mêmes fichiers que la racine du dépôt et que
-# META-INF/ du jar. Lisibles par l'utilisateur applicatif.
-COPY --from=build --chown=myrmacta:myrmacta /workspace/LICENSE /workspace/NOTICE /usr/share/doc/myrmacta/
+# LICENSE (PolyForm Noncommercial 1.0.0), NOTICE et LICENSE-ADDENDUM.md (addendum de droit belge),
+# mêmes fichiers que la racine du dépôt et que META-INF/ du jar. Lisibles par l'utilisateur applicatif.
+COPY --from=build --chown=myrmacta:myrmacta /workspace/LICENSE /workspace/NOTICE /workspace/LICENSE-ADDENDUM.md /usr/share/doc/myrmacta/
 
 # Répertoire des données du PostgreSQL embarqué (profil Spring embedded-db, image de démo/QA
 # uniquement) : à monter en volume (-v myrmacta-data:/data) pour conserver les données entre

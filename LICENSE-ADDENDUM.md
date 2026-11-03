@@ -111,9 +111,8 @@ notamment une licence LGPL, la licence du Logiciel et le présent addendum ne l'
 
 La section *No Liability* de la licence s'applique dans la mesure permise par la loi. En droit
 belge, elle n'exclut ni ne limite la responsabilité du Concédant pour son dol ou sa faute
-intentionnelle, ni pour une atteinte à la vie ou à l'intégrité physique, ni la responsabilité
-qu'une règle impérative impose, notamment celle du fait des produits défectueux, ni les droits
-qu'une règle impérative accorde à un consommateur.
+intentionnelle, ni pour une atteinte à la vie ou à l'intégrité physique, ni les droits qu'une
+règle impérative accorde à un consommateur.
 
 ### 11. Notification d'une violation
 
@@ -247,8 +246,7 @@ of the Software and this addendum do not prohibit it.
 
 The *No Liability* section of the license applies as far as the law allows. Under Belgian law, it
 does not exclude or limit the Licensor's liability for fraud or wilful misconduct, or for harm to
-life or physical integrity, nor any liability that a mandatory rule imposes, in particular
-liability for defective products, nor any right that a mandatory rule grants to a consumer.
+life or physical integrity, nor any right that a mandatory rule grants to a consumer.
 
 ### 11. Notice of a violation
 

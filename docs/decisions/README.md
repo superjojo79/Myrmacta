@@ -121,7 +121,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 100 | [Une table DMN ne peut pas écrire une variable réservée](100-sortie-dmn-vers-une-variable-reservee.md) | clos | — |
 | 101 | [Le connecteur `document-storage` ne touche que ce qu'il a stocké pour le dossier](101-document-storage-limite-au-dossier.md) | clos | — |
 | 102 | [Unicité d'un champ de dossier](102-unicite-d-un-champ-de-dossier.md) | clos | — |
-| 103 | [Double licence AGPL-3.0-only et licence commerciale](103-double-licence-agpl-et-licence-commerciale.md) | ouvert | — |
+| 103 | [Double licence AGPL-3.0-only et licence commerciale](103-double-licence-agpl-et-licence-commerciale.md) | clos | — |
 | 104 | [Authentification belge (FAS, itsme) des agents et des tiers du portail](104-authentification-belge-fas-et-itsme.md) | clos | — |
 | 105 | [Nom commercial Myrmacta](105-nom-commercial-myrmacta.md) | clos | — |
 | 106 | [Pré-vérification IA des dossiers et types de pièces justificatives](106-preverification-ia-et-types-de-pieces.md) | clos | — |
@@ -136,6 +136,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 115 | [Échéances de dossier : rappel, escalade et minuteurs à expression](115-echeances-de-dossier-rappel-escalade-et-minuteurs.md) | clos | — |
 | 116 | [Méthode PATCH du connecteur http-rest](116-methode-patch-du-connecteur-http-rest.md) | clos | — |
 | 117 | [Promotion de configuration, tranche 2 : groupes, templates, parcours, réglages de type](117-promotion-de-configuration-tranche-2.md) | clos | — |
+| 118 | [Licence PolyForm Noncommercial 1.0.0 et addendum de droit belge](118-licence-polyform-noncommercial-et-addendum-belge.md) | clos | — |
 
 ## Sections de l'ancien registre
 

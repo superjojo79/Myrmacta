@@ -1,6 +1,15 @@
 # §103 — Double licence AGPL-3.0-only et licence commerciale
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
+
+> **Actualisation (2026-11-03).** Point clos, remplacé par le
+> [§118](118-licence-polyform-noncommercial-et-addendum-belge.md) : licence publique PolyForm
+> Noncommercial 1.0.0 avec addendum de droit belge, licence commerciale sur demande, pas de
+> contribution externe de code. L'AGPL décrite ci-dessous n'a été accordée à personne : le dépôt est
+> resté privé, sans copie remise à un tiers. `CLA.md` et `COMMERCIAL-LICENSE.md` sont retirés du
+> dépôt. Les identifiants D-LICENSE-SPDX, D-LICENSE-MARK et D-LICENSE-NAME restent valables, adaptés
+> par le §118 ; D-LICENSE-AGPL-ONLY, D-LICENSE-COMMERCIAL et D-LICENSE-CLA sont remplacés. L'énoncé
+> daté n'est pas réécrit.
 
 **Énoncé.** Le dépôt n'avait aucune licence. Le propriétaire (Benoit) veut un double licence :
 AGPL pour les usages libres, licence commerciale pour les intégrateurs et les SaaS fermés qui ne

@@ -17,13 +17,14 @@
     <name>Myrmacta</name>
     <description>Myrmacta — L'intelligence collective au service de vos dossiers et décisions</description>
 
-    <!-- Décision n° 103. Identifiant SPDX : PolyForm-Noncommercial-1.0.0. La licence commerciale est un contrat séparé. -->
+    <!-- Décision n° 118. Identifiant SPDX : PolyForm-Noncommercial-1.0.0, complétée par l'addendum de
+         droit belge LICENSE-ADDENDUM.md. La licence commerciale est un contrat séparé. -->
     <licenses>
         <license>
-            <name>PolyForm Noncommercial License 1.0.0</name>
+            <name>PolyForm Noncommercial License 1.0.0, avec addendum de droit belge</name>
             <url>https://polyformproject.org/licenses/noncommercial/1.0.0</url>
             <distribution>repo</distribution>
-            <comments>SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0</comments>
+            <comments>SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 ; addendum : LICENSE-ADDENDUM.md</comments>
         </license>
     </licenses>
 
@@ -694,8 +695,8 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Décision n° 103. LICENSE et NOTICE accompagnent le jar, à META-INF/LICENSE et
-                 META-INF/NOTICE. Le repackager Spring Boot ne déplace pas ces entrées sous
+            <!-- Décisions n° 103 et 118. LICENSE, NOTICE et LICENSE-ADDENDUM.md accompagnent le jar, à
+                 META-INF/LICENSE, META-INF/NOTICE et META-INF/LICENSE-ADDENDUM.md. Le repackager Spring Boot ne déplace pas ces entrées sous
                  BOOT-INF/classes (contrairement à META-INF/services/). Contrôle :
                  scripts/check-license-notice-in-jar.sh -->
             <plugin>
@@ -717,6 +718,7 @@
                                     <includes>
                                         <include>LICENSE</include>
                                         <include>NOTICE</include>
+                                        <include>LICENSE-ADDENDUM.md</include>
                                     </includes>
                                 </resource>
                             </resources>

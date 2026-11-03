@@ -256,9 +256,8 @@ Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-adden
 > Détails : [ROADMAP.md](ROADMAP.md).
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).
-Les points du registre encore ouverts sont le [§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)
-(exposition MCP) et le [§103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md)
-(revue d'avocat de la double licence). Le registre complet est
+Le point du registre encore ouvert est le [§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)
+(exposition MCP). Le registre complet est
 [docs/decisions/README.md](docs/decisions/README.md).
 Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/FlowForge/issues)
 (libellés `priorite-*`, `type-*`, `vague-*`).

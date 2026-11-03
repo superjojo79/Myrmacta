@@ -5,7 +5,7 @@ description: Myrmacta · Conventions projet (architecture hexagonale, multi-tena
 
 # Myrmacta — conventions projet
 
-Nom commercial : Myrmacta. Racine de paquet et `groupId` : `be.myrmacta`. `artifactId` Maven : `myrmacta` (`docs/RENAMING.md`). Le dépôt GitHub n'est pas renommé.
+Nom commercial : Myrmacta. Racine de paquet et `groupId` : `be.myrmacta`. `artifactId` Maven : `myrmacta` (`docs/RENAMING.md`). Dépôt GitHub public : `superjojo79/Myrmacta` (registre §118) ; l'ancien dépôt `FlowForge`, privé, est une archive.
 
 Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas de conflit, la doc `docs/specs/` et le registre des décisions `docs/decisions/` priment.
 

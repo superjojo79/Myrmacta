@@ -7,7 +7,7 @@
   vérifiée. Une entrée liée à une version figée en amont porte un "until" : passé cette date,
   l'alerte réapparaît et doit être réévaluée (montée de version ou prolongation argumentée).
   Une alerte corrigeable par montée de version se corrige dans le pom, pas ici (cf. kotlin.version
-  dans le pom, issue #196).
+  dans le pom, issue #15).
 -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
 

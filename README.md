@@ -252,7 +252,7 @@ Décision : [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-adden
 > désactivée par défaut), les tests de mutation (§108), les fournisseurs de signature Yousign et
 > DocuSign (#191, §109) et les variables de démarrage déclarées (#187, §111) sont livrés sur `main`.
 > Prochain axe : la Digital Mail Room ([#217](https://github.com/superjojo79/FlowForge/issues/217)), courrier entrant multicanal routé vers
-> les services. Hors V1 : [#194](https://github.com/superjojo79/FlowForge/issues/194).
+> les services. Hors V1 : [#16](https://github.com/superjojo79/Myrmacta/issues/16).
 > Détails : [ROADMAP.md](ROADMAP.md).
 
 La documentation d'architecture a fait l'objet d'une [revue pré-implémentation](docs/analyses/REVUE-PRE-IMPLEMENTATION.md).

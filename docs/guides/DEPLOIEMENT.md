@@ -688,7 +688,7 @@ Désactivée par défaut ; elle suppose le portail (§9). Activée, le démarrag
 | `…_PROVIDERS_FAS_LEVELS_HIGH`, `…_LEVELS_SUBSTANTIAL` | Valeurs du claim de niveau (listes) ; toute autre valeur vaut « faible », donc un refus |
 
 Les noms de claims et de niveaux de FAS et d'itsme n'ont pas de valeur par défaut : ils ne sont confirmés par aucune
-source publique et seront vérifiés lors de la recette réelle (issue #192). Le NRN et le vérificateur PKCE sont chiffrés
+source publique et seront vérifiés lors de la recette réelle (issue [#18](https://github.com/superjojo79/Myrmacta/issues/18)). Le NRN et le vérificateur PKCE sont chiffrés
 avec `APP_CONNECTOR_MASTER_KEY`. Désactiver l'authentification forte laisse les tâches qui l'exigent sans moyen de
 réponse : les terminer ou les réassigner avant.
 

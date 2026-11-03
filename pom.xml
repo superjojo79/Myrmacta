@@ -56,7 +56,7 @@
         <!-- Override du Kotlin géré par spring-boot-starter-parent 4.1.2 (fige encore 2.3.21) : stdlib
              < 2.4.20 porte CVE-2026-53914 (CVSS 9.8, désérialisation non sûre). Kotlin n'arrive
              que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
-             rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+ : issue #196. -->
+             rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+ : issue #15. -->
         <kotlin.version>2.4.20</kotlin.version>
     </properties>
 

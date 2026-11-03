@@ -9,7 +9,7 @@
 
 | Élément | Valeur |
 |---|---|
-| Nom de code du dépôt | FlowForge |
+| Nom de code du dépôt | FlowForge (historique ; dépôt public `superjojo79/Myrmacta` depuis le 2026-11-03) |
 | Nom commercial | Myrmacta |
 | Signature | L'intelligence collective au service de vos dossiers et décisions |
 | Logo | [`docs/brand/README.md`](docs/brand/README.md) (SVG et PNG) ; favicon dans `frontend/public/` |
@@ -32,6 +32,10 @@ nom de code tant que la PR technique ne les change pas.
 
 > **Actualisation (2026-10-25).** Les paquets, le `groupId` et l'`artifactId` sont désormais
 > `be.myrmacta` / `myrmacta`. Le nom de code du dépôt (première ligne du tableau) reste FlowForge.
+>
+> **Actualisation (2026-11-03).** Le dépôt GitHub public s'appelle désormais `superjojo79/Myrmacta` ; l'ancien dépôt
+> `FlowForge`, privé, est une archive ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)).
+> FlowForge reste un nom de code historique, que le code n'emploie plus.
 > Les phrases datées ci-dessus ne sont pas réécrites. Voir [docs/RENAMING.md](docs/RENAMING.md).
 
 > **Constat, pas une dénomination à recopier.** Le nom de code du dépôt est déjà un nom commercial,
@@ -132,6 +136,9 @@ Renaming the code will be a separate pull request.
 > **Update (2026-10-25).** Packages, `groupId` and `artifactId` are now `be.myrmacta` /
 > `myrmacta`. The repository code name (first row of the table) stays FlowForge. The dated
 > sentences above are not rewritten. See [docs/RENAMING.md](docs/RENAMING.md).
+>
+> **Update (2026-11-03).** The public GitHub repository is now `superjojo79/Myrmacta`; the former private
+> `FlowForge` repository is an archive. FlowForge remains a historical code name that the code no longer uses.
 
 > **Finding, not a name to copy into the clauses.** The commercial name is Myrmacta. Filing is
 > pending the lawyer's review. No ® ; ™ at most. The code name stays the repository name: it is

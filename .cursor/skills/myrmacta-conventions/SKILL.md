@@ -193,6 +193,8 @@ désormais empêcher devient ce test et sort de la liste.
 - **Test instable par course avec le relais de l'outbox** (#217, lot 4b) : un test qui exécute lui-même les jobs Flowable
   (exécuteur asynchrone coupé) attend d'abord que l'outbox n'ait plus d'événement `PENDING`. Le relais démarre le process
   puis confirme le lien dans une seconde transaction ; un job exécuté entre les deux échoue sur le verrou optimiste.
+  Le profil `test` laisse l'exécuteur actif : le couper explicitement (`flowable.async-executor-activate=false`),
+  y compris dans un test qui lance lui-même l'application (`MailRoomDemoSeederIT`, PR #289).
 - **Violation d'unicité attrapée trop tard** (#217, lot 6) : sous PostgreSQL, une contrainte unique violée condamne la
   transaction de l'appelant, même si l'exception est attrapée. Chercher l'existant avant d'insérer.
 - **Deux Maven sur le même `target/`** (#279, lot 1) : un `mvnw test` lancé pendant un `mvnw verify` recompile les classes

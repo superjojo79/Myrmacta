@@ -27,7 +27,7 @@ avec hébergement dédié par client. L'intégrateur conçoit les processus (BPM
 **low-code / no-code** (palette métier, éditeurs de formulaires et de templates, assistant IA,
 concepteur de parcours) est **livrée** (Vague D) pour que les utilisateurs avancés côté client
 ajustent formulaires, documents et règles. Suite : [ROADMAP.md](ROADMAP.md) et les
-[issues GitHub](https://github.com/superjojo79/FlowForge/issues).
+[issues GitHub](https://github.com/superjojo79/Myrmacta/issues).
 
 L'idée centrale : un dossier métier suit un workflow adapté à son type, déclenché automatiquement depuis des sources externes, avec production de documents et notification des parties prenantes à chaque étape clé.
 
@@ -259,5 +259,9 @@ La documentation d'architecture a fait l'objet d'une [revue pré-implémentation
 Le point du registre encore ouvert est le [§71](docs/decisions/071-exposition-mcp-de-la-couche-low-code.md)
 (exposition MCP). Le registre complet est
 [docs/decisions/README.md](docs/decisions/README.md).
-Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/FlowForge/issues)
+Ce qui reste à faire est suivi dans les [issues GitHub](https://github.com/superjojo79/Myrmacta/issues)
 (libellés `priorite-*`, `type-*`, `vague-*`).
+
+> **Références historiques.** Les numéros `#N` et les liens vers des issues ou des pull requests cités
+> dans la documentation, le registre et l'historique Git renvoient au dépôt de développement d'origine,
+> qui n'est pas public. Les issues encore ouvertes ont été reprises ici, sous de nouveaux numéros.

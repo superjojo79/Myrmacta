@@ -2,7 +2,7 @@
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 
-**Énoncé.** Le [§103](103-double-licence-agpl-et-licence-commerciale.md) avait retenu l'PolyForm-Noncommercial-1.0.0
+**Énoncé.** Le [§103](103-double-licence-agpl-et-licence-commerciale.md) avait retenu l'AGPL-3.0-only
 avec une licence commerciale. Le projet n'est pas en phase commerciale : c'est d'abord une vitrine. Les
 objectifs sont de pouvoir mettre le code à disposition, de se prémunir contre un usage commercial non
 souhaité ou non rémunéré, et de passer le dépôt en public. L'AGPL autorise l'usage commercial : elle ne
@@ -17,7 +17,7 @@ avant la publication.
 
 **Options présentées :**
 
-- **A.** Garder l'PolyForm-Noncommercial-1.0.0 (§103). Écarté : l'usage commercial reste permis.
+- **A.** Garder l'AGPL-3.0-only (§103). Écarté : l'usage commercial reste permis.
 - **B.** Business Source License 1.1, usage de production réservé, bascule open source après quatre
   ans. Écarté : le titulaire veut que les autorités publiques puissent utiliser le Logiciel en
   production sans licence.
@@ -61,7 +61,11 @@ avant la publication.
   autoriser expressément l'exploitation sous licence publique (libre ou non commerciale) et sous
   licence commerciale, sans figer la licence publique future.
 - **Publication.** Avant le passage en public, l'historique est réécrit pour retirer l'AGPL des
-  commits où elle figure (choix de Benoit) ; la procédure n'est pas un fichier du dépôt.
+  commits où elle figure (choix de Benoit) ; la procédure n'est pas un fichier du dépôt. L'historique
+  réécrit est poussé dans un nouveau dépôt, l'ancien restant privé comme archive : GitHub ne permet pas
+  de purger les références des anciennes pull requests. Les liens vers les issues et PR de l'ancien
+  dépôt sont gardés tels quels ; le README prévient qu'ils renvoient au dépôt d'origine, non public
+  (choix de Benoit, 2026-11-03).
 - D-LICENSE-SPDX, D-LICENSE-MARK et D-LICENSE-NAME (§103) restent valables. `TRADEMARKS.md` ne raisonne
   plus sur l'article 7 de l'AGPL et donne le contact.
 

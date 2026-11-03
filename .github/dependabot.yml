@@ -14,3 +14,9 @@ updates:
       - dependency-name: "org.liquibase:*"
         versions:
           - ">= 5.0.0"
+      # Décision n° 91. Le PostgreSQL embarqué des tests reste aligné sur la version de
+      # docker-compose.yml et de la production (17). La montée en 18 se fait avec celle de
+      # la base de production, dans une PR dédiée ; les mises à jour 17.x restent proposées.
+      - dependency-name: "io.zonky.test.postgres:embedded-postgres-binaries-bom"
+        versions:
+          - ">= 18"

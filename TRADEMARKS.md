@@ -93,30 +93,11 @@ L'usage du Nom et, lorsqu'il aura été publié, du logo définitif, comme signe
 Cet usage suit l'écrit qui l'accorde. Il porte sur le Nom du tableau. Le dépôt de marque n'est
 pas fait.
 
-## Points à faire valider par l'avocat
-
-- validité de cette politique au regard du droit belge et du droit des marques Benelux, avant
-  tout dépôt ;
-- recherche formelle TMview, OBPI/BOIP, EUIPO et BCE/KBO, le nom commercial **Myrmacta**
-  étant choisi ; dépôt (non fait, en attente de la revue de l'avocat) à l'OBPI/BOIP, à l'EUIPO,
-  ou aux deux (marque verbale, marque figurative) ; pas de ®, ™ au plus tant que l'avocat
-  n'a pas tranché ;
-- l'ancien nom de code FlowForge, abandonné parce qu'il est déjà un nom commercial
-  (flowforge.be) et qu'il a fait l'objet d'une contestation en 2023 (un éditeur Node-RED devenu
-  FlowFuse) : vérifier que ses traces historiques (archive privée, journal des modifications,
-  lignes de compatibilité) ne créent pas de risque ;
-- droits sur le visuel avant tout dépôt de marque figurative : le logo A3b (fourmi entière,
-  SVG et PNG) et le favicon (tête corail, deux antennes) sont dans le dépôt
-  (`docs/brand/`, `frontend/public/`) ;
-- force de l'obligation, pour un fork distribué ou hébergé, de changer de nom ;
-- étendue de l'usage réservé aux intégrateurs partenaires et aux titulaires de la licence
-  commerciale.
-
 ---
 
 # Trademark policy (draft)
 
-> **Draft for review by a Belgian lawyer.** This text is not legal advice and is not final.
+> **Draft.** This text is not legal advice and is not final.
 
 The repository, the commercial name, the logo and the brand colours are the rows of the table
 [Dénomination](#denomination) above. That table is the only place where the name is written. This
@@ -124,8 +105,8 @@ English text says **the Software** and **the Name**. If it ever diverges from th
 prevails. A rename is a change to the table, not a rewrite of the clauses.
 
 The Software is the program in this repository. The Name is the commercial name in that table:
-**Myrmacta**. It is chosen. Trademark filing is pending the lawyer's review. No ® is used; ™
-at most, until that review. The repository, the packages (`be.myrmacta`), the `groupId`, the
+**Myrmacta**. It is chosen. No trademark application has been filed. No ® is used; ™
+at most. The repository, the packages (`be.myrmacta`), the `groupId`, the
 `artifactId` and the artifacts all carry the Name.
 
 > **Former code name, abandoned.** The project used to be called FlowForge. That name is no longer
@@ -141,7 +122,7 @@ at most, until that review. The repository, the packages (`be.myrmacta`), the `g
 
 > **Logo.** Logo A3b and the favicon are in the repository (`docs/brand/`, `frontend/public/`).
 > The logo is the full ant drawn with BPMN shapes, as SVG and PNG. The favicon is the coral head
-> with two antennae. A figurative filing still waits on the lawyer.
+> with two antennae.
 
 The license of the code (PolyForm Noncommercial 1.0.0 and its Belgian-law addendum,
 [`LICENSE`](LICENSE), [`LICENSE-ADDENDUM.md`](LICENSE-ADDENDUM.md), explained in
@@ -192,17 +173,3 @@ offering itself (and not as a mere factual mention) is reserved for:
 
 That use follows the document that grants it. It covers the Name in the table. No trademark
 application has been filed.
-
-## Points for the lawyer
-
-- whether this policy holds under Belgian law and Benelux trademark law, before any filing ;
-- a formal TMview, OBPI/BOIP, EUIPO and BCE/KBO search **before any choice** of commercial name,
-  then filing (not done) with OBPI/BOIP, EUIPO, or both (word mark, figurative mark) ;
-- the former code name FlowForge, dropped because it is already a trade name (flowforge.be) and
-  was disputed in 2023 (a Node-RED editor that became FlowFuse): check that its historical traces
-  (private archive, changelog, compatibility lines) create no risk ;
-- **rights in the AI-generated visual** (provisional JPEG, not in the repository) before any
-  figurative trademark filing ;
-- when and how the official vector logo will be published ;
-- how far an obligation on a distributed or hosted fork to change its name can be enforced ;
-- the scope of the use reserved for integrator partners and commercial-license holders.

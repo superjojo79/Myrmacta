@@ -421,7 +421,9 @@ test('E2E-FORM-4 BPMN editor sets flowable:formKey on a userTask, round-trips on
   await page.waitForTimeout(1000)
 
   await page.getByRole('button', { name: 'Enregistrer le brouillon' }).click()
-  expect(savedXml).toContain('flowable:formKey="document-generation"')
+  // Le PUT part après le clic : attendre qu'il soit intercepté (même motif que E2E-PORTAL-4 dans
+  // pilotage-securite-portail.spec.ts) au lieu de lire savedXml tout de suite.
+  await expect.poll(() => savedXml).toContain('flowable:formKey="document-generation"')
 })
 
 test('E2E-FORM-3 admin associates document templates to a dossier type and it persists', async ({ page }) => {

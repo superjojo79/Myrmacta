@@ -1,6 +1,6 @@
 # Politique de marque (projet)
 
-> **Projet à faire valider par un avocat belge.** Ce texte n'est pas un conseil juridique et n'a
+> Ce texte n'est pas un conseil juridique et n'a
 > pas de valeur définitive.
 
 <a id="denomination"></a>

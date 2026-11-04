@@ -58,11 +58,6 @@
              que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
              rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+ : issue #15. -->
         <kotlin.version>2.4.20</kotlin.version>
-        <!-- Override de l'OpenTelemetry géré par spring-boot-starter-parent 4.1.2 (1.62.0, signalé par
-             CVE-2026-54285 au scan OWASP du 2026-11-04). N'arrive que transitivement (anthropic-java-core
-             via spring-ai-anthropic, pré-vérification IA désactivée par défaut). À retirer quand Spring Boot
-             gère une version >= 1.67.0. -->
-        <opentelemetry.version>1.67.0</opentelemetry.version>
     </properties>
 
     <dependencyManagement>

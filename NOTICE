@@ -7,7 +7,7 @@ Le Logiciel de ce dépôt est concédé sous la PolyForm Noncommercial License 1
 ([`LICENSE`](LICENSE), texte officiel non modifié), complétée par l'addendum de droit belge
 [`LICENSE-ADDENDUM.md`](LICENSE-ADDENDUM.md). L'explication est [`LICENSING.md`](LICENSING.md).
 Les deux lignes « Required Notice » ci-dessus accompagnent toute copie, avec `LICENSE` et
-`LICENSE-ADDENDUM.md`. Le nom commercial (Myrmacta), le nom de code et le logo ont pour source de
+`LICENSE-ADDENDUM.md`. Le nom commercial (Myrmacta), le nom du dépôt et le logo ont pour source de
 vérité le tableau Dénomination de [`TRADEMARKS.md`](TRADEMARKS.md). Ce fichier n'est pas un
 conseil juridique.
 
@@ -35,7 +35,7 @@ The Software in this repository is licensed under the PolyForm Noncommercial Lic
 See LICENSING.md. The two “Required Notice” lines above must accompany every copy, with LICENSE
 and LICENSE-ADDENDUM.md. These three files are at the repository root, at the root of the jar
 (`META-INF/`), and in the Docker image (`/usr/share/doc/myrmacta/`). The commercial name
-(Myrmacta), the code name, and the logo have their source of truth in the Dénomination table of
+(Myrmacta), the repository name, and the logo have their source of truth in the Dénomination table of
 TRADEMARKS.md. This file is not legal advice.
 
 Third-party components keep their own licenses. See the audit named above.

@@ -2,7 +2,7 @@
 
 Le Logiciel est concédé sous la [PolyForm Noncommercial License 1.0.0](LICENSE), complétée par
 l'[addendum de droit belge](LICENSE-ADDENDUM.md). Le résumé est dans [LICENSING.md](LICENSING.md),
-la marque dans [TRADEMARKS.md](TRADEMARKS.md). Le nom de code, le nom commercial et le logo sont
+la marque dans [TRADEMARKS.md](TRADEMARKS.md). Le nom du dépôt, le nom commercial et le logo sont
 dans le tableau [Dénomination](TRADEMARKS.md#denomination).
 
 ## Contributions de code : pas pour l'instant

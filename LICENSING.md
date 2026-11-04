@@ -1,6 +1,6 @@
 # Licence du code
 
-Le produit est le Logiciel. Le nom de code du dépôt, le nom commercial et le logo définitif sont
+Le produit est le Logiciel. Le nom du dépôt, le nom commercial et le logo définitif sont
 écrits une seule fois, dans le tableau [Dénomination](TRADEMARKS.md#denomination). Le nom
 commercial est **Myrmacta**. Le dépôt de marque n'est pas fait.
 

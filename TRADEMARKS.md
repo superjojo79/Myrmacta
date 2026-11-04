@@ -9,7 +9,7 @@
 
 | Élément | Valeur |
 |---|---|
-| Nom de code du dépôt | FlowForge (historique ; dépôt public `superjojo79/Myrmacta` depuis le 2026-11-03) |
+| Dépôt | `superjojo79/Myrmacta` |
 | Nom commercial | Myrmacta |
 | Signature | L'intelligence collective au service de vos dossiers et décisions |
 | Logo | [`docs/brand/README.md`](docs/brand/README.md) (SVG et PNG) ; favicon dans `frontend/public/` |
@@ -17,8 +17,8 @@
 | Encre et corail, fond sombre | `#F3F4F6` et `#FF7A52` |
 
 « le Logiciel » désigne le programme de ce dépôt. « le Nom » désigne le nom commercial de ce
-tableau : **Myrmacta**. Le dépôt de marque n'est pas fait. Le nom de code est la première ligne :
-le code (packages, `groupId`, artefacts, nom du dépôt) le conserve jusqu'à la PR technique
+tableau : **Myrmacta**. Le dépôt de marque n'est pas fait. Le dépôt, les paquets (`be.myrmacta`),
+le `groupId`, l'`artifactId` et les artefacts portent tous ce nom
 ([décision n° 105](docs/decisions/105-nom-commercial-myrmacta.md), [RENAMING.md](docs/RENAMING.md)).
 
 [LICENSING.md](LICENSING.md), [LICENSE-ADDENDUM.md](LICENSE-ADDENDUM.md),
@@ -26,22 +26,19 @@ le code (packages, `groupId`, artefacts, nom du dépôt) le conserve jusqu'à la
 [n° 103](docs/decisions/103-double-licence-agpl-et-licence-commerciale.md) et
 [n° 118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md) disent
 « le Logiciel » ou « le Nom ». **Un changement de nom se fait dans ce tableau.** En cas de
-divergence, ce tableau prévaut. L'interface, le README et les guides affichent le Nom. Le code
-n'est pas renommé dans la PR visible : packages, `groupId`, artefacts et nom du dépôt restent le
-nom de code tant que la PR technique ne les change pas.
+divergence, ce tableau prévaut. L'interface, le README, les guides et le code emploient le Nom.
 
-> **Actualisation (2026-10-25).** Les paquets, le `groupId` et l'`artifactId` sont désormais
-> `be.myrmacta` / `myrmacta`. Le nom de code du dépôt (première ligne du tableau) reste FlowForge.
+> **Ancien nom de code, abandonné.** Le projet s'est appelé FlowForge. Ce nom n'est plus employé :
+> ni comme nom du dépôt, ni dans le code, ni comme signe. L'ancien dépôt `superjojo79/FlowForge`
+> est privé et archivé ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)).
+> Il ne subsiste que dans l'historique (journal des modifications, registre des décisions,
+> permaliens vers l'archive, auteur des changeSets Liquibase déjà appliqués) et dans quelques
+> lignes de compatibilité marquées `flowforge-legacy`. La liste est dans
+> [docs/RENAMING.md](docs/RENAMING.md).
 >
-> **Actualisation (2026-11-03).** Le dépôt GitHub public s'appelle désormais `superjojo79/Myrmacta` ; l'ancien dépôt
-> `FlowForge`, privé, est une archive ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)).
-> FlowForge reste un nom de code historique, que le code n'emploie plus.
-> Les phrases datées ci-dessus ne sont pas réécrites. Voir [docs/RENAMING.md](docs/RENAMING.md).
-
-> **Constat, pas une dénomination à recopier.** Le nom de code du dépôt est déjà un nom commercial,
-> notamment celui d'une société belge d'automatisation (flowforge.be) ; en 2023, un éditeur
-> low-code articulé autour de Node-RED a dû se renommer FlowFuse. C'est pour cela que le code
-> garde FlowForge et que le Nom est Myrmacta. Le dépôt de marque de Myrmacta n'est pas fait.
+> Raison de l'abandon : FlowForge est déjà un nom commercial, notamment celui d'une société belge
+> d'automatisation (flowforge.be) ; en 2023, un éditeur low-code articulé autour de Node-RED a dû
+> se renommer FlowFuse. Ne pas réemployer ce nom.
 
 > **Logo.** Logo A3b, publié en SVG et en PNG dans [`docs/brand/`](docs/brand/) : fourmi de profil
 > dessinée avec des formes BPMN. Le fichier sombre va sur fond sombre, le fichier clair sur fond
@@ -104,16 +101,16 @@ pas fait.
   étant choisi ; dépôt (non fait, en attente de la revue de l'avocat) à l'OBPI/BOIP, à l'EUIPO,
   ou aux deux (marque verbale, marque figurative) ; pas de ®, ™ au plus tant que l'avocat
   n'a pas tranché ;
-- le fait que le nom de code est déjà un nom commercial (flowforge.be) et qu'il a fait l'objet
-  d'une contestation en 2023 (un éditeur Node-RED devenu FlowFuse) ;
+- l'ancien nom de code FlowForge, abandonné parce qu'il est déjà un nom commercial
+  (flowforge.be) et qu'il a fait l'objet d'une contestation en 2023 (un éditeur Node-RED devenu
+  FlowFuse) : vérifier que ses traces historiques (archive privée, journal des modifications,
+  lignes de compatibilité) ne créent pas de risque ;
 - droits sur le visuel avant tout dépôt de marque figurative : le logo A3b (fourmi entière,
   SVG et PNG) et le favicon (tête corail, deux antennes) sont dans le dépôt
   (`docs/brand/`, `frontend/public/`) ;
 - force de l'obligation, pour un fork distribué ou hébergé, de changer de nom ;
 - étendue de l'usage réservé aux intégrateurs partenaires et aux titulaires de la licence
-  commerciale ;
-- le fait que le code (packages, `groupId`, artefacts, nom du dépôt) conserve le nom de code ;
-  le renommage du code est une PR séparée.
+  commerciale.
 
 ---
 
@@ -121,29 +118,26 @@ pas fait.
 
 > **Draft for review by a Belgian lawyer.** This text is not legal advice and is not final.
 
-The code name of the repository, the commercial name, and the definitive logo are the three rows
-of the table [Dénomination](#denomination) above. That table is the only place where the name is
-written. This English text says **the Software** and **the Name**. If it ever diverges from the
-table, the table prevails. A rename is a change to the table, not a rewrite of the clauses. The
-code (packages, `groupId`, artifacts, repository name) keeps the code name until another decision
-changes it.
+The repository, the commercial name, the logo and the brand colours are the rows of the table
+[Dénomination](#denomination) above. That table is the only place where the name is written. This
+English text says **the Software** and **the Name**. If it ever diverges from the table, the table
+prevails. A rename is a change to the table, not a rewrite of the clauses.
 
 The Software is the program in this repository. The Name is the commercial name in that table:
 **Myrmacta**. It is chosen. Trademark filing is pending the lawyer's review. No ® is used; ™
-at most, until that review. The code name of the repository is the first row. The code keeps it.
-Renaming the code will be a separate pull request.
+at most, until that review. The repository, the packages (`be.myrmacta`), the `groupId`, the
+`artifactId` and the artifacts all carry the Name.
 
-> **Update (2026-10-25).** Packages, `groupId` and `artifactId` are now `be.myrmacta` /
-> `myrmacta`. The repository code name (first row of the table) stays FlowForge. The dated
-> sentences above are not rewritten. See [docs/RENAMING.md](docs/RENAMING.md).
+> **Former code name, abandoned.** The project used to be called FlowForge. That name is no longer
+> used: not as the repository name, not in the code, not as a sign. The former
+> `superjojo79/FlowForge` repository is private and archived. The name survives only in the
+> history (changelog, decision register, permalinks to the archive, author of Liquibase changeSets
+> already applied) and in a few compatibility lines marked `flowforge-legacy`. The list is in
+> [docs/RENAMING.md](docs/RENAMING.md).
 >
-> **Update (2026-11-03).** The public GitHub repository is now `superjojo79/Myrmacta`; the former private
-> `FlowForge` repository is an archive. FlowForge remains a historical code name that the code no longer uses.
-
-> **Finding, not a name to copy into the clauses.** The commercial name is Myrmacta. Filing is
-> pending the lawyer's review. No ® ; ™ at most. The code name stays the repository name: it is
-> already a trade name, notably of a Belgian automation company (flowforge.be); in 2023 a low-code
-> editor built around Node-RED had to rename itself FlowFuse.
+> Why it was dropped: FlowForge is already a trade name, notably of a Belgian automation company
+> (flowforge.be); in 2023 a low-code editor built around Node-RED had to rename itself FlowFuse.
+> Do not reuse that name.
 
 > **Logo.** Logo A3b and the favicon are in the repository (`docs/brand/`, `frontend/public/`).
 > The logo is the full ant drawn with BPMN shapes, as SVG and PNG. The favicon is the coral head
@@ -204,12 +198,11 @@ application has been filed.
 - whether this policy holds under Belgian law and Benelux trademark law, before any filing ;
 - a formal TMview, OBPI/BOIP, EUIPO and BCE/KBO search **before any choice** of commercial name,
   then filing (not done) with OBPI/BOIP, EUIPO, or both (word mark, figurative mark) ;
-- the fact that the code name is already a trade name (flowforge.be) and was disputed in 2023
-  (a Node-RED editor that became FlowFuse) ;
+- the former code name FlowForge, dropped because it is already a trade name (flowforge.be) and
+  was disputed in 2023 (a Node-RED editor that became FlowFuse): check that its historical traces
+  (private archive, changelog, compatibility lines) create no risk ;
 - **rights in the AI-generated visual** (provisional JPEG, not in the repository) before any
   figurative trademark filing ;
 - when and how the official vector logo will be published ;
 - how far an obligation on a distributed or hosted fork to change its name can be enforced ;
-- the scope of the use reserved for integrator partners and commercial-license holders ;
-- the fact that the code (packages, `groupId`, artifacts, repository name) keeps the code name;
-  renaming the code is a separate pull request.
+- the scope of the use reserved for integrator partners and commercial-license holders.

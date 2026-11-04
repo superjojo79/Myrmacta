@@ -184,10 +184,10 @@ Il n'y a pas de tableau de bord Grafana dans le dépôt : seul le `job_name` Pro
 contient `flowforge` hors de cette liste.
 
 - URL `github.com/superjojo79/FlowForge`, y compris les permaliens `e91aa7b`, `555a692`,
-  `dcb7e49` et les liens `/pull/`. Le dépôt n'est pas renommé : le faire ou non reste à
-  décider par Benoit.
+  `dcb7e49` et les liens `/pull/` : ils visent l'ancien dépôt, privé et archivé. Le dépôt
+  public est `superjojo79/Myrmacta`.
 - Tag annoté `pre-myrmacta`.
-- `TRADEMARKS.md` : le nom de code du dépôt, et `flowforge.be` (société tierce, pas nous).
+- `TRADEMARKS.md` : l'ancien nom de code, abandonné, et `flowforge.be` (société tierce, pas nous).
 - `CHANGELOG.md`.
 - `docs/decisions/` et `docs/analyses/` : historique daté. Notes d'actualisation seulement
   sur les décisions 046, 104 et 105, et sur les phrases qui étaient aux lignes 27 et 89 de

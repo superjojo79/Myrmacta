@@ -233,7 +233,7 @@ hors production pendant 90 jours. Tout autre usage commercial (usage en entrepri
 rémunérée pour un tiers, SaaS, revente) demande une **licence commerciale** :
 **contact@myrmacta.be**. Ce n'est pas une licence open source. Résumé : [LICENSING.md](LICENSING.md).
 
-Le nom de code, le nom commercial et le logo sont dans
+Le nom du dépôt, le nom commercial et le logo sont dans
 [TRADEMARKS.md](TRADEMARKS.md#denomination). Le nom commercial choisi est **Myrmacta**.
 Le dépôt de marque n'est pas fait : pas de ®, ™ au plus. La licence du code ne couvre ni le nom
 ni le logo. Le logo A3b et le favicon sont dans le dépôt

@@ -58,10 +58,25 @@
              que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
              rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+ : issue #15. -->
         <kotlin.version>2.4.20</kotlin.version>
+        <!-- Override de l'OpenTelemetry géré par spring-boot-starter-parent 4.1.2 (1.62.0, signalé par
+             CVE-2026-54285 au scan OWASP du 2026-11-04). N'arrive que transitivement (anthropic-java-core
+             via spring-ai-anthropic, pré-vérification IA désactivée par défaut). À retirer quand Spring Boot
+             gère une version >= 1.67.0. -->
+        <opentelemetry.version>1.67.0</opentelemetry.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- Swagger UI : springdoc 3.2.0 (dernière version) embarque swagger-ui 5.34.0, dont le bundle
+                 contient DOMPurify 3.4.16 (CVE-2026-116802, -116803, -116804, CVSS 10, scan OWASP du
+                 2026-11-04). swagger-ui 5.34.1 embarque DOMPurify 3.4.17. Springdoc résout la version via
+                 webjars-locator-lite. Interface désactivée par défaut (app.openapi.enabled) et réservée à
+                 TENANT_ADMIN / WORKFLOW_ADMIN. À retirer quand springdoc embarque 5.34.1 ou plus. -->
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>5.34.1</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>

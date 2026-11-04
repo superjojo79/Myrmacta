@@ -2,8 +2,10 @@ name: Dependency vulnerability scan
 
 on:
   schedule:
-    # Monday 06:00 UTC. Scheduled, not on push/pull_request — never gates a PR merge.
-    - cron: "0 6 * * 1"
+    # Lundi et jeudi 06:00 UTC. Planifié, jamais sur push/pull_request : ne bloque aucune PR.
+    # Deux passages par semaine : GitHub efface un cache inutilisé depuis 7 jours, et le premier
+    # téléchargement de la base NVD sans cache prend plusieurs heures (5 h 29 le 2026-11-04).
+    - cron: "0 6 * * 1,4"
   workflow_dispatch:
 
 permissions:

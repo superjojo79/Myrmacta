@@ -38,4 +38,22 @@
         <cve>CVE-2026-41115</cve>
     </suppress>
 
+    <suppress>
+        <notes><![CDATA[
+        CVE-2026-54285 — FAUX POSITIF. La CVE vise le paquet npm "@opentelemetry/core"
+        (OpenTelemetry JavaScript). Le rapprochement avec le jar Java se fait uniquement sur le
+        CPE générique opentelemetry:opentelemetry (scan OWASP du 2026-11-04, opentelemetry-api
+        1.62.0, toujours signalé en 1.67.0).
+        La vulnérabilité Java analogue est suivie sous GHSA-rcgg-9c38-7xpx et touche
+        opentelemetry-api et opentelemetry-extension-trace-propagators jusqu'à 1.61.0 incluse.
+        Myrmacta utilise 1.62.0 (version gérée par Spring Boot 4.1.2), hors de cette plage ;
+        opentelemetry-extension-trace-propagators n'est pas dans le graphe. OpenTelemetry
+        n'arrive que transitivement (anthropic-java-core via spring-ai-anthropic, pré-vérification
+        IA désactivée par défaut). Cette suppression ne vise que CVE-2026-54285 : un retour sous
+        1.62.0 serait signalé par Dependabot au titre de GHSA-rcgg-9c38-7xpx.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.opentelemetry/opentelemetry-.*@.*$</packageUrl>
+        <cve>CVE-2026-54285</cve>
+    </suppress>
+
 </suppressions>

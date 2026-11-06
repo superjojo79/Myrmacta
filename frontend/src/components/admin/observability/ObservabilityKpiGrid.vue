@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import type { ObservabilitySnapshot } from '@/api/observability'
+import type { LiquibaseMigrationStatus, ObservabilitySnapshot } from '@/api/observability'
 import ObservabilityKpiCard from './ObservabilityKpiCard.vue'
 
 const props = defineProps<{
@@ -15,6 +15,14 @@ function pdfValue(snapshot: ObservabilitySnapshot): string {
   const mean = snapshot.pdfRender.meanMs?.toFixed(0) ?? t('admin.observability.na')
   const max = snapshot.pdfRender.maxMs?.toFixed(0) ?? t('admin.observability.na')
   return t('admin.observability.pdfSummary', { count: snapshot.pdfRender.count, mean, max })
+}
+
+function migrationValue(m: LiquibaseMigrationStatus): string {
+  if (m.appliedChangesetsCount === 0) {
+    return t('admin.observability.migrationNone')
+  }
+  const id = m.lastAppliedChangesetId ?? t('admin.observability.na')
+  return t('admin.observability.migrationSummary', { count: m.appliedChangesetsCount, id })
 }
 </script>
 
@@ -67,6 +75,12 @@ function pdfValue(snapshot: ObservabilitySnapshot): string {
       :label="t('admin.observability.activeSse')"
       :value="String(props.snapshot.sseActiveCount)"
       :severity="props.snapshot.severity.sseActive"
+    />
+    <ObservabilityKpiCard
+      test-id="kpi-migration"
+      :label="t('admin.observability.migration')"
+      :value="migrationValue(props.snapshot.migrationStatus)"
+      severity="ok"
     />
   </div>
 </template>

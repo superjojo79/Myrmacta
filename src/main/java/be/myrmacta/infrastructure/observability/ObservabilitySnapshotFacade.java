@@ -22,6 +22,7 @@ public class ObservabilitySnapshotFacade {
     private final FlowableJobMetricsBinder flowableJobMetricsBinder;
     private final NotificationDlqMeterBinder notificationDlqMeterBinder;
     private final SseNotificationAdapter sseNotificationAdapter;
+    private final LiquibaseMigrationReader liquibaseMigrationReader;
     private final MeterRegistry meterRegistry;
     private final Clock clock;
 
@@ -32,6 +33,7 @@ public class ObservabilitySnapshotFacade {
             FlowableJobMetricsBinder flowableJobMetricsBinder,
             NotificationDlqMeterBinder notificationDlqMeterBinder,
             SseNotificationAdapter sseNotificationAdapter,
+            LiquibaseMigrationReader liquibaseMigrationReader,
             MeterRegistry meterRegistry) {
         this(
                 tenantProperties,
@@ -39,6 +41,7 @@ public class ObservabilitySnapshotFacade {
                 flowableJobMetricsBinder,
                 notificationDlqMeterBinder,
                 sseNotificationAdapter,
+                liquibaseMigrationReader,
                 meterRegistry,
                 Clock.systemUTC());
     }
@@ -49,6 +52,7 @@ public class ObservabilitySnapshotFacade {
             FlowableJobMetricsBinder flowableJobMetricsBinder,
             NotificationDlqMeterBinder notificationDlqMeterBinder,
             SseNotificationAdapter sseNotificationAdapter,
+            LiquibaseMigrationReader liquibaseMigrationReader,
             MeterRegistry meterRegistry,
             Clock clock) {
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
@@ -57,6 +61,7 @@ public class ObservabilitySnapshotFacade {
         this.notificationDlqMeterBinder =
                 Objects.requireNonNull(notificationDlqMeterBinder, "notificationDlqMeterBinder");
         this.sseNotificationAdapter = Objects.requireNonNull(sseNotificationAdapter, "sseNotificationAdapter");
+        this.liquibaseMigrationReader = Objects.requireNonNull(liquibaseMigrationReader, "liquibaseMigrationReader");
         this.meterRegistry = Objects.requireNonNull(meterRegistry, "meterRegistry");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -71,6 +76,7 @@ public class ObservabilitySnapshotFacade {
         ObservabilitySnapshotResponse.PdfRenderStats pdf = pdfStats();
         long webhookDead = notificationDlqMeterBinder.deadCount();
         long sseActive = sseNotificationAdapter.activeEmitterCount();
+        LiquibaseMigrationStatus migration = liquibaseMigrationReader.read();
         return new ObservabilitySnapshotResponse(
                 tenantProperties.id(),
                 observedAt,
@@ -82,6 +88,7 @@ public class ObservabilitySnapshotFacade {
                 pdf,
                 webhookDead,
                 sseActive,
+                migration,
                 new ObservabilitySnapshotResponse.ObservabilitySeverityMap(
                         ObservabilityThresholds.ageSeverity(triggerAge),
                         ObservabilityThresholds.ageSeverity(notificationAge),

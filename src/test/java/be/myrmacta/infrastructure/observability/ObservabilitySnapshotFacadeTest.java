@@ -30,6 +30,8 @@ class ObservabilitySnapshotFacadeTest {
         when(webhooks.deadCount()).thenReturn(2L);
         SseNotificationAdapter sse = mock(SseNotificationAdapter.class);
         when(sse.activeEmitterCount()).thenReturn(3);
+        LiquibaseMigrationReader migration = mock(LiquibaseMigrationReader.class);
+        when(migration.read()).thenReturn(new LiquibaseMigrationStatus(42L, "045-dossier-deadline", Instant.parse("2026-11-01T10:00:00Z")));
 
         Instant now = Instant.parse("2026-08-20T07:41:00Z");
         ObservabilitySnapshotFacade facade = new ObservabilitySnapshotFacade(
@@ -38,6 +40,7 @@ class ObservabilitySnapshotFacadeTest {
                 flowable,
                 webhooks,
                 sse,
+                migration,
                 new SimpleMeterRegistry(),
                 Clock.fixed(now, ZoneOffset.UTC));
 
@@ -53,5 +56,7 @@ class ObservabilitySnapshotFacadeTest {
         assertThat(snapshot.severity().webhookDead()).isEqualTo("warn");
         assertThat(snapshot.severity().pdfRender()).isEqualTo("ok");
         assertThat(FlyingSaucerPdfAdapter.PDF_RENDER_TIMER).isEqualTo("myrmacta.pdf.render");
+        assertThat(snapshot.migrationStatus().appliedChangesetsCount()).isEqualTo(42);
+        assertThat(snapshot.migrationStatus().lastAppliedChangesetId()).isEqualTo("045-dossier-deadline");
     }
 }

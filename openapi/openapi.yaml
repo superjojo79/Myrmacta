@@ -6190,6 +6190,17 @@ components:
         lastCompiledAt:
           type: string
           format: date-time
+    LiquibaseMigrationStatus:
+      type: object
+      properties:
+        appliedChangesetsCount:
+          type: integer
+          format: int64
+        lastAppliedChangesetId:
+          type: string
+        lastAppliedAt:
+          type: string
+          format: date-time
     ObservabilitySeverityMap:
       type: object
       properties:
@@ -6240,6 +6251,8 @@ components:
         sseActiveCount:
           type: integer
           format: int64
+        migrationStatus:
+          $ref: "#/components/schemas/LiquibaseMigrationStatus"
         severity:
           $ref: "#/components/schemas/ObservabilitySeverityMap"
     PdfRenderStats:

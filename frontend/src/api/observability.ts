@@ -8,6 +8,12 @@ export interface PdfRenderStats {
   maxMs: number | null
 }
 
+export interface LiquibaseMigrationStatus {
+  appliedChangesetsCount: number
+  lastAppliedChangesetId: string | null
+  lastAppliedAt: string | null
+}
+
 export interface ObservabilitySeverityMap {
   triggerOutboxOldestPendingAge: ObservabilitySeverity
   notificationOutboxOldestPendingAge: ObservabilitySeverity
@@ -30,6 +36,7 @@ export interface ObservabilitySnapshot {
   pdfRender: PdfRenderStats
   webhookDeadCount: number
   sseActiveCount: number
+  migrationStatus: LiquibaseMigrationStatus
   severity: ObservabilitySeverityMap
 }
 

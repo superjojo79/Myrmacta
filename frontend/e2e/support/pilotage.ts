@@ -404,6 +404,11 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
           pdfRender: { count: 0, meanMs: null, maxMs: null },
           webhookDeadCount: 2,
           sseActiveCount: 3,
+          migrationStatus: {
+            appliedChangesetsCount: 45,
+            lastAppliedChangesetId: '045-dossier-deadline',
+            lastAppliedAt: '2026-11-01T10:00:00Z',
+          },
           severity: {
             triggerOutboxOldestPendingAge: 'ok',
             notificationOutboxOldestPendingAge: 'ok',

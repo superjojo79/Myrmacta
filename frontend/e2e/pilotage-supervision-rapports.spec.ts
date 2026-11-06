@@ -73,6 +73,8 @@ test('E2E-OBS-1 admin sees observability kpis', async ({ page }) => {
   await expect(page.getByTestId('kpi-pdf-render')).toContainText('n/a')
   await expect(page.getByTestId('kpi-webhook-dead')).toContainText('2')
   await expect(page.getByTestId('kpi-sse-active')).toContainText('3')
+  await expect(page.getByTestId('kpi-migration')).toContainText('45')
+  await expect(page.getByTestId('kpi-migration')).toContainText('045-dossier-deadline')
 })
 
 test('E2E-OBS-2 non-admin does not see observability nav', async ({ page }) => {

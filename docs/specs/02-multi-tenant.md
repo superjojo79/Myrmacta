@@ -310,7 +310,8 @@ Il n'y a plus besoin d'une table de suivi inter-tenants pour coordonner cet aspe
 ne rend compte que d'elle-même, via ses propres logs et son propre statut de santé. Une table
 `platform.tenant_migration_status` peut néanmoins être conservée à titre d'observabilité inter-
 tenants pour un tableau de bord d'exploitation (voir point 29 du [registre des décisions](../decisions/029-observabilite.md)), sans rôle de
-coordination.
+coordination. L'état de migration de l'instance courante est exposé via l'endpoint `GET /api/observability`
+(champ `migrationStatus` : nombre de changesets appliqués et dernier changeset) — voir décision §119.
 
 ### Synthèse des choix multi-tenant
 

@@ -39,6 +39,9 @@ export default {
     pdfNone: '0 rendus · n/a',
     pdfSummary: '{count} rendus · moy. {mean} ms · max {max} ms',
     na: 'n/a',
+    migration: 'Migration Liquibase',
+    migrationSummary: '{count} changesets · dernier : {id}',
+    migrationNone: 'Aucun changeset appliqué',
   },
   workflowConfigs: {
     title: 'Configurations workflow',

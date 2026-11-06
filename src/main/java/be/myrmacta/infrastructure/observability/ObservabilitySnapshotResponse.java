@@ -13,6 +13,7 @@ public record ObservabilitySnapshotResponse(
         PdfRenderStats pdfRender,
         long webhookDeadCount,
         long sseActiveCount,
+        LiquibaseMigrationStatus migrationStatus,
         ObservabilitySeverityMap severity) {
 
     public record PdfRenderStats(long count, Double meanMs, Double maxMs) {}

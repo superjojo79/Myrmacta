@@ -41,6 +41,9 @@ const admin: typeof fr = {
     pdfNone: '0 renders · n/a',
     pdfSummary: '{count} renders · mean {mean} ms · max {max} ms',
     na: 'n/a',
+    migration: 'Liquibase migration',
+    migrationSummary: '{count} changesets · last: {id}',
+    migrationNone: 'No changeset applied',
   },
   workflowConfigs: {
     title: 'Workflow configurations',

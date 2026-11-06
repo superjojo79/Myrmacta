@@ -27,4 +27,5 @@ tableau de bord d'exploitation agrégé. Elle n'a pas été créée.
 - SPA : carte KPI « Migration » dans `/admin/observabilite`.
 
 **Impacte :** `docs/specs/02-multi-tenant.md` (section « Bootstrap et migration »),
-`docs/guides/GUIDE-UTILISATEUR.md` (§ Observabilité — ajout de la carte Migration).
+`docs/guides/GUIDE-UTILISATEUR.md` (§ Observabilité — ajout de la carte Migration),
+`openapi/openapi.yaml` (schéma `LiquibaseMigrationStatus`).

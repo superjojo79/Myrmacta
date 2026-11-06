@@ -7,10 +7,11 @@ Issue : [#8](https://github.com/superjojo79/Myrmacta/issues/8) · Spec du domain
 - Problème et utilisateurs : un délai administratif (« 30 jours ouvrables ») ne peut pas s'exprimer. Les trois calculs de délai de dossier comptent des jours calendaires, week-ends et jours fériés compris. L'intégrateur qui pose une table de routage ou une brique, et l'administrateur qui règle le rappel d'un type, n'ont pas d'autre choix. Les agents qui traitent le dossier voient donc une échéance trop courte dès qu'un texte vise des jours ouvrables.
 - Périmètre / hors-périmètre :
   - Dans le périmètre, si le cadrage est validé : une liste de jours fériés par tenant (Admin, `TENANT_ADMIN`), et le choix « calendaire » (défaut, comportement actuel) ou « ouvrable » là où un nombre de jours est déjà interprété — sortie DMN `routageDelaiJours`, paramètres `delaiJours` et `rappelJours` de la brique « Calculer une échéance », rappel J-n du réglage d'échéance du type.
-  - Hors périmètre : SLA en heures, échéance de signature, validité d'un lien portail, rétention, jours fériés scolaires, demi-journées, calendriers différents selon le type de dossier, prorogation judiciaire (« si le terme tombe un samedi, un dimanche ou un férié, reporter »). Les dates déjà écrites dans les dossiers ne sont pas recalculées.
+  - Hors périmètre : SLA en heures, échéance de signature, validité d'un lien portail, rétention, jours fériés scolaires, demi-journées, calendriers différents selon le type de dossier. Les dates déjà écrites dans les dossiers ne sont pas recalculées. La prorogation (« reporter un terme tombé un jour fermé ») dépend de la question de décompte encore ouverte.
 - Critères de succès (vérifiables) :
-  - Un vendredi + 1 jour ouvrable, sans férié le lundi, donne le lundi ; le même calcul en calendaire donne le samedi.
-  - Un jour présent dans la liste du tenant ne compte pas, même un lundi.
+  - Le tenant choisit son week-end parmi trois formes : samedi-dimanche, vendredi-samedi, dimanche seul. Hypothèse nommée : le défaut est samedi-dimanche.
+  - Avec ce défaut, un vendredi + 1 jour ouvrable, sans férié le lundi, donne le lundi ; le même calcul en calendaire donne le samedi. La forme exacte du « + 1 » attend la question de décompte.
+  - Un jour présent dans la liste du tenant ne compte pas, même un lundi, si le décompte retenu inclut les fériés.
   - Sans option « ouvrable », `plusDays` UTC reste le résultat d'aujourd'hui (les process et tables déjà déployés ne bougent pas).
   - Le jour du terme reste dans les temps : l'escalade part le lendemain, comme [D-DEADLINE-ESCALATE](../decisions/115-echeances-de-dossier-rappel-escalade-et-minuteurs.md).
   - La liste des fériés et le mode du rappel voyagent avec la promotion de configuration, comme le réglage d'échéance.
@@ -34,15 +35,16 @@ Issue : [#8](https://github.com/superjojo79/Myrmacta/issues/8) · Spec du domain
 
 | Question | Options | Recommandation | Statut |
 |---|---|---|---|
-| Que compte un jour ouvrable, et comment avance-t-on de N ? | 1. Samedi et dimanche exclus, plus les dates de la liste du tenant. `aujourd'hui + N` avance de N jours ouvrables (le jour de départ ne compte pas, comme `plusDays`). 2. Le samedi compte ; seuls le dimanche et les fériés sont exclus (sens de certains textes belges), avec prorogation du terme. 3. Week-end configurable par tenant (sam–dim, ven–sam ou dimanche seul). | 1. C'est le sens de l'issue (« week-ends et jours fériés »). L'option 2 est un autre outil juridique. L'option 3 dépasse le besoin tant qu'un tenant ne le demande pas. | ouverte — première question |
-| Où se choisit « ouvrable » ? | A. À chaque délai (sortie DMN, deux paramètres de brique, rappel du type), défaut calendaire. B. Un interrupteur pour tout le tenant. C. Un mode sur le type de dossier, suivi par le routage et la brique. | A, comme le texte de l'issue. B empêcherait un délai calendaire et un délai ouvrable dans le même tenant. | en attente de la première |
-| Quel jour est « aujourd'hui » ? | UTC (actuel). Fuseau du tenant, défaut UTC. Fuseau du tenant, défaut `Europe/Brussels`. | À poser ensuite. Un fuseau autre qu'UTC change le jour autour de minuit pour les délais calendaires déjà en production. | en attente de la première |
-| Que préremplit-on pour la Belgique ? | Rien (liste vide, saisie manuelle). Jours fériés légaux fédéraux de l'année courante et de la suivante, que l'admin peut retirer. Jeux par Région ou Communauté. | À poser ensuite. Les fêtes régionales et communales ne tiennent pas dans une seule liste. | en attente de la première |
-| Le rappel J-n et le « lendemain » de l'escalade suivent-ils le même mode ? | Rappel au choix, escalade toujours le lendemain calendaire de la date stockée. Les deux en ouvrables. | À poser ensuite. Hypothèse de travail : l'escalade ne change pas (D-DEADLINE-ESCALATE). Un terme calculé en ouvrables tombe déjà un jour ouvrable ; le lendemain calendaire peut être un samedi. | en attente de la première |
+| Quels jours forment le week-end ? | 1. Toujours samedi et dimanche. 2. Le samedi compte, seul le dimanche est fermé. 3. Le tenant choisit : samedi-dimanche, vendredi-samedi ou dimanche seul. | 1, écartée. | tranchée le 2026-11-06 : option 3. Défaut samedi-dimanche (hypothèse nommée). |
+| Comment avance-t-on de N une fois le week-end connu ? | 1. N jours qui ne tombent ni sur le week-end du tenant ni sur un férié de sa liste. Le jour de départ ne compte pas, comme `plusDays`. 2. N jours calendaires, puis report du terme au prochain jour ouvrable s'il tombe un jour fermé. 3. N jours hors week-end seulement. Les fériés ne retirent aucun jour. | 1. Même mécanique que le calendaire actuel, et un férié compte comme un week-end. | ouverte |
+| Où se choisit « ouvrable » ? | A. À chaque délai (sortie DMN, deux paramètres de brique, rappel du type), défaut calendaire. B. Un interrupteur pour tout le tenant. C. Un mode sur le type de dossier, suivi par le routage et la brique. | A, comme le texte de l'issue. B empêcherait un délai calendaire et un délai ouvrable dans le même tenant. | en attente du décompte |
+| Quel jour est « aujourd'hui » ? | UTC (actuel). Fuseau du tenant, défaut UTC. Fuseau du tenant, défaut `Europe/Brussels`. | À poser ensuite. Un fuseau autre qu'UTC change le jour autour de minuit pour les délais calendaires déjà en production. | en attente du décompte |
+| Que préremplit-on pour la Belgique ? | Rien (liste vide, saisie manuelle). Jours fériés légaux fédéraux de l'année courante et de la suivante, que l'admin peut retirer. Jeux par Région ou Communauté. | À poser ensuite. Les fêtes régionales et communales ne tiennent pas dans une seule liste. | en attente du décompte |
+| Le rappel J-n et le « lendemain » de l'escalade suivent-ils le même mode ? | Rappel au choix, escalade toujours le lendemain calendaire de la date stockée. Les deux en ouvrables. | À poser ensuite. Hypothèse de travail : l'escalade ne change pas (D-DEADLINE-ESCALATE). Un terme calculé en ouvrables tombe déjà un jour ouvrable ; le lendemain calendaire peut être un samedi. | en attente du décompte |
 
 ## Conception
 
-- Faits vérifiés dans le code ou les sources (fichier, méthode) : voir « Faits déjà dans le code ». Pas de conception tant que la première question est ouverte.
+- Faits vérifiés dans le code ou les sources (fichier, méthode) : voir « Faits déjà dans le code ». Pas de conception tant que le décompte n'est pas tranché.
 - Composants touchés (domaine, ports, adaptateurs, frontend, MCP) : sans objet pour l'instant.
 - Scénarios de test (unitaire, intégration, chaîne HTTP et sécurité, Playwright) : sans objet pour l'instant.
 
@@ -52,7 +54,7 @@ Issue : [#8](https://github.com/superjojo79/Myrmacta/issues/8) · Spec du domain
 |---|---|---|---|
 | — | Découpé après la validation du cadrage. | à faire | — |
 
-Prochaine action : réponse à la question « que compte un jour ouvrable, et comment avance-t-on de N ? ».
+Prochaine action : réponse à la question « comment avance-t-on de N une fois le week-end connu ? ».
 
 ## Preuves
 

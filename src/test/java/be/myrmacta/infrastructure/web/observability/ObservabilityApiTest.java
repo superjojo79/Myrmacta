@@ -38,7 +38,9 @@ class ObservabilityApiTest {
                 .andExpect(jsonPath("$.webhookDeadCount").isNumber())
                 .andExpect(jsonPath("$.sseActiveCount").isNumber())
                 .andExpect(jsonPath("$.severity.triggerOutboxOldestPendingAge").exists())
-                .andExpect(jsonPath("$.severity.pdfRender").value("ok"));
+                .andExpect(jsonPath("$.severity.pdfRender").value("ok"))
+                .andExpect(jsonPath("$.migrationStatus.appliedChangesetsCount").isNumber())
+                .andExpect(jsonPath("$.migrationStatus.lastAppliedChangesetId").isString());
     }
 
     @Test

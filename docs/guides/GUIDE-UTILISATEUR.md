@@ -880,6 +880,7 @@ technique en lecture seule, bouton **Rafraîchir** pour recharger un instantané
 | Rendu PDF | Nombre de générations, durée moyenne et max |
 | Webhooks DEAD | Webhooks de notification (§7) définitivement en échec après épuisement des tentatives |
 | SSE actifs | Nombre de connexions de notification navigateur actuellement ouvertes |
+| Migration Liquibase | Nombre de changesets Liquibase appliqués (niveau de schéma de cette instance) et identifiant du dernier changeset — permet de vérifier d'un coup d'œil que l'instance est bien à la version courante (§119) |
 
 Chaque carte porte une sévérité (normal/alerte) calculée côté serveur selon des seuils fixes — cet
 écran est destiné à un diagnostic rapide, pas à de l'historique ou du graphique dans le temps (pas

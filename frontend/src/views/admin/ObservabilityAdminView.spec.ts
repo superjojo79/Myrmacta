@@ -20,6 +20,11 @@ function snapshot(overrides: Partial<ObservabilitySnapshot> = {}): Observability
     pdfRender: { count: 0, meanMs: null, maxMs: null },
     webhookDeadCount: 2,
     sseActiveCount: 3,
+    migrationStatus: {
+      appliedChangesetsCount: 45,
+      lastAppliedChangesetId: '045-dossier-deadline',
+      lastAppliedAt: '2026-11-01T10:00:00Z',
+    },
     severity: {
       triggerOutboxOldestPendingAge: 'ok',
       notificationOutboxOldestPendingAge: 'ok',
@@ -52,6 +57,8 @@ describe('ObservabilityAdminView', () => {
     expect(wrapper.get('[data-testid="kpi-purge-outbox-age"]').text()).toContain('3600 s')
     expect(wrapper.get('[data-testid="kpi-purge-outbox-age"]').classes()).toContain('kpi-card--crit')
     expect(wrapper.get('[data-testid="kpi-pdf-render"]').text()).toContain('n/a')
+    expect(wrapper.get('[data-testid="kpi-migration"]').text()).toContain('45')
+    expect(wrapper.get('[data-testid="kpi-migration"]').text()).toContain('045-dossier-deadline')
     expect(wrapper.text()).not.toContain('Forcer')
     expect(wrapper.text()).not.toContain('Relancer')
   })

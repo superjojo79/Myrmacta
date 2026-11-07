@@ -52,3 +52,38 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§6c, catalogue §7, mise en garde sur les données sensibles),
 `docs/guides/GUIDE-UTILISATEUR.md` (nouvel écran `/admin/notification-templates`), `docs/decisions/identifiants.md`
 (identifiants ci-dessus), `exemples/digital-mail-room/`, `exemples/autorisation-riverain/` (README, DIFFICULTES §4).
+
+**Revue de clôture (lot 1).**
+
+- **Bornes de coût du rendu** — propres aux gabarits de notification (les templates de document sont inchangés ; leur
+  durcissement fait l'objet d'une issue). Propriétés `app.notification.template.*` :
+  - `rendered-max-bytes` (1 048 576) : le rendu écrit dans un `Writer` borné, la somme des octets de l'objet, du corps texte
+    et du corps HTML ne le dépasse jamais, contrôlée pendant le rendu ;
+  - `utility-max-size` (1 000) : éléments de `#numbers.sequence`, longueur produite par `#strings.repeat`, chiffres demandés
+    à `#numbers.format*` ; `#strings.randomAlphanumeric` est refusé ;
+  - `string-max-chars` (100 000) : longueur de toute chaîne produite par une évaluation (chemin, littéral ou utilitaire,
+    appels imbriqués compris) ou passée à un utilitaire, taille de toute collection produite par un utilitaire, et résultat
+    prévisible de `#strings.replace*` et `#strings.*join` (calculé avant l'appel). Une variable de process de plus de
+    100 000 caractères ne peut donc pas être citée dans un gabarit ;
+  - `render-budget` (100 000) : budget par rendu, porté par le fil de rendu (un gabarit ne peut ni le lire ni le masquer par
+    `th:with` ou `th:each`). Une évaluation coûte 1, plus la longueur de l'expression divisée par 64, plus le poids des
+    opérandes et du résultat (une chaîne pèse sa longueur divisée par 64, une collection sa taille) : les `th:each`
+    imbriqués à sortie vide et les littéraux lourds échouent proprement ;
+  - `render-timeout-millis` (2 000) : échéance du rendu, contrôlée à chaque évaluation ;
+  - tout argument entier d'un utilitaire hors de la plage `int` est refusé (pas de troncature `long` vers `int`) ; une
+    `Error` levée par un utilitaire (`OutOfMemoryError`) n'est plus avalée.
+
+  Toute violation (y compris `StackOverflowError` et `OutOfMemoryError`) lève `TemplateProcessingException`, sans valeur dans
+  le message.
+- **Pré-traitement `__…__` refusé** — le contrôle d'activation décode les entités HTML (`HtmlEscape.unescapeHtml`, comme le
+  moteur) puis refuse toute séquence `__` dans l'objet, le corps texte et le corps HTML, y compris écrite `&#95;`, `&#x5f;`,
+  `&lowbar;` ou `&UnderBar;` ; il soumet aussi à la grammaire D-40 les expressions écrites avec des entités (`&#36;{…}`). Le
+  moteur refuse de même au rendu, sur la source décodée (gabarits activés avant ce correctif, promotion). Le refus est
+  global : le texte libre `________` (ligne de signature) est un faux positif accepté. Un refus dans l'évaluateur ou dans
+  un `IStandardExpressionParser` n'est pas possible avec Thymeleaf 3.1.5 : `th:with` et `th:each` appellent le
+  pré-processeur directement (`AssignationUtils`, `EachUtils`), et l'évaluation du pré-traitement n'est pas distinguable
+  d'une évaluation ordinaire (contexte `RESTRICTED` partagé avec `[[…]]`).
+- **Variante et langue validées à la résolution** — `resolve` applique les règles de format de l'écriture
+  (`[a-z0-9][a-z0-9-]{0,99}` pour la variante, étiquette BCP 47 courte pour la langue) ; une valeur non conforme (texte
+  avec saut de ligne, `Map` sérialisée) donne une erreur de validation sans la valeur. `NotificationTemplateNotFoundException`
+  ne recopie plus la variante ni la langue, seulement la clé (littérale du BPMN).

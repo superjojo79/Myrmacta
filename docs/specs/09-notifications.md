@@ -206,8 +206,8 @@ public interface BrowserPushPort {
   (inline `[[${…}]]`, dont les entités HTML sont décodées), le corps HTML en mode `HTML`, avec la grammaire D-40 dans les deux
   cas. Le modèle est celui des expressions métier (`BusinessExpressionContext`) sans `connectorResult` : `dossier`
   (référence, type, statut, libellé, champs déclarés non sensibles) et `variables` (variables de process scalaires)
-  (D-NOTIF-TPL-MODEL). Avec un corps HTML, `SmtpEmailAdapter` produit un `multipart/alternative` (texte et HTML), sinon le
-  texte seul ; `Auto-Submitted: auto-generated` est toujours posé. Le HTML rendu part dans l'outbox (`htmlBody`, absent des
+  (D-NOTIF-TPL-MODEL). Avec un corps HTML, `SmtpEmailAdapter` produit un message multipart (`multipart/mixed`, qui contient
+  un `multipart/alternative` texte et HTML), sinon le texte seul ; `Auto-Submitted: auto-generated` est toujours posé. Le HTML rendu part dans l'outbox (`htmlBody`, absent des
   anciennes lignes, qui restent lisibles et partent en texte seul). Sans `notificationTemplate`, la brique ne change pas.
 - **Gestion.** API REST `/api/notification-templates` (`TENANT_ADMIN` seul : liste, détail, `resolve`, création, mise à jour
   d'un brouillon, activation, archivage, nouvelle version, aperçu), écran `/admin/notification-templates`, outils MCP
@@ -227,6 +227,13 @@ public interface BrowserPushPort {
     active échoue de même, à l'exécution. Bornes (`app.notification.template.*`) : objet de 500 caractères au plus dans le
     gabarit et de 255 une fois rendu (sans CR/LF), corps texte de 64 Kio, corps HTML de 256 Kio, 1 Mio rendus au total,
     modèle d'aperçu de 64 Kio.
+  - *Coût du rendu borné* (revue de clôture, [§123](../decisions/123-gabarits-de-notification.md)) : écriture dans un
+    `Writer` borné, budget d'évaluations pondéré par la taille des résultats, échéance de 2 s par rendu, chaînes et grands
+    nombres plafonnés à 100 000 caractères ou chiffres, utilitaires de taille (`#numbers.sequence`, `#strings.repeat`,
+    chiffres de `#numbers.format*`) plafonnés à 1 000 et contrôlés dans la plage `int`, `#strings.randomAlphanumeric` refusé
+    (propriétés `app.notification.template.*`). Ces bornes ne s'appliquent qu'aux gabarits de notification.
+  - *Pré-traitement `__…__` refusé*, y compris écrit en entités HTML (`&#95;&#95;`), à l'activation comme au rendu : une
+    donnée ne peut jamais devenir une expression. Faux positif accepté : une ligne de soulignés `________`.
   - *Champs sensibles* : un champ `sensitive` n'est jamais exposé, `${dossier.fields.<champ>}` échoue comme une propriété
     absente. Risque résiduel assumé : une variable de process qui recopierait un champ sensible serait rendue ; il est
     documenté dans le [guide de conception](../guides/GUIDE-CONCEPTION-BPMN.md) §6c.

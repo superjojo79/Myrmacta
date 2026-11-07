@@ -78,6 +78,43 @@ class SendNotificationUseCaseImplTest {
         assertThat(browser.payloadJson()).doesNotContain("attachment").doesNotContain("doc-1");
     }
 
+    /** Issue #19 — le corps HTML voyage dans la ligne e-mail seulement ; sans HTML, la clé est absente. */
+    @Test
+    void send_emailWithHtmlBody_snapshotsItOnTheEmailRowOnly() {
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.EMAIL, NotificationChannel.BROWSER),
+                "a@example.com", "Hello", "Body", "u1", null, Map.of()).withHtmlBody("<p>Body</p>");
+
+        useCase.send(event, "tenant_dev");
+
+        ArgumentCaptor<List<PendingOutboxWrite>> writesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(outboxRepository).savePendingBatch(eq("tenant_dev"), writesCaptor.capture(), any());
+        assertThat(writesCaptor.getValue().get(0).payloadJson()).contains("\"htmlBody\":\"<p>Body</p>\"");
+        assertThat(writesCaptor.getValue().get(1).payloadJson()).doesNotContain("htmlBody").doesNotContain("<p>");
+    }
+
+    @Test
+    void send_emailWithoutHtmlBody_writesNoHtmlBodyKey() {
+        useCase.send(new NotificationEvent(List.of(NotificationChannel.EMAIL), "a@example.com", "Hello", "Body", null, null,
+                Map.of()), "tenant_dev");
+
+        ArgumentCaptor<List<PendingOutboxWrite>> writesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(outboxRepository).savePendingBatch(eq("tenant_dev"), writesCaptor.capture(), any());
+        assertThat(writesCaptor.getValue().get(0).payloadJson()).doesNotContain("htmlBody");
+    }
+
+    /** Issue #19 — un corps HTML sans canal EMAIL est refusé, comme la pièce jointe : jamais ignoré en silence. */
+    @Test
+    void send_htmlBodyWithoutEmailChannel_isRefusedBeforeAnyWrite() {
+        NotificationEvent event = new NotificationEvent(
+                List.of(NotificationChannel.BROWSER), null, null, null, "u1", null, Map.of()).withHtmlBody("<p>x</p>");
+
+        assertThatThrownBy(() -> useCase.send(event, "tenant_dev"))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageContaining("htmlBody").hasMessageContaining("EMAIL");
+        verify(outboxRepository, never()).savePendingBatch(anyString(), any(), any());
+    }
+
     /** D-NOTIF-ATTACH-EMAIL-ONLY — une pièce jointe sans canal EMAIL est refusée, rien n'est écrit. */
     @Test
     void send_attachmentWithoutEmailChannel_isRefusedBeforeAnyWrite() {

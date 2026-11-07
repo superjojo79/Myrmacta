@@ -16,6 +16,10 @@ import be.myrmacta.domain.document.port.out.DocumentTemplateRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.notification.model.NotificationWebhookConfig;
 import be.myrmacta.domain.notification.port.out.NotificationWebhookRepository;
+import be.myrmacta.domain.notification.template.model.NotificationTemplate;
+import be.myrmacta.domain.notification.template.port.out.NotificationTemplateRepository;
+import be.myrmacta.domain.shared.PageQuery;
+import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.palette.port.out.BlockReference;
 import be.myrmacta.domain.workflow.palette.port.out.ReferenceStatus;
 import be.myrmacta.domain.workflow.model.DecisionTableDeploymentInfo;
@@ -34,6 +38,7 @@ class BlockReferenceLookupAdapterTest {
 
     private static final String TENANT = "tenant_a";
     private final DocumentTemplateRepository templates = mock(DocumentTemplateRepository.class);
+    private final NotificationTemplateRepository notificationTemplates = mock(NotificationTemplateRepository.class);
     private final ConnectorInstanceRepository connectors = mock(ConnectorInstanceRepository.class);
     private final ConnectorCatalog catalog = mock(ConnectorCatalog.class);
     private final NotificationWebhookRepository webhooks = mock(NotificationWebhookRepository.class);
@@ -41,7 +46,7 @@ class BlockReferenceLookupAdapterTest {
     private final WorkflowTypeConfigRepository workflows = mock(WorkflowTypeConfigRepository.class);
     private final DmnDeploymentPort dmnDeployments = mock(DmnDeploymentPort.class);
     private final BlockReferenceLookupAdapter adapter = new BlockReferenceLookupAdapter(
-            templates, connectors, catalog, webhooks, dossierTypes, workflows, dmnDeployments);
+            templates, notificationTemplates, connectors, catalog, webhooks, dossierTypes, workflows, dmnDeployments);
 
     @BeforeEach
     void setUp() {
@@ -66,6 +71,43 @@ class BlockReferenceLookupAdapterTest {
                 template("brouillon", "Brouillon", TemplateStatus.DRAFT)));
 
         assertThat(adapter.list(TENANT, "documentTemplates")).containsExactly(new BlockReference("facture", "Facture"));
+    }
+
+    private static NotificationTemplate notificationTemplate(String key, String label, TemplateStatus status) {
+        Instant now = Instant.now();
+        return new NotificationTemplate(UUID.randomUUID(), key, null, null, label, 1, status, "Objet", "Corps", null, TENANT,
+                now, now, "u");
+    }
+
+    private void stubNotificationTemplates(String key, NotificationTemplate... all) {
+        when(notificationTemplates.pageByTenantId(org.mockito.ArgumentMatchers.eq(TENANT),
+                org.mockito.ArgumentMatchers.eq(key), any(PageQuery.class)))
+                .thenReturn(PageResult.of(List.of(all), 0, PageQuery.MAX_SIZE, all.length));
+    }
+
+    /** Issue #19 — la source {@code notificationTemplates} liste les clés ayant une version active, une fois chacune. */
+    @Test
+    void notificationTemplatesListOnlyActiveKeysOncePerKey() {
+        stubNotificationTemplates(null,
+                notificationTemplate("accuse", "Accusé", TemplateStatus.ACTIVE),
+                notificationTemplate("accuse", "Accusé v2", TemplateStatus.ACTIVE),
+                notificationTemplate("brouillon", "Brouillon", TemplateStatus.DRAFT),
+                notificationTemplate("vieux", "Vieux", TemplateStatus.ARCHIVED));
+
+        assertThat(adapter.list(TENANT, "notificationTemplates")).containsExactly(new BlockReference("accuse", "Accusé"));
+    }
+
+    @Test
+    void notificationTemplateStatusDistinguishesActiveDraftOnlyAndMissing() {
+        stubNotificationTemplates("actif", notificationTemplate("actif", "A", TemplateStatus.ACTIVE));
+        stubNotificationTemplates("brouillon", notificationTemplate("brouillon", "B", TemplateStatus.DRAFT));
+        stubNotificationTemplates("archive", notificationTemplate("archive", "C", TemplateStatus.ARCHIVED));
+        stubNotificationTemplates("absent");
+
+        assertThat(adapter.status(TENANT, "notificationTemplates", "actif")).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "notificationTemplates", "brouillon")).isEqualTo(ReferenceStatus.INACTIVE);
+        assertThat(adapter.status(TENANT, "notificationTemplates", "archive")).isEqualTo(ReferenceStatus.MISSING);
+        assertThat(adapter.status(TENANT, "notificationTemplates", "absent")).isEqualTo(ReferenceStatus.MISSING);
     }
 
     @Test

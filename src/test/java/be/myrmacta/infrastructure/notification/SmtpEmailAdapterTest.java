@@ -74,6 +74,39 @@ class SmtpEmailAdapterTest {
         assertThat(attachment.getInputStream().readAllBytes()).isEqualTo(pdf);
     }
 
+    /** Issue #19 (TODO §123) — avec un corps HTML : text/plain puis text/html ; l'en-tête anti-boucle reste posé. */
+    @Test
+    void send_withHtmlBody_buildsTextAndHtmlAlternatives() throws Exception {
+        adapter.send("user@example.com", "Accusé", "Texte brut", "<p>Texte <b>riche</b></p>", null);
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        MimeMessage sent = new MimeMessage(Session.getInstance(new Properties()), toStream(captor.getValue()));
+        assertThat(sent.getHeader("Auto-Submitted")).containsExactly("auto-generated");
+        assertThat(sent.getSubject()).isEqualTo("Accusé");
+        List<BodyPart> parts = leafParts((Multipart) sent.getContent());
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).getContentType()).startsWith("text/plain");
+        assertThat(parts.get(0).getContent()).isEqualTo("Texte brut");
+        assertThat(parts.get(1).getContentType()).startsWith("text/html");
+        assertThat(parts.get(1).getContent()).isEqualTo("<p>Texte <b>riche</b></p>");
+    }
+
+    @Test
+    void send_withHtmlBodyAndAttachment_keepsBothAlternativesAndThePdf() throws Exception {
+        byte[] pdf = "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        adapter.send("user@example.com", "S", "Texte", "<p>Html</p>",
+                new EmailPort.EmailAttachmentContent("a.pdf", "application/pdf", pdf));
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        MimeMessage sent = new MimeMessage(Session.getInstance(new Properties()), toStream(captor.getValue()));
+        List<BodyPart> parts = leafParts((Multipart) sent.getContent());
+        assertThat(parts).extracting(p -> p.getContentType().split(";")[0])
+                .containsExactly("text/plain", "text/html", "application/pdf");
+    }
+
     private static java.io.ByteArrayInputStream toStream(MimeMessage message) throws Exception {
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
         message.writeTo(out);

@@ -23,11 +23,20 @@ public final class NotificationPayloadJson {
 
     /** TODO §113 — {@code originDossierId} (facultatif) : le relais inscrit le Message-ID envoyé dans l'index des fils. */
     public static String email(String to, String subject, String body, EmailAttachment attachment, UUID originDossierId) {
+        return email(to, subject, body, null, attachment, originDossierId);
+    }
+
+    /** Issue #19 — {@code htmlBody} (facultatif) : clé absente quand il est nul, les lignes d'outbox existantes restent lisibles. */
+    public static String email(
+            String to, String subject, String body, String htmlBody, EmailAttachment attachment, UUID originDossierId) {
         StringBuilder sb = new StringBuilder(64);
         sb.append('{');
         appendField(sb, "to", to, true);
         appendField(sb, "subject", subject, false);
         appendField(sb, "body", body, false);
+        if (htmlBody != null) {
+            appendField(sb, "htmlBody", htmlBody, false);
+        }
         if (originDossierId != null) {
             appendField(sb, "dossierId", originDossierId.toString(), false);
         }

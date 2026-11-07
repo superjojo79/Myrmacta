@@ -98,7 +98,7 @@ class NotificationSensitiveFieldMaskingEndToEndTest {
         var relay = new NotificationOutboxRelay(
                 mock(NotificationOutboxRepository.class),
                 webhookRepository,
-                (to, subject, body, attachment) -> null,
+                (to, subject, body, html, attachment) -> null,
                 capturingPort,
                 (userId, event) -> true,
                 mock(ConnectorSecretCipher.class),

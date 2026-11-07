@@ -151,8 +151,14 @@ public class NotificationOutboxRelay {
         String subject = textRequired(root, "subject");
         String body = textRequired(root, "body");
         JsonNode attachment = root.get("attachment");
+        JsonNode htmlNode = root.get("htmlBody"); // Issue #19 : absent des lignes antérieures aux gabarits
+        String html = htmlNode == null || htmlNode.isNull() || htmlNode.asText().isBlank() ? null : htmlNode.asText();
+        boolean withAttachment = attachment != null && !attachment.isNull();
         String messageId;
-        if (attachment == null || attachment.isNull()) {
+        if (html != null) {
+            messageId = emailPort.send(to, subject, body, html,
+                    withAttachment ? attachmentContent(record.tenantId(), attachment) : null);
+        } else if (!withAttachment) {
             messageId = emailPort.send(to, subject, body);
         } else {
             messageId = emailPort.send(to, subject, body, attachmentContent(record.tenantId(), attachment));

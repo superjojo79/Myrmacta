@@ -61,6 +61,10 @@ public final class BlockAttributeRules {
     /** D-NOTIF-ATTACH-NAME — nom de fichier vu par le destinataire : ni chemin, ni guillemet, ni point initial. */
     private static final Pattern FILE_NAME = Pattern.compile("[\\p{L}\\p{N}_()'-][\\p{L}\\p{N} ._()'-]*");
 
+    /** Issue #19 (TODO §123) — sources dont l'existence n'est pas vérifiée au déploiement. */
+    private static final Set<String> UNVERIFIED_AT_DEPLOY = Set.of("notificationTemplates");
+    private static final Pattern VARIABLE_SOURCE = Pattern.compile("variable:[A-Za-z][A-Za-z0-9_]{0,59}");
+
     private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -115,6 +119,7 @@ public final class BlockAttributeRules {
             throw new InvalidBpmnException("BPMN attribute flowable:connectorInstanceId is required on " + activityId
                     + " when flowable:connectorRequest is set");
         }
+        checkTemplateCompanions(activityId, flowableAttributes);
         if (flowableAttributes.containsKey("notificationAttachment") || flowableAttributes.containsKey("notificationAttachmentName")) {
             checkAttachmentCompanions(activityId, flowableAttributes);
         }
@@ -135,7 +140,9 @@ public final class BlockAttributeRules {
         BuildingBlockCatalog.forDelegate(delegate).filter(BlockAttributeRules::isManaged).ifPresent(block -> {
             for (BlockParameter p : block.parameters()) {
                 String value = flowableAttributes.get(p.name());
-                if (p.type() == ParameterType.REFERENCE && p.binding() == ParameterBinding.ATTRIBUTE && value != null) {
+                // Issue #19 : un gabarit de notification peut arriver après le BPMN (promotion) ; son absence échoue à l'exécution.
+                if (p.type() == ParameterType.REFERENCE && p.binding() == ParameterBinding.ATTRIBUTE && value != null
+                        && !UNVERIFIED_AT_DEPLOY.contains(p.valueSource())) {
                     usages.add(new BlockParameterUsage(activityId, block.id(), p.name(), p.valueSource(), value.strip()));
                 }
             }
@@ -184,6 +191,38 @@ public final class BlockAttributeRules {
                 .anyMatch(c -> "EMAIL".equals(c.strip()));
         if (!email) {
             throw new InvalidBpmnException(owner + " requires EMAIL in flowable:notificationChannels");
+        }
+    }
+
+    /**
+     * Issue #19 (TODO §123) — un gabarit exclut l'objet et le corps littéraux, exige le canal EMAIL seul et un
+     * destinataire écrit dans le BPMN ; variante et langue n'ont de sens qu'avec un gabarit.
+     */
+    private static void checkTemplateCompanions(String activityId, Map<String, String> attributes) {
+        boolean template = attributes.containsKey("notificationTemplate");
+        if (!template) {
+            for (String companion : List.of("notificationVariant", "notificationLocale")) {
+                if (attributes.containsKey(companion)) {
+                    throw new InvalidBpmnException("BPMN attribute flowable:" + companion + " on " + activityId
+                            + " requires flowable:notificationTemplate");
+                }
+            }
+            return;
+        }
+        String owner = "BPMN attribute flowable:notificationTemplate on " + activityId;
+        for (String literal : List.of("notificationSubject", "notificationBody")) {
+            if (attributes.containsKey(literal)) {
+                throw new InvalidBpmnException(owner + " excludes flowable:" + literal);
+            }
+        }
+        String channels = attributes.get("notificationChannels");
+        List<String> listed = channels == null ? List.of()
+                : Arrays.stream(channels.split(",")).map(String::strip).filter(c -> !c.isEmpty()).toList();
+        if (listed.size() != 1 || !"EMAIL".equals(listed.get(0))) {
+            throw new InvalidBpmnException(owner + " requires flowable:notificationChannels=\"EMAIL\" (EMAIL only)");
+        }
+        if (!attributes.containsKey("notificationTo")) {
+            throw new InvalidBpmnException(owner + " requires flowable:notificationTo in the BPMN");
         }
     }
 
@@ -260,6 +299,12 @@ public final class BlockAttributeRules {
                 checkPrecheck(owner, parameter.name(), value);
                 if ("notificationTo".equals(parameter.name())) {
                     checkRecipient(owner, value);
+                }
+                if ("notificationVariant".equals(parameter.name()) || "notificationLocale".equals(parameter.name())) {
+                    boolean variable = value.startsWith("variable:");
+                    if (variable ? !VARIABLE_SOURCE.matcher(value).matches() : !KEY.matcher(value).matches()) {
+                        throw new InvalidBpmnException(owner + " must be a literal key or variable:<name>");
+                    }
                 }
                 if ("notificationAttachmentName".equals(parameter.name())) {
                     checkFileName(owner, value);

@@ -39,7 +39,8 @@ public final class ParcoursCompiler {
     private static final Set<String> RESERVED_IDS = Set.of("start", "end");
     private static final Set<String> DOCUMENT_KEYS = Set.of("documentType", "documentVariant", "documentLocale", "attach");
     private static final Set<String> NOTIFY_KEYS = Set.of("notificationChannels", "notificationTo", "notificationSubject",
-            "notificationBody", "notificationUserId", "notificationWebhookConfigId");
+            "notificationBody", "notificationUserId", "notificationWebhookConfigId", "notificationTemplate",
+            "notificationVariant", "notificationLocale");
 
     private ParcoursCompiler() {}
 
@@ -462,7 +463,8 @@ public final class ParcoursCompiler {
                     }
                 }
                 case NOTIFY -> task(id, "serviceTask", name, delegate("notificationDispatchTask") + attrs(p,
-                        List.of("notificationChannels", "notificationTo", "notificationSubject", "notificationBody", "notificationUserId", "notificationWebhookConfigId")), "");
+                        List.of("notificationChannels", "notificationTo", "notificationSubject", "notificationBody", "notificationUserId", "notificationWebhookConfigId",
+                        "notificationTemplate", "notificationVariant", "notificationLocale")), "");
                 case CONNECTOR -> task(id, "serviceTask", name, delegate("connectorServiceTask") + attrs(p, List.of("connectorInstanceId")), "");
                 case DMN -> task(id, "serviceTask", name, " flowable:type=\"dmn\"",
                         "<extensionElements><flowable:field name=\"decisionTableReferenceKey\"><flowable:string>"

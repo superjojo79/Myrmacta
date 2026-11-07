@@ -93,7 +93,7 @@ class BuildingBlockCatalogTest {
         assertThat(request.required()).isFalse();
         assertThat(request.multiline()).isTrue();
         assertThat(request.maxLength()).isEqualTo(2000);
-        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(6);
+        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(7);
     }
 
     @Test
@@ -145,8 +145,21 @@ class BuildingBlockCatalogTest {
             }
         }
         assertThat(BuildingBlockCatalog.VALUE_SOURCES).containsExactlyInAnyOrder(
-                "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
-                "workflowStatuses", "dmnTables", "questionSchemas");
+                "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
+                "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas");
+    }
+
+    /** Issue #19 (TODO §123) — la brique « Notifier » référence un gabarit, facultatif, avec variante et langue. */
+    @Test
+    void notifyOffersAnOptionalTemplateWithVariantAndLocale() {
+        BlockParameter template = param("notify", "notificationTemplate");
+        assertThat(template.type()).isEqualTo(ParameterType.REFERENCE);
+        assertThat(template.valueSource()).isEqualTo("notificationTemplates");
+        assertThat(template.required()).isFalse();
+        assertThat(param("notify", "notificationVariant").type()).isEqualTo(ParameterType.TEXT);
+        assertThat(param("notify", "notificationLocale").type()).isEqualTo(ParameterType.TEXT);
+        assertThat(param("notify", "notificationVariant").required()).isFalse();
+        assertThat(param("notify", "notificationLocale").required()).isFalse();
     }
 
     @Test

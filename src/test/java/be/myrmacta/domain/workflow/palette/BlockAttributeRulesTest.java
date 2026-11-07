@@ -93,6 +93,54 @@ class BlockAttributeRulesTest {
                 .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("notificationAttachmentName");
     }
 
+    /** Issue #19 (CS5, TODO §123) — un gabarit exclut objet et corps, exige EMAIL seul et un destinataire du BPMN. */
+    @Test
+    void aTemplateExcludesLiteralTextNeedsEmailOnlyAndALiteralRecipient() {
+        Map<String, String> ok = Map.of("notificationChannels", "EMAIL", "notificationTo", "variable:mailFrom",
+                "notificationTemplate", "accuse-reception", "notificationVariant", "variable:variante",
+                "notificationLocale", "fr");
+        BlockAttributeRules.validate("act", "notificationDispatchTask", ok);
+
+        Map<String, String> withSubject = Map.of("notificationChannels", "EMAIL", "notificationTo", "a@example.org",
+                "notificationTemplate", "k", "notificationSubject", "Objet");
+        Map<String, String> withBody = Map.of("notificationChannels", "EMAIL", "notificationTo", "a@example.org",
+                "notificationTemplate", "k", "notificationBody", "Corps");
+        Map<String, String> noChannels = Map.of("notificationTo", "a@example.org", "notificationTemplate", "k");
+        Map<String, String> otherChannel = Map.of("notificationChannels", "BROWSER", "notificationTo", "a@example.org",
+                "notificationTemplate", "k");
+        Map<String, String> extraChannel = Map.of("notificationChannels", "EMAIL,WEBHOOK", "notificationTo", "a@example.org",
+                "notificationTemplate", "k");
+        Map<String, String> noRecipient = Map.of("notificationChannels", "EMAIL", "notificationTemplate", "k");
+        for (Map<String, String> bad : List.of(withSubject, withBody, noChannels, otherChannel, extraChannel, noRecipient)) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask", bad))
+                    .as(bad.toString()).isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("notificationTemplate").hasMessageContaining("act");
+        }
+    }
+
+    @Test
+    void aVariantOrLocaleNeedsATemplateAndIsALiteralKeyOrAVariable() {
+        for (String attribute : List.of("notificationVariant", "notificationLocale")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                    Map.of("notificationChannels", "EMAIL", "notificationTo", "a@example.org", attribute, "fr")))
+                    .as(attribute).isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining(attribute).hasMessageContaining("notificationTemplate");
+            for (String bad : List.of("variable:1x", "variable:a b", "a b", "fr/be")) {
+                assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask",
+                        Map.of("notificationChannels", "EMAIL", "notificationTo", "a@example.org",
+                                "notificationTemplate", "k", attribute, bad)))
+                        .as(attribute + "=" + bad).isInstanceOf(InvalidBpmnException.class).hasMessageContaining(attribute);
+            }
+        }
+    }
+
+    /** Le gabarit peut arriver après le BPMN (promotion) : son existence n'est pas vérifiée au déploiement. */
+    @Test
+    void aTemplateReferenceIsNotCheckedAtDeployment() {
+        assertThat(BlockAttributeRules.referenceUsages("act", "notificationDispatchTask", Map.of(
+                "notificationChannels", "EMAIL", "notificationTo", "a@example.org", "notificationTemplate", "k"))).isEmpty();
+    }
+
     private static Map<String, String> withAttachment(String name, String value) {
         return Map.of("notificationChannels", "EMAIL", "notificationTo", "dossierField:email",
                 "notificationAttachment", "variable:doc", name, value);
@@ -171,7 +219,8 @@ class BlockAttributeRulesTest {
         assertThat(BlockAttributeRules.MANAGED_ATTRIBUTES).containsExactlyInAnyOrder(
                 "documentType", "documentVariant", "documentLocale", "connectorInstanceId", "notificationChannels",
                 "notificationTo", "notificationSubject", "notificationBody", "notificationUserId",
-                "notificationWebhookConfigId", "notificationAttachment", "notificationAttachmentName", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
+                "notificationWebhookConfigId", "notificationTemplate", "notificationVariant", "notificationLocale",
+                "notificationAttachment", "notificationAttachmentName", "childDossierTypeCode", "childDossierLabel", "workflowProcessKey",
                 "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping",
                 "searchCriteria", "searchCountResult", "searchFirstReferenceResult", "precheckPieces", "precheckFields",
                 "precheckQuestions", "precheckRules", "precheckResult", "connectorRequest", "groupeTri", "champEcheance", "delaiJours",

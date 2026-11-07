@@ -20,16 +20,22 @@ public class SmtpEmailAdapter implements EmailPort {
     }
 
     @Override
-    public String send(String to, String subject, String body, EmailAttachmentContent attachment) {
+    public String send(
+            String to, String subject, String body, String htmlBody, EmailAttachmentContent attachment) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper =
-                    new MimeMessageHelper(message, attachment != null, StandardCharsets.UTF_8.name());
+                    new MimeMessageHelper(message, attachment != null || htmlBody != null, StandardCharsets.UTF_8.name());
             helper.setTo(to);
             helper.setSubject(subject);
             // Jamais une réponse à un message automatique : l'e-mail entrant (D3c) refuse ce qui porte cet en-tête (pas de boucle).
             message.setHeader("Auto-Submitted", "auto-generated");
-            helper.setText(body, false);
+            if (htmlBody != null) {
+                // Issue #19 : text/plain puis text/html, dans un multipart/alternative.
+                helper.setText(body, htmlBody);
+            } else {
+                helper.setText(body, false);
+            }
             if (attachment != null) {
                 // Issue #183 : nom contrôlé en amont (D-NOTIF-ATTACH-NAME), encodé pour les caractères non ASCII.
                 helper.addAttachment(attachment.fileName(), new ByteArrayResource(attachment.content()),

@@ -4,6 +4,7 @@ import be.myrmacta.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
 import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
+import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase;
 import be.myrmacta.domain.document.port.out.DocumentTemplateRepository;
 import be.myrmacta.domain.document.port.out.TemplateSyntaxChecker;
@@ -70,6 +71,7 @@ class PromotionConfig {
             WorkflowTypeConfigRepository workflowConfigs,
             ManageReplyWorkflowUseCase replyWorkflows,
             ManageDeadlineUseCase deadlines,
+            TenantCalendarRepository calendars,
             DocumentTemplateRepository templates,
             CreateDocumentTemplateUseCase createTemplate,
             TemplateSyntaxChecker templateSyntax,
@@ -78,7 +80,7 @@ class PromotionConfig {
             WorkflowDeploymentPort workflowDeployment) {
         return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
                 new GroupReferenceCheck(new XmlGroupReferenceExtractor()),
-                new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines),
+                new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines, calendars),
                 new DocumentTemplateArtifacts(tenantProperties.id(), codec, templates, createTemplate, templateSyntax,
                         DocumentConfig.MAX_HTML_BYTES),
                 new ParcoursArtifacts(tenantProperties.id(), codec, parcoursRepository, manageParcours, workflowDeployment));

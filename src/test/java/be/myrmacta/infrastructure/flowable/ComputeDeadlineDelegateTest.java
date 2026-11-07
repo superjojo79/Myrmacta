@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
@@ -46,7 +48,9 @@ class ComputeDeadlineDelegateTest {
 
     @BeforeEach
     void setUp() {
-        delegate = new ComputeDeadlineDelegate(dossiers, types, new TenantProperties(TENANT),
+        TenantCalendars calendars = mock(TenantCalendars.class);
+        when(calendars.get(TENANT)).thenReturn(BusinessCalendar.defaults());
+        delegate = new ComputeDeadlineDelegate(dossiers, types, calendars, new TenantProperties(TENANT),
                 Clock.fixed(Instant.parse("2026-10-31T15:00:00Z"), ZoneOffset.UTC));
         when(execution.getCurrentFlowElement()).thenReturn(task);
         when(execution.getCurrentActivityId()).thenReturn("calculer");
@@ -83,6 +87,17 @@ class ComputeDeadlineDelegateTest {
         assertThat(written).containsEntry("echeance", "2026-11-10")
                 .containsEntry("echeanceRappel", "2026-11-10T00:00:00Z")
                 .containsEntry("echeanceDepassee", "2026-11-11T00:00:00Z");
+    }
+
+    @Test
+    void aBusinessDayDelaySkipsTheWeekend_andTheOverdueInstantStaysTheNextCalendarDay() {
+        attribute("delaiJours", "1");
+        attribute("delaiOuvrable", "OUVRABLE");
+
+        delegate.execute(execution);
+
+        assertThat(written).containsEntry("echeance", "2026-11-02")
+                .containsEntry("echeanceDepassee", "2026-11-03T00:00:00Z");
     }
 
     @Test

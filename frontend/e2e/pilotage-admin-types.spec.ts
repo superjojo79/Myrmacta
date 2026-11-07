@@ -71,6 +71,17 @@ test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
   await expect(page.getByRole('cell', { name: 'FAC', exact: true })).toBeVisible()
 })
 
+test('E2E-CAL-1 admin saves the tenant calendar', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByRole('heading', { name: 'Calendrier' })).toBeVisible()
+  await page.getByTestId('calendar-zone').fill('Europe/Brussels')
+  await page.getByTestId('calendar-holidays').fill('2026-12-25')
+  await page.getByTestId('calendar-save').click()
+  await expect(page.getByTestId('calendar-saved')).toBeVisible()
+})
+
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
@@ -422,5 +433,10 @@ test('E2E-DEADLINE-1 admin designates a date field as the deadline, with reminde
   await group.selectOption(firstGroup ?? '')
   await deadline.getByTestId('deadline-save').click()
   await expect(deadline.getByTestId('deadline-saved')).toBeVisible()
-  await expect.poll(() => saved).toEqual({ fieldName: 'echeance', reminderDays: 5, escalationGroup: firstGroup })
+  await expect.poll(() => saved).toEqual({
+    fieldName: 'echeance',
+    reminderDays: 5,
+    reminderDayCount: 'CALENDAR',
+    escalationGroup: firstGroup,
+  })
 })

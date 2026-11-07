@@ -205,6 +205,35 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TenantRetentionSettingsResponse"
+  /api/tenant/calendar:
+    get:
+      tags:
+      - tenant-calendar-controller
+      operationId: get_3
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CalendarResponse"
+    put:
+      tags:
+      - tenant-calendar-controller
+      operationId: replace
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CalendarResponse"
   /api/task-question-schemas/{schemaKey}:
     get:
       tags:
@@ -263,7 +292,7 @@ paths:
     get:
       tags:
       - parcours-controller
-      operationId: get_3
+      operationId: get_4
       parameters:
       - name: key
         in: path
@@ -461,7 +490,7 @@ paths:
     get:
       tags:
       - dmn-draft-controller
-      operationId: get_4
+      operationId: get_5
       parameters:
       - name: decisionKey
         in: path
@@ -732,6 +761,18 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserGroupResponse"
+  /api/tenant/calendar/belgian-federal-holidays:
+    post:
+      tags:
+      - tenant-calendar-controller
+      operationId: addBelgianFederalHolidays
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CalendarResponse"
   /api/task-question-schemas:
     get:
       tags:
@@ -2158,7 +2199,7 @@ paths:
     get:
       tags:
       - workflow-type-config-controller
-      operationId: get_5
+      operationId: get_6
       parameters:
       - name: workflowKey
         in: path
@@ -2214,7 +2255,7 @@ paths:
     get:
       tags:
       - notification-webhook-admin-controller
-      operationId: get_6
+      operationId: get_7
       parameters:
       - name: id
         in: path
@@ -2362,7 +2403,7 @@ paths:
     get:
       tags:
       - document-template-controller
-      operationId: get_7
+      operationId: get_8
       parameters:
       - name: id
         in: path
@@ -2405,7 +2446,7 @@ paths:
     get:
       tags:
       - connector-admin-controller
-      operationId: get_8
+      operationId: get_9
       parameters:
       - name: id
         in: path
@@ -2803,7 +2844,7 @@ paths:
     get:
       tags:
       - sla-report-controller
-      operationId: get_9
+      operationId: get_10
       parameters:
       - name: from
         in: query
@@ -2987,7 +3028,7 @@ paths:
     get:
       tags:
       - portal-controller
-      operationId: get_10
+      operationId: get_11
       parameters:
       - name: X-Portal-Token
         in: header
@@ -3061,7 +3102,7 @@ paths:
     get:
       tags:
       - observability-controller
-      operationId: get_11
+      operationId: get_12
       responses:
         "200":
           description: OK
@@ -3442,7 +3483,7 @@ paths:
     get:
       tags:
       - assistant-controller
-      operationId: get_12
+      operationId: get_13
       parameters:
       - name: id
         in: path
@@ -3781,6 +3822,35 @@ components:
           format: date-time
         updatedBy:
           type: string
+    CalendarRequest:
+      type: object
+      properties:
+        zoneId:
+          type: string
+        weekend:
+          type: string
+        holidays:
+          type: array
+          items:
+            type: string
+    CalendarResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        zoneId:
+          type: string
+        weekend:
+          type: string
+        holidays:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
     FieldDefinition:
       type: object
       properties:
@@ -4065,6 +4135,8 @@ components:
           format: int32
         escalationGroup:
           type: string
+        reminderDayCount:
+          type: string
     DeadlineResponse:
       type: object
       properties:
@@ -4076,6 +4148,8 @@ components:
           type: integer
           format: int32
         escalationGroup:
+          type: string
+        reminderDayCount:
           type: string
     SaveDmnDraftRequest:
       type: object
@@ -5163,6 +5237,7 @@ components:
           - DEADLINE
           - DOCUMENT_TEMPLATE
           - PARCOURS
+          - CALENDAR
         key:
           type: string
         action:
@@ -5210,6 +5285,7 @@ components:
           - DEADLINE
           - DOCUMENT_TEMPLATE
           - PARCOURS
+          - CALENDAR
         key:
           type: string
         outcome:

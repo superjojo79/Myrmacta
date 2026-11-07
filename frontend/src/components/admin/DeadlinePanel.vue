@@ -15,6 +15,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const fieldName = ref('')
 const reminderDays = ref(0)
+const reminderDayCount = ref<'CALENDAR' | 'BUSINESS'>('CALENDAR')
 const escalationGroup = ref('')
 const groups = ref<UserGroupOption[]>([])
 const error = ref<string | null>(null)
@@ -28,6 +29,7 @@ async function load() {
     groups.value = options
     fieldName.value = current?.fieldName ?? ''
     reminderDays.value = current?.reminderDays ?? 0
+    reminderDayCount.value = current?.reminderDayCount ?? 'CALENDAR'
     escalationGroup.value = current?.escalationGroup ?? ''
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? t('admin.types.deadline.errors.load')
@@ -47,6 +49,7 @@ async function save() {
       await setDeadline(props.typeCode, {
         fieldName: fieldName.value,
         reminderDays: Number(reminderDays.value) || 0,
+        reminderDayCount: reminderDayCount.value,
         escalationGroup: escalationGroup.value || null,
       })
     }
@@ -73,6 +76,13 @@ async function save() {
       <label>
         {{ t('admin.types.deadline.reminderDays') }}
         <input v-model.number="reminderDays" type="number" min="0" max="365" data-testid="deadline-reminder-days" />
+      </label>
+      <label>
+        {{ t('admin.types.deadline.dayCount') }}
+        <select v-model="reminderDayCount" data-testid="deadline-day-count">
+          <option value="CALENDAR">{{ t('admin.types.deadline.calendar') }}</option>
+          <option value="BUSINESS">{{ t('admin.types.deadline.business') }}</option>
+        </select>
       </label>
       <label>
         {{ t('admin.types.deadline.escalationGroup') }}

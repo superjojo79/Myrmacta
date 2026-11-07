@@ -11,7 +11,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import be.myrmacta.application.workflow.ManualStartOrchestrator;
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
@@ -58,6 +60,7 @@ class RouteMailDelegateTest {
     private final UpdateDossierFieldsUseCase updateFields = mock(UpdateDossierFieldsUseCase.class);
     private final UpdateDossierStatusUseCase updateStatus = mock(UpdateDossierStatusUseCase.class);
     private final DeadlineSettings deadlineSettings = mock(DeadlineSettings.class);
+    private final TenantCalendars calendars = mock(TenantCalendars.class);
     private final WorkflowTypeConfigRepository workflowConfigs = mock(WorkflowTypeConfigRepository.class);
     private final DelegateExecution execution = mock(DelegateExecution.class);
     private final Map<String, Object> variables = new HashMap<>();
@@ -68,8 +71,9 @@ class RouteMailDelegateTest {
 
     @BeforeEach
     void setUp() {
+        when(calendars.get(TENANT)).thenReturn(BusinessCalendar.defaults());
         delegate = new RouteMailDelegate(confirmer, orchestrator, dossiers, types, deployments, groups, linkGroups, updateFields,
-                updateStatus, deadlineSettings, workflowConfigs, new TenantProperties(TENANT));
+                updateStatus, deadlineSettings, calendars, workflowConfigs, new TenantProperties(TENANT));
         variables.put("dossierId", mailId.toString());
         variables.put("dossierWorkflowLinkId", linkId.toString());
         variables.put("routageAction", "OUVRIR");

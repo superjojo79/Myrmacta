@@ -117,10 +117,13 @@ export async function clearReplyWorkflow(code: string): Promise<void> {
 }
 
 /** TODO §115 (D-DEADLINE-FIELD) — échéance d'un type : champ DATE, rappel J-n, groupe d'escalade. */
+export type DayCount = 'CALENDAR' | 'BUSINESS'
+
 export interface DeadlineSetting {
   dossierTypeCode: string
   fieldName: string
   reminderDays: number
+  reminderDayCount?: DayCount
   escalationGroup: string | null
 }
 
@@ -136,7 +139,7 @@ export async function getDeadline(code: string): Promise<DeadlineSetting | null>
 
 export async function setDeadline(
   code: string,
-  payload: { fieldName: string; reminderDays: number; escalationGroup: string | null },
+  payload: { fieldName: string; reminderDays: number; reminderDayCount?: DayCount; escalationGroup: string | null },
 ): Promise<DeadlineSetting> {
   const { data } = await axios.put<DeadlineSetting>(deadlinePath(code), payload)
   return data

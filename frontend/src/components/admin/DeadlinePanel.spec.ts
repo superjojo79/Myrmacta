@@ -49,7 +49,12 @@ describe('DeadlinePanel (TODO §115)', () => {
     await wrapper.get('[data-testid="deadline-reminder-days"]').setValue('3')
     await wrapper.get('[data-testid="deadline-save"]').trigger('click')
     await flushPromises()
-    expect(typesApi.setDeadline).toHaveBeenCalledWith('FACTURE', { fieldName: 'echeance', reminderDays: 3, escalationGroup: null })
+    expect(typesApi.setDeadline).toHaveBeenCalledWith('FACTURE', {
+      fieldName: 'echeance',
+      reminderDays: 3,
+      reminderDayCount: 'CALENDAR',
+      escalationGroup: null,
+    })
     expect(wrapper.find('[data-testid="deadline-saved"]').exists()).toBe(true)
   })
 

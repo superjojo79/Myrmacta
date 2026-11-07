@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.web.dossier;
 
+import be.myrmacta.domain.deadline.model.DayCount;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +40,8 @@ public class DossierTypeDeadlineController {
             throw new IllegalArgumentException("Request body is required");
         }
         int reminderDays = request.reminderDays() == null ? 0 : request.reminderDays();
-        return DeadlineResponse.from(deadlines.set(code, request.fieldName(), reminderDays, request.escalationGroup()));
+        return DeadlineResponse.from(deadlines.set(code, request.fieldName(), reminderDays, request.escalationGroup(),
+                DayCount.parse(request.reminderDayCount())));
     }
 
     @DeleteMapping
@@ -48,12 +50,13 @@ public class DossierTypeDeadlineController {
         return ResponseEntity.noContent().build();
     }
 
-    record DeadlineRequest(String fieldName, Integer reminderDays, String escalationGroup) {}
+    record DeadlineRequest(String fieldName, Integer reminderDays, String escalationGroup, String reminderDayCount) {}
 
-    record DeadlineResponse(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup) {
+    record DeadlineResponse(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup, String reminderDayCount) {
 
         static DeadlineResponse from(DeadlineSetting setting) {
-            return new DeadlineResponse(setting.dossierTypeCode(), setting.fieldName(), setting.reminderDays(), setting.escalationGroup());
+            return new DeadlineResponse(setting.dossierTypeCode(), setting.fieldName(), setting.reminderDays(), setting.escalationGroup(),
+                    setting.reminderDayCount().name());
         }
     }
 }

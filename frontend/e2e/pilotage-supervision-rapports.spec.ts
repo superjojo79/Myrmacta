@@ -253,5 +253,5 @@ test('E2E-SEARCH-1 supervision: filters on searchable fields of the chosen type 
   await page.getByTestId('field-filter-montant.gte').fill('5000')
   await page.getByRole('button', { name: 'Filtrer' }).click()
   await expect(page).toHaveURL(/f\.montant\.gte=5000/)
-  expect(listQueries.some((q) => q.includes('dossierTypeCode=CLAIM') && q.includes('f.montant.gte=5000'))).toBe(true)
+  await expect.poll(() => listQueries.some((q) => q.includes('dossierTypeCode=CLAIM') && q.includes('f.montant.gte=5000'))).toBe(true)
 })

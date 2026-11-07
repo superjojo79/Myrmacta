@@ -1,8 +1,11 @@
 package be.myrmacta.infrastructure.flowable;
 
 import be.myrmacta.application.workflow.ManualStartOrchestrator;
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
+import be.myrmacta.domain.deadline.model.DayCount;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
@@ -25,8 +28,6 @@ import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.time.Clock;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -67,6 +68,7 @@ class RouteMailDelegate implements JavaDelegate {
     static final String TYPE = "routageTypeDossier";
     static final String PROCESS = "routageProcessus";
     static final String DELAY_DAYS = "routageDelaiJours";
+    static final String DELAY_BUSINESS = "routageDelaiOuvrable";
     static final String SORTING_GROUP = "groupeTri";
     static final String RESULT = "routageResultat";
     static final String REASON = "routageMotif";
@@ -88,6 +90,7 @@ class RouteMailDelegate implements JavaDelegate {
     private final UpdateDossierFieldsUseCase updateFields;
     private final UpdateDossierStatusUseCase updateStatus;
     private final DeadlineSettings deadlineSettings;
+    private final TenantCalendars calendars;
     private final WorkflowTypeConfigRepository workflowConfigs;
     private final TenantProperties tenantProperties;
     private final Clock clock;
@@ -104,10 +107,11 @@ class RouteMailDelegate implements JavaDelegate {
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
             DeadlineSettings deadlineSettings,
+            TenantCalendars calendars,
             WorkflowTypeConfigRepository workflowConfigs,
             TenantProperties tenantProperties) {
         this(confirmer, orchestrator, dossierRepository, typeRepository, deploymentPort, groups, linkGroups, updateFields,
-                updateStatus, deadlineSettings, workflowConfigs, tenantProperties, Clock.systemUTC());
+                updateStatus, deadlineSettings, calendars, workflowConfigs, tenantProperties, Clock.systemUTC());
     }
 
     RouteMailDelegate(
@@ -121,10 +125,12 @@ class RouteMailDelegate implements JavaDelegate {
             UpdateDossierFieldsUseCase updateFields,
             UpdateDossierStatusUseCase updateStatus,
             DeadlineSettings deadlineSettings,
+            TenantCalendars calendars,
             WorkflowTypeConfigRepository workflowConfigs,
             TenantProperties tenantProperties,
             Clock clock) {
         this.deadlineSettings = Objects.requireNonNull(deadlineSettings, "deadlineSettings");
+        this.calendars = Objects.requireNonNull(calendars, "calendars");
         this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
         this.confirmer = Objects.requireNonNull(confirmer, "confirmer");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
@@ -159,8 +165,8 @@ class RouteMailDelegate implements JavaDelegate {
                 .orElseThrow(() -> new IllegalStateException("business dossier not found: " + businessId));
         Map<String, Object> patch = new LinkedHashMap<>();
         patch.put("service", plan.group());
-        if (plan.delayDays() != null) {
-            patch.put("echeance", deadline(plan.delayDays()));
+        if (plan.deadline() != null) {
+            patch.put("echeance", plan.deadline());
         }
         patchDeclaredFields(mailType, mail, patch);
         execution.setVariable(RESULT, "ROUTE");
@@ -204,6 +210,19 @@ class RouteMailDelegate implements JavaDelegate {
         if (execution.getVariable(DELAY_DAYS) != null && delay == null) {
             return Plan.refused("délai invalide : " + execution.getVariable(DELAY_DAYS));
         }
+        var dayCount = DayCount.tryParse(execution.getVariable(DELAY_BUSINESS));
+        if (dayCount.isEmpty()) {
+            return Plan.refused("délai ouvrable invalide : " + execution.getVariable(DELAY_BUSINESS));
+        }
+        String computedDeadline = null;
+        if (delay != null) {
+            try {
+                BusinessCalendar calendar = calendars.get(tenantProperties.id());
+                computedDeadline = calendar.add(calendar.today(clock.instant()), delay, dayCount.get()).toString();
+            } catch (IllegalArgumentException impossible) {
+                return Plan.refused("délai impossible : " + delay);
+            }
+        }
         Map<String, Object> fields = new LinkedHashMap<>();
         Set<String> copyable = nonSensitiveFieldNames(mailType);
         for (FieldDefinition definition : type.get().fieldDefinitions()) {
@@ -211,8 +230,9 @@ class RouteMailDelegate implements JavaDelegate {
                 fields.put(definition.name(), mail.fields().get(definition.name()));
             }
         }
-        if (delay != null) {
-            deadlineField(type.get()).ifPresent(field -> fields.put(field, deadline(delay)));
+        String deadlineValue = computedDeadline;
+        if (deadlineValue != null) {
+            deadlineField(type.get()).ifPresent(field -> fields.put(field, deadlineValue));
         }
         for (FieldDefinition definition : type.get().fieldDefinitions()) {
             boolean unconditional = definition.requiredWhen() == null || definition.requiredWhen().isBlank();
@@ -220,11 +240,7 @@ class RouteMailDelegate implements JavaDelegate {
                 return Plan.refused("champ obligatoire du type " + typeCode + " absent du courrier : " + definition.name());
             }
         }
-        return new Plan(group, typeCode, process, delay, fields, label(mail, copyable), null);
-    }
-
-    private String deadline(int delayDays) {
-        return LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC).plusDays(delayDays).toString();
+        return new Plan(group, typeCode, process, delay, computedDeadline, fields, label(mail, copyable), null);
     }
 
     /** TODO §115 (D-DEADLINE-FIELD) — le champ {@code DATE} que le type du dossier métier désigne comme échéance, s'il en a un. */
@@ -320,11 +336,11 @@ class RouteMailDelegate implements JavaDelegate {
         return value == null || value.toString().isBlank() ? null : value.toString().strip();
     }
 
-    private record Plan(String group, String type, String process, Integer delayDays, Map<String, Object> fields, String label,
-            String refusal) {
+    private record Plan(String group, String type, String process, Integer delayDays, String deadline, Map<String, Object> fields,
+            String label, String refusal) {
 
         static Plan refused(String reason) {
-            return new Plan(null, null, null, null, Map.of(), null, reason);
+            return new Plan(null, null, null, null, null, Map.of(), null, reason);
         }
     }
 }

@@ -710,7 +710,9 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   - `routageAction` : `OUVRIR` ou `TRIER` ;
   - `routageService` : code d'un groupe ;
   - `routageTypeDossier` et `routageProcessus` ;
-  - `routageDelaiJours`, facultatif (0 à 3 650).
+  - `routageDelaiJours`, facultatif (0 à 3 650) ;
+  - `routageDelaiOuvrable`, facultatif : `OUVRABLE` ou `true` saute le week-end et les jours fériés du tenant ;
+    absent, `false`, `CALENDAIRE` ou `CALENDAR` comptent les jours calendaires. Toute autre valeur refuse le plan.
 - **Paramètre de la brique** : `groupeTri`, le code du groupe de la file de tri (littéral).
 - **`OUVRIR`.** La brique :
   - crée le dossier métier lié au courrier (`LINKED`), avec les champs du courrier qui portent le même nom ;
@@ -794,9 +796,12 @@ Deux mécanismes, au choix ou ensemble :
   - La brique **Calculer une échéance** (`${computeDeadlineTask}`) prend des paramètres littéraux :
     - `champEcheance` : un champ date non sensible du dossier, relu au moment de l'exécution ;
     - `delaiJours` : aujourd'hui + N jours, utilisé si le champ est absent ou vide ;
-    - `rappelJours` : nombre de jours avant l'échéance (0 par défaut).
+    - `rappelJours` : nombre de jours avant l'échéance (0 par défaut) ;
+    - `delaiOuvrable` et `rappelOuvrable` : `CALENDAIRE` (défaut) ou `OUVRABLE`.
   - Elle pose `echeance` (`AAAA-MM-JJ`, pour l'affichage) et deux variables réservées : `echeanceRappel` (`rappelJours`
-    avant, 00:00 UTC) et `echeanceDepassee` (lendemain de l'échéance, 00:00 UTC : le jour même est encore dans les temps).
+    avant, à minuit dans le fuseau du tenant) et `echeanceDepassee` (lendemain calendaire, même minuit : le jour du
+    terme est encore dans les temps). Un rappel ouvrable ne décale pas ce minuteur : il peut sonner un samedi alors
+    que l'escalade de la plateforme attend le lundi.
   - Sans date ni délai, la brique échoue : un incident est visible en supervision.
   - Un minuteur porte ensuite `${echeanceDepassee}` ou `${echeanceRappel}` dans son `timeDate`, et rien d'autre. Ni
     `timeDuration`, ni `timeCycle`, ni autre variable, ni appel de méthode.
@@ -1157,8 +1162,8 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |
 | `${dossierSearchTask}` | compte les dossiers en cours du même type qui partagent des valeurs avec le dossier courant (§3octies) | attributs littéraux `searchCriteria` (lignes `champ = dossierField:<champ>` ou `variable:<nom>`), `searchCountResult`, `searchFirstReferenceResult` ; `dossierId` (réservée) | les variables nommées par `searchCountResult` (nombre) et `searchFirstReferenceResult` (référence ou `null`) |
 | `${aiPrecheckTask}` | pré-vérification IA du dossier, **asynchrone** (§3nonies) | attributs littéraux `precheckPieces`, `precheckFields`, `precheckQuestions`, `precheckRules`, `precheckResult` ; `dossierId` (réservée), variables posées avant (règles) | la variable nommée par `precheckResult` (comptes déterministes) ; exécution et constats dans `precheck_run` |
-| `${computeDeadlineTask}` | calcule une échéance pour un minuteur (§« Échéance et minuteur ») | attributs littéraux `champEcheance` (champ date non sensible), `delaiJours`, `rappelJours` ; `dossierId` (réservée) | `echeance`, `echeanceRappel`, `echeanceDepassee` (réservées) |
-| `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier ; champ d'échéance du dossier métier (§115) |
+| `${computeDeadlineTask}` | calcule une échéance pour un minuteur (§« Échéance et minuteur ») | attributs littéraux `champEcheance` (champ date non sensible), `delaiJours`, `rappelJours`, `delaiOuvrable`?, `rappelOuvrable`? ; `dossierId` (réservée) | `echeance`, `echeanceRappel`, `echeanceDepassee` (réservées) |
+| `${routeMailTask}` | route un courrier entrant d'après la table de routage (§3decies) | variables `routageAction`, `routageService`, `routageTypeDossier`, `routageProcessus`, `routageDelaiJours`?, `routageDelaiOuvrable`? ; attribut littéral `groupeTri` ; `dossierId`, `dossierWorkflowLinkId` (réservées) | `routageResultat` (`ROUTE` ou `A_TRIER`), `routageMotif`, `dossierMetierId`, `dossierMetierReference` ; champs `service` et `echeance` du courrier ; champ d'échéance du dossier métier (§115) |
 | `${createChildDossierTask}` | crée un dossier enfant/suite et démarre son workflow | `dossierId` (réservée), `childDossierTypeCode`, `childDossierLabel`, `workflowProcessKey`, `relationType` (`PARENT_CHILD` ou `SUBSEQUENT`), `childDossierFields`?, `childWorkflowVariables`? | — |
 
 Toutes ces classes vivent dans `src/main/java/be/myrmacta/infrastructure/flowable/` — en cas

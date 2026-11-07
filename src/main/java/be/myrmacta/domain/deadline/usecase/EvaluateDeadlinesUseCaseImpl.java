@@ -1,5 +1,6 @@
 package be.myrmacta.domain.deadline.usecase;
 
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
 import be.myrmacta.domain.deadline.model.DeadlineCandidate;
 import be.myrmacta.domain.deadline.model.DeadlineLevel;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
@@ -7,6 +8,7 @@ import be.myrmacta.domain.deadline.port.in.EvaluateDeadlinesUseCase;
 import be.myrmacta.domain.deadline.port.out.DeadlineAlertClaims;
 import be.myrmacta.domain.deadline.port.out.DeadlineCandidates;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DossierWorkflowLink;
 import be.myrmacta.domain.dossier.model.ElementType;
@@ -25,7 +27,6 @@ import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,6 +49,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
     private static final int TASK_PAGE = 100;
 
     private final DeadlineSettings settings;
+    private final TenantCalendars calendars;
     private final DeadlineCandidates candidates;
     private final DeadlineAlertClaims claims;
     private final DossierWorkflowLinkRepository links;
@@ -60,6 +62,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
 
     public EvaluateDeadlinesUseCaseImpl(
             DeadlineSettings settings,
+            TenantCalendars calendars,
             DeadlineCandidates candidates,
             DeadlineAlertClaims claims,
             DossierWorkflowLinkRepository links,
@@ -70,6 +73,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
             WorkflowLinkGroupRepository linkGroups,
             DossierElementRepository elements) {
         this.settings = Objects.requireNonNull(settings, "settings");
+        this.calendars = Objects.requireNonNull(calendars, "calendars");
         this.candidates = Objects.requireNonNull(candidates, "candidates");
         this.claims = Objects.requireNonNull(claims, "claims");
         this.links = Objects.requireNonNull(links, "links");
@@ -86,7 +90,8 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
         Objects.requireNonNull(tenantId, "tenantId");
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(unitOfWork, "unitOfWork");
-        LocalDate today = LocalDate.ofInstant(now, ZoneOffset.UTC);
+        BusinessCalendar calendar = calendars.get(tenantId);
+        LocalDate today = calendar.today(now);
         int failures = 0;
         for (DeadlineSetting setting : settings.findAll(tenantId)) {
             for (DeadlineCandidate candidate : candidates.list(setting)) {
@@ -95,7 +100,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
                     continue;
                 }
                 try {
-                    unitOfWork.run(() -> evaluate(tenantId, setting, candidate, deadline.get(), today, now));
+                    unitOfWork.run(() -> evaluate(tenantId, setting, candidate, deadline.get(), today, now, calendar));
                 } catch (RuntimeException ex) {
                     failures++;
                 }
@@ -105,14 +110,18 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
     }
 
     private void evaluate(String tenantId, DeadlineSetting setting, DeadlineCandidate candidate, LocalDate deadline, LocalDate today,
-            Instant now) {
-        if (today.isAfter(deadline)) {
+            Instant now, BusinessCalendar calendar) {
+        if (calendar.isOverdue(today, deadline, setting.reminderDayCount())) {
             if (claims.claim(tenantId, candidate.dossierId(), DeadlineLevel.ESCALADE, deadline, now)) {
                 escalate(tenantId, setting, candidate, deadline, now);
             }
             return;
         }
-        if (setting.reminderDays() > 0 && !today.isBefore(deadline.minusDays(setting.reminderDays()))
+        if (today.isAfter(deadline)) {
+            return;
+        }
+        LocalDate remindFrom = calendar.subtract(deadline, setting.reminderDays(), setting.reminderDayCount());
+        if (setting.reminderDays() > 0 && !today.isBefore(remindFrom)
                 && claims.claim(tenantId, candidate.dossierId(), DeadlineLevel.RAPPEL, deadline, now)) {
             String title = "Échéance proche — " + candidate.reference();
             String body = "Le dossier " + candidate.reference() + " arrive à échéance le " + deadline + ".";

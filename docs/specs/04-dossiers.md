@@ -1043,8 +1043,8 @@ infrastructure
 Décisions : [§115](../decisions/115-echeances-de-dossier-rappel-escalade-et-minuteurs.md) (D-DEADLINE-FIELD,
 D-DEADLINE-ESCALATE).
 
-- **Réglage par type.** Un type désigne l'un de ses champs `DATE` comme échéance, avec un rappel J-n (0 = aucun) et un
-  groupe d'escalade facultatif.
+- **Réglage par type.** Un type désigne l'un de ses champs `DATE` comme échéance, avec un rappel J-n (0 = aucun),
+  le décompte de ce rappel (`CALENDAR` par défaut, ou `BUSINESS`, §120) et un groupe d'escalade facultatif.
   - Stockage : table `dossier_type_deadline` (changeset 045).
   - API : `GET`, `PUT` et `DELETE /api/dossier-types/{code}/deadline` (`TENANT_ADMIN` ; 204 sans réglage).
   - Écran : Admin → Types → Modifier les champs → « Échéance ».
@@ -1054,7 +1054,9 @@ D-DEADLINE-ESCALATE).
 - **Job `DeadlineAlertJob`** (`app.deadlines.scan-interval-ms`, 15 min par défaut) → `EvaluateDeadlinesUseCase` :
   - périmètre : dossiers `OUVERT`, `EN_COURS` ou `SUSPENDU` des types réglés, dont le champ vaut une date ISO, lue en base
     par `fields ->> champ` (`DeadlineCandidates`) ;
-  - jours calendaires, en UTC ; le jour du terme est encore dans les temps ;
+  - le jour courant est la date civile du fuseau du tenant (UTC si aucun calendrier n'est enregistré, §120) ;
+  - en décompte calendaire, le jour du terme est encore dans les temps et l'escalade part le lendemain ;
+  - en décompte ouvrable, l'escalade attend le prochain jour ouvrable après le terme ; entre les deux, ni rappel ni escalade ;
   - **rappel** dès J-n : notification « boîte de réception » aux participants des process du dossier ;
   - **escalade** dès le lendemain du terme :
     - les tâches ouvertes du process actif passent au groupe d'escalade (`reassignTaskToGroup`, groupe du lien) ;
@@ -1068,8 +1070,10 @@ D-DEADLINE-ESCALATE).
 - Promotion : le réglage voyage dans le bundle (artefact `DEADLINE`, §117 D-PROMO-TYPE-SETTINGS).
 - **Minuteur à expression (lot 4b, D-DEADLINE-TIMER).**
   - La brique « Calculer une échéance » (`ComputeDeadlineDelegate`, `computeDeadlineTask`, paramètres littéraux
-    seulement) relit un champ date non sensible du dossier, ou applique `delaiJours`.
+    seulement) relit un champ date non sensible du dossier, ou applique `delaiJours`. `delaiOuvrable` et `rappelOuvrable`
+    valent `CALENDAIRE` (défaut) ou `OUVRABLE` (§120).
   - Elle pose `echeance` et les variables réservées `echeanceRappel` et `echeanceDepassee`.
+  - `echeanceDepassee` est le lendemain calendaire à minuit dans le fuseau du tenant, même si le rappel est ouvrable.
   - `BpmnExpressionSurfaceScanner` admet ces deux derniers noms, nus, dans le `timeDate` d'un minuteur, et rien d'autre.
   - Tests :
     - `ComputeDeadlineDelegateTest` ;

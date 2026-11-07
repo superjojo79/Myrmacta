@@ -198,7 +198,6 @@ class ArchitectureRulesTest {
             "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineCandidates",
             "be.myrmacta.infrastructure.persistence.dossier.JdbcDossierUniqueValueStore",
             "be.myrmacta.infrastructure.persistence.dossier.SequentialReferenceGenerator",
-            "be.myrmacta.infrastructure.persistence.mailroom.JdbcMailMessageIndex",
             "be.myrmacta.infrastructure.persistence.precheck.JdbcPrecheckRunRepository",
             "be.myrmacta.infrastructure.persistence.workflow.JdbcPortalIdentityRepository");
 

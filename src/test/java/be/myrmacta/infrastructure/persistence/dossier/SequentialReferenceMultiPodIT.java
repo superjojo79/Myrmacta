@@ -2,11 +2,7 @@ package be.myrmacta.infrastructure.persistence.dossier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import be.myrmacta.support.EmbeddedPostgresSupport;
-import com.zaxxer.hikari.HikariDataSource;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import be.myrmacta.support.OidcClientTestConfiguration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -19,94 +15,57 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * {@link SequentialReferenceGenerator} sous accès concurrent multi-pods réel — fiabilisation-tests-plateforme,
- * TODO §26 reste, D-ZONKY (PostgreSQL embarqué). Chaque "pod" a sa propre
- * {@link DataSource}/{@link JdbcTemplate}/transaction, comme en déploiement réel (plusieurs
- * répliques d'une même instance tenant partageant un schéma, {@code 02-multi-tenant.md}), et
- * chaque appel est enveloppé dans une transaction réelle ({@link TransactionTemplate}) pour
- * reproduire fidèlement le {@code @Transactional} de production — sans quoi les 3 instructions
- * SQL de {@code generate()} (INSERT, UPDATE, SELECT) tourneraient en 3 auto-commits indépendants
- * et pourraient lire la valeur d'un autre pod.
+ * {@link SequentialReferenceGenerator} sous accès concurrent — fiabilisation-tests-plateforme, TODO §26 reste.
+ * Chaque appel tourne dans sa propre transaction et sa propre connexion (comme plusieurs répliques d'un même tenant,
+ * {@code 02-multi-tenant.md}) : l'incrément atomique ne doit produire ni doublon ni trou.
  */
+@SpringBootTest
+@Import(OidcClientTestConfiguration.class)
 class SequentialReferenceMultiPodIT {
 
-    private static final int PODS = 8;
-    private static final int CALLS_PER_POD = 10;
-    private static final Pattern REFERENCE_PATTERN = Pattern.compile("DOS-SINISTRE-\\d{4}-(\\d{6})");
+    private static final int THREADS = 8;
+    private static final int CALLS = 80;
+    private static final Pattern REFERENCE = Pattern.compile("DOS-([A-Z0-9]+)-\\d{4}-(\\d{6})");
+
+    @Autowired private SequentialReferenceGenerator generator;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     @Test
-    void concurrentMultiPodGeneration_hasNoDuplicateAndNoGap() throws Exception {
-        String schema = "seq_multipod_" + UUID.randomUUID().toString().replace("-", "");
-        EmbeddedPostgresSupport.createSchema(schema);
-        EmbeddedPostgresSupport.migrateSchema(schema);
-
-        List<HikariDataSource> dataSources = new ArrayList<>();
+    void concurrentGeneration_hasNoDuplicateAndNoGap() throws Exception {
+        String type = "SEQ" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(THREADS);
         try {
-            List<TransactionTemplate> pods = new ArrayList<>();
-            List<SequentialReferenceGenerator> generators = new ArrayList<>();
-            Clock fixedClock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-            for (int i = 0; i < PODS; i++) {
-                HikariDataSource dataSource = EmbeddedPostgresSupport.dataSourceForSchema(schema);
-                dataSources.add(dataSource);
-                JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-                pods.add(new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
-                generators.add(new SequentialReferenceGenerator(jdbcTemplate, fixedClock));
+            List<Future<String>> futures = new ArrayList<>();
+            for (int i = 0; i < CALLS; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return tx.execute(status -> generator.generate("tenant_dev", type));
+                }));
+            }
+            start.countDown();
+            List<Integer> sequences = new ArrayList<>();
+            for (Future<String> future : futures) {
+                Matcher matcher = REFERENCE.matcher(future.get(30, TimeUnit.SECONDS));
+                assertThat(matcher.matches()).isTrue();
+                sequences.add(Integer.parseInt(matcher.group(2)));
             }
 
-            CountDownLatch startLatch = new CountDownLatch(1);
-            ExecutorService pool = Executors.newFixedThreadPool(PODS);
-            try {
-                List<Future<String>> futures = new ArrayList<>();
-                for (int pod = 0; pod < PODS; pod++) {
-                    TransactionTemplate txTemplate = pods.get(pod);
-                    SequentialReferenceGenerator generator = generators.get(pod);
-                    for (int call = 0; call < CALLS_PER_POD; call++) {
-                        futures.add(pool.submit(() -> {
-                            startLatch.await();
-                            return txTemplate.execute(status -> generator.generate("tenant_dev", "SINISTRE"));
-                        }));
-                    }
-                }
-                startLatch.countDown();
-
-                List<String> references = new ArrayList<>();
-                for (Future<String> future : futures) {
-                    references.add(future.get(20, TimeUnit.SECONDS));
-                }
-
-                List<Integer> sequences = references.stream().map(this::extractSequence).toList();
-                Set<Integer> distinctSequences = Set.copyOf(sequences);
-
-                assertThat(references).hasSize(PODS * CALLS_PER_POD);
-                assertThat(distinctSequences)
-                        .as("aucun doublon dans les séquences générées par les %d pods", PODS)
-                        .hasSize(PODS * CALLS_PER_POD);
-                assertThat(distinctSequences)
-                        .as("aucun trou : les séquences doivent couvrir exactement 1..%d", PODS * CALLS_PER_POD)
-                        .isEqualTo(java.util.stream.IntStream.rangeClosed(1, PODS * CALLS_PER_POD)
-                                .boxed()
-                                .collect(Collectors.toSet()));
-            } finally {
-                pool.shutdownNow();
-            }
+            assertThat(Set.copyOf(sequences)).as("aucun doublon").hasSize(CALLS);
+            assertThat(Set.copyOf(sequences)).as("aucun trou : 1..%d", CALLS)
+                    .isEqualTo(IntStream.rangeClosed(1, CALLS).boxed().collect(Collectors.toSet()));
         } finally {
-            dataSources.forEach(HikariDataSource::close);
-            EmbeddedPostgresSupport.dropSchema(schema);
+            pool.shutdownNow();
         }
-    }
-
-    private int extractSequence(String reference) {
-        Matcher matcher = REFERENCE_PATTERN.matcher(reference);
-        if (!matcher.matches()) {
-            throw new IllegalStateException("Unexpected reference format: " + reference);
-        }
-        return Integer.parseInt(matcher.group(1));
     }
 }

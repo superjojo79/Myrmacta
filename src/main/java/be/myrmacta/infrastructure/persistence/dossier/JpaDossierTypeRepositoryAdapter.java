@@ -28,14 +28,14 @@ public class JpaDossierTypeRepositoryAdapter implements DossierTypeRepository {
 
     private final SpringDataDossierTypeRepository repository;
     private final SpringDataDossierRepository dossierRepository;
-    private final JdbcDossierUniqueValueStore uniqueValues;
+    private final JpaDossierUniqueValueStore uniqueValues;
     private final DossierUniqueKeys uniqueKeys;
 
     @Autowired
     public JpaDossierTypeRepositoryAdapter(
             SpringDataDossierTypeRepository repository,
             SpringDataDossierRepository dossierRepository,
-            JdbcDossierUniqueValueStore uniqueValues,
+            JpaDossierUniqueValueStore uniqueValues,
             DossierFieldRules fieldRules) {
         this.repository = repository;
         this.dossierRepository = dossierRepository;

@@ -438,4 +438,35 @@ class ThymeleafNotificationTemplateRendererTest {
                 .isInstanceOf(TemplateProcessingException.class)
                 .hasMessageContaining("time limit"));
     }
+
+    @Test
+    void n1_numbersThatAreNotSizes_areNotRestrictedToInt() {
+        Map<String, Object> model = model("R", "L");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> variables = (Map<String, Object>) model.get("variables");
+        variables.put("amount", 12.5d);
+        variables.put("big", 3_000_000_000L);
+
+        RenderedNotification result = renderer.render(
+                template(
+                        "S",
+                        "[[${#numbers.formatDecimal(variables.amount,1,2)}]]|[[${#numbers.formatCurrency(variables.amount)}]]"
+                                + "|[[${#numbers.formatInteger(variables.big,1)}]]"
+                                + "|[[${#numbers.formatDecimal(1234.5678,2,'COMMA',2,'POINT')}]]",
+                        null),
+                model);
+
+        assertThat(result.textBody()).startsWith("12").contains("3000000000").contains("1,234.57");
+    }
+
+    @Test
+    void n2_squaringBigNumbers_isStoppedQuickly() {
+        StringBuilder text = new StringBuilder("[# th:with=\"a0=99999*99999\"]");
+        for (int i = 1; i <= 22; i++) {
+            text.append("[# th:with=\"a").append(i).append("=${a").append(i - 1).append("}*${a").append(i - 1).append("}\"]");
+        }
+        text.append("[[${a22}]]").append("[/]".repeat(23));
+
+        assertFailsFast(template("S", text.toString(), null));
+    }
 }

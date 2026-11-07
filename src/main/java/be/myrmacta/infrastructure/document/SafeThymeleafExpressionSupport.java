@@ -1,6 +1,8 @@
 package be.myrmacta.infrastructure.document;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -58,6 +60,12 @@ final class SafeThymeleafExpressionSupport {
 
     /** Poids d'une valeur : sa longueur divisée par 64 pour une chaîne, sa taille pour une collection. */
     private static long weight(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal.precision() / 64;
+        }
+        if (value instanceof BigInteger integer) {
+            return integer.bitLength() / 200;
+        }
         if (value instanceof CharSequence text) {
             return text.length() / 64;
         }
@@ -73,7 +81,18 @@ final class SafeThymeleafExpressionSupport {
         return 0L;
     }
 
+    /** Un grand nombre (les opérateurs de Thymeleaf multiplient des {@code BigDecimal} sans borne) est plafonné comme une chaîne. */
+    private static void assertNumberWithinLimit(Object value, ExpressionLimits limits) {
+        // 10 bits de poids fort pour 3 chiffres décimaux : bitLength > 3,33 x chiffres.
+        if ((value instanceof BigDecimal decimal && decimal.precision() > limits.stringMaxChars())
+                || (value instanceof BigInteger integer && integer.bitLength() > limits.stringMaxChars() * 10L / 3)) {
+            throw new TemplateProcessingException(
+                    ExpressionLimits.COST_MESSAGE + " (number longer than " + limits.stringMaxChars() + " digits)");
+        }
+    }
+
     private static void assertStringWithinLimit(Object value, ExpressionLimits limits) {
+        assertNumberWithinLimit(value, limits);
         if (value instanceof CharSequence text && text.length() > limits.stringMaxChars()) {
             throw new TemplateProcessingException(
                     ExpressionLimits.COST_MESSAGE + " (string longer than " + limits.stringMaxChars() + " characters)");
@@ -392,9 +411,7 @@ final class SafeThymeleafExpressionSupport {
                 if (arg instanceof CharSequence text && text.length() > stringMax) {
                     throw costLimit("string operand longer than " + stringMax + " characters");
                 }
-                if (arg instanceof Number number) {
-                    intValue(number);
-                }
+                assertNumberWithinLimit(arg, limits);
                 operandWeight += weight(arg);
             }
             ExpressionLimits.charge(1 + operandWeight);

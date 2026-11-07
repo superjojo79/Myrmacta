@@ -70,8 +70,12 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
     opérandes et du résultat (une chaîne pèse sa longueur divisée par 64, une collection sa taille) : les `th:each`
     imbriqués à sortie vide et les littéraux lourds échouent proprement ;
   - `render-timeout-millis` (2 000) : échéance du rendu, contrôlée à chaque évaluation ;
-  - tout argument entier d'un utilitaire hors de la plage `int` est refusé (pas de troncature `long` vers `int`) ; une
-    `Error` levée par un utilitaire (`OutOfMemoryError`) n'est plus avalée.
+  - seuls les arguments qui servent de taille sont contrôlés dans la plage `int` (pas de troncature `long` vers `int`) :
+    `#numbers.sequence` (rangs 0 à 2), `#strings.repeat` (rang 1) et le nombre de chiffres de `#numbers.format*` (rangs 1 et
+    suivants) ; la valeur formatée reste libre (`Double`, `Long`, `BigDecimal`) ;
+  - un `BigDecimal` de plus de `string-max-chars` chiffres (ou un `BigInteger` d'au moins autant de chiffres) est refusé et
+    pèse dans le budget (chiffres divisés par 64) : les opérateurs arithmétiques de Thymeleaf ne sont pas bornés ;
+  - une `Error` levée par un utilitaire (`OutOfMemoryError`) n'est plus avalée.
 
   Toute violation (y compris `StackOverflowError` et `OutOfMemoryError`) lève `TemplateProcessingException`, sans valeur dans
   le message.

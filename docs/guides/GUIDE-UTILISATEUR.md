@@ -151,15 +151,23 @@ Chaque rappel et chaque escalade n'a lieu qu'une fois ; reporter l'échéance (c
 (le rappel recule et l'escalade attend le prochain jour ouvrable). Un dossier en brouillon, clôturé ou archivé n'est
 pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
 
-**Calendrier (TODO §120).** La page **Types** porte une section **Calendrier**, réservée à l'administrateur du tenant :
+**Calendrier (TODO §120, §121).** La page **Types** porte une section **Calendrier**, réservée à l'administrateur du tenant :
 
 - **Fuseau** : jour courant et minuit des minuteurs d'échéance. Défaut `UTC`.
 - **Week-end** : samedi et dimanche (défaut), vendredi et samedi, ou dimanche seul.
-- **Jours fériés** : une date `AAAA-MM-JJ` par ligne, 400 au plus. Ils ne comptent que pour un délai marqué ouvrable.
-- **Ajouter les fériés fédéraux belges** : ajoute les dix dates légales de l'année civile en cours et de la suivante.
-  On peut les retirer. Rien ne se réécrit tout seul l'année suivante.
+- **Dates et périodes** : on choisit une date (**Du**) ou une période (**Du** et **Au**, bornes incluses, 366 jours au
+  plus), une **nature** et un libellé facultatif, puis **Ajouter** ; **Enregistrer le calendrier** envoie le tout.
+  - **Fermé** : le jour ne compte pas pour un délai marqué ouvrable (jour férié, congé collectif).
+  - **Ouvré forcé** : le jour compte, même un samedi ou un dimanche, et même s'il est fermé par une source.
+  - 2 000 lignes manuelles au plus. Le tableau mêle vos lignes et celles des sources, triées par date ; seules les
+    vôtres se suppriment.
+- **Sources** : jeux de jours fermés rechargeables en un bloc, 10 au plus. **Charger les fériés fédéraux belges**
+  crée la source « Fériés fédéraux belges » (année en cours et suivante) ou la recharge : une date supprimée à la
+  main n'y revient donc pas, car vos lignes manuelles passent avant les sources et ne sont jamais touchées par un
+  rechargement. Un jour d'une source recouvert par un jour ouvré forcé est signalé « Surchargé ».
+- Les jours fermés ne comptent que pour un délai marqué ouvrable.
 
-Le calendrier voyage avec la promotion de configuration.
+Le calendrier voyage avec la promotion de configuration : saisies et sources, avec leurs périodes.
 
 **Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
 un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :

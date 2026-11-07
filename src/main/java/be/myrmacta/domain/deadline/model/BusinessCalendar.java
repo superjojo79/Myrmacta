@@ -8,8 +8,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * TODO §120 (D-CAL-COUNT, D-CAL-ZONE, D-CAL-TIMER) — jour civil du fuseau, avance et recul calendaires ou ouvrables.
- * Le jour de départ ne compte pas. Un jour férié qui tombe le week-end n'est qu'un jour fermé.
+ * TODO §120 (D-CAL-COUNT, D-CAL-ZONE, D-CAL-TIMER) et §121 (D-CAL-OVERRIDE) — jour civil du fuseau, avance et recul
+ * calendaires ou ouvrables. Le jour de départ ne compte pas. Un jour férié qui tombe le week-end n'est qu'un jour
+ * fermé. Un jour ouvré forcé l'emporte sur tout : jour fermé comme week-end.
  */
 public final class BusinessCalendar {
 
@@ -19,11 +20,18 @@ public final class BusinessCalendar {
     private final ZoneId zone;
     private final WeekendPattern weekend;
     private final Set<LocalDate> holidays;
+    private final Set<LocalDate> forcedOpen;
 
     public BusinessCalendar(ZoneId zone, WeekendPattern weekend, Set<LocalDate> holidays) {
+        this(zone, weekend, holidays, Set.of());
+    }
+
+    /** {@code holidays} : jours fermés déroulés ; {@code forcedOpen} : jours ouvrés forcés, déroulés eux aussi. */
+    public BusinessCalendar(ZoneId zone, WeekendPattern weekend, Set<LocalDate> holidays, Set<LocalDate> forcedOpen) {
         this.zone = Objects.requireNonNull(zone, "zone");
         this.weekend = Objects.requireNonNull(weekend, "weekend");
         this.holidays = Set.copyOf(Objects.requireNonNull(holidays, "holidays"));
+        this.forcedOpen = Set.copyOf(Objects.requireNonNull(forcedOpen, "forcedOpen"));
     }
 
     public static BusinessCalendar defaults() {
@@ -42,11 +50,18 @@ public final class BusinessCalendar {
         return holidays;
     }
 
+    public Set<LocalDate> forcedOpen() {
+        return forcedOpen;
+    }
+
     public LocalDate today(Instant instant) {
         return LocalDate.ofInstant(Objects.requireNonNull(instant, "instant"), zone);
     }
 
     public boolean isBusinessDay(LocalDate date) {
+        if (forcedOpen.contains(date)) {
+            return true;
+        }
         return !weekend.isWeekend(date) && !holidays.contains(date);
     }
 

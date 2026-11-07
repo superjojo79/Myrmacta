@@ -27,6 +27,22 @@ public final class BelgianFederalHolidays {
                 LocalDate.of(year, 12, 25));
     }
 
+    /** Libellés français, dans l'ordre de {@link #of(int)}. */
+    private static final List<String> LABELS = List.of("Jour de l'an", "Lundi de Pâques", "Fête du Travail", "Ascension",
+            "Lundi de Pentecôte", "Fête nationale", "Assomption", "Toussaint", "Armistice", "Noël");
+
+    /** TODO §121 (D-CAL-BE-SOURCE) — les fériés des deux années, en jours fermés libellés. */
+    public static List<CalendarEntry> entries(int year, int otherYear) {
+        List<CalendarEntry> entries = new ArrayList<>();
+        for (int y : new int[] {year, otherYear}) {
+            List<LocalDate> dates = of(y);
+            for (int i = 0; i < dates.size(); i++) {
+                entries.add(CalendarEntry.day(dates.get(i), CalendarEntry.Nature.CLOSED, LABELS.get(i)));
+            }
+        }
+        return List.copyOf(entries);
+    }
+
     public static List<LocalDate> of(int year, int otherYear) {
         List<LocalDate> dates = new ArrayList<>(of(year));
         dates.addAll(of(otherYear));

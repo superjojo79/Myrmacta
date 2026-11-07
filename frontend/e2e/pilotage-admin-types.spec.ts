@@ -71,15 +71,67 @@ test('E2E-PAGE-1 admin types pager writes page query', async ({ page }) => {
   await expect(page.getByRole('cell', { name: 'FAC', exact: true })).toBeVisible()
 })
 
-test('E2E-CAL-1 admin saves the tenant calendar', async ({ page }) => {
+test('E2E-CAL-1 admin adds a day and a period to the tenant calendar and saves them', async ({ page }) => {
   await mockSession(page)
   await openApp(page)
   await page.getByRole('link', { name: 'Types' }).click()
   await expect(page.getByRole('heading', { name: 'Calendrier' })).toBeVisible()
   await page.getByTestId('calendar-zone').fill('Europe/Brussels')
-  await page.getByTestId('calendar-holidays').fill('2026-12-25')
+
+  await page.getByTestId('entry-start').fill('2026-12-24')
+  await page.getByTestId('entry-end').fill('2026-12-31')
+  await page.getByTestId('entry-label').fill('Congé collectif')
+  await page.getByTestId('entry-add').click()
+  await page.getByTestId('entry-start').fill('2026-11-14')
+  await page.getByTestId('entry-nature').selectOption('OPEN')
+  await page.getByTestId('entry-label').fill('Samedi travaillé')
+  await page.getByTestId('entry-add').click()
+  await expect(page.getByTestId('entry-row-manual')).toHaveCount(2)
+  await expect(page.getByTestId('calendar-entries')).toContainText('2026-12-24 → 2026-12-31')
+
+  const put = page.waitForRequest((request) => request.url().endsWith('/api/tenant/calendar') && request.method() === 'PUT')
   await page.getByTestId('calendar-save').click()
+  expect((await put).postDataJSON()).toEqual({
+    zoneId: 'Europe/Brussels',
+    weekend: 'SATURDAY_SUNDAY',
+    entries: [
+      { start: '2026-12-24', end: '2026-12-31', nature: 'CLOSED', label: 'Congé collectif' },
+      { start: '2026-11-14', end: '2026-11-14', nature: 'OPEN', label: 'Samedi travaillé' },
+    ],
+  })
   await expect(page.getByTestId('calendar-saved')).toBeVisible()
+})
+
+test('E2E-CAL-2 admin loads the Belgian holidays and a forced working day overrides one of them', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByTestId('calendar-sources-empty')).toBeVisible()
+
+  await page.getByTestId('calendar-belgian').click()
+  await expect(page.getByTestId('calendar-source')).toContainText('Fériés fédéraux belges')
+  await expect(page.getByTestId('entry-row-source')).toHaveCount(2)
+  await expect(page.getByTestId('entry-overridden')).toHaveCount(0)
+
+  await page.getByTestId('entry-start').fill('2026-12-25')
+  await page.getByTestId('entry-nature').selectOption('OPEN')
+  await page.getByTestId('entry-label').fill('On travaille')
+  await page.getByTestId('entry-add').click()
+  await expect(page.getByTestId('entry-overridden')).toHaveCount(1)
+  await expect(page.getByTestId('entry-row-source').first()).toContainText('Surchargé par un jour ouvré forcé')
+})
+
+test('E2E-CAL-3 the entry form refuses an end before the start and sends nothing', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+
+  await page.getByTestId('entry-start').fill('2026-12-31')
+  await page.getByTestId('entry-end').fill('2026-12-24')
+  await page.getByTestId('entry-add').click()
+
+  await expect(page.getByTestId('entry-error')).toContainText('précède')
+  await expect(page.getByTestId('entry-row-manual')).toHaveCount(0)
 })
 
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {

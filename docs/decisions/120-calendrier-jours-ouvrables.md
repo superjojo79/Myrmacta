@@ -2,6 +2,9 @@
 
 > **Statut :** clos · **Section :** [Décisions actées › Opérationnel](section-decisions-operationnel.md) · [registre](README.md)
 
+> **Complété par [§121](121-calendrier-saisie-sources-ics.md)** : la liste plate de dates (D-CAL-HOLIDAYS) devient des saisies
+> et des sources.
+
 **Contexte (issue #8).** D-DEADLINE-CALENDAR (§115) laissait les délais en jours calendaires. Le cadrage du 2026-11-06
 fixe le week-end, le décompte, l'endroit où le mode se choisit, le fuseau, les fériés belges et l'escalade.
 

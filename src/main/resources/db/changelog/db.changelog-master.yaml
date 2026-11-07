@@ -91,3 +91,5 @@ databaseChangeLog:
       file: db/changelog/changes/045-dossier-deadline.yaml
   - include:
       file: db/changelog/changes/046-tenant-calendar.yaml
+  - include:
+      file: db/changelog/changes/047-tenant-calendar-entries.yaml

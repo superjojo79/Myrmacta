@@ -1,6 +1,8 @@
 package be.myrmacta.domain.deadline.usecase;
 
 import be.myrmacta.domain.deadline.model.BelgianFederalHolidays;
+import be.myrmacta.domain.deadline.model.CalendarEntry;
+import be.myrmacta.domain.deadline.model.CalendarSource;
 import be.myrmacta.domain.deadline.model.TenantCalendar;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
 import be.myrmacta.domain.deadline.port.in.ManageTenantCalendarUseCase;
@@ -9,12 +11,15 @@ import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository.StoredTenan
 import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import java.time.Clock;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
-/** TODO §120 — le calendrier lu sans ligne en base est le défaut, non persisté tant qu'on ne l'enregistre pas. */
+/** TODO §120 et §121 — le calendrier lu sans ligne en base est le défaut, non persisté tant qu'on ne l'enregistre pas. */
 public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalendarUseCase {
+
+    /** Nom de la source des fériés fédéraux belges (D-CAL-BE-SOURCE). */
+    public static final String BELGIAN_SOURCE_NAME = "Fériés fédéraux belges";
 
     private final String tenantId;
     private final TenantCalendarRepository repository;
@@ -35,21 +40,37 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
     }
 
     @Override
-    public StoredTenantCalendar replace(AccessContext.User actor, String zoneId, WeekendPattern weekend, List<LocalDate> holidays) {
+    public StoredTenantCalendar replace(AccessContext.User actor, String zoneId, WeekendPattern weekend, List<CalendarEntry> manual) {
         guard.requireTenantAdmin(actor);
-        TenantCalendar calendar = new TenantCalendar(zoneId, weekend, holidays);
-        StoredTenantCalendar stored = new StoredTenantCalendar(tenantId, calendar, clock.instant(), actor.userId());
-        repository.save(stored);
-        return stored;
+        TenantCalendar next = current().withSettings(zoneId, weekend, manual);
+        return saveSettings(next, actor);
     }
 
     @Override
-    public StoredTenantCalendar addBelgianFederalHolidays(AccessContext.User actor) {
+    public StoredTenantCalendar loadBelgianFederalHolidays(AccessContext.User actor) {
         guard.requireTenantAdmin(actor);
-        TenantCalendar current = repository.find(tenantId).map(StoredTenantCalendar::calendar).orElseGet(TenantCalendar::defaults);
-        int year = current.toCalendar().today(clock.instant()).getYear();
-        TenantCalendar filled = current.plus(BelgianFederalHolidays.of(year, year + 1));
-        StoredTenantCalendar stored = new StoredTenantCalendar(tenantId, filled, clock.instant(), actor.userId());
+        TenantCalendar current = current();
+        Instant now = clock.instant();
+        int year = current.toCalendar().today(now).getYear();
+        List<CalendarEntry> days = BelgianFederalHolidays.entries(year, year + 1);
+        CalendarSource source = current.sources().stream()
+                .filter(existing -> existing.kind() == CalendarSource.Kind.BE_FEDERAL)
+                .findFirst()
+                .map(existing -> existing.reloaded(days, now, actor.userId(), null))
+                .orElseGet(() -> CalendarSource.create(BELGIAN_SOURCE_NAME, CalendarSource.Kind.BE_FEDERAL, days, now,
+                        actor.userId(), null));
+        TenantCalendar next = current.withSource(source);
+        StoredTenantCalendar stored = saveSettings(next, actor);
+        repository.saveSource(tenantId, source);
+        return stored;
+    }
+
+    private TenantCalendar current() {
+        return repository.find(tenantId).map(StoredTenantCalendar::calendar).orElseGet(TenantCalendar::defaults);
+    }
+
+    private StoredTenantCalendar saveSettings(TenantCalendar calendar, AccessContext.User actor) {
+        StoredTenantCalendar stored = new StoredTenantCalendar(tenantId, calendar, clock.instant(), actor.userId());
         repository.save(stored);
         return stored;
     }

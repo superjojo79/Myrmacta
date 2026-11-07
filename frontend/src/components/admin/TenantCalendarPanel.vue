@@ -3,32 +3,35 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toProblemDetail } from '@/api/http'
 import {
-  addBelgianFederalHolidays,
   getTenantCalendar,
   replaceTenantCalendar,
+  type CalendarEntry,
+  type CalendarSource,
   type TenantCalendar,
   type WeekendPattern,
 } from '@/api/tenantCalendar'
+import CalendarEntryForm from './CalendarEntryForm.vue'
+import CalendarEntryList from './CalendarEntryList.vue'
+import CalendarSourcesPanel from './CalendarSourcesPanel.vue'
 
-/** TODO §120 (D-CAL-ZONE, D-CAL-WEEKEND, D-CAL-HOLIDAYS) — fuseau, week-end et jours fériés du tenant. */
+/**
+ * TODO §120 (D-CAL-ZONE, D-CAL-WEEKEND) et §121 (D-CAL-ENTRY, D-CAL-OVERRIDE, D-CAL-SOURCE) — fuseau, week-end,
+ * saisies manuelles et sources du tenant. Les saisies s'enregistrent avec le fuseau et le week-end ; les sources
+ * s'enregistrent d'elles-mêmes.
+ */
 const { t } = useI18n()
 const zoneId = ref('UTC')
 const weekend = ref<WeekendPattern>('SATURDAY_SUNDAY')
-const holidaysText = ref('')
+const entries = ref<CalendarEntry[]>([])
+const sources = ref<CalendarSource[]>([])
 const error = ref<string | null>(null)
 const saved = ref(false)
 
 function apply(calendar: TenantCalendar) {
   zoneId.value = calendar.zoneId
   weekend.value = calendar.weekend
-  holidaysText.value = calendar.holidays.join('\n')
-}
-
-function dates(): string[] {
-  return holidaysText.value
-    .split(/[\s,]+/)
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0)
+  entries.value = calendar.entries
+  sources.value = calendar.sources
 }
 
 onMounted(async () => {
@@ -39,22 +42,26 @@ onMounted(async () => {
   }
 })
 
+function add(entry: CalendarEntry) {
+  saved.value = false
+  entries.value = [...entries.value, entry]
+}
+
+function remove(index: number) {
+  saved.value = false
+  entries.value = entries.value.filter((_, i) => i !== index)
+}
+
+function sourcesChanged(next: CalendarSource[]) {
+  saved.value = false
+  sources.value = next
+}
+
 async function save() {
   error.value = null
   saved.value = false
   try {
-    apply(await replaceTenantCalendar({ zoneId: zoneId.value.trim(), weekend: weekend.value, holidays: dates() }))
-    saved.value = true
-  } catch (err) {
-    error.value = toProblemDetail(err).detail ?? t('admin.types.calendar.errors.save')
-  }
-}
-
-async function belgian() {
-  error.value = null
-  saved.value = false
-  try {
-    apply(await addBelgianFederalHolidays())
+    apply(await replaceTenantCalendar({ zoneId: zoneId.value.trim(), weekend: weekend.value, entries: entries.value }))
     saved.value = true
   } catch (err) {
     error.value = toProblemDetail(err).detail ?? t('admin.types.calendar.errors.save')
@@ -80,13 +87,12 @@ async function belgian() {
           <option value="SUNDAY_ONLY">{{ t('admin.types.calendar.sundayOnly') }}</option>
         </select>
       </label>
-      <label>
-        {{ t('admin.types.calendar.holidays') }}
-        <textarea v-model="holidaysText" rows="4" data-testid="calendar-holidays" />
-      </label>
       <button type="submit" data-testid="calendar-save">{{ t('admin.types.calendar.save') }}</button>
-      <button type="button" data-testid="calendar-belgian" @click="belgian">{{ t('admin.types.calendar.belgian') }}</button>
       <span v-if="saved" class="hint" data-testid="calendar-saved">{{ t('admin.types.calendar.saved') }}</span>
     </form>
+    <h3>{{ t('admin.types.calendar.entries.title') }}</h3>
+    <CalendarEntryForm @add="add" />
+    <CalendarEntryList :manual="entries" :sources="sources" @remove="remove" />
+    <CalendarSourcesPanel :sources="sources" @changed="sourcesChanged" />
   </section>
 </template>

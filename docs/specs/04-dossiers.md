@@ -1079,3 +1079,31 @@ D-DEADLINE-ESCALATE).
     - `ComputeDeadlineDelegateTest` ;
     - `FlowableBpmnParserAdapterUelSurfaceTest` (formes admises et refusées) ;
     - `MailRoomExampleIT` (le minuteur `${echeanceDepassee}` du process `traiterReponse` clôture la réponse échue).
+
+## Implémentation — calendrier du tenant : saisies, sources et surcharges (TODO §120, §121, issue #33)
+
+Décisions : [§120](../decisions/120-calendrier-jours-ouvrables.md) (fuseau, week-end, comptage),
+[§121](../decisions/121-calendrier-saisie-sources-ics.md) (D-CAL-ENTRY, D-CAL-OVERRIDE, D-CAL-SOURCE, D-CAL-BE-SOURCE,
+D-CAL-API, D-CAL-PROMO-2).
+
+- **Modèle.** `TenantCalendar` = fuseau, week-end, saisies manuelles (`CalendarEntry` : début, fin, nature `CLOSED`
+  ou `OPEN`, libellé) et sources (`CalendarSource` : jours `CLOSED` seulement). `toCalendar()` déroule les périodes en
+  deux ensembles pour `BusinessCalendar`.
+  - Priorité (D-CAL-OVERRIDE) : manuel `OPEN`, puis manuel `CLOSED`, puis jour fermé d'une source, puis week-end.
+  - Plafonds : 366 jours par période, 2 000 saisies, 10 sources, 10 000 périodes par source, 200 000 jours déroulés.
+- **Stockage.** Tables `tenant_calendar` (fuseau, week-end), `tenant_calendar_source` et `tenant_calendar_entry`
+  (changeset 047). Une saisie manuelle a `source_id` nul ; supprimer une source supprime ses jours. Les dates de
+  l'ancienne colonne `holidays` sont reprises en saisies manuelles `CLOSED`.
+- **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié ; la
+  réponse porte `entries`, `sources` et `holidays` calculé) ; `POST /api/tenant/calendar/belgian-federal-holidays`
+  crée ou recharge la source `BE_FEDERAL` (années courante et suivante, fuseau du tenant).
+- **Écran** : Admin → Types → Calendrier. Formulaire Du / Au / nature / libellé (`CalendarEntryForm`), tableau trié
+  des saisies et des jours de source (`CalendarEntryList`, jour de source recouvert par un jour ouvré forcé signalé),
+  sources (`CalendarSourcesPanel`).
+- **Promotion.** L'artefact `CALENDAR` est un instantané complet (saisies et sources déroulées, sans URL) ; un ancien
+  bundle à liste plate s'importe en saisies manuelles. Une source de même nom garde son identifiant ; une source absente
+  du bundle est supprimée.
+- **Tests.** `CalendarEntryTest`, `TenantCalendarTest`, `BusinessCalendarTest`, `ManageTenantCalendarUseCaseImplTest`,
+  `TenantCalendarApiTest` (chaîne HTTP et sécurité, isolation du tenant), `TenantCalendarEntriesMigrationIT`,
+  `TypeSettingsArtifactsCalendarTest` ; Vitest (`TenantCalendarPanel`, `CalendarEntryForm`, `CalendarEntryList`,
+  `CalendarSourcesPanel`) et Playwright `E2E-CAL-1` à `3`.

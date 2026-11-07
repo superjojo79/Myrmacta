@@ -3829,10 +3829,28 @@ components:
           type: string
         weekend:
           type: string
-        holidays:
+        entries:
           type: array
           items:
+            $ref: "#/components/schemas/EntryDto"
+        holidays:
+          type: array
+          deprecated: true
+          description: "Ancien format : dates ISO converties en jours fermés d'un\
+            \ jour. Exclusif avec entries."
+          items:
             type: string
+    EntryDto:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        nature:
+          type: string
+        label:
+          type: string
     CalendarResponse:
       type: object
       properties:
@@ -3842,8 +3860,19 @@ components:
           type: string
         weekend:
           type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntryDto"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceDto"
         holidays:
           type: array
+          deprecated: true
+          description: "Jours fermés effectifs (sources et saisies fermées, moins\
+            \ les jours ouvrés forcés), calculés."
           items:
             type: string
         updatedAt:
@@ -3851,6 +3880,32 @@ components:
           format: date-time
         updatedBy:
           type: string
+    SourceDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          type: string
+        maskedUrl:
+          type: string
+        entryCount:
+          type: integer
+          format: int32
+        loadedAt:
+          type: string
+          format: date-time
+        loadedBy:
+          type: string
+        lastError:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntryDto"
     FieldDefinition:
       type: object
       properties:

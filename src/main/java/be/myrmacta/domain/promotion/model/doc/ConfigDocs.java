@@ -130,11 +130,30 @@ public final class ConfigDocs {
         }
     }
 
-    /** TODO §120 (D-CAL-PROMO) — calendrier du tenant. {@code holidays} : dates ISO. */
-    public record CalendarDoc(String zoneId, String weekend, java.util.List<String> holidays) {
+    /**
+     * TODO §120 (D-CAL-PROMO) et §121 (D-CAL-PROMO-2) — instantané complet du calendrier du tenant : fuseau, week-end,
+     * saisies manuelles et chaque source avec ses périodes déjà déroulées. Une source ICS_URL est exportée sans son
+     * URL. {@code holidays} (dates ISO) n'est lu que dans un ancien bundle, converti en saisies manuelles
+     * {@code CLOSED} ; un export neuf le laisse nul.
+     */
+    public record CalendarDoc(String zoneId, String weekend, java.util.List<String> holidays,
+                              java.util.List<CalendarEntryDoc> entries, java.util.List<CalendarSourceDoc> sources) {
 
         public CalendarDoc {
-            holidays = holidays == null ? java.util.List.of() : java.util.List.copyOf(holidays);
+            holidays = holidays == null ? null : java.util.List.copyOf(holidays);
+            entries = entries == null ? java.util.List.of() : java.util.List.copyOf(entries);
+            sources = sources == null ? java.util.List.of() : java.util.List.copyOf(sources);
+        }
+    }
+
+    /** Une date ou une période ({@code end} = {@code start} pour un jour), dates ISO. */
+    public record CalendarEntryDoc(String start, String end, String nature, String label) {}
+
+    /** Une source : nom, type, date du dernier chargement (ISO, facultative) et ses périodes fermées. */
+    public record CalendarSourceDoc(String name, String kind, String loadedAt, java.util.List<CalendarEntryDoc> entries) {
+
+        public CalendarSourceDoc {
+            entries = entries == null ? java.util.List.of() : java.util.List.copyOf(entries);
         }
     }
 

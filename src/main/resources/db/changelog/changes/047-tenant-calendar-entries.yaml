@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 047-tenant-calendar-entries
+      author: myrmacta
+      comment: >-
+        TODO §121 (D-CAL-ENTRY, D-CAL-SOURCE) — saisies manuelles et sources du calendrier du tenant, en périodes.
+        TODO §121 (D-CAL-BE-SOURCE) — les dates de la colonne holidays (changeset 046) deviennent des saisies
+        manuelles CLOSED d'un jour, sans libellé, puis la colonne disparaît.
+      changes:
+        - createTable:
+            tableName: tenant_calendar_source
+            columns:
+              - column: {name: id, type: uuid, constraints: {nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: name, type: varchar(80), constraints: {nullable: false}}
+              - column: {name: kind, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: url_ciphertext, type: text}
+              - column: {name: loaded_at, type: timestamp with time zone}
+              - column: {name: loaded_by, type: varchar(255)}
+              - column: {name: content_sha256, type: varchar(64)}
+              - column: {name: last_error, type: varchar(500)}
+        - addPrimaryKey:
+            tableName: tenant_calendar_source
+            columnNames: id
+            constraintName: pk_tenant_calendar_source
+        - sql:
+            sql: create unique index uq_tenant_calendar_source_name on tenant_calendar_source (tenant_id, lower(name))
+            comment: nom de source unique par tenant, casse ignorée
+        - createTable:
+            tableName: tenant_calendar_entry
+            columns:
+              - column: {name: id, type: uuid, constraints: {nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: source_id, type: uuid}
+              - column: {name: start_date, type: date, constraints: {nullable: false}}
+              - column: {name: end_date, type: date, constraints: {nullable: false}}
+              - column: {name: nature, type: varchar(8), constraints: {nullable: false}}
+              - column: {name: label, type: varchar(120)}
+        - addPrimaryKey:
+            tableName: tenant_calendar_entry
+            columnNames: id
+            constraintName: pk_tenant_calendar_entry
+        - addForeignKeyConstraint:
+            baseTableName: tenant_calendar_entry
+            baseColumnNames: source_id
+            referencedTableName: tenant_calendar_source
+            referencedColumnNames: id
+            constraintName: fk_tenant_calendar_entry_source
+            onDelete: CASCADE
+        - sql:
+            sql: alter table tenant_calendar_entry add constraint ck_tenant_calendar_entry_period check (end_date >= start_date)
+        - sql:
+            sql: alter table tenant_calendar_entry add constraint ck_tenant_calendar_entry_nature check (nature in ('CLOSED', 'OPEN'))
+        - createIndex:
+            tableName: tenant_calendar_entry
+            indexName: idx_tenant_calendar_entry_tenant_source
+            columns:
+              - column: {name: tenant_id}
+              - column: {name: source_id}
+        - sql:
+            sql: >-
+              insert into tenant_calendar_entry (id, tenant_id, source_id, start_date, end_date, nature, label)
+              select gen_random_uuid(), x.tenant_id, null, x.day, x.day, 'CLOSED', null
+              from (
+                select distinct c.tenant_id, btrim(d)::date as day
+                from tenant_calendar c, unnest(string_to_array(c.holidays, ',')) as d
+                where btrim(d) <> ''
+              ) x
+            comment: reprise des dates du changeset 046 en saisies manuelles
+        - dropColumn:
+            tableName: tenant_calendar
+            columnName: holidays

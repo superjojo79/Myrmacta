@@ -254,49 +254,46 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
   })
+  // TODO §121 : le calendrier garde son état entre les appels (saisies renvoyées telles qu'enregistrées, source belge fixe).
+  const calendar = {
+    tenantId: 'tenant_dev',
+    zoneId: 'UTC',
+    weekend: 'SATURDAY_SUNDAY',
+    entries: [] as unknown[],
+    sources: [] as unknown[],
+    holidays: [] as string[],
+    updatedAt: null as string | null,
+    updatedBy: null as string | null,
+  }
   await page.route('**/api/tenant/calendar/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        tenantId: 'tenant_dev',
-        zoneId: 'Europe/Brussels',
-        weekend: 'SATURDAY_SUNDAY',
-        holidays: ['2026-11-11', '2026-12-25'],
-        updatedAt: '2026-11-06T00:00:00Z',
-        updatedBy: 'admin',
-      }),
-    })
+    calendar.sources = [
+      {
+        id: 'src-be',
+        name: 'Fériés fédéraux belges',
+        kind: 'BE_FEDERAL',
+        maskedUrl: null,
+        entryCount: 2,
+        loadedAt: '2026-11-07T10:00:00Z',
+        loadedBy: 'admin',
+        lastError: null,
+        entries: [
+          { start: '2026-12-25', end: '2026-12-25', nature: 'CLOSED', label: 'Noël' },
+          { start: '2027-01-01', end: '2027-01-01', nature: 'CLOSED', label: "Jour de l'an" },
+        ],
+      },
+    ]
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(calendar) })
   })
   await page.route('**/api/tenant/calendar', async (route) => {
     if (route.request().method() === 'PUT') {
-      const body = route.request().postDataJSON() as { zoneId: string; weekend: string; holidays: string[] }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          tenantId: 'tenant_dev',
-          zoneId: body.zoneId,
-          weekend: body.weekend,
-          holidays: body.holidays,
-          updatedAt: '2026-11-06T00:00:00Z',
-          updatedBy: 'admin',
-        }),
-      })
-      return
+      const body = route.request().postDataJSON() as { zoneId: string; weekend: string; entries: unknown[] }
+      calendar.zoneId = body.zoneId
+      calendar.weekend = body.weekend
+      calendar.entries = body.entries
+      calendar.updatedAt = '2026-11-07T00:00:00Z'
+      calendar.updatedBy = 'admin'
     }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        tenantId: 'tenant_dev',
-        zoneId: 'UTC',
-        weekend: 'SATURDAY_SUNDAY',
-        holidays: [],
-        updatedAt: null,
-        updatedBy: null,
-      }),
-    })
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(calendar) })
   })
   await page.route('**/api/tenant/retention-settings', async (route) => {
     if (route.request().method() === 'GET') {

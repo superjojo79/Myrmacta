@@ -140,6 +140,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 119 | [Observabilité de la migration Liquibase par instance de tenant](119-observabilite-migration-liquibase-par-tenant.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 | 120 | [Calendrier de jours ouvrables des échéances](120-calendrier-jours-ouvrables.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 | 121 | [Calendrier du tenant : saisie par période, sources ICS, surcharges et rechargement](121-calendrier-saisie-sources-ics.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
+| 122 | [Persistance applicative : JPA seulement](122-persistance-jpa-seulement.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 
 ## Sections de l'ancien registre
 

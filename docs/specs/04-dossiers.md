@@ -1132,6 +1132,6 @@ D-CAL-API, D-CAL-PROMO-2).
   `TenantCalendarApiTest` (chaîne HTTP et sécurité, isolation du tenant), `TenantCalendarEntriesMigrationIT`,
   `TypeSettingsArtifactsCalendarTest`, `Ical4jIcsCalendarParserTest`, `CalendarUrlTest`, `HttpsIcsFetcherTest` (serveurs
   locaux : redirection, taille, lenteur du corps et des en-têtes, garde réseau), `OutboundUrlGuardTest` (graphies IPv6),
-  `JdbcTenantCalendarIT` (courses entre deux administrateurs, annulation, autre tenant, secret supprimé) ; Vitest (`TenantCalendarPanel`,
+  `JpaTenantCalendarRepositoryAdapterIT` (courses entre deux administrateurs, annulation, autre tenant, secret supprimé) ; Vitest (`TenantCalendarPanel`,
   `CalendarEntryForm`, `CalendarEntryList`, `CalendarSourcesPanel`, `CalendarImportPreview`) et Playwright `E2E-CAL-1`
   à `11`.

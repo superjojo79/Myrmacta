@@ -185,6 +185,33 @@ class ArchitectureRulesTest {
                     be.myrmacta.domain.dossier.model.AccessContext.External.class, java.util.UUID.class)
             .because("AccessContext.External bypasses dossier ACLs and must only come from a resolved portal link");
 
+    /**
+     * TODO §122 : la persistance applicative passe par JPA seulement — une entité {@code *JpaEntity}, un dépôt
+     * {@code SpringData*Repository} et un adaptateur {@code Jpa*Adapter} (requêtes JPQL ou natives au besoin, verrou
+     * pessimiste par {@code @Lock}). Ni {@code JdbcTemplate}, ni {@code NamedParameterJdbcTemplate}, ni {@code JdbcClient}.
+     *
+     * <p>Ces adaptateurs écrits avant la règle y échappent encore ; ils sont à migrer, et cette liste ne doit que se
+     * raccourcir : n'y ajouter aucune classe.
+     */
+    private static final Set<String> LEGACY_JDBC_ADAPTERS = Set.of(
+            "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineAlertClaims",
+            "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineCandidates",
+            "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineSettings",
+            "be.myrmacta.infrastructure.persistence.dossier.JdbcDossierUniqueValueStore",
+            "be.myrmacta.infrastructure.persistence.dossier.SequentialReferenceGenerator",
+            "be.myrmacta.infrastructure.persistence.mailroom.JdbcMailMessageIndex",
+            "be.myrmacta.infrastructure.persistence.mailroom.JdbcReplyWorkflowSettings",
+            "be.myrmacta.infrastructure.persistence.precheck.JdbcPrecheckRunRepository",
+            "be.myrmacta.infrastructure.persistence.workflow.JdbcPortalIdentityRepository",
+            "be.myrmacta.infrastructure.persistence.workflow.JdbcWorkflowLinkGroupRepository");
+
+    @ArchTest
+    static final ArchRule persistence_goes_through_jpa_only = noClasses()
+            .that(notIn(LEGACY_JDBC_ADAPTERS))
+            .should().dependOnClassesThat().resideInAnyPackage("org.springframework.jdbc.core..")
+            .because("la persistance applicative est en JPA seulement (registre §122) ; ajouter une classe à "
+                    + "ArchitectureRulesTest.LEGACY_JDBC_ADAPTERS est interdit, la liste ne fait que se raccourcir");
+
     private static DescribedPredicate<JavaClass> notIn(Set<String> allowlist) {
         return new DescribedPredicate<>("not in the allowlist " + allowlist) {
             @Override

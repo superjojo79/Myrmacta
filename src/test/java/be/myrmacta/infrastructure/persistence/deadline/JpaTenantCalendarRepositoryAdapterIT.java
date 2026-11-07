@@ -39,7 +39,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
-class JdbcTenantCalendarIT {
+class JpaTenantCalendarRepositoryAdapterIT {
 
     private static final String TENANT = "tenant_dev";
     private static final String OTHER = "tenant_autre";

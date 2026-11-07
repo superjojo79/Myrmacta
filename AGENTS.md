@@ -35,6 +35,8 @@ et `groupId` : `be.myrmacta`. Règles détaillées : skill `myrmacta-conventions
 - Créer un nouveau fichier de suivi (file d'attente, backlog, avancement) : le backlog vit dans les issues.
 - Renuméroter, fusionner ou supprimer un point du registre ou un identifiant cité par le code.
 - Modifier un changeSet Liquibase existant ; ignorer ou désactiver un test ; trancher en silence un point ouvert.
+- Persister avec `JdbcTemplate`, `NamedParameterJdbcTemplate` ou `JdbcClient` : JPA seulement (entité `*JpaEntity`, dépôt Spring Data,
+  adaptateur `Jpa*Adapter`), registre §122.
 
 ## Vérifier avant d'annoncer un succès
 

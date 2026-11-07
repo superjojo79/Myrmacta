@@ -239,6 +239,72 @@ test('E2E-CAL-8 admin deletes a source after confirming', async ({ page }) => {
   await expect(page.getByTestId('entry-row-source')).toHaveCount(0)
 })
 
+const SECRET_URL = 'https://calendar.example.org/ical/TOPSECRET-TOKEN/basic.ics'
+
+async function importUrl(page: import('@playwright/test').Page, name: string, url: string) {
+  await page.getByTestId('source-mode').selectOption('url')
+  await page.getByTestId('source-name').fill(name)
+  await page.getByTestId('source-url-input').fill(url)
+  await page.getByTestId('source-preview').click()
+}
+
+test('E2E-CAL-9 admin adds an URL source: the secret URL goes out once and is never shown again', async ({ page }) => {
+  await openCalendar(page)
+
+  await importUrl(page, 'Agenda', SECRET_URL)
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('2026-12-24 → 2026-12-26')
+  await expect(page.locator('body')).not.toContainText('TOPSECRET')
+
+  const created = page.waitForRequest((request) => request.url().endsWith('/api/tenant/calendar/sources') && request.method() === 'POST')
+  await page.getByTestId('import-confirm').click()
+  expect((await created).postDataJSON()).toEqual({ name: 'Agenda', url: SECRET_URL, expectedSha256: 'sha-url' })
+
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('source-url')).toHaveText('https://calendar.example.org/…')
+  await expect(page.getByTestId('entry-row-source')).toContainText('Agenda')
+  await expect(page.getByTestId('source-url-input')).toHaveValue('')
+  await expect(page.locator('body')).not.toContainText('TOPSECRET')
+  await expect(page.locator('body')).not.toContainText('basic.ics')
+})
+
+test('E2E-CAL-10 admin reloads an URL source from the stored URL, then changes the URL', async ({ page }) => {
+  await openCalendar(page)
+  await importUrl(page, 'Agenda', SECRET_URL)
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('calendar-source')).toBeVisible()
+
+  const reload = page.waitForRequest((request) => /\/sources\/src-url\/reload$/.test(request.url()))
+  await page.getByTestId('source-reload').click()
+  await expect(page.getByRole('dialog')).toContainText('2027-01-11')
+  await page.getByTestId('import-confirm').click()
+  expect((await reload).postDataJSON()).toEqual({ url: null, expectedSha256: 'sha-url-2' })
+  await expect(page.getByTestId('entry-row-source')).toContainText('Reprise')
+
+  await page.getByTestId('source-url-change').click()
+  await page.getByTestId('source-url-edit').fill('https://other.example.net:8443/feed/NEWSECRET.ics')
+  await page.getByTestId('source-url-edit-preview').click()
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('source-url')).toHaveText('https://other.example.net:8443/…')
+  await expect(page.locator('body')).not.toContainText('NEWSECRET')
+})
+
+test('E2E-CAL-11 an URL reload whose content changed asks to preview again', async ({ page }) => {
+  await openCalendar(page)
+  await importUrl(page, 'Agenda', SECRET_URL)
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('calendar-source')).toBeVisible()
+
+  await page.getByTestId('source-url-change').click()
+  await page.getByTestId('source-url-edit').fill('https://calendar.example.org/stale.ics')
+  await page.getByTestId('source-url-edit-preview').click()
+  await page.getByTestId('import-confirm').click()
+
+  await expect(page.getByTestId('import-error')).toContainText("relancez l'aperçu")
+  await page.getByTestId('import-cancel').click()
+  await expect(page.getByTestId('source-url')).toHaveText('https://calendar.example.org/…')
+})
+
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

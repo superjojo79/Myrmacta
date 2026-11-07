@@ -1092,7 +1092,7 @@ D-CAL-API, D-CAL-PROMO-2).
   - Priorité (D-CAL-OVERRIDE) : manuel `OPEN`, puis manuel `CLOSED`, puis jour fermé d'une source, puis week-end.
   - Plafonds : 366 jours par période, 2 000 saisies, 10 sources, 10 000 périodes par source, 200 000 jours déroulés.
 - **Stockage.** Tables `tenant_calendar` (fuseau, week-end), `tenant_calendar_source` et `tenant_calendar_entry`
-  (changeset 047). Une saisie manuelle a `source_id` nul ; supprimer une source supprime ses jours. Les dates de
+  (changesets 047 et 048 : `masked_url`). Une saisie manuelle a `source_id` nul ; supprimer une source supprime ses jours. Les dates de
   l'ancienne colonne `holidays` sont reprises en saisies manuelles `CLOSED`.
 - **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié ; la
   réponse porte `entries`, `sources` et `holidays` calculé) ; `POST /api/tenant/calendar/belgian-federal-holidays`
@@ -1102,6 +1102,12 @@ D-CAL-API, D-CAL-PROMO-2).
     ouvré forcé, événements ignorés par motif, SHA-256, nombre de périodes) ; `POST .../sources` (`name`, `file`,
     `expectedSha256`, 201) et `POST .../sources/{id}/reload` (`file`, `expectedSha256`) appliquent ; `DELETE
     .../sources/{id}` (204) supprime la source et ses jours.
+  - **Sources ICS par URL** (JSON, D-CAL-ICS-URL) : mêmes chemins avec un corps `{name, url, expectedSha256}` ; sur
+    `.../sources/{id}/preview` et `.../reload` le corps peut être vide ou sans `url` : le serveur relit l'URL conservée.
+    L'API ne renvoie que `maskedUrl` (`schéma://hôte[:port]/…`). `HttpsIcsFetcher` passe par `OutboundUrlGuard` (https
+    hors profils `test` et `local`, jamais une adresse interne) et `PinnedHttpClient.get` (adresse figée, aucune
+    redirection, 1 Mio, 10 s au total) ; l'URL est chiffrée (`url_ciphertext`, `ConnectorSecretCipher`).
+  - Un rechargement par URL en échec garde les jours, retient l'erreur dans `lastError` (sans l'URL) et répond 400.
   - Codes : 400 (fichier illisible, de plus de 1 Mio ou de plus de 5 000 événements, nom vide, source `BE_FEDERAL`
     rechargée par fichier), 404 (source d'un autre tenant ou inconnue), 409 (nom déjà pris, ignorant la casse, ou
     contenu différent de celui de l'aperçu), 403 (hors `TENANT_ADMIN` ou sans jeton CSRF).
@@ -1112,13 +1118,15 @@ D-CAL-API, D-CAL-PROMO-2).
     (`ical4j.properties`).
 - **Écran** : Admin → Types → Calendrier. Formulaire Du / Au / nature / libellé (`CalendarEntryForm`), tableau trié
   des saisies et des jours de source (`CalendarEntryList`, jour de source recouvert par un jour ouvré forcé signalé),
-  sources (`CalendarSourcesPanel` : ajout d'un fichier `.ics`, rechargement, suppression après confirmation) et boîte
+  sources (`CalendarSourcesPanel` : ajout d'un fichier `.ics` ou d'une URL, rechargement, changement d'URL,
+  suppression après confirmation) et boîte
   d'aperçu avant import (`CalendarImportPreview` : modale, focus piégé, Échap annule).
 - **Promotion.** L'artefact `CALENDAR` est un instantané complet (saisies et sources déroulées, sans URL) ; un ancien
   bundle à liste plate s'importe en saisies manuelles. Une source de même nom garde son identifiant ; une source absente
   du bundle est supprimée.
 - **Tests.** `CalendarEntryTest`, `TenantCalendarTest`, `BusinessCalendarTest`, `ManageTenantCalendarUseCaseImplTest`,
   `TenantCalendarApiTest` (chaîne HTTP et sécurité, isolation du tenant), `TenantCalendarEntriesMigrationIT`,
-  `TypeSettingsArtifactsCalendarTest`, `Ical4jIcsCalendarParserTest` ; Vitest (`TenantCalendarPanel`,
+  `TypeSettingsArtifactsCalendarTest`, `Ical4jIcsCalendarParserTest`, `CalendarUrlTest`, `HttpsIcsFetcherTest` (serveurs
+  locaux : redirection, taille, lenteur, garde réseau) ; Vitest (`TenantCalendarPanel`,
   `CalendarEntryForm`, `CalendarEntryList`, `CalendarSourcesPanel`, `CalendarImportPreview`) et Playwright `E2E-CAL-1`
-  à `8`.
+  à `11`.

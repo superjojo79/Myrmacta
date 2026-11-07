@@ -5,6 +5,7 @@ import be.myrmacta.domain.deadline.model.CalendarEntry;
 import be.myrmacta.domain.deadline.model.CalendarSource;
 import be.myrmacta.domain.deadline.model.TenantCalendar;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
+import be.myrmacta.domain.connector.port.out.ConnectorSecretCipher;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import java.sql.Date;
@@ -18,22 +19,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * TODO §120 et §121 — tables {@code tenant_calendar} (046), {@code tenant_calendar_source} et
- * {@code tenant_calendar_entry} (047). Une saisie manuelle a {@code source_id} nul ; supprimer une source supprime
- * ses jours (cascade).
+ * {@code tenant_calendar_entry} (047), {@code masked_url} (048). Une saisie manuelle a {@code source_id} nul ; supprimer
+ * une source supprime ses jours (cascade). L'URL d'une source ICS_URL est un secret (D-CAL-ICS-URL) : elle est chiffrée
+ * ici, par {@link ConnectorSecretCipher}, et ne sort de cette classe que pour être téléchargée ; la base ne garde en
+ * clair que sa forme masquée.
  */
 @Component
 class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
 
-    private final JdbcTemplate jdbc;
+    private static final Logger LOG = LoggerFactory.getLogger(JdbcTenantCalendar.class);
 
-    JdbcTenantCalendar(JdbcTemplate jdbc) {
+    private final JdbcTemplate jdbc;
+    private final ConnectorSecretCipher cipher;
+
+    JdbcTenantCalendar(JdbcTemplate jdbc, ConnectorSecretCipher cipher) {
         this.jdbc = jdbc;
+        this.cipher = cipher;
     }
 
     @Override
@@ -66,13 +75,14 @@ class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
                     }
                 }, tenantId);
         List<CalendarSource> sources = jdbc.query("""
-                select id, name, kind, loaded_at, loaded_by, content_sha256, last_error
+                select id, name, kind, loaded_at, loaded_by, content_sha256, last_error, masked_url
                 from tenant_calendar_source where tenant_id = ? order by lower(name)
                 """, (rs, i) -> {
                     UUID id = rs.getObject("id", UUID.class);
                     return new CalendarSource(id, rs.getString("name"), CalendarSource.Kind.parse(rs.getString("kind")),
                             bySource.getOrDefault(id, List.of()), instant(rs.getTimestamp("loaded_at")),
-                            rs.getString("loaded_by"), rs.getString("content_sha256"), rs.getString("last_error"));
+                            rs.getString("loaded_by"), rs.getString("content_sha256"), rs.getString("last_error"),
+                            rs.getString("masked_url"));
                 }, tenantId);
         return Optional.of(new StoredTenantCalendar(tenantId,
                 new TenantCalendar(header.zoneId(), header.weekend(), manual, sources), header.updatedAt(), header.updatedBy()));
@@ -96,19 +106,41 @@ class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
 
     @Override
     @Transactional
-    public void saveSource(String tenantId, CalendarSource source) {
+    public void saveSource(String tenantId, CalendarSource source, String url) {
         jdbc.update("""
-                insert into tenant_calendar_source (id, tenant_id, name, kind, loaded_at, loaded_by, content_sha256, last_error)
-                values (?, ?, ?, ?, ?, ?, ?, ?)
+                insert into tenant_calendar_source (id, tenant_id, name, kind, loaded_at, loaded_by, content_sha256, last_error, masked_url)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 on conflict (id) do update set
                   name = excluded.name, kind = excluded.kind, loaded_at = excluded.loaded_at,
-                  loaded_by = excluded.loaded_by, content_sha256 = excluded.content_sha256, last_error = excluded.last_error
+                  loaded_by = excluded.loaded_by, content_sha256 = excluded.content_sha256, last_error = excluded.last_error,
+                  masked_url = excluded.masked_url
                 where tenant_calendar_source.tenant_id = excluded.tenant_id
                 """, source.id(), tenantId, source.name(), source.kind().name(),
                 source.loadedAt() == null ? null : Timestamp.from(source.loadedAt()), source.loadedBy(),
-                source.contentSha256(), source.lastError());
+                source.contentSha256(), source.lastError(), source.maskedUrl());
+        if (url != null) {
+            jdbc.update("update tenant_calendar_source set url_ciphertext = ? where tenant_id = ? and id = ?",
+                    cipher.encrypt(tenantId, url), tenantId, source.id());
+        }
         jdbc.update("delete from tenant_calendar_entry where tenant_id = ? and source_id = ?", tenantId, source.id());
         insertEntries(tenantId, source.id(), source.closedDays());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> findSourceUrl(String tenantId, UUID sourceId) {
+        List<String> stored = jdbc.query("select url_ciphertext from tenant_calendar_source where tenant_id = ? and id = ?",
+                (rs, i) -> rs.getString("url_ciphertext"), tenantId, sourceId);
+        if (stored.isEmpty() || stored.getFirst() == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(cipher.decrypt(tenantId, stored.getFirst()));
+        } catch (RuntimeException unreadable) {
+            // Clé changée ou valeur altérée : on demande l'URL de nouveau. Ni l'URL ni la cause n'est journalisée.
+            LOG.warn("The stored URL of calendar source {} cannot be decrypted", sourceId);
+            return Optional.empty();
+        }
     }
 
     @Override

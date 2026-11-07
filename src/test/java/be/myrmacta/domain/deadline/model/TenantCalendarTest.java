@@ -129,4 +129,51 @@ class TenantCalendarTest {
         assertThat(after.effectiveClosedDays()).containsExactly(MONDAY.plusDays(1));
         assertThat(after.withoutSource(first.id()).sources()).isEmpty();
     }
+
+    // ------------------------------------------------------------------ source par URL (lot 3)
+
+    @Test
+    void aSourceKeepsAMaskedUrlOnlyWhenItIsAnUrlSource() {
+        CalendarSource url = new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_URL, List.of(), Instant.parse("2026-11-07T10:00:00Z"),
+                "admin", "abc", null, "https://calendar.example.org/…");
+
+        assertThat(url.maskedUrl()).isEqualTo("https://calendar.example.org/…");
+        assertThatThrownBy(() -> new CalendarSource(UUID.randomUUID(), "Fichier", CalendarSource.Kind.ICS_FILE, List.of(), null, null, null, null,
+                "https://calendar.example.org/…")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new CalendarSource(UUID.randomUUID(), "Belge", CalendarSource.Kind.BE_FEDERAL, List.of(), null, null, null, null,
+                "https://calendar.example.org/…")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void anUrlSourceMayHaveNoMaskedUrl_whichMeansTheUrlMustBeEnteredAgain() {
+        CalendarSource imported = new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_URL, List.of(), null, "promotion", null, null);
+
+        assertThat(imported.maskedUrl()).isNull();
+    }
+
+    @Test
+    void reloadingKeepsTheMaskedUrlUnlessAnotherIsGiven() {
+        CalendarSource url = CalendarSource.create("Écoles", CalendarSource.Kind.ICS_URL, List.of(), Instant.parse("2026-11-07T10:00:00Z"), "admin", "abc")
+                .withMaskedUrl("https://a.example.org/…");
+
+        CalendarSource same = url.reloaded(List.of(), Instant.parse("2026-11-08T10:00:00Z"), "other", "def");
+        CalendarSource moved = same.withMaskedUrl("https://b.example.org/…");
+
+        assertThat(same.maskedUrl()).isEqualTo("https://a.example.org/…");
+        assertThat(moved.maskedUrl()).isEqualTo("https://b.example.org/…");
+        assertThat(url.failed("boom").maskedUrl()).isEqualTo("https://a.example.org/…");
+    }
+
+    @Test
+    void aFailedLoadKeepsTheDaysAndRecordsTheErrorCappedAt500Characters_thenAReloadClearsIt() {
+        CalendarSource url = CalendarSource.create("Écoles", CalendarSource.Kind.ICS_URL, List.of(CalendarEntry.day(MONDAY, Nature.CLOSED, "A")),
+                Instant.parse("2026-11-07T10:00:00Z"), "admin", "abc");
+
+        CalendarSource failed = url.failed("x".repeat(900));
+
+        assertThat(failed.lastError()).hasSize(500);
+        assertThat(failed.closedDays()).isEqualTo(url.closedDays());
+        assertThat(failed.contentSha256()).isEqualTo("abc");
+        assertThat(failed.reloaded(List.of(), Instant.parse("2026-11-09T10:00:00Z"), "admin", "def").lastError()).isNull();
+    }
 }

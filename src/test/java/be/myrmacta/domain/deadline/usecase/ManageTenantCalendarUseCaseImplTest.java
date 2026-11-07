@@ -14,6 +14,7 @@ import be.myrmacta.domain.deadline.model.SourcePreview;
 import be.myrmacta.domain.deadline.model.TenantCalendar;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
 import be.myrmacta.domain.deadline.port.out.IcsCalendarParser;
+import be.myrmacta.domain.deadline.port.out.IcsFetcher;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository.StoredTenantCalendar;
 import be.myrmacta.domain.dossier.TenantAdminGuard;
@@ -44,13 +45,16 @@ class ManageTenantCalendarUseCaseImplTest {
 
     private InMemoryRepository repository;
     private StubParser parser;
+    private StubFetcher fetcher;
     private ManageTenantCalendarUseCaseImpl useCase;
 
     @BeforeEach
     void setUp() {
         repository = new InMemoryRepository();
         parser = new StubParser();
-        useCase = new ManageTenantCalendarUseCaseImpl(TENANT, repository, new TenantAdminGuard(), Clock.fixed(NOW, ZoneOffset.UTC), parser);
+        fetcher = new StubFetcher();
+        useCase = new ManageTenantCalendarUseCaseImpl(TENANT, repository, new TenantAdminGuard(), Clock.fixed(NOW, ZoneOffset.UTC), parser,
+                fetcher);
     }
 
     @Test
@@ -371,6 +375,248 @@ class ManageTenantCalendarUseCaseImplTest {
         assertThat(parser.lastContent).isNull();
     }
 
+    // ------------------------------------------------------------------ sources ICS par URL (lot 3)
+
+    private static final String URL = "https://calendar.example.org/ical/TOPSECRET-TOKEN/basic.ics";
+    private static final String MASKED = "https://calendar.example.org/…";
+
+    @Test
+    void previewOfANewUrlSourceFetchesThenParses_andWritesNothingNotEvenTheUrl() {
+        parsed("sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.content = FILE;
+
+        SourcePreview preview = useCase.previewUrlSource(ADMIN, "Écoles", null, URL);
+
+        assertThat(fetcher.calls).containsExactly(URL);
+        assertThat(parser.lastContent).isEqualTo(FILE);
+        assertThat(preview.kind()).isEqualTo(CalendarSource.Kind.ICS_URL);
+        assertThat(preview.added()).hasSize(1);
+        assertThat(preview.sha256()).isEqualTo("sha-1");
+        assertThat(repository.stored).isNull();
+        assertThat(repository.sources).isEmpty();
+        assertThat(repository.urls).isEmpty();
+    }
+
+    @Test
+    void applyingCreatesTheSourceKeepingTheFullUrlApartAndOnlyTheMaskedFormInTheModel() {
+        parsed("sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.content = FILE;
+
+        StoredTenantCalendar stored = useCase.applyUrlSource(ADMIN, "Écoles", null, " " + URL + " ", "sha-1");
+
+        CalendarSource source = repository.sources.getFirst();
+        assertThat(source.kind()).isEqualTo(CalendarSource.Kind.ICS_URL);
+        assertThat(source.maskedUrl()).isEqualTo(MASKED);
+        assertThat(source.toString()).doesNotContain("TOPSECRET");
+        assertThat(stored.calendar().sources().getFirst().maskedUrl()).isEqualTo(MASKED);
+        assertThat(repository.urls).containsValue(URL);
+        assertThat(source.loadedBy()).isEqualTo("admin");
+    }
+
+    @Test
+    void anUrlThatIsMissingMalformedOrCarriesCredentialsNeverReachesTheFetcher() {
+        for (String bad : new String[] {null, " ", "pas une url", "ftp://example.org/a.ics", "https://u:p@example.org/a.ics"}) {
+            assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, "Écoles", null, bad)).as(String.valueOf(bad))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, "Écoles", null, bad, "sha-1")).as(String.valueOf(bad))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(fetcher.calls).isEmpty();
+    }
+
+    @Test
+    void aTakenNameIsAConflictBeforeAnyDownload() {
+        parsed("sha-1");
+        fetcher.content = FILE;
+        useCase.applyUrlSource(ADMIN, "Écoles", null, URL, "sha-1");
+        fetcher.calls.clear();
+
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, "ÉCOLES", null, URL)).isInstanceOf(CalendarSourceConflictException.class);
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, "écoles", null, URL, "sha-1")).isInstanceOf(CalendarSourceConflictException.class);
+        assertThat(fetcher.calls).isEmpty();
+    }
+
+    @Test
+    void aStaleShaIsAConflict_andTheUrlIsNotStored() {
+        parsed("sha-2", closedDay("2026-12-25", "Noël"));
+        fetcher.content = FILE;
+
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, "Écoles", null, URL, "sha-1")).isInstanceOf(CalendarSourceConflictException.class);
+
+        assertThat(repository.sources).isEmpty();
+        assertThat(repository.urls).isEmpty();
+        assertThat(repository.stored).isNull();
+    }
+
+    @Test
+    void aDownloadFailureOnCreationWritesNothing() {
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered 404");
+
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, "Écoles", null, URL, "sha-1")).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(repository.sources).isEmpty();
+        assertThat(repository.stored).isNull();
+    }
+
+    private UUID urlSource(String name, String sha, CalendarEntry... days) {
+        parsed(sha, days);
+        fetcher.content = FILE;
+        UUID id = useCase.applyUrlSource(ADMIN, name, null, URL, sha).calendar().sources().stream()
+                .filter(source -> source.name().equals(name)).findFirst().orElseThrow().id();
+        fetcher.calls.clear();
+        return id;
+    }
+
+    @Test
+    void reloadingWithoutAnUrlReadsTheStoredOne_replacingOnlyThatSourcesDays() {
+        useCase.loadBelgianFederalHolidays(ADMIN);
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        parsed("sha-2", closedDay("2027-01-04", "Rentrée"));
+
+        SourcePreview preview = useCase.previewUrlSource(ADMIN, null, id, null);
+        StoredTenantCalendar stored = useCase.applyUrlSource(ADMIN, null, id, null, "sha-2");
+
+        assertThat(fetcher.calls).containsExactly(URL, URL);
+        assertThat(preview.removed()).containsExactly(new DayRange(LocalDate.parse("2026-12-25"), LocalDate.parse("2026-12-25")));
+        CalendarSource reloaded = repository.sources.stream().filter(source -> source.id().equals(id)).findFirst().orElseThrow();
+        assertThat(reloaded.closedDays()).extracting(CalendarEntry::start).containsExactly(LocalDate.parse("2027-01-04"));
+        assertThat(reloaded.maskedUrl()).isEqualTo(MASKED);
+        assertThat(repository.urls.get(id)).isEqualTo(URL);
+        assertThat(stored.calendar().sources()).hasSize(2);
+    }
+
+    @Test
+    void reloadingWithAnotherUrlReplacesItAndItsMaskedForm() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        parsed("sha-2", closedDay("2027-01-04", "Rentrée"));
+        String other = "https://other.example.net:8443/feed/NEWSECRET.ics";
+
+        useCase.applyUrlSource(ADMIN, null, id, other, "sha-2");
+
+        assertThat(fetcher.calls).containsExactly(other);
+        assertThat(repository.urls.get(id)).isEqualTo(other);
+        assertThat(repository.sources.getFirst().maskedUrl()).isEqualTo("https://other.example.net:8443/…");
+    }
+
+    @Test
+    void aSourceImportedWithoutAnUrlAsksForOne_andGetsItBack() {
+        CalendarSource imported = new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_URL, List.of(closedDay("2026-12-25", "Noël")),
+                NOW, "promotion", null, null);
+        repository.stored = new StoredTenantCalendar(TENANT, TenantCalendar.defaults(), NOW, "admin");
+        repository.sources.add(imported);
+        parsed("sha-2", closedDay("2027-01-04", "Rentrée"));
+        fetcher.content = FILE;
+
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, null, imported.id(), null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("enter it again");
+        assertThat(fetcher.calls).isEmpty();
+
+        useCase.applyUrlSource(ADMIN, null, imported.id(), URL, "sha-2");
+
+        assertThat(repository.urls.get(imported.id())).isEqualTo(URL);
+        assertThat(repository.sources.getFirst().maskedUrl()).isEqualTo(MASKED);
+    }
+
+    @Test
+    void aFailedReloadKeepsTheDaysAndRecordsTheError_withoutTheUrl() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered 503");
+
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, id, null, "sha-2"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("503");
+
+        CalendarSource source = repository.sources.getFirst();
+        assertThat(source.lastError()).contains("503").doesNotContain("TOPSECRET");
+        assertThat(source.closedDays()).extracting(CalendarEntry::start).containsExactly(LocalDate.parse("2026-12-25"));
+        assertThat(source.contentSha256()).isEqualTo("sha-1");
+        assertThat(repository.urls.get(id)).isEqualTo(URL);
+    }
+
+    @Test
+    void aSuccessfulReloadClearsThePreviousError() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered 503");
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, id, null, "sha-2")).isInstanceOf(IllegalArgumentException.class);
+        fetcher.failure = null;
+        parsed("sha-2", closedDay("2027-01-04", "Rentrée"));
+
+        useCase.applyUrlSource(ADMIN, null, id, null, "sha-2");
+
+        assertThat(repository.sources.getFirst().lastError()).isNull();
+    }
+
+    @Test
+    void aFailedPreviewRecordsNothing() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered 503");
+
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, null, id, null)).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(repository.sources.getFirst().lastError()).isNull();
+    }
+
+    @Test
+    void anUnreadableDownloadedFileOnReloadIsRecordedToo() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        parser.failure = new IllegalArgumentException("calendar file is not a readable iCalendar file");
+
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, id, null, "sha-2")).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(repository.sources.getFirst().lastError()).contains("readable");
+    }
+
+    @Test
+    void theKindsDoNotMix_aFileSourceHasNoUrl_andAnUrlSourceCannotBeReloadedFromAFile() {
+        parsed("sha-1");
+        fetcher.content = FILE;
+        UUID file = useCase.applyFileSource(ADMIN, "Fichier", null, FILE, "sha-1").calendar().sources().getFirst().id();
+        UUID url = urlSource("Écoles", "sha-1");
+        UUID belgian = useCase.loadBelgianFederalHolidays(ADMIN).calendar().sources().stream()
+                .filter(source -> source.kind() == CalendarSource.Kind.BE_FEDERAL).findFirst().orElseThrow().id();
+
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, null, file, URL)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, null, belgian, URL)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase.previewFileSource(ADMIN, null, url, FILE)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase.previewUrlSource(ADMIN, null, UUID.randomUUID(), URL)).isInstanceOf(CalendarSourceNotFoundException.class);
+    }
+
+    @Test
+    void deletingAnUrlSourceAlsoForgetsItsUrl() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+
+        useCase.deleteSource(ADMIN, id);
+
+        assertThat(repository.urls).isEmpty();
+        assertThat(repository.sources).isEmpty();
+    }
+
+    @Test
+    void theUrlOperationsRequireTheTenantAdminRole() {
+        parsed("sha-1");
+        fetcher.content = FILE;
+
+        assertThatThrownBy(() -> useCase.previewUrlSource(MANAGER, "Écoles", null, URL)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> useCase.applyUrlSource(MANAGER, "Écoles", null, URL, "sha-1")).isInstanceOf(AccessDeniedException.class);
+        assertThat(fetcher.calls).isEmpty();
+    }
+
+    /** Téléchargeur de test : rend ce qu'on lui a préparé et garde les URL demandées. */
+    private static final class StubFetcher implements IcsFetcher {
+
+        byte[] content = new byte[0];
+        IllegalArgumentException failure;
+        final List<String> calls = new ArrayList<>();
+
+        @Override
+        public byte[] fetch(String url) {
+            calls.add(url);
+            if (failure != null) {
+                throw failure;
+            }
+            return content;
+        }
+    }
+
     /** Analyseur de test : rend ce qu'on lui a préparé et garde ce qu'il a reçu. */
     private static final class StubParser implements IcsCalendarParser {
 
@@ -399,6 +645,7 @@ class ManageTenantCalendarUseCaseImplTest {
 
         StoredTenantCalendar stored;
         final List<CalendarSource> sources = new ArrayList<>();
+        final Map<UUID, String> urls = new java.util.HashMap<>();
 
         @Override
         public Optional<StoredTenantCalendar> find(String tenantId) {
@@ -417,13 +664,22 @@ class ManageTenantCalendarUseCaseImplTest {
         }
 
         @Override
-        public void saveSource(String tenantId, CalendarSource source) {
+        public void saveSource(String tenantId, CalendarSource source, String url) {
             sources.removeIf(existing -> existing.id().equals(source.id()));
             sources.add(source);
+            if (url != null) {
+                urls.put(source.id(), url);
+            }
+        }
+
+        @Override
+        public Optional<String> findSourceUrl(String tenantId, UUID sourceId) {
+            return Optional.ofNullable(urls.get(sourceId));
         }
 
         @Override
         public boolean deleteSource(String tenantId, UUID sourceId) {
+            urls.remove(sourceId);
             return sources.removeIf(existing -> existing.id().equals(sourceId));
         }
     }

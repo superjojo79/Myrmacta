@@ -262,6 +262,11 @@ const admin: typeof fr = {
         reload: 'Reload',
         delete: 'Delete',
         deleteConfirm: 'Delete the source “{name}” and its days?',
+        mode: 'Source type',
+        url: 'Calendar URL',
+        urlHint: 'Often a secret link: it is stored encrypted and never shown again.',
+        urlMissing: 'URL to enter again',
+        changeUrl: 'Change URL',
         kind: { ICS_FILE: 'ICS file', ICS_URL: 'ICS URL', BE_FEDERAL: 'Belgian federal holidays' },
       },
       import: {
@@ -285,6 +290,8 @@ const admin: typeof fr = {
         changed: 'The content changed since the preview: preview it again.',
       },
       errors: {
+        nameAndUrl: 'The name and the URL are required.',
+        urlRequired: 'The URL is required.',
         nameAndFile: 'The name and the file are required.',
         preview: 'Preview failed',
         load: 'Loading failed',

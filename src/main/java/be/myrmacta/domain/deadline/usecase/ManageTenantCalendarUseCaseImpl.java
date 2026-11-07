@@ -3,6 +3,7 @@ package be.myrmacta.domain.deadline.usecase;
 import be.myrmacta.domain.deadline.model.BelgianFederalHolidays;
 import be.myrmacta.domain.deadline.model.CalendarEntry;
 import be.myrmacta.domain.deadline.model.CalendarSource;
+import be.myrmacta.domain.deadline.model.CalendarUrl;
 import be.myrmacta.domain.deadline.model.CalendarSourceConflictException;
 import be.myrmacta.domain.deadline.model.CalendarSourceNotFoundException;
 import be.myrmacta.domain.deadline.model.DayRange;
@@ -11,6 +12,7 @@ import be.myrmacta.domain.deadline.model.TenantCalendar;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
 import be.myrmacta.domain.deadline.port.in.ManageTenantCalendarUseCase;
 import be.myrmacta.domain.deadline.port.out.IcsCalendarParser;
+import be.myrmacta.domain.deadline.port.out.IcsFetcher;
 import be.myrmacta.domain.deadline.port.out.IcsCalendarParser.ParsedIcs;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository.StoredTenantCalendar;
@@ -37,14 +39,16 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
     private final TenantAdminGuard guard;
     private final Clock clock;
     private final IcsCalendarParser parser;
+    private final IcsFetcher fetcher;
 
     public ManageTenantCalendarUseCaseImpl(String tenantId, TenantCalendarRepository repository, TenantAdminGuard guard, Clock clock,
-                                           IcsCalendarParser parser) {
+                                           IcsCalendarParser parser, IcsFetcher fetcher) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.guard = Objects.requireNonNull(guard, "guard");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.parser = Objects.requireNonNull(parser, "parser");
+        this.fetcher = Objects.requireNonNull(fetcher, "fetcher");
     }
 
     @Override
@@ -75,14 +79,14 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
                         actor.userId(), null));
         TenantCalendar next = current.withSource(source);
         StoredTenantCalendar stored = saveSettings(next, actor);
-        repository.saveSource(tenantId, source);
+        repository.saveSource(tenantId, source, null);
         return stored;
     }
 
     @Override
     public SourcePreview previewFileSource(AccessContext.User actor, String name, UUID sourceId, byte[] content) {
         guard.requireTenantAdmin(actor);
-        return plan(current(), actor, name, sourceId, content).preview();
+        return plan(current(), actor, name, sourceId, content, FILE).preview();
     }
 
     @Override
@@ -93,13 +97,85 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
             throw new IllegalArgumentException("expectedSha256 is required");
         }
         TenantCalendar current = current();
-        Plan plan = plan(current, actor, name, sourceId, content);
+        Plan plan = plan(current, actor, name, sourceId, content, FILE);
         if (!plan.preview().sha256().equalsIgnoreCase(expectedSha256.strip())) {
             throw new CalendarSourceConflictException("The content changed since the preview: preview it again");
         }
         StoredTenantCalendar stored = saveSettings(plan.calendar(), actor);
-        repository.saveSource(tenantId, plan.source());
+        repository.saveSource(tenantId, plan.source(), plan.url());
         return stored;
+    }
+
+    @Override
+    public SourcePreview previewUrlSource(AccessContext.User actor, String name, UUID sourceId, String url) {
+        guard.requireTenantAdmin(actor);
+        return fromUrl(current(), actor, name, sourceId, url).plan().preview();
+    }
+
+    @Override
+    public StoredTenantCalendar applyUrlSource(AccessContext.User actor, String name, UUID sourceId, String url, String expectedSha256) {
+        guard.requireTenantAdmin(actor);
+        if (expectedSha256 == null || expectedSha256.isBlank()) {
+            throw new IllegalArgumentException("expectedSha256 is required");
+        }
+        TenantCalendar current = current();
+        UrlPlan planned;
+        try {
+            planned = fromUrl(current, actor, name, sourceId, url);
+        } catch (IllegalArgumentException failure) {
+            recordFailure(current, sourceId, failure);
+            throw failure;
+        }
+        Plan plan = planned.plan();
+        if (!plan.preview().sha256().equalsIgnoreCase(expectedSha256.strip())) {
+            throw new CalendarSourceConflictException("The content changed since the preview: preview it again");
+        }
+        StoredTenantCalendar stored = saveSettings(plan.calendar(), actor);
+        repository.saveSource(tenantId, plan.source(), plan.url());
+        return stored;
+    }
+
+    /** Valide l'URL, relit celle qui est conservée au besoin, télécharge, puis planifie comme pour un fichier. */
+    private UrlPlan fromUrl(TenantCalendar current, AccessContext.User actor, String name, UUID sourceId, String url) {
+        CalendarUrl given = url == null || url.isBlank() ? null : CalendarUrl.parse(url);
+        CalendarUrl effective = given;
+        if (sourceId == null) {
+            if (given == null) {
+                throw new IllegalArgumentException("calendar URL is required");
+            }
+            checkNameFree(current, name);
+        } else {
+            CalendarSource existing = current.sources().stream().filter(source -> source.id().equals(sourceId)).findFirst()
+                    .orElseThrow(() -> new CalendarSourceNotFoundException(sourceId));
+            if (existing.kind() != CalendarSource.Kind.ICS_URL) {
+                throw new IllegalArgumentException("a " + existing.kind() + " source cannot be reloaded from an URL");
+            }
+            if (effective == null) {
+                effective = repository.findSourceUrl(tenantId, sourceId).map(CalendarUrl::parse)
+                        .orElseThrow(() -> new IllegalArgumentException("this source has no readable URL: enter it again"));
+            }
+        }
+        byte[] content = fetcher.fetch(effective.value());
+        Origin origin = new Origin(CalendarSource.Kind.ICS_URL, given == null ? null : given.value(), given == null ? null : given.masked());
+        return new UrlPlan(plan(current, actor, name, sourceId, content, origin));
+    }
+
+    /** Un rechargement en échec garde ses jours et retient l'erreur, que l'on voit ensuite sur la source. */
+    private void recordFailure(TenantCalendar current, UUID sourceId, IllegalArgumentException failure) {
+        if (sourceId == null) {
+            return;
+        }
+        current.sources().stream().filter(source -> source.id().equals(sourceId) && source.kind() == CalendarSource.Kind.ICS_URL)
+                .findFirst().ifPresent(source -> repository.saveSource(tenantId, source.failed(failure.getMessage()), null));
+    }
+
+    private record UrlPlan(Plan plan) {}
+
+    private void checkNameFree(TenantCalendar current, String name) {
+        String wanted = name == null ? "" : name.strip().toLowerCase(Locale.ROOT);
+        if (current.sources().stream().anyMatch(source -> source.nameKey().equals(wanted))) {
+            throw new CalendarSourceConflictException("A source is already named: " + name.strip());
+        }
     }
 
     @Override
@@ -112,7 +188,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
     }
 
     /** Ce que donnerait le contenu : la source qui en résulte, le calendrier avec elle, et l'aperçu des différences. */
-    private Plan plan(TenantCalendar current, AccessContext.User actor, String name, UUID sourceId, byte[] content) {
+    private Plan plan(TenantCalendar current, AccessContext.User actor, String name, UUID sourceId, byte[] content, Origin origin) {
         if (content == null || content.length == 0) {
             throw new IllegalArgumentException("calendar file is required");
         }
@@ -120,21 +196,22 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         if (sourceId != null) {
             existing = current.sources().stream().filter(source -> source.id().equals(sourceId)).findFirst()
                     .orElseThrow(() -> new CalendarSourceNotFoundException(sourceId));
-            if (existing.kind() != CalendarSource.Kind.ICS_FILE) {
-                throw new IllegalArgumentException("a " + existing.kind() + " source cannot be reloaded from a file");
+            if (existing.kind() != origin.kind()) {
+                throw new IllegalArgumentException("a " + existing.kind() + " source cannot be reloaded from "
+                        + (origin.kind() == CalendarSource.Kind.ICS_FILE ? "a file" : "an URL"));
             }
         } else {
-            String wanted = name == null ? "" : name.strip().toLowerCase(Locale.ROOT);
-            if (current.sources().stream().anyMatch(source -> source.nameKey().equals(wanted))) {
-                throw new CalendarSourceConflictException("A source is already named: " + name.strip());
-            }
+            checkNameFree(current, name);
         }
         Instant now = clock.instant();
         int year = current.toCalendar().today(now).getYear();
         ParsedIcs parsed = parser.parse(content, java.time.ZoneId.of(current.zoneId()), year - 1, year + 2);
         CalendarSource source = existing == null
-                ? CalendarSource.create(name, CalendarSource.Kind.ICS_FILE, parsed.closedDays(), now, actor.userId(), parsed.sha256())
+                ? CalendarSource.create(name, origin.kind(), parsed.closedDays(), now, actor.userId(), parsed.sha256())
                 : existing.reloaded(parsed.closedDays(), now, actor.userId(), parsed.sha256());
+        if (origin.maskedUrl() != null) {
+            source = source.withMaskedUrl(origin.maskedUrl());
+        }
         TenantCalendar next = current.withSource(source);
         Set<LocalDate> before = existing == null ? Set.of() : days(existing);
         Set<LocalDate> after = days(source);
@@ -147,7 +224,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         masked.retainAll(forcedOpen);
         SourcePreview preview = new SourcePreview(source.id(), source.name(), source.kind(), DayRange.compress(added),
                 DayRange.compress(removed), DayRange.compress(masked), parsed.ignored(), parsed.sha256(), source.closedDays().size());
-        return new Plan(source, next, preview);
+        return new Plan(source, next, preview, origin.url());
     }
 
     private static Set<LocalDate> days(CalendarSource source) {
@@ -156,7 +233,12 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         return days;
     }
 
-    private record Plan(CalendarSource source, TenantCalendar calendar, SourcePreview preview) {}
+    private static final Origin FILE = new Origin(CalendarSource.Kind.ICS_FILE, null, null);
+
+    /** D'où vient le contenu : un fichier, ou une URL (entière à conserver, et forme masquée à montrer ; nuls : inchangées). */
+    private record Origin(CalendarSource.Kind kind, String url, String maskedUrl) {}
+
+    private record Plan(CalendarSource source, TenantCalendar calendar, SourcePreview preview, String url) {}
 
     private TenantCalendar current() {
         return repository.find(tenantId).map(StoredTenantCalendar::calendar).orElseGet(TenantCalendar::defaults);

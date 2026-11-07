@@ -130,9 +130,12 @@ public final class TypeSettingsArtifacts {
         List<CalendarSource> sources = new ArrayList<>();
         for (CalendarSourceDoc source : doc.sources()) {
             CalendarSource existing = source.name() == null ? null : here.get(source.name().strip().toLowerCase(java.util.Locale.ROOT));
-            sources.add(new CalendarSource(existing != null ? existing.id() : java.util.UUID.randomUUID(), source.name(),
-                    CalendarSource.Kind.parse(source.kind()), source.entries().stream().map(TypeSettingsArtifacts::entry).toList(),
-                    source.loadedAt() == null ? null : Instant.parse(source.loadedAt()), "promotion", null, null));
+            CalendarSource.Kind kind = CalendarSource.Kind.parse(source.kind());
+            // L'URL ne voyage pas (D-CAL-PROMO-2) : une source par URL déjà ici garde la sienne, donc sa forme masquée.
+            String maskedUrl = existing != null && existing.kind() == kind ? existing.maskedUrl() : null;
+            sources.add(new CalendarSource(existing != null ? existing.id() : java.util.UUID.randomUUID(), source.name(), kind,
+                    source.entries().stream().map(TypeSettingsArtifacts::entry).toList(),
+                    source.loadedAt() == null ? null : Instant.parse(source.loadedAt()), "promotion", null, null, maskedUrl));
         }
         return new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()), manual, sources);
     }
@@ -257,7 +260,7 @@ public final class TypeSettingsArtifacts {
         incoming.sources().forEach(source -> kept.add(source.id()));
         currentCalendar().sources().stream().filter(source -> !kept.contains(source.id()))
                 .forEach(source -> calendars.deleteSource(tenantId, source.id()));
-        incoming.sources().forEach(source -> calendars.saveSource(tenantId, source));
+        incoming.sources().forEach(source -> calendars.saveSource(tenantId, source, null));
         return action == PlanAction.CREATE ? "created" : "updated";
     }
 

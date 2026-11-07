@@ -108,6 +108,42 @@ public class TenantCalendarController {
         return CalendarResponse.from(calendars.applyFileSource(access.user(authentication), null, id, bytes(file), expectedSha256));
     }
 
+    // ---- sources par URL (D-CAL-ICS-URL) : l'URL est un secret, jamais renvoyée ; seule sa forme masquée l'est.
+
+    /** Aperçu d'une source par URL : le serveur télécharge puis lit ; n'écrit rien. */
+    @PostMapping(value = "/sources/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public PreviewResponse previewNewUrlSource(@RequestBody UrlSourceRequest request, Authentication authentication) {
+        UrlSourceRequest body = required(request);
+        return PreviewResponse.from(calendars.previewUrlSource(access.user(authentication), body.name(), null, body.url()));
+    }
+
+    @PostMapping(value = "/sources", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CalendarResponse> createUrlSource(@RequestBody UrlSourceRequest request, Authentication authentication) {
+        UrlSourceRequest body = required(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(CalendarResponse.from(
+                calendars.applyUrlSource(access.user(authentication), body.name(), null, body.url(), body.expectedSha256())));
+    }
+
+    /** Corps vide ou sans {@code url} : relit l'URL conservée de la source ; sinon la remplace. */
+    @PostMapping("/sources/{id}/preview")
+    public PreviewResponse previewUrlReload(@PathVariable UUID id, @RequestBody(required = false) UrlSourceRequest request,
+                                            Authentication authentication) {
+        return PreviewResponse.from(calendars.previewUrlSource(access.user(authentication), null, id, request == null ? null : request.url()));
+    }
+
+    @PostMapping("/sources/{id}/reload")
+    public CalendarResponse reloadUrlSource(@PathVariable UUID id, @RequestBody UrlSourceRequest request, Authentication authentication) {
+        UrlSourceRequest body = required(request);
+        return CalendarResponse.from(calendars.applyUrlSource(access.user(authentication), null, id, body.url(), body.expectedSha256()));
+    }
+
+    private static UrlSourceRequest required(UrlSourceRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body is required");
+        }
+        return request;
+    }
+
     @DeleteMapping("/sources/{id}")
     public ResponseEntity<Void> deleteSource(@PathVariable UUID id, Authentication authentication) {
         calendars.deleteSource(access.user(authentication), id);
@@ -164,6 +200,15 @@ public class TenantCalendarController {
         }
     }
 
+    /** {@code url} est un secret : ni journalisé ni renvoyé. */
+    record UrlSourceRequest(String name, String url, String expectedSha256) {
+
+        @Override
+        public String toString() {
+            return "UrlSourceRequest[name=" + name + "]";
+        }
+    }
+
     record RangeDto(String start, String end) {
 
         static RangeDto from(DayRange range) {
@@ -192,7 +237,7 @@ public class TenantCalendarController {
                      String lastError, List<EntryDto> entries) {
 
         static SourceDto from(CalendarSource source) {
-            return new SourceDto(source.id(), source.name(), source.kind().name(), null, source.closedDays().size(),
+            return new SourceDto(source.id(), source.name(), source.kind().name(), source.maskedUrl(), source.closedDays().size(),
                     source.loadedAt(), source.loadedBy(), source.lastError(),
                     source.closedDays().stream().map(EntryDto::from).toList());
         }

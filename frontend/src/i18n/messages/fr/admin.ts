@@ -260,6 +260,11 @@ export default {
         reload: 'Recharger',
         delete: 'Supprimer',
         deleteConfirm: 'Supprimer la source « {name} » et ses jours ?',
+        mode: 'Type de source',
+        url: "URL de l'agenda",
+        urlHint: "Souvent un lien secret : il est conservé chiffré et ne s'affiche plus ensuite.",
+        urlMissing: 'URL à ressaisir',
+        changeUrl: "Changer l'URL",
         kind: { ICS_FILE: 'Fichier ICS', ICS_URL: 'URL ICS', BE_FEDERAL: 'Fériés fédéraux belges' },
       },
       import: {
@@ -283,6 +288,8 @@ export default {
         changed: "Le contenu a changé depuis l'aperçu : relancez l'aperçu.",
       },
       errors: {
+        nameAndUrl: "Le nom et l'URL sont obligatoires.",
+        urlRequired: "L'URL est obligatoire.",
         nameAndFile: 'Le nom et le fichier sont obligatoires.',
         preview: "Aperçu impossible",
         load: 'Chargement impossible',

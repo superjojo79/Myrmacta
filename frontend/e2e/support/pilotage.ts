@@ -292,6 +292,13 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
   /** Champ texte d'un corps multipart brut. */
   const multipartField = (body: string, name: string): string => new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`).exec(body)?.[1] ?? ''
   const json = (status: number, body: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  /** Corps JSON d'une requête (sources par URL), nul pour un corps multipart ou vide. */
+  const jsonBody = (request: { headers(): Record<string, string>; postData(): string | null }): Record<string, unknown> | null => {
+    const raw = request.postData()
+    return raw && (request.headers()['content-type'] ?? '').includes('json') ? (JSON.parse(raw) as Record<string, unknown>) : null
+  }
+  /** Jamais l'URL entière : seulement `schéma://hôte/…`, comme le serveur. */
+  const maskedOf = (url: string): string => `${new URL(url).origin}/…`
   await page.route(/\/api\/tenant\/calendar(\/.*)?$/, async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname.replace(/^.*\/api\/tenant\/calendar/, '')
@@ -307,6 +314,61 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
     } else if (path === '/belgian-federal-holidays' && method === 'POST') {
       const entries = [closedDay('2026-12-25', '2026-12-25', 'Noël'), closedDay('2027-01-01', '2027-01-01', "Jour de l'an")]
       calendar.sources = [...calendar.sources.filter((source) => source.kind !== 'BE_FEDERAL'), sourceOf('src-be', 'Fériés fédéraux belges', 'BE_FEDERAL', entries)]
+    } else if (path === '/sources/preview' && method === 'POST' && jsonBody(request)) {
+      const sent = jsonBody(request) as { name: string }
+      await route.fulfill(
+        json(200, {
+          sourceId: 'src-new-url',
+          name: sent.name,
+          kind: 'ICS_URL',
+          added: [{ start: '2026-12-24', end: '2026-12-26' }],
+          removed: [],
+          masked: [],
+          ignored: {},
+          sha256: 'sha-url',
+          periodCount: 1,
+        }),
+      )
+      return
+    } else if (path === '/sources' && method === 'POST' && jsonBody(request)) {
+      const sent = jsonBody(request) as { name: string; url: string; expectedSha256: string }
+      if (sent.expectedSha256 !== 'sha-url') {
+        await route.fulfill(json(409, { status: 409, detail: 'The content changed since the preview' }))
+        return
+      }
+      const created = sourceOf('src-url', sent.name, 'ICS_URL', [closedDay('2026-12-24', '2026-12-26', 'Agenda')])
+      created.maskedUrl = maskedOf(sent.url)
+      calendar.sources = [...calendar.sources, created]
+      await route.fulfill(json(201, calendar))
+      return
+    } else if (/^\/sources\/[^/]+\/preview$/.test(path) && method === 'POST' && calendar.sources.some((source) => source.id === path.split('/')[2] && source.kind === 'ICS_URL')) {
+      await route.fulfill(
+        json(200, {
+          sourceId: path.split('/')[2],
+          name: calendar.sources.find((source) => source.id === path.split('/')[2])?.name ?? '',
+          kind: 'ICS_URL',
+          added: [{ start: '2027-01-11', end: '2027-01-11' }],
+          removed: [{ start: '2026-12-24', end: '2026-12-26' }],
+          masked: [],
+          ignored: {},
+          sha256: 'sha-url-2',
+          periodCount: 1,
+        }),
+      )
+      return
+    } else if (/^\/sources\/[^/]+\/reload$/.test(path) && method === 'POST' && jsonBody(request)) {
+      const id = path.split('/')[2]
+      const sent = jsonBody(request) as { url: string | null; expectedSha256: string }
+      if ((sent.url ?? '').includes('stale')) {
+        await route.fulfill(json(409, { status: 409, detail: 'The content changed since the preview' }))
+        return
+      }
+      calendar.sources = calendar.sources.map((source) => {
+        if (source.id !== id) return source
+        const reloaded = sourceOf(id, source.name, source.kind, [closedDay('2027-01-11', '2027-01-11', 'Reprise')])
+        reloaded.maskedUrl = sent.url ? maskedOf(sent.url) : source.maskedUrl
+        return reloaded
+      })
     } else if (path === '/sources/preview' && method === 'POST') {
       await route.fulfill(
         json(200, {

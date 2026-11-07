@@ -18,6 +18,12 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
 import org.springframework.mock.web.MockMultipartFile;
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -513,6 +519,269 @@ class TenantCalendarApiTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(delete("/api/tenant/calendar/sources/{id}", id).with(admin())).andExpect(status().isForbidden());
 
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
+    }
+
+    // ------------------------------------------------------------------ sources ICS par URL (lot 3)
+
+    private static final String TOKEN = "TOPSECRET-TOKEN";
+    private HttpServer feed;
+    private final AtomicReference<byte[]> feedBody = new AtomicReference<>();
+    private final AtomicInteger feedStatus = new AtomicInteger(200);
+    private final AtomicInteger feedHits = new AtomicInteger();
+
+    @AfterEach
+    void stopFeed() {
+        if (feed != null) {
+            feed.stop(0);
+        }
+    }
+
+    /** Un « agenda en ligne » local dont on change le contenu et le statut entre deux appels. */
+    private String startFeed(byte[] content) throws Exception {
+        feedBody.set(content);
+        feed = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        feed.createContext("/", exchange -> {
+            feedHits.incrementAndGet();
+            byte[] body = feedBody.get();
+            int status = feedStatus.get();
+            exchange.sendResponseHeaders(status, status == 200 ? body.length : -1);
+            if (status == 200) {
+                try (java.io.OutputStream out = exchange.getResponseBody()) {
+                    out.write(body);
+                }
+            }
+            exchange.close();
+        });
+        feed.start();
+        return "http://127.0.0.1:" + feed.getAddress().getPort() + "/ical/" + TOKEN + "/basic.ics?key=" + TOKEN;
+    }
+
+    private static String urlBody(String name, String url, String sha) {
+        return "{\"name\":" + (name == null ? "null" : "\"" + name + "\"") + ",\"url\":" + (url == null ? "null" : "\"" + url + "\"")
+                + ",\"expectedSha256\":" + (sha == null ? "null" : "\"" + sha + "\"") + "}";
+    }
+
+    private java.util.UUID createUrlSource(String name, String url, byte[] content) throws Exception {
+        String body = mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(urlBody(name, url, sha(content))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        java.util.List<String> ids = com.jayway.jsonpath.JsonPath.read(body, "$.sources[?(@.name == '" + name + "')].id");
+        return java.util.UUID.fromString(ids.getFirst());
+    }
+
+    @Test
+    void previewUrlSource_downloadsAndSummarises_withoutWritingOrEchoingTheUrl() throws Exception {
+        byte[] content = ics(allDay("a", "20261225", "Noël"), TIMED);
+        String url = startFeed(content);
+
+        String response = mockMvc.perform(post("/api/tenant/calendar/sources/preview").with(admin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(urlBody("Agenda", url, null)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("ICS_URL"))
+                .andExpect(jsonPath("$.sha256").value(sha(content)))
+                .andExpect(jsonPath("$.added[0].start").value("2026-12-25"))
+                .andExpect(jsonPath("$.ignored.TIMED").value(1))
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(response).doesNotContain(TOKEN);
+        org.assertj.core.api.Assertions.assertThat(feedHits.get()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
+    }
+
+    @Test
+    void createUrlSource_storesTheUrlEncrypted_andOnlyEverReturnsTheMaskedForm() throws Exception {
+        byte[] content = ics(allDay("a", "20261225", "Noël"));
+        String url = startFeed(content);
+        String masked = "http://127.0.0.1:" + feed.getAddress().getPort() + "/…";
+
+        String created = mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(urlBody("Agenda", url, sha(content))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sources[0].kind").value("ICS_URL"))
+                .andExpect(jsonPath("$.sources[0].maskedUrl").value(masked))
+                .andExpect(jsonPath("$.sources[0].entries[0].label").value("Noël"))
+                .andReturn().getResponse().getContentAsString();
+        String listed = mockMvc.perform(get("/api/tenant/calendar").with(admin()))
+                .andExpect(jsonPath("$.sources[0].maskedUrl").value(masked))
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(created).doesNotContain(TOKEN, "basic.ics");
+        org.assertj.core.api.Assertions.assertThat(listed).doesNotContain(TOKEN, "basic.ics");
+        String stored = jdbcTemplate.queryForObject("select url_ciphertext from tenant_calendar_source where tenant_id = ?", String.class, TENANT_ID);
+        org.assertj.core.api.Assertions.assertThat(stored).startsWith("enc:v1:").doesNotContain(TOKEN, "127.0.0.1", "basic.ics");
+        org.assertj.core.api.Assertions.assertThat(
+                jdbcTemplate.queryForObject("select masked_url from tenant_calendar_source where tenant_id = ?", String.class, TENANT_ID))
+                .isEqualTo(masked);
+    }
+
+    @Test
+    void createUrlSource_withAStaleShaOrATakenName_returns409_andStoresNothing() throws Exception {
+        byte[] content = ics(allDay("a", "20261225", "Noël"));
+        String url = startFeed(content);
+
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("Agenda", url, sha(ics(allDay("z", "20270101", "Autre"))))))
+                .andExpect(status().isConflict());
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
+
+        createUrlSource("Agenda", url, content);
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("AGENDA", url, sha(content))))
+                .andExpect(status().isConflict());
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isEqualTo(1);
+    }
+
+    @Test
+    void anUnsafeOrMalformedUrl_returns400_withoutEchoingIt_andNothingIsCalled() throws Exception {
+        for (String bad : new String[] {"https://10.0.0.5/" + TOKEN, "https://169.254.169.254/latest/meta-data/" + TOKEN, "ftp://example.org/" + TOKEN,
+                "file:///etc/passwd", "https://user:" + TOKEN + "@example.org/a.ics", "pas une url " + TOKEN.toLowerCase().replace("-", "")}) {
+            String response = mockMvc.perform(post("/api/tenant/calendar/sources/preview").with(admin()).with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON).content(urlBody("Agenda", bad.replace(" ", "%20"), null)))
+                    .andExpect(status().isBadRequest())
+                    .andReturn().getResponse().getContentAsString();
+            org.assertj.core.api.Assertions.assertThat(response).as(bad).doesNotContain(TOKEN).doesNotContain(TOKEN.toLowerCase().replace("-", ""));
+        }
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("Agenda", null, "x")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("Agenda", "https://example.org/a.ics", " ")))
+                .andExpect(status().isBadRequest());
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
+    }
+
+    @Test
+    void reloadUrlSource_withoutAnUrl_readsTheStoredOne_andReplacesOnlyItsDays() throws Exception {
+        mockMvc.perform(post("/api/tenant/calendar/belgian-federal-holidays").with(admin()).with(csrf())).andExpect(status().isOk());
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID id = createUrlSource("Agenda", url, feedBody.get());
+        byte[] next = ics(allDay("b", "20270104", "Rentrée"));
+        feedBody.set(next);
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/preview", id).with(admin()).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sha256").value(sha(next)))
+                .andExpect(jsonPath("$.added[0].start").value("2027-01-04"))
+                .andExpect(jsonPath("$.removed[0].start").value("2026-12-25"));
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, null, sha(next))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sources.length()").value(2))
+                .andExpect(jsonPath("$.sources[?(@.name == 'Agenda')].entries[0].start", hasItem("2027-01-04")))
+                .andExpect(jsonPath("$.sources[?(@.kind == 'BE_FEDERAL')].entryCount", hasItem(20)));
+
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_entry where source_id = ?", id)).isEqualTo(1);
+    }
+
+    @Test
+    void reloadUrlSource_withAStaleSha_returns409_andKeepsTheDays() throws Exception {
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID id = createUrlSource("Agenda", url, feedBody.get());
+        String previewed = sha(feedBody.get());
+        feedBody.set(ics(allDay("b", "20270104", "Rentrée")));
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, null, previewed)))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/api/tenant/calendar").with(admin()))
+                .andExpect(jsonPath("$.sources[0].entries[0].start").value("2026-12-25"));
+    }
+
+    @Test
+    void aFailedReload_returns400_keepsTheDays_andShowsTheErrorWithoutTheUrl_untilTheNextSuccess() throws Exception {
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID id = createUrlSource("Agenda", url, feedBody.get());
+        feedStatus.set(503);
+
+        String error = mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(admin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(urlBody(null, null, "abc")))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(error).contains("503").doesNotContain(TOKEN);
+
+        String listed = mockMvc.perform(get("/api/tenant/calendar").with(admin()))
+                .andExpect(jsonPath("$.sources[0].entries[0].start").value("2026-12-25"))
+                .andExpect(jsonPath("$.sources[0].lastError").value(org.hamcrest.Matchers.containsString("503")))
+                .andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(listed).doesNotContain(TOKEN);
+
+        feedStatus.set(200);
+        byte[] next = ics(allDay("b", "20270104", "Rentrée"));
+        feedBody.set(next);
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, null, sha(next))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sources[0].lastError").doesNotExist());
+    }
+
+    @Test
+    void reloadUrlSource_withANewUrl_replacesTheStoredOne() throws Exception {
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID id = createUrlSource("Agenda", url, feedBody.get());
+        String before = jdbcTemplate.queryForObject("select url_ciphertext from tenant_calendar_source where id = ?", String.class, id);
+        byte[] next = ics(allDay("b", "20270104", "Rentrée"));
+        feedBody.set(next);
+        String moved = url.replace("basic.ics", "other.ics");
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, moved, sha(next))))
+                .andExpect(status().isOk());
+
+        String after = jdbcTemplate.queryForObject("select url_ciphertext from tenant_calendar_source where id = ?", String.class, id);
+        org.assertj.core.api.Assertions.assertThat(after).startsWith("enc:v1:").isNotEqualTo(before);
+    }
+
+    @Test
+    void theKindsDoNotMix_overHttp() throws Exception {
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID urlId = createUrlSource("Agenda", url, feedBody.get());
+        java.util.UUID fileId = createSource("Fichier", ics(allDay("f", "20261226", "Fichier")));
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/preview", fileId).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, url, null)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(multipart("/api/tenant/calendar/sources/{id}/preview", urlId).file(file(ics(allDay("z", "20270101", "Z"))))
+                        .with(admin()).with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void anotherTenantsSourceIsNotFound_forUrlPreviewAndReload() throws Exception {
+        java.util.UUID foreign = java.util.UUID.randomUUID();
+        jdbcTemplate.update("insert into tenant_calendar_source (id, tenant_id, name, kind, masked_url) values (?, ?, 'Étrangère', 'ICS_URL', 'https://x.example/…')",
+                foreign, OTHER_TENANT);
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/preview", foreign).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, url, null)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", foreign).with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, url, "abc")))
+                .andExpect(status().isNotFound());
+
+        org.assertj.core.api.Assertions.assertThat(feedHits.get()).isZero();
+    }
+
+    @Test
+    void theUrlEndpoints_requireTheAdminRole_andACsrfToken() throws Exception {
+        String url = startFeed(ics(allDay("a", "20261225", "Noël")));
+        java.util.UUID id = java.util.UUID.randomUUID();
+        RequestPostProcessor manager = user("mgr-cal", "DOSSIER_MANAGER");
+
+        mockMvc.perform(post("/api/tenant/calendar/sources/preview").with(manager).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("X", url, null))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(manager).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("X", url, "abc"))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/preview", id).with(manager).with(csrf())).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/tenant/calendar/sources/{id}/reload", id).with(manager).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody(null, null, "abc"))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("X", url, "abc"))).andExpect(status().isForbidden());
+
+        org.assertj.core.api.Assertions.assertThat(feedHits.get()).isZero();
         org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
     }
 

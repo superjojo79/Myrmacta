@@ -237,10 +237,15 @@ class TypeSettingsArtifactsCalendarTest {
         }
 
         @Override
-        public void saveSource(String tenantId, CalendarSource source) {
+        public void saveSource(String tenantId, CalendarSource source, String url) {
             writes++;
             sources.removeIf(existing -> existing.id().equals(source.id()));
             sources.add(source);
+        }
+
+        @Override
+        public Optional<String> findSourceUrl(String tenantId, UUID sourceId) {
+            return Optional.empty();
         }
 
         @Override

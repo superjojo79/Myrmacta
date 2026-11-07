@@ -115,3 +115,27 @@ export async function reloadSource(sourceId: string, file: File, expectedSha256:
 export async function deleteSource(sourceId: string): Promise<void> {
   await axios.delete(`/api/tenant/calendar/sources/${sourceId}`)
 }
+
+// ---- Sources par URL (TODO §121, D-CAL-ICS-URL) : l'URL est un secret, le serveur ne renvoie que `maskedUrl`.
+
+/** Aperçu d'une source par URL : le serveur télécharge puis lit ; n'écrit rien. */
+export async function previewNewUrlSource(name: string, url: string): Promise<SourcePreview> {
+  const { data } = await axios.post<SourcePreview>('/api/tenant/calendar/sources/preview', { name, url })
+  return data
+}
+
+export async function createUrlSource(name: string, url: string, expectedSha256: string): Promise<TenantCalendar> {
+  const { data } = await axios.post<TenantCalendar>('/api/tenant/calendar/sources', { name, url, expectedSha256 })
+  return data
+}
+
+/** `url` absente : relit l'URL conservée de la source ; présente : la remplace. */
+export async function previewUrlReload(sourceId: string, url?: string): Promise<SourcePreview> {
+  const { data } = await axios.post<SourcePreview>(`/api/tenant/calendar/sources/${sourceId}/preview`, url ? { url } : {})
+  return data
+}
+
+export async function reloadUrlSource(sourceId: string, expectedSha256: string, url?: string): Promise<TenantCalendar> {
+  const { data } = await axios.post<TenantCalendar>(`/api/tenant/calendar/sources/${sourceId}/reload`, { url: url ?? null, expectedSha256 })
+  return data
+}

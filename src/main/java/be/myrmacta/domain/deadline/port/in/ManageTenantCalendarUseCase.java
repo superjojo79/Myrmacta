@@ -43,6 +43,18 @@ public interface ManageTenantCalendarUseCase {
      */
     StoredTenantCalendar applyFileSource(AccessContext.User actor, String name, UUID sourceId, byte[] content, String expectedSha256);
 
+    /**
+     * Aperçu d'une source par URL (D-CAL-ICS-URL). {@code sourceId} nul : création, {@code url} obligatoire. Sinon
+     * rechargement d'une source {@code ICS_URL} : {@code url} nul relit l'URL conservée, non nul la remplace. N'écrit rien.
+     */
+    SourcePreview previewUrlSource(AccessContext.User actor, String name, UUID sourceId, String url);
+
+    /**
+     * Crée ou recharge la source par URL. Sur un rechargement dont le téléchargement ou la lecture échoue, l'erreur est
+     * conservée dans la source (ses jours ne changent pas) puis relancée.
+     */
+    StoredTenantCalendar applyUrlSource(AccessContext.User actor, String name, UUID sourceId, String url, String expectedSha256);
+
     /** Supprime la source et ses jours. @throws be.myrmacta.domain.deadline.model.CalendarSourceNotFoundException source inconnue */
     void deleteSource(AccessContext.User actor, UUID sourceId);
 }

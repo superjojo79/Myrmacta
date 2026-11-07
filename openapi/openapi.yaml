@@ -788,6 +788,10 @@ paths:
                   format: binary
               required:
               - file
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UrlSourceRequest"
+        required: true
       responses:
         "200":
           description: OK
@@ -799,7 +803,7 @@ paths:
     post:
       tags:
       - tenant-calendar-controller
-      operationId: reloadSource
+      operationId: reloadUrlSource
       parameters:
       - name: id
         in: path
@@ -814,6 +818,9 @@ paths:
           type: string
       requestBody:
         content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UrlSourceRequest"
           multipart/form-data:
             schema:
               type: object
@@ -823,6 +830,7 @@ paths:
                   format: binary
               required:
               - file
+        required: true
       responses:
         "200":
           description: OK
@@ -834,7 +842,7 @@ paths:
     post:
       tags:
       - tenant-calendar-controller
-      operationId: previewReload
+      operationId: previewUrlReload
       parameters:
       - name: id
         in: path
@@ -844,6 +852,9 @@ paths:
           format: uuid
       requestBody:
         content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UrlSourceRequest"
           multipart/form-data:
             schema:
               type: object
@@ -882,6 +893,10 @@ paths:
                   format: binary
               required:
               - file
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UrlSourceRequest"
+        required: true
       responses:
         "200":
           description: OK
@@ -4491,6 +4506,15 @@ components:
         label:
           type: string
         idpGroup:
+          type: string
+    UrlSourceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        expectedSha256:
           type: string
     PreviewResponse:
       type: object

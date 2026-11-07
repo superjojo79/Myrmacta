@@ -34,10 +34,19 @@ sont déroulés de l'année N-1 à N+2 (fuseau du tenant) et réévalués à cha
 surcharge manuelle, les événements ignorés par motif et le SHA-256. L'application renvoie le SHA-256 attendu ; si le
 contenu a changé entre-temps : 409.
 
-**D-CAL-ICS-URL** — https seulement, via `OutboundUrlGuard` et `PinnedHttpClient` (§44). Délai de 10 s, 1 Mio au plus,
-aucune redirection suivie, aucun en-tête d'authentification. L'URL est un secret : chiffrée par `ConnectorSecretCipher`,
-masquée dans l'API (hôte + `…`), absente des journaux et de l'export. Rechargement manuel par un bouton ; aucun job
-planifié.
+**D-CAL-ICS-URL** — https seulement, via `OutboundUrlGuard` et `PinnedHttpClient` (§44). Délai de 10 s au total
+(connexion 10 s, lecture 5 s par lecture, corps coupé au-delà de 10 s), 1 Mio au plus, aucune redirection suivie,
+aucun en-tête d'authentification. L'URL est un secret : chiffrée par `ConnectorSecretCipher` (`url_ciphertext`),
+masquée dans l'API (`schéma://hôte[:port]/…`, changeset 048 : `masked_url`), absente des journaux, des messages
+d'erreur (seul l'hôte y figure) et de l'export. Une URL avec identifiants (`user:mot-de-passe@`) est refusée.
+Rechargement manuel par un bouton ; aucun job planifié.
+- **Rechargement.** Sans URL dans la requête, le serveur relit celle qu'il conserve ; avec une URL, il la remplace. Une
+  source importée par promotion n'a pas d'URL : l'écran dit « URL à ressaisir ». Si la clé de chiffrement a changé et
+  que l'URL ne se lit plus, le serveur la redemande de la même façon.
+- **Échec.** Un rechargement dont le téléchargement ou la lecture échoue garde les jours de la source, retient l'erreur
+  (500 caractères au plus, sans l'URL) dans `lastError` et répond 400 ; le prochain rechargement réussi l'efface.
+  L'aperçu n'écrit rien, pas même l'erreur.
+- **Types.** Une source `ICS_URL` ne se recharge pas par fichier, ni une `ICS_FILE` par URL (400).
 
 **D-CAL-BE-SOURCE** — le bouton « fériés fédéraux belges » crée ou recharge la source `BE_FEDERAL` (années N et N+1,
 libellés français), sans aperçu. Les dates déjà saisies sous §120 sont reprises en lignes manuelles `CLOSED` sans
@@ -60,5 +69,6 @@ absente du bundle est supprimée. Un ancien bundle à liste plate s'importe en l
 échéances déjà posées (§120), demi-journées, calendrier par type, export ICS, vue mensuelle cliquable.
 
 **Impacte.** `CalendarEntry`, `CalendarSource`, `TenantCalendar`, `BusinessCalendar`, `BelgianFederalHolidays`,
-`ManageTenantCalendarUseCase`, `JdbcTenantCalendar`, changeset 047, `TenantCalendarController`, `TypeSettingsArtifacts`
+`ManageTenantCalendarUseCase`, `JdbcTenantCalendar`, changesets 047 et 048, `PinnedHttpClient`, `HttpsIcsFetcher`,
+`TenantCalendarController`, `TypeSettingsArtifacts`
 et `CalendarDoc` (promotion), `openapi/openapi.yaml`, écran Admin → Types → Calendrier, spec 04, guide utilisateur.

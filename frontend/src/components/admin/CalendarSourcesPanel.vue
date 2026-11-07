@@ -5,10 +5,14 @@ import { toProblemDetail } from '@/api/http'
 import {
   addBelgianFederalHolidays,
   createSource,
+  createUrlSource,
   deleteSource,
   previewNewSource,
+  previewNewUrlSource,
   previewReload,
+  previewUrlReload,
   reloadSource,
+  reloadUrlSource,
   type CalendarSource,
   type SourcePreview,
   type TenantCalendar,
@@ -30,12 +34,22 @@ const busy = ref(false)
 const newName = ref('')
 const newFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+/** `file` : un fichier .ics ; `url` : un agenda en ligne (l'URL est un secret : jamais réaffichée après l'envoi). */
+const mode = ref<'file' | 'url'>('file')
+const newUrl = ref('')
+/** Source par URL dont on saisit l'URL (remplacement, ou URL à ressaisir après une promotion). */
+const editingUrl = ref<string | null>(null)
+const editedUrl = ref('')
 
 const reloadInput = ref<HTMLInputElement | null>(null)
 let reloadTarget: CalendarSource | null = null
 
-/** Import en attente de confirmation : l'aperçu, le fichier qui l'a produit, et la source rechargée (nulle : création). */
-const pending = ref<{ preview: SourcePreview; file: File; name: string; sourceId: string | null } | null>(null)
+/**
+ * Import en attente de confirmation : l'aperçu, d'où vient le contenu (un fichier, ou une URL ; URL nulle : celle que le
+ * serveur conserve) et la source rechargée (nulle : création).
+ */
+type Origin = { file: File } | { url: string | null }
+const pending = ref<{ preview: SourcePreview; origin: Origin; name: string; sourceId: string | null } | null>(null)
 const pendingError = ref<string | null>(null)
 const confirmingDelete = ref<string | null>(null)
 
@@ -65,14 +79,20 @@ function onNewFile(event: Event) {
 
 async function previewCreate() {
   error.value = null
-  if (!newName.value.trim() || !newFile.value) {
-    error.value = t('admin.types.calendar.errors.nameAndFile')
+  const name = newName.value.trim()
+  const url = newUrl.value.trim()
+  if (!name || (mode.value === 'file' ? !newFile.value : !url)) {
+    error.value = t(mode.value === 'file' ? 'admin.types.calendar.errors.nameAndFile' : 'admin.types.calendar.errors.nameAndUrl')
     return
   }
   busy.value = true
   try {
-    const file = newFile.value
-    pending.value = { preview: await previewNewSource(newName.value.trim(), file), file, name: newName.value.trim(), sourceId: null }
+    if (mode.value === 'file' && newFile.value) {
+      const file = newFile.value
+      pending.value = { preview: await previewNewSource(name, file), origin: { file }, name, sourceId: null }
+    } else {
+      pending.value = { preview: await previewNewUrlSource(name, url), origin: { url }, name, sourceId: null }
+    }
     pendingError.value = null
   } catch (err) {
     error.value = message(err, t('admin.types.calendar.errors.preview'))
@@ -96,7 +116,7 @@ async function onReloadFile(event: Event) {
   error.value = null
   busy.value = true
   try {
-    pending.value = { preview: await previewReload(source.id, file), file, name: source.name, sourceId: source.id }
+    pending.value = { preview: await previewReload(source.id, file), origin: { file }, name: source.name, sourceId: source.id }
     pendingError.value = null
   } catch (err) {
     error.value = message(err, t('admin.types.calendar.errors.preview'))
@@ -105,19 +125,67 @@ async function onReloadFile(event: Event) {
   }
 }
 
+/** Recharger une source par URL : l'URL conservée, ou celle qu'on vient de saisir (remplacement). */
+async function previewUrlSourceReload(source: CalendarSource, url: string | null) {
+  error.value = null
+  busy.value = true
+  try {
+    pending.value = { preview: await previewUrlReload(source.id, url ?? undefined), origin: { url }, name: source.name, sourceId: source.id }
+    pendingError.value = null
+    editingUrl.value = null
+    editedUrl.value = ''
+  } catch (err) {
+    error.value = message(err, t('admin.types.calendar.errors.preview'))
+  } finally {
+    busy.value = false
+  }
+}
+
+function askUrlReload(source: CalendarSource) {
+  // Sans URL conservée (source importée par promotion), il faut la saisir ; sinon on relit celle du serveur.
+  if (!source.maskedUrl) {
+    startEditingUrl(source)
+    return
+  }
+  void previewUrlSourceReload(source, null)
+}
+
+function startEditingUrl(source: CalendarSource) {
+  editingUrl.value = source.id
+  editedUrl.value = ''
+}
+
+function submitEditedUrl(source: CalendarSource) {
+  const url = editedUrl.value.trim()
+  if (!url) {
+    error.value = t('admin.types.calendar.errors.urlRequired')
+    return
+  }
+  void previewUrlSourceReload(source, url)
+}
+
 async function confirmImport() {
   const current = pending.value
   if (!current) return
   pendingError.value = null
   busy.value = true
   try {
-    const calendar = current.sourceId
-      ? await reloadSource(current.sourceId, current.file, current.preview.sha256)
-      : await createSource(current.name, current.file, current.preview.sha256)
+    const sha = current.preview.sha256
+    let calendar: TenantCalendar
+    if ('file' in current.origin) {
+      calendar = current.sourceId
+        ? await reloadSource(current.sourceId, current.origin.file, sha)
+        : await createSource(current.name, current.origin.file, sha)
+    } else {
+      calendar = current.sourceId
+        ? await reloadUrlSource(current.sourceId, sha, current.origin.url ?? undefined)
+        : await createUrlSource(current.name, current.origin.url ?? '', sha)
+    }
     pending.value = null
     if (!current.sourceId) {
       newName.value = ''
       newFile.value = null
+      newUrl.value = ''
       if (fileInput.value) fileInput.value.value = ''
     }
     done(calendar)
@@ -169,10 +237,33 @@ function loaded(source: CalendarSource): string {
           {{ t(`admin.types.calendar.sources.kind.${source.kind}`) }} ·
           {{ t('admin.types.calendar.sources.count', { count: source.entryCount }) }} · {{ loaded(source) }}
         </span>
+        <span v-if="source.kind === 'ICS_URL'" class="hint" data-testid="source-url">
+          {{ source.maskedUrl ?? t('admin.types.calendar.sources.urlMissing') }}
+        </span>
         <span v-if="source.lastError" class="error" data-testid="source-error">{{ source.lastError }}</span>
         <button v-if="source.kind === 'ICS_FILE'" type="button" :disabled="busy" data-testid="source-reload" @click="askReload(source)">
           {{ t('admin.types.calendar.sources.reload') }}
         </button>
+        <template v-if="source.kind === 'ICS_URL'">
+          <button type="button" :disabled="busy" data-testid="source-reload" @click="askUrlReload(source)">
+            {{ t('admin.types.calendar.sources.reload') }}
+          </button>
+          <button type="button" :disabled="busy" data-testid="source-url-change" @click="startEditingUrl(source)">
+            {{ t('admin.types.calendar.sources.changeUrl') }}
+          </button>
+          <span v-if="editingUrl === source.id" class="url-edit">
+            <label>
+              {{ t('admin.types.calendar.sources.url') }}
+              <input v-model="editedUrl" type="url" autocomplete="off" spellcheck="false" data-testid="source-url-edit" />
+            </label>
+            <button type="button" :disabled="busy" data-testid="source-url-edit-preview" @click="submitEditedUrl(source)">
+              {{ t('admin.types.calendar.sources.preview') }}
+            </button>
+            <button type="button" :disabled="busy" data-testid="source-url-edit-cancel" @click="editingUrl = null">
+              {{ t('admin.types.calendar.import.cancel') }}
+            </button>
+          </span>
+        </template>
         <template v-if="confirmingDelete === source.id">
           <span class="hint">{{ t('admin.types.calendar.sources.deleteConfirm', { name: source.name }) }}</span>
           <button type="button" :disabled="busy" data-testid="source-delete-confirm" @click="remove(source)">
@@ -196,8 +287,20 @@ function loaded(source: CalendarSource): string {
         <input v-model="newName" maxlength="80" data-testid="source-name" />
       </label>
       <label>
+        {{ t('admin.types.calendar.sources.mode') }}
+        <select v-model="mode" data-testid="source-mode">
+          <option value="file">{{ t('admin.types.calendar.sources.kind.ICS_FILE') }}</option>
+          <option value="url">{{ t('admin.types.calendar.sources.kind.ICS_URL') }}</option>
+        </select>
+      </label>
+      <label v-if="mode === 'file'">
         {{ t('admin.types.calendar.sources.file') }}
         <input ref="fileInput" type="file" accept=".ics,text/calendar" data-testid="source-file" @change="onNewFile" />
+      </label>
+      <label v-else>
+        {{ t('admin.types.calendar.sources.url') }}
+        <input v-model="newUrl" type="url" autocomplete="off" spellcheck="false" data-testid="source-url-input" />
+        <span class="hint">{{ t('admin.types.calendar.sources.urlHint') }}</span>
       </label>
       <button type="button" :disabled="busy" data-testid="source-preview" @click="previewCreate">
         {{ t('admin.types.calendar.sources.preview') }}

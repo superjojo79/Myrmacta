@@ -235,4 +235,174 @@ describe('CalendarSourcesPanel (TODO §121, D-CAL-SOURCE, D-CAL-ICS-PREVIEW, D-C
     expect(wrapper.get('[data-testid="sources-error"]').text()).toBe('server detail')
     expect(wrapper.emitted('changed')).toBeUndefined()
   })
+
+  // ---------------------------------------------------------------- sources par URL (lot 3)
+
+  const urlSource = (over: Partial<calendarApi.CalendarSource> = {}) =>
+    source({ id: 'src-url', name: 'Agenda', kind: 'ICS_URL', maskedUrl: 'https://calendar.example.org/…', ...over })
+
+  const SECRET_URL = 'https://calendar.example.org/ical/TOPSECRET-TOKEN/basic.ics'
+
+  it('switches the add form between a file and an URL', async () => {
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [] } })
+    expect(wrapper.find('[data-testid="source-file"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="source-url-input"]').exists()).toBe(false)
+
+    await wrapper.get('[data-testid="source-mode"]').setValue('url')
+
+    expect(wrapper.find('[data-testid="source-file"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="source-url-input"]').attributes('autocomplete')).toBe('off')
+  })
+
+  it('previews then creates a source from an URL, and never shows the URL again', async () => {
+    vi.mocked(calendarApi.previewNewUrlSource).mockResolvedValue(preview({ kind: 'ICS_URL' }))
+    vi.mocked(calendarApi.createUrlSource).mockResolvedValue(calendar([urlSource()]))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [] } })
+    await wrapper.get('[data-testid="source-mode"]').setValue('url')
+    await wrapper.get('[data-testid="source-name"]').setValue('Agenda')
+    await wrapper.get('[data-testid="source-url-input"]').setValue(`  ${SECRET_URL}  `)
+
+    await wrapper.get('[data-testid="source-preview"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.previewNewUrlSource).toHaveBeenCalledWith('Agenda', SECRET_URL)
+    expect(calendarApi.previewNewSource).not.toHaveBeenCalled()
+    await wrapper.get('[data-testid="import-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.createUrlSource).toHaveBeenCalledWith('Agenda', SECRET_URL, 'sha-1')
+    expect(wrapper.emitted('changed')).toEqual([[[expect.objectContaining({ id: 'src-url' })]]])
+    expect((wrapper.get('[data-testid="source-url-input"]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.html()).not.toContain('TOPSECRET')
+  })
+
+  it('asks for a name and an URL before calling the server', async () => {
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [] } })
+    await wrapper.get('[data-testid="source-mode"]').setValue('url')
+    await wrapper.get('[data-testid="source-name"]').setValue('Agenda')
+
+    await wrapper.get('[data-testid="source-preview"]').trigger('click')
+
+    expect(wrapper.get('[data-testid="sources-error"]').text()).toContain("l'URL")
+    expect(calendarApi.previewNewUrlSource).not.toHaveBeenCalled()
+  })
+
+  it('shows the server refusal of an URL, and keeps no dialog open', async () => {
+    vi.mocked(calendarApi.previewNewUrlSource).mockRejectedValue(ensureProblem(400))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [] } })
+    await wrapper.get('[data-testid="source-mode"]').setValue('url')
+    await wrapper.get('[data-testid="source-name"]').setValue('Agenda')
+    await wrapper.get('[data-testid="source-url-input"]').setValue('https://10.0.0.5/a.ics')
+
+    await wrapper.get('[data-testid="source-preview"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="sources-error"]').text()).toBe('server detail')
+    expect(wrapper.find('[data-testid="calendar-import-preview"]').exists()).toBe(false)
+  })
+
+  it('tells to preview again on a 409 when confirming an URL source', async () => {
+    vi.mocked(calendarApi.previewNewUrlSource).mockResolvedValue(preview({ kind: 'ICS_URL' }))
+    vi.mocked(calendarApi.createUrlSource).mockRejectedValue(ensureProblem(409))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [] } })
+    await wrapper.get('[data-testid="source-mode"]').setValue('url')
+    await wrapper.get('[data-testid="source-name"]').setValue('Agenda')
+    await wrapper.get('[data-testid="source-url-input"]').setValue(SECRET_URL)
+    await wrapper.get('[data-testid="source-preview"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('[data-testid="import-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="import-error"]').text()).toContain("relancez l'aperçu")
+    expect(wrapper.emitted('changed')).toBeUndefined()
+  })
+
+  it('shows only the masked URL of an URL source, or says it must be entered again', () => {
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource(), urlSource({ id: 'src-2', name: 'Importé', maskedUrl: null })] } })
+    const urls = wrapper.findAll('[data-testid="source-url"]').map((node) => node.text())
+
+    expect(urls).toEqual(['https://calendar.example.org/…', 'URL à ressaisir'])
+    expect(wrapper.html()).not.toContain('basic.ics')
+  })
+
+  it('reloads an URL source from the stored URL: no URL is sent', async () => {
+    vi.mocked(calendarApi.previewUrlReload).mockResolvedValue(preview({ sourceId: 'src-url', kind: 'ICS_URL', sha256: 'sha-2' }))
+    vi.mocked(calendarApi.reloadUrlSource).mockResolvedValue(calendar([urlSource({ entryCount: 5 })]))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource()] } })
+
+    await wrapper.get('[data-testid="source-reload"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.previewUrlReload).toHaveBeenCalledWith('src-url', undefined)
+    await wrapper.get('[data-testid="import-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.reloadUrlSource).toHaveBeenCalledWith('src-url', 'sha-2', undefined)
+    expect(wrapper.emitted('changed')).toEqual([[[expect.objectContaining({ entryCount: 5 })]]])
+  })
+
+  it('asks for the URL again when a source has none, then reloads with it', async () => {
+    vi.mocked(calendarApi.previewUrlReload).mockResolvedValue(preview({ sourceId: 'src-2', kind: 'ICS_URL', sha256: 'sha-3' }))
+    vi.mocked(calendarApi.reloadUrlSource).mockResolvedValue(calendar([urlSource({ id: 'src-2' })]))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource({ id: 'src-2', maskedUrl: null })] } })
+
+    await wrapper.get('[data-testid="source-reload"]').trigger('click')
+    expect(calendarApi.previewUrlReload).not.toHaveBeenCalled()
+    await wrapper.get('[data-testid="source-url-edit"]').setValue(SECRET_URL)
+    await wrapper.get('[data-testid="source-url-edit-preview"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.previewUrlReload).toHaveBeenCalledWith('src-2', SECRET_URL)
+    expect(wrapper.find('[data-testid="source-url-edit"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="import-confirm"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.reloadUrlSource).toHaveBeenCalledWith('src-2', 'sha-3', SECRET_URL)
+    expect(wrapper.html()).not.toContain('TOPSECRET')
+  })
+
+  it('changes the URL of a source, and refuses an empty one', async () => {
+    vi.mocked(calendarApi.previewUrlReload).mockResolvedValue(preview({ sourceId: 'src-url', kind: 'ICS_URL' }))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource()] } })
+
+    await wrapper.get('[data-testid="source-url-change"]').trigger('click')
+    await wrapper.get('[data-testid="source-url-edit-preview"]').trigger('click')
+    expect(wrapper.get('[data-testid="sources-error"]').text()).toContain("L'URL est obligatoire")
+    expect(calendarApi.previewUrlReload).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="source-url-edit"]').setValue('https://other.example.net/feed.ics')
+    await wrapper.get('[data-testid="source-url-edit-preview"]').trigger('click')
+    await flushPromises()
+
+    expect(calendarApi.previewUrlReload).toHaveBeenCalledWith('src-url', 'https://other.example.net/feed.ics')
+  })
+
+  it('cancelling the URL editor sends nothing', async () => {
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource()] } })
+
+    await wrapper.get('[data-testid="source-url-change"]').trigger('click')
+    await wrapper.get('[data-testid="source-url-edit-cancel"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="source-url-edit"]').exists()).toBe(false)
+    expect(calendarApi.previewUrlReload).not.toHaveBeenCalled()
+  })
+
+  it('shows the error of a failed reload and the last error of the source', async () => {
+    vi.mocked(calendarApi.previewUrlReload).mockRejectedValue(ensureProblem(400))
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [urlSource({ lastError: 'calendar host calendar.example.org answered HTTP 503' })] } })
+
+    expect(wrapper.get('[data-testid="source-error"]').text()).toContain('503')
+    await wrapper.get('[data-testid="source-reload"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="sources-error"]').text()).toBe('server detail')
+    expect(wrapper.find('[data-testid="calendar-import-preview"]').exists()).toBe(false)
+  })
+
+  it('offers no URL button on a file source', () => {
+    const wrapper = mount(CalendarSourcesPanel, { props: { sources: [source()] } })
+    expect(wrapper.find('[data-testid="source-url-change"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="source-url"]').exists()).toBe(false)
+  })
 })

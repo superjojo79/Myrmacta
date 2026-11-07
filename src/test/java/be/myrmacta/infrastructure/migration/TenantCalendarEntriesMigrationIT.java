@@ -22,7 +22,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * TODO §121 (D-CAL-BE-SOURCE) — le changeset 047 reprend les dates de {@code tenant_calendar.holidays} (046) en
- * saisies manuelles {@code CLOSED}, puis retire la colonne ; ses tables tiennent les garde-fous de D-CAL-SOURCE.
+ * saisies manuelles {@code CLOSED}, puis retire la colonne ; ses tables tiennent les garde-fous de D-CAL-SOURCE. Le 048
+ * ajoute la forme masquée de l'URL d'une source.
  */
 class TenantCalendarEntriesMigrationIT {
 
@@ -41,8 +42,13 @@ class TenantCalendarEntriesMigrationIT {
             Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
             database.setDefaultSchemaName(SCHEMA);
             Liquibase liquibase = new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), database);
-            int total = liquibase.getDatabaseChangeLog().getChangeSets().size();
-            liquibase.update(total - 1, "");
+            // Tout ce qui précède le changeset 047, quel que soit le nombre de ceux qui le suivent.
+            var changeSets = liquibase.getDatabaseChangeLog().getChangeSets();
+            int before047 = 0;
+            while (!"047-tenant-calendar-entries".equals(changeSets.get(before047).getId())) {
+                before047++;
+            }
+            liquibase.update(before047, "");
             assertThat(jdbc.queryForObject(
                     "select count(*) from databasechangelog where id = '047-tenant-calendar-entries'", Integer.class)).isZero();
             jdbc.update("""
@@ -125,6 +131,16 @@ class TenantCalendarEntriesMigrationIT {
 
         assertThat(jdbc.queryForObject("select count(*) from tenant_calendar_entry where source_id = ?", Integer.class, source)).isZero();
         assertThat(jdbc.queryForObject("select count(*) from tenant_calendar_entry where tenant_id = 't1'", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void changeset048AddsTheMaskedUrlColumn_nullForExistingSources() {
+        assertThat(jdbc.queryForObject("""
+                select count(*) from information_schema.columns
+                where table_schema = ? and table_name = 'tenant_calendar_source' and column_name = 'masked_url'
+                """, Integer.class, SCHEMA)).isEqualTo(1);
+        UUID id = insertSource("t1", "Fériés");
+        assertThat(jdbc.queryForObject("select masked_url from tenant_calendar_source where id = ?", String.class, id)).isNull();
     }
 
     private UUID insertSource(String tenant, String name) {

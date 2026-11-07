@@ -171,9 +171,15 @@ pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
   fichier a changé entre-temps, relancez l'aperçu.
   - Seules les journées entières comptent ; les événements horaires, annulés ou « libres » sont ignorés. Les
     événements récurrents sont déroulés de l'année précédente jusqu'à deux ans plus tard.
-  - **Recharger** une source demande un nouveau fichier, montre l'aperçu, puis remplace uniquement les jours de cette
+  - **Par URL** : choisissez le type « URL ICS » et collez l'adresse de l'agenda (https). C'est le serveur qui la
+    télécharge (10 s et 1 Mio au plus, sans redirection ni identifiant) ; il doit donc pouvoir joindre l'hôte. Ces
+    adresses contiennent souvent un jeton : elle est conservée chiffrée, et l'écran n'en montre plus que l'hôte. Pour
+    la modifier, **Changer l'URL** ; une source importée d'un autre environnement affiche « URL à ressaisir ».
+  - **Recharger** une source par fichier demande un nouveau fichier, montre l'aperçu, puis remplace uniquement les jours de cette
     source : vos lignes manuelles et les autres sources ne bougent pas.
-  - **Supprimer** une source supprime ses jours, après confirmation.
+    Une source par URL se recharge d'un clic, avec l'URL conservée. Si le téléchargement échoue, ses jours ne changent
+    pas et l'erreur s'affiche sur la source jusqu'au prochain rechargement réussi.
+  - **Supprimer** une source supprime ses jours (et son URL), après confirmation.
 - Les jours fermés ne comptent que pour un délai marqué ouvrable.
 
 Le calendrier voyage avec la promotion de configuration : saisies et sources, avec leurs périodes.

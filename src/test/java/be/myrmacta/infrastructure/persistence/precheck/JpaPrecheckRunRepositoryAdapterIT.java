@@ -29,7 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /** TODO §106 (lot B, C2, HC9, D-PRECHECK-STORE, D-PRECHECK-QUEUE) — tables 040 et file avec bail sur PostgreSQL. */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
-class JdbcPrecheckRunRepositoryIT {
+class JpaPrecheckRunRepositoryAdapterIT {
 
     private static final PrecheckSpec SPEC = PrecheckSpec.parse(Map.of(
             PrecheckSpec.PIECES, "preuve : obligatoire, lire", PrecheckSpec.FIELDS, "commune",

@@ -196,14 +196,11 @@ class ArchitectureRulesTest {
     private static final Set<String> LEGACY_JDBC_ADAPTERS = Set.of(
             "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineAlertClaims",
             "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineCandidates",
-            "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineSettings",
             "be.myrmacta.infrastructure.persistence.dossier.JdbcDossierUniqueValueStore",
             "be.myrmacta.infrastructure.persistence.dossier.SequentialReferenceGenerator",
             "be.myrmacta.infrastructure.persistence.mailroom.JdbcMailMessageIndex",
-            "be.myrmacta.infrastructure.persistence.mailroom.JdbcReplyWorkflowSettings",
             "be.myrmacta.infrastructure.persistence.precheck.JdbcPrecheckRunRepository",
-            "be.myrmacta.infrastructure.persistence.workflow.JdbcPortalIdentityRepository",
-            "be.myrmacta.infrastructure.persistence.workflow.JdbcWorkflowLinkGroupRepository");
+            "be.myrmacta.infrastructure.persistence.workflow.JdbcPortalIdentityRepository");
 
     @ArchTest
     static final ArchRule persistence_goes_through_jpa_only = noClasses()

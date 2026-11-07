@@ -4,7 +4,8 @@ name: Mutation
 # - Backend : PIT (profil Maven `mutation`). Frontend : StrykerJS (`npm run test:mutation`, frontend/stryker.config.mjs).
 # - Chaque semaine et à la demande : tout le périmètre, seuil bloquant (pit.mutationThreshold du pom, thresholds.break
 #   de la configuration Stryker).
-# - Sur une PR : seulement les classes ou fichiers du périmètre modifiés (ou dont le test l'est), sans seuil — informatif.
+# - Sur une PR : seulement les classes ou fichiers du périmètre modifiés (ou dont le test l'est).
+#   PIT : même seuil bloquant que le run complet (pit.mutationThreshold du pom). Stryker : sans seuil, informatif.
 # Rapport HTML en artefact, mutants non tués dans le résumé du job.
 
 on:
@@ -73,13 +74,13 @@ jobs:
           java-version: "25"
           cache: maven
 
-      - name: Mutation testing (changed classes, report only)
+      - name: Mutation testing (changed classes, threshold enforced)
         if: steps.targets.outputs.classes != ''
         env:
           TARGETS: ${{ steps.targets.outputs.classes }}
         run: >
           ./mvnw -B -Pmutation test-compile pitest:mutationCoverage
-          "-Dpit.targetClasses=$TARGETS" -Dpit.mutationThreshold=0
+          "-Dpit.targetClasses=$TARGETS"
 
       - name: Summary
         if: always() && steps.targets.outputs.classes != ''

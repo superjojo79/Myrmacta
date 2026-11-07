@@ -90,6 +90,20 @@ class TypeSettingsArtifactsCalendarTest {
         assertThat(importer.planCalendar(calendarEntry(artifacts(target).export())).action()).isEqualTo(PlanAction.UNCHANGED);
     }
 
+    // TODO §121 (revue de #33) — l'application d'un calendrier de bundle (réglage, suppressions, sources) est atomique.
+    @Test
+    void applyingACalendarRunsInASingleLock_andAnUnchangedOneTakesNone() {
+        Memory target = new Memory();
+        TypeSettingsArtifacts importer = artifacts(target);
+        BundleEntry exported = calendarEntry(artifacts(new Memory(populated())).export());
+
+        importer.applyCalendar(exported, importer.planCalendar(exported).action());
+        assertThat(target.lockedRuns).isEqualTo(1);
+
+        importer.applyCalendar(exported, PlanAction.UNCHANGED);
+        assertThat(target.lockedRuns).isEqualTo(1);
+    }
+
     @Test
     void importingAgainOverTheSameCalendarIsUnchanged_andWritesNothing() {
         Memory target = new Memory(populated());
@@ -210,6 +224,7 @@ class TypeSettingsArtifactsCalendarTest {
         final List<CalendarSource> sources = new ArrayList<>();
         final List<UUID> deleted = new ArrayList<>();
         int writes;
+        int lockedRuns;
 
         Memory() {
         }
@@ -241,6 +256,19 @@ class TypeSettingsArtifactsCalendarTest {
             writes++;
             sources.removeIf(existing -> existing.id().equals(source.id()));
             sources.add(source);
+        }
+
+        @Override
+        public <T> T locked(String tenantId, java.util.function.Supplier<T> work) {
+            lockedRuns++;
+            return work.get();
+        }
+
+        @Override
+        public void touch(String tenantId, Instant at, String by) {
+            writes++;
+            TenantCalendar calendar = stored == null ? TenantCalendar.defaults() : stored.calendar();
+            stored = new StoredTenantCalendar(tenantId, calendar, at, by);
         }
 
         @Override

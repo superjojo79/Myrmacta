@@ -1,6 +1,7 @@
 package be.myrmacta.domain.deadline.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import be.myrmacta.domain.deadline.model.CalendarEntry;
@@ -600,6 +601,114 @@ class ManageTenantCalendarUseCaseImplTest {
         assertThat(fetcher.calls).isEmpty();
     }
 
+    // ------------------------------------------------------------------ concurrence et atomicité (revue de #33)
+
+    @Test
+    void everyWriteRunsInsideTheTenantLock() {
+        parsed("sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.content = FILE;
+
+        useCase.replace(ADMIN, "UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(closedDay("2026-12-24", "Pont")));
+        useCase.loadBelgianFederalHolidays(ADMIN);
+        UUID file = useCase.applyFileSource(ADMIN, "Fichier", null, FILE, "sha-1").calendar().sources().stream()
+                .filter(source -> source.name().equals("Fichier")).findFirst().orElseThrow().id();
+        UUID url = useCase.applyUrlSource(ADMIN, "Agenda", null, URL, "sha-1").calendar().sources().stream()
+                .filter(source -> source.name().equals("Agenda")).findFirst().orElseThrow().id();
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered HTTP 503");
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, url, null, "sha-1")).isInstanceOf(IllegalArgumentException.class);
+        useCase.deleteSource(ADMIN, file);
+
+        assertThat(repository.unlockedWrites).isEmpty();
+    }
+
+    @Test
+    void applyingASourceNeverRewritesTheManualEntriesFromItsOwnSnapshot() {
+        useCase.replace(ADMIN, "UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(closedDay("2026-12-24", "Pont")));
+        int savesBefore = repository.saves;
+        parsed("sha-1", closedDay("2026-12-25", "Noël"));
+
+        useCase.applyFileSource(ADMIN, "Fichier", null, FILE, "sha-1");
+        useCase.loadBelgianFederalHolidays(ADMIN);
+
+        assertThat(repository.saves).isEqualTo(savesBefore);
+        assertThat(repository.touches).isEqualTo(2);
+    }
+
+    @Test
+    void aManualEditMadeWhileTheFileWasBeingReadIsNotLost() {
+        useCase.replace(ADMIN, "UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(closedDay("2026-12-24", "Ancienne saisie")));
+        parsed("sha-1", closedDay("2026-12-25", "Noël"));
+        CalendarEntry concurrent = closedDay("2027-02-01", "Saisie de l'autre administrateur");
+        repository.beforeLock = () -> repository.stored = new StoredTenantCalendar(TENANT,
+                new TenantCalendar("Europe/Brussels", WeekendPattern.SUNDAY_ONLY, List.of(concurrent), repository.sources), NOW, "autre");
+
+        useCase.applyFileSource(ADMIN, "Fichier", null, FILE, "sha-1");
+
+        TenantCalendar after = repository.stored.calendar();
+        assertThat(after.manual()).containsExactly(concurrent);
+        assertThat(after.zoneId()).isEqualTo("Europe/Brussels");
+        assertThat(after.weekend()).isEqualTo(WeekendPattern.SUNDAY_ONLY);
+        assertThat(repository.sources).extracting(CalendarSource::name).containsExactly("Fichier");
+    }
+
+    @Test
+    void theCapOnSourcesIsCheckedAgainstTheStateInsideTheLock() {
+        parsed("sha-1");
+        for (int i = 0; i < TenantCalendar.MAX_SOURCES - 1; i++) {
+            useCase.applyFileSource(ADMIN, "Source " + i, null, FILE, "sha-1");
+        }
+        // Deux administrateurs créent la dixième source en même temps : l'autre passe en premier.
+        repository.beforeLock = () -> repository.sources.add(CalendarSource.create("Prise par l'autre", CalendarSource.Kind.ICS_FILE, List.of(),
+                NOW, "autre", "sha-x"));
+
+        assertThatThrownBy(() -> useCase.applyFileSource(ADMIN, "La mienne", null, FILE, "sha-1"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at most");
+
+        assertThat(repository.sources).hasSize(TenantCalendar.MAX_SOURCES);
+        assertThat(repository.sources).extracting(CalendarSource::name).doesNotContain("La mienne");
+        assertThatCode(() -> useCase.get(ADMIN)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void aNameTakenWhileTheFileWasBeingReadIsAConflictAndWritesNothing() {
+        parsed("sha-1");
+        repository.beforeLock = () -> repository.sources.add(CalendarSource.create("Écoles", CalendarSource.Kind.ICS_FILE, List.of(), NOW, "autre", "sha-x"));
+        repository.stored = new StoredTenantCalendar(TENANT, TenantCalendar.defaults(), NOW, "admin");
+
+        assertThatThrownBy(() -> useCase.applyFileSource(ADMIN, "écoles", null, FILE, "sha-1")).isInstanceOf(CalendarSourceConflictException.class);
+
+        assertThat(repository.sources).hasSize(1);
+        assertThat(repository.touches).isZero();
+    }
+
+    @Test
+    void aRecordedFailureLandsOnTheFreshSource_notOnTheSnapshotReadBeforeTheDownload() {
+        UUID id = urlSource("Écoles", "sha-1", closedDay("2026-12-25", "Noël"));
+        fetcher.failure = new IllegalArgumentException("calendar host calendar.example.org answered HTTP 503");
+        // Un autre administrateur recharge la source avec succès pendant que ce téléchargement échoue.
+        repository.beforeLock = () -> {
+            CalendarSource fresh = repository.sources.getFirst().reloaded(List.of(closedDay("2027-01-04", "Rentrée")),
+                    NOW, "autre", "sha-fresh");
+            repository.sources.set(0, fresh);
+        };
+
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, id, null, "sha-2")).isInstanceOf(IllegalArgumentException.class);
+
+        CalendarSource after = repository.sources.getFirst();
+        assertThat(after.lastError()).contains("503");
+        assertThat(after.closedDays()).extracting(CalendarEntry::start).containsExactly(LocalDate.parse("2027-01-04"));
+        assertThat(after.contentSha256()).isEqualTo("sha-fresh");
+    }
+
+    @Test
+    void deletingASourceAlreadyDeletedByTheOtherAdministratorIs404() {
+        parsed("sha-1");
+        UUID id = useCase.applyFileSource(ADMIN, "Fichier", null, FILE, "sha-1").calendar().sources().getFirst().id();
+        repository.beforeLock = () -> repository.sources.clear();
+
+        assertThatThrownBy(() -> useCase.deleteSource(ADMIN, id)).isInstanceOf(CalendarSourceNotFoundException.class);
+    }
+
     /** Téléchargeur de test : rend ce qu'on lui a préparé et garde les URL demandées. */
     private static final class StubFetcher implements IcsFetcher {
 
@@ -646,6 +755,42 @@ class ManageTenantCalendarUseCaseImplTest {
         StoredTenantCalendar stored;
         final List<CalendarSource> sources = new ArrayList<>();
         final Map<UUID, String> urls = new java.util.HashMap<>();
+        /** Écritures faites hors du verrou du calendrier : doit rester vide. */
+        final List<String> unlockedWrites = new ArrayList<>();
+        int saves;
+        int touches;
+        private boolean inLock;
+        /** Une modification concurrente, jouée au moment où le verrou est pris (après les lectures hors verrou). */
+        Runnable beforeLock;
+
+        private void write(String what) {
+            if (!inLock) {
+                unlockedWrites.add(what);
+            }
+        }
+
+        @Override
+        public <T> T locked(String tenantId, java.util.function.Supplier<T> work) {
+            if (beforeLock != null) {
+                Runnable concurrent = beforeLock;
+                beforeLock = null;
+                concurrent.run();
+            }
+            inLock = true;
+            try {
+                return work.get();
+            } finally {
+                inLock = false;
+            }
+        }
+
+        @Override
+        public void touch(String tenantId, Instant at, String by) {
+            write("touch");
+            touches++;
+            TenantCalendar calendar = stored == null ? TenantCalendar.defaults() : stored.calendar();
+            stored = new StoredTenantCalendar(tenantId, calendar, at, by);
+        }
 
         @Override
         public Optional<StoredTenantCalendar> find(String tenantId) {
@@ -660,11 +805,14 @@ class ManageTenantCalendarUseCaseImplTest {
 
         @Override
         public void save(StoredTenantCalendar calendar) {
+            write("save");
+            saves++;
             stored = calendar;
         }
 
         @Override
         public void saveSource(String tenantId, CalendarSource source, String url) {
+            write("saveSource");
             sources.removeIf(existing -> existing.id().equals(source.id()));
             sources.add(source);
             if (url != null) {
@@ -679,6 +827,7 @@ class ManageTenantCalendarUseCaseImplTest {
 
         @Override
         public boolean deleteSource(String tenantId, UUID sourceId) {
+            write("deleteSource");
             urls.remove(sourceId);
             return sources.removeIf(existing -> existing.id().equals(sourceId));
         }

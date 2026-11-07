@@ -1114,8 +1114,12 @@ D-CAL-API, D-CAL-PROMO-2).
   - Lecture : `Ical4jIcsCalendarParser` (ical4j 4.4.0, infrastructure seulement ; groovy exclu). Journées entières
     (`VALUE=DATE`, `DTEND` exclusif, `DURATION` admise, un jour sans fin) ; `RRULE`, `RDATE` et `EXDATE` déroulés de
     l'année N-1 à N+2 dans le fuseau du tenant, une fréquence plus fine que quotidienne étant refusée ; événements
-    horaires, `CANCELLED` et `TRANSPARENT` écartés et comptés ; 10 000 périodes au plus. Aucun appel réseau
-    (`ical4j.properties`).
+    horaires, `CANCELLED` et `TRANSPARENT` écartés et comptés ; 10 000 périodes au plus. Les `RECURRENCE-ID` retirent
+    l'occurrence remplacée de la série. L'empreinte (SHA-256) porte sur les périodes lues et leurs libellés, pas sur
+    les octets. Aucun appel réseau (`ical4j.properties`).
+  - **Concurrence.** Les écritures passent par `TenantCalendarRepository.locked` (verrou de la ligne `tenant_calendar`,
+    une transaction) ; le téléchargement se fait avant, hors verrou. Les plafonds, les noms et l'empreinte sont
+    revérifiés sous verrou, et une opération sur une source ne réécrit jamais les saisies manuelles.
 - **Écran** : Admin → Types → Calendrier. Formulaire Du / Au / nature / libellé (`CalendarEntryForm`), tableau trié
   des saisies et des jours de source (`CalendarEntryList`, jour de source recouvert par un jour ouvré forcé signalé),
   sources (`CalendarSourcesPanel` : ajout d'un fichier `.ics` ou d'une URL, rechargement, changement d'URL,
@@ -1127,6 +1131,7 @@ D-CAL-API, D-CAL-PROMO-2).
 - **Tests.** `CalendarEntryTest`, `TenantCalendarTest`, `BusinessCalendarTest`, `ManageTenantCalendarUseCaseImplTest`,
   `TenantCalendarApiTest` (chaîne HTTP et sécurité, isolation du tenant), `TenantCalendarEntriesMigrationIT`,
   `TypeSettingsArtifactsCalendarTest`, `Ical4jIcsCalendarParserTest`, `CalendarUrlTest`, `HttpsIcsFetcherTest` (serveurs
-  locaux : redirection, taille, lenteur, garde réseau) ; Vitest (`TenantCalendarPanel`,
+  locaux : redirection, taille, lenteur du corps et des en-têtes, garde réseau), `OutboundUrlGuardTest` (graphies IPv6),
+  `JdbcTenantCalendarIT` (courses entre deux administrateurs, annulation, autre tenant, secret supprimé) ; Vitest (`TenantCalendarPanel`,
   `CalendarEntryForm`, `CalendarEntryList`, `CalendarSourcesPanel`, `CalendarImportPreview`) et Playwright `E2E-CAL-1`
   à `11`.

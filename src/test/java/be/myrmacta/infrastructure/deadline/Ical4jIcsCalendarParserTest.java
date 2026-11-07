@@ -12,10 +12,8 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -148,13 +146,82 @@ class Ical4jIcsCalendarParserTest {
         assertThat(parsed.closedDays().get(1).label()).isNull();
     }
 
+    // TODO §121 (revue de #33) — l'empreinte décrit ce que le fichier donne (périodes et libellés), pas ses octets : un
+    // agenda en ligne qui régénère DTSTAMP ou PRODID à chaque téléchargement garde la même empreinte, sans quoi la
+    // comparaison de l'aperçu et de l'application échouerait toujours.
     @Test
-    void theSha256IsTheHashOfTheRawBytes() throws Exception {
-        byte[] content = ics(event("a", "DTSTART;VALUE=DATE:20261111", "SUMMARY:Armistice"));
+    void theShaIgnoresVolatileFieldsAndEventOrder_butFollowsPeriodsAndLabels() {
+        String a = event("a", "DTSTART;VALUE=DATE:20261111", "SUMMARY:Armistice");
+        String b = event("b", "DTSTART;VALUE=DATE:20261225", "SUMMARY:Noël");
+        String sha = parser.parse(ics(a + b), BRUSSELS, 2025, 2028).sha256();
 
-        ParsedIcs parsed = parser.parse(content, BRUSSELS, 2025, 2028);
+        byte[] regenerated = ("BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Autre horodatage 20261107T101010//FR\nX-GENERATED:" + System.nanoTime() + "\n"
+                + (b + a).replace("DTSTAMP:20260101T000000Z", "DTSTAMP:20261107T101010Z") + "END:VCALENDAR\n")
+                .replace("\n", "\r\n").getBytes(StandardCharsets.UTF_8);
 
-        assertThat(parsed.sha256()).isEqualTo(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content)));
+        assertThat(parser.parse(regenerated, BRUSSELS, 2025, 2028).sha256()).isEqualTo(sha);
+        assertThat(parser.parse(ics(a + event("b", "DTSTART;VALUE=DATE:20261226", "SUMMARY:Noël")), BRUSSELS, 2025, 2028).sha256())
+                .isNotEqualTo(sha);
+        assertThat(parser.parse(ics(a + event("b", "DTSTART;VALUE=DATE:20261225", "SUMMARY:Noel")), BRUSSELS, 2025, 2028).sha256())
+                .isNotEqualTo(sha);
+        assertThat(parser.parse(ics(a), BRUSSELS, 2025, 2028).sha256()).isNotEqualTo(sha);
+        assertThat(sha).matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    void twoFilesWithoutAnyClosedDayShareTheSameSha() {
+        assertThat(parser.parse(ics(event("t", "DTSTART:20261105T090000Z", "DTEND:20261105T100000Z")), BRUSSELS, 2025, 2028).sha256())
+                .isEqualTo(parser.parse(ics(event("c", "DTSTART;VALUE=DATE:20261106", "STATUS:CANCELLED")), BRUSSELS, 2025, 2028).sha256());
+    }
+
+    // TODO §121 (revue de #33) — RECURRENCE-ID : l'occurrence d'une série annulée ou déplacée par un autre VEVENT de même UID.
+
+    private static final String WEEKLY = event("serie", "DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=WEEKLY;COUNT=3", "SUMMARY:Cours");
+
+    @Test
+    void aCancelledOverrideRemovesThatOccurrenceOfTheSeries() {
+        ParsedIcs parsed = parser.parse(ics(WEEKLY + event("serie", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260112",
+                "STATUS:CANCELLED", "SUMMARY:Cours")), BRUSSELS, 2025, 2028);
+
+        assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-19"));
+        assertThat(parsed.ignored()).containsEntry(IcsIgnoreReason.CANCELLED, 1);
+    }
+
+    @Test
+    void aMovedOccurrenceClosesTheNewDayAndNotTheOldOne() {
+        ParsedIcs parsed = parser.parse(ics(WEEKLY + event("serie", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260114",
+                "SUMMARY:Cours déplacé")), BRUSSELS, 2025, 2028);
+
+        assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-14"), d("2026-01-19"));
+        assertThat(parsed.closedDays().get(1).label()).isEqualTo("Cours déplacé");
+    }
+
+    @Test
+    void aTransparentOverrideAlsoFreesTheOccurrence() {
+        ParsedIcs parsed = parser.parse(ics(WEEKLY + event("serie", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260112",
+                "TRANSP:TRANSPARENT")), BRUSSELS, 2025, 2028);
+
+        assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-19"));
+    }
+
+    @Test
+    void anOverrideOfAnotherSeriesOrWithoutAnySeriesDoesNotTouchThisOne() {
+        ParsedIcs other = parser.parse(ics(WEEKLY + event("autre", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260112",
+                "STATUS:CANCELLED")), BRUSSELS, 2025, 2028);
+        ParsedIcs orphan = parser.parse(ics(event("seul", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260113", "SUMMARY:Seul")),
+                BRUSSELS, 2025, 2028);
+
+        assertThat(other.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-12"), d("2026-01-19"));
+        assertThat(orphan.closedDays()).containsExactly(closed("2026-01-13", "2026-01-13", "Seul"));
+    }
+
+    @Test
+    void anOverrideGivenAsADateTimeStillTargetsTheOccurrenceOfThatDay() {
+        ParsedIcs parsed = parser.parse(ics(WEEKLY + event("serie", "RECURRENCE-ID:20260112T000000Z", "DTSTART:20260112T090000Z",
+                "DTEND:20260112T100000Z")), BRUSSELS, 2025, 2028);
+
+        assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-19"));
+        assertThat(parsed.ignored()).containsEntry(IcsIgnoreReason.TIMED, 1);
     }
 
     @Test

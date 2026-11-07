@@ -14,9 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Arrays;
-import java.util.HexFormat;
 import org.springframework.mock.web.MockMultipartFile;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetAddress;
@@ -285,8 +283,16 @@ class TenantCalendarApiTest {
 
     private static final String TIMED = "BEGIN:VEVENT\nUID:t\nDTSTAMP:20260101T000000Z\nDTSTART:20261105T090000Z\nDTEND:20261105T100000Z\nSUMMARY:Réunion\nEND:VEVENT\n";
 
-    private static String sha(byte[] content) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+    /**
+     * L'empreinte d'un contenu, telle qu'un client la reçoit : par un aperçu (elle décrit les périodes lues, pas les
+     * octets du fichier). Sans effet : l'aperçu n'écrit rien.
+     */
+    private String sha(byte[] content) throws Exception {
+        String body = mockMvc.perform(multipart("/api/tenant/calendar/sources/preview").file(file(content))
+                        .param("name", "sonde-" + java.util.UUID.randomUUID()).with(admin()).with(csrf()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(body, "$.sha256");
     }
 
     private static MockMultipartFile file(byte[] content) {
@@ -315,7 +321,7 @@ class TenantCalendarApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Écoles"))
                 .andExpect(jsonPath("$.kind").value("ICS_FILE"))
-                .andExpect(jsonPath("$.sha256").value(sha(content)))
+                .andExpect(jsonPath("$.sha256").value(org.hamcrest.Matchers.matchesPattern("[0-9a-f]{64}")))
                 .andExpect(jsonPath("$.periodCount").value(2))
                 .andExpect(jsonPath("$.added.length()").value(2))
                 .andExpect(jsonPath("$.added[0].start").value("2026-12-25"))
@@ -783,6 +789,29 @@ class TenantCalendarApiTest {
 
         org.assertj.core.api.Assertions.assertThat(feedHits.get()).isZero();
         org.assertj.core.api.Assertions.assertThat(count("select count(*) from tenant_calendar_source where tenant_id = ?", TENANT_ID)).isZero();
+    }
+
+    @Test
+    void theShaDescribesThePeriodsRead_notTheBytes_soAnAgendaThatRegeneratesItsStampKeepsIt() throws Exception {
+        byte[] first = ics(allDay("a", "20261225", "Noël"));
+        byte[] regenerated = new String(first, StandardCharsets.UTF_8).replace("DTSTAMP:20260101T000000Z", "DTSTAMP:20261107T101010Z")
+                .replace("PRODID:-//Test//FR", "PRODID:-//Regenere " + System.nanoTime() + "//FR").getBytes(StandardCharsets.UTF_8);
+
+        org.assertj.core.api.Assertions.assertThat(sha(regenerated)).isEqualTo(sha(first));
+        org.assertj.core.api.Assertions.assertThat(sha(ics(allDay("a", "20261226", "Noël")))).isNotEqualTo(sha(first));
+    }
+
+    @Test
+    void anUrlFeedThatRegeneratesItsStampAtEveryDownload_canStillBeCreated() throws Exception {
+        byte[] content = ics(allDay("a", "20261225", "Noël"));
+        String url = startFeed(content);
+        String previewed = sha(content);
+        feedBody.set(new String(content, StandardCharsets.UTF_8).replace("DTSTAMP:20260101T000000Z", "DTSTAMP:20261107T101010Z")
+                .getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(post("/api/tenant/calendar/sources").with(admin()).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(urlBody("Agenda", url, previewed)))
+                .andExpect(status().isCreated());
     }
 
     private static RequestPostProcessor admin() {

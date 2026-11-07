@@ -5,11 +5,27 @@ import be.myrmacta.domain.deadline.model.TenantCalendar;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /** TODO §120 et §121 — réglage persisté. Vide : le tenant n'a encore rien enregistré. */
 public interface TenantCalendarRepository {
 
     Optional<StoredTenantCalendar> find(String tenantId);
+
+    /**
+     * TODO §121 (revue de #33) — exécute {@code work} dans une transaction qui tient le verrou du calendrier du tenant :
+     * deux écritures ne s'entrelacent pas. À l'intérieur, relire l'état ({@link #find}) avant de le modifier, puis
+     * écrire ; ce qui est lent (téléchargement, lecture d'un fichier) se fait avant, hors verrou. Une exception annule
+     * toutes les écritures.
+     */
+    <T> T locked(String tenantId, Supplier<T> work);
+
+    /**
+     * Garantit la ligne de réglage (les défauts si elle manque) et y note qui a modifié le calendrier, quand. Ne touche
+     * ni aux saisies manuelles ni aux sources : une opération sur une source n'écrase donc pas ce qu'un autre
+     * administrateur a saisi entre-temps.
+     */
+    void touch(String tenantId, Instant at, String by);
 
     /** Écrit le fuseau, le week-end et les saisies manuelles. Les sources ne sont pas touchées. */
     void save(StoredTenantCalendar calendar);

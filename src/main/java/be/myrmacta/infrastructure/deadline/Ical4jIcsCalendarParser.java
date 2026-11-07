@@ -10,11 +10,17 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +36,7 @@ import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.DtEnd;
 import net.fortuna.ical4j.model.property.DtStart;
 import net.fortuna.ical4j.model.property.RDate;
+import net.fortuna.ical4j.model.property.RecurrenceId;
 import net.fortuna.ical4j.model.property.RRule;
 import net.fortuna.ical4j.transform.recurrence.Frequency;
 
@@ -58,9 +65,12 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
         Period<LocalDate> window = new Period<>(LocalDate.of(fromYear, 1, 1), LocalDate.of(toYear + 1, 1, 1));
         Map<IcsIgnoreReason, Integer> ignored = new EnumMap<>(IcsIgnoreReason.class);
         List<CalendarEntry> entries = new ArrayList<>();
+        Map<String, Set<LocalDate>> overridden = overriddenOccurrences(events, zone);
         for (VEvent event : events) {
             try {
-                IcsIgnoreReason reason = unfold(event, window, entries);
+                Set<LocalDate> skipped = event.getProperty(Property.RECURRENCE_ID).isPresent()
+                        ? Set.of() : overridden.getOrDefault(uidOf(event), Set.of());
+                IcsIgnoreReason reason = unfold(event, window, skipped, entries);
                 if (reason != null) {
                     ignored.merge(reason, 1, Integer::sum);
                 }
@@ -72,7 +82,7 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
             }
         }
         entries.sort(null);
-        return new ParsedIcs(entries, ignored, sha256(content));
+        return new ParsedIcs(entries, ignored, fingerprint(entries));
     }
 
     private static Calendar read(byte[] content) {
@@ -84,7 +94,8 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
     }
 
     /** Ajoute les périodes de l'événement ; rend la raison pour laquelle il est écarté, nul s'il est retenu. */
-    private static IcsIgnoreReason unfold(VEvent event, Period<LocalDate> window, Collection<CalendarEntry> into) {
+    private static IcsIgnoreReason unfold(VEvent event, Period<LocalDate> window, Set<LocalDate> skipped,
+                                          Collection<CalendarEntry> into) {
         if (event.getProperty(Property.STATUS).map(Property::getValue).filter("CANCELLED"::equalsIgnoreCase).isPresent()) {
             return IcsIgnoreReason.CANCELLED;
         }
@@ -114,7 +125,9 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
         List<RRule<Temporal>> rules = event.getProperties(Property.RRULE);
         List<RDate<Temporal>> dates = event.getProperties(Property.RDATE);
         if (rules.isEmpty() && dates.isEmpty()) {
-            into.add(new CalendarEntry(first, endExclusive.minusDays(1), CalendarEntry.Nature.CLOSED, label));
+            if (!skipped.contains(first)) {
+                into.add(new CalendarEntry(first, endExclusive.minusDays(1), CalendarEntry.Nature.CLOSED, label));
+            }
             return null;
         }
         for (RRule<Temporal> rule : rules) {
@@ -125,6 +138,9 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
             }
         }
         for (Period<LocalDate> occurrence : event.<LocalDate>calculateRecurrenceSet(window)) {
+            if (skipped.contains(occurrence.getStart())) {
+                continue;
+            }
             LocalDate occurrenceEnd = occurrence.getEnd() == null || !occurrence.getEnd().isAfter(occurrence.getStart())
                     ? occurrence.getStart().plusDays(1) : occurrence.getEnd();
             into.add(new CalendarEntry(occurrence.getStart(), occurrenceEnd.minusDays(1), CalendarEntry.Nature.CLOSED, label));
@@ -133,6 +149,67 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
             }
         }
         return null;
+    }
+
+    /**
+     * TODO §121 (revue de #33) — {@code RECURRENCE-ID} : un VEVENT de même UID qu'une série en remplace une occurrence
+     * (annulée, déplacée ou rendue transparente). Cette occurrence quitte la série ; le VEVENT de remplacement est lu
+     * comme un événement à part. Un remplacement sans série dans le fichier n'ôte rien.
+     */
+    private static Map<String, Set<LocalDate>> overriddenOccurrences(List<VEvent> events, ZoneId zone) {
+        Map<String, Set<LocalDate>> overridden = new HashMap<>();
+        for (VEvent event : events) {
+            try {
+                Optional<RecurrenceId<Temporal>> id = event.getProperty(Property.RECURRENCE_ID);
+                if (id.isEmpty()) {
+                    continue;
+                }
+                LocalDate day = dayOf(id.get().getDate(), zone);
+                if (day != null) {
+                    overridden.computeIfAbsent(uidOf(event), key -> new HashSet<>()).add(day);
+                }
+            } catch (RuntimeException unreadable) {
+                // Un RECURRENCE-ID illisible n'ôte rien : le VEVENT est de toute façon lu seul.
+            }
+        }
+        return overridden;
+    }
+
+    private static LocalDate dayOf(Temporal temporal, ZoneId zone) {
+        if (temporal instanceof LocalDate day) {
+            return day;
+        }
+        if (temporal instanceof ZonedDateTime zoned) {
+            return zoned.toLocalDate();
+        }
+        if (temporal instanceof OffsetDateTime offset) {
+            return offset.toLocalDate();
+        }
+        if (temporal instanceof Instant instant) {
+            return instant.atZone(zone).toLocalDate();
+        }
+        if (temporal instanceof java.time.LocalDateTime local) {
+            return local.toLocalDate();
+        }
+        return null;
+    }
+
+    private static String uidOf(VEvent event) {
+        return event.getUid().map(Property::getValue).orElse("");
+    }
+
+    /**
+     * Empreinte de ce que le fichier donne : ses périodes et leurs libellés, triés. Elle ne dépend ni de l'ordre des
+     * événements ni des champs que certains agendas en ligne régénèrent à chaque téléchargement ({@code DTSTAMP},
+     * {@code PRODID}). Sans quoi la comparaison entre l'aperçu et l'application, qui téléchargent chacun le fichier,
+     * échouerait toujours.
+     */
+    private static String fingerprint(Collection<CalendarEntry> entries) {
+        String canonical = entries.stream()
+                .map(entry -> entry.start() + "|" + entry.end() + "|" + (entry.label() == null ? "" : entry.label()))
+                .sorted()
+                .collect(java.util.stream.Collectors.joining("\n"));
+        return sha256(canonical.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String truncate(String label) {

@@ -19,9 +19,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +42,40 @@ class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
 
     private final JdbcTemplate jdbc;
     private final ConnectorSecretCipher cipher;
+    private final TransactionTemplate transaction;
 
-    JdbcTenantCalendar(JdbcTemplate jdbc, ConnectorSecretCipher cipher) {
+    JdbcTenantCalendar(JdbcTemplate jdbc, ConnectorSecretCipher cipher, PlatformTransactionManager transactionManager) {
         this.jdbc = jdbc;
         this.cipher = cipher;
+        this.transaction = new TransactionTemplate(transactionManager);
+    }
+
+    /**
+     * Transaction qui tient le verrou de la ligne {@code tenant_calendar} du tenant jusqu'à sa fin : les écritures des
+     * administrateurs se suivent, chacune relisant l'état de la précédente. La ligne est créée avec les défauts si elle
+     * manque (elle serait créée par la première écriture de toute façon).
+     */
+    @Override
+    public <T> T locked(String tenantId, Supplier<T> work) {
+        return transaction.execute(status -> {
+            jdbc.update("""
+                    insert into tenant_calendar (tenant_id, zone_id, weekend, updated_at)
+                    values (?, 'UTC', 'SATURDAY_SUNDAY', now())
+                    on conflict (tenant_id) do nothing
+                    """, tenantId);
+            jdbc.queryForObject("select tenant_id from tenant_calendar where tenant_id = ? for update", String.class, tenantId);
+            return work.get();
+        });
+    }
+
+    @Override
+    @Transactional
+    public void touch(String tenantId, Instant at, String by) {
+        jdbc.update("""
+                insert into tenant_calendar (tenant_id, zone_id, weekend, updated_at, updated_by)
+                values (?, 'UTC', 'SATURDAY_SUNDAY', ?, ?)
+                on conflict (tenant_id) do update set updated_at = excluded.updated_at, updated_by = excluded.updated_by
+                """, tenantId, Timestamp.from(at), by);
     }
 
     @Override
@@ -107,7 +140,7 @@ class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
     @Override
     @Transactional
     public void saveSource(String tenantId, CalendarSource source, String url) {
-        jdbc.update("""
+        int written = jdbc.update("""
                 insert into tenant_calendar_source (id, tenant_id, name, kind, loaded_at, loaded_by, content_sha256, last_error, masked_url)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 on conflict (id) do update set
@@ -118,9 +151,16 @@ class JdbcTenantCalendar implements TenantCalendarRepository, TenantCalendars {
                 """, source.id(), tenantId, source.name(), source.kind().name(),
                 source.loadedAt() == null ? null : Timestamp.from(source.loadedAt()), source.loadedBy(),
                 source.contentSha256(), source.lastError(), source.maskedUrl());
+        if (written == 0) {
+            // L'identifiant existe déjà pour un autre tenant : ne rien écrire, surtout pas des périodes qui y seraient rattachées.
+            throw new IllegalStateException("calendar source id is already used by another tenant");
+        }
         if (url != null) {
             jdbc.update("update tenant_calendar_source set url_ciphertext = ? where tenant_id = ? and id = ?",
                     cipher.encrypt(tenantId, url), tenantId, source.id());
+        } else if (source.kind() != CalendarSource.Kind.ICS_URL || source.maskedUrl() == null) {
+            // Une source qui n'est (plus) une source par URL, ou dont l'URL est à ressaisir, ne garde aucun secret.
+            jdbc.update("update tenant_calendar_source set url_ciphertext = null where tenant_id = ? and id = ?", tenantId, source.id());
         }
         jdbc.update("delete from tenant_calendar_entry where tenant_id = ? and source_id = ?", tenantId, source.id());
         insertEntries(tenantId, source.id(), source.closedDays());

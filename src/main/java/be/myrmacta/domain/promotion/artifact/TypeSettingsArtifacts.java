@@ -254,13 +254,17 @@ public final class TypeSettingsArtifacts {
             return "unchanged";
         }
         CalendarDoc doc = PromotionSupport.decode(codec, entry, CalendarDoc.class);
-        TenantCalendar incoming = incomingCalendar(doc);
-        calendars.save(new StoredTenantCalendar(tenantId, incoming, Instant.now(), "promotion"));
-        Set<java.util.UUID> kept = new java.util.HashSet<>();
-        incoming.sources().forEach(source -> kept.add(source.id()));
-        currentCalendar().sources().stream().filter(source -> !kept.contains(source.id()))
-                .forEach(source -> calendars.deleteSource(tenantId, source.id()));
-        incoming.sources().forEach(source -> calendars.saveSource(tenantId, source, null));
+        // Une seule transaction sous verrou : un calendrier promu à moitié (réglage nouveau, sources anciennes) n'existe pas.
+        calendars.locked(tenantId, () -> {
+            TenantCalendar incoming = incomingCalendar(doc);
+            calendars.save(new StoredTenantCalendar(tenantId, incoming, Instant.now(), "promotion"));
+            Set<java.util.UUID> kept = new java.util.HashSet<>();
+            incoming.sources().forEach(source -> kept.add(source.id()));
+            currentCalendar().sources().stream().filter(source -> !kept.contains(source.id()))
+                    .forEach(source -> calendars.deleteSource(tenantId, source.id()));
+            incoming.sources().forEach(source -> calendars.saveSource(tenantId, source, null));
+            return null;
+        });
         return action == PlanAction.CREATE ? "created" : "updated";
     }
 

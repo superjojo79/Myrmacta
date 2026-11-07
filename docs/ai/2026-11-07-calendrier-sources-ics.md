@@ -52,9 +52,26 @@ Prochaine action : lot 4 (revue indépendante, clôture).
 | 2026-11-07 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test e2e/pilotage-admin-types.spec.ts -g E2E-CAL` | 8 passés (`E2E-CAL-1` à `8`) |
 | 2026-11-07 | `./mvnw verify -Dmaven.compiler.release=21` après le lot 3 (changeset 048 compris) | 4 379 tests, 0 échec, `BUILD SUCCESS` |
 | 2026-11-07 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test e2e/pilotage-admin-types.spec.ts -g E2E-CAL` | 11 passés (`E2E-CAL-1` à `11`) |
+| 2026-11-07 | `./mvnw verify -Dmaven.compiler.release=21` après les corrections de la revue (IPv6, verrou, `RECURRENCE-ID`, empreinte, chien de garde) | 4 433 tests, 0 échec, `BUILD SUCCESS` |
 | 2026-11-07 | `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 
-| Constat | Sévérité | Correctif ou issue |
-|---|---|---|
+Revue indépendante (sous-agent Opus, sans l'historique ; le modèle Fable demandait des crédits d'usage), grille de
+`myrmacta-feature` étape 4.1, sur `1ac7b954..9acf93a3`. Chaque constat a été vérifié avant correction.
+
+| # | Constat | Sévérité | Correctif ou issue |
+|---|---|---|---|
+| 1 | SSRF : `OutboundUrlGuard` ne contrôlait que la graphie d'un hôte littéral ; des IPv6 (`[::ffff:7f00:1]`, `[::]`, forme longue de `::1`, NAT64, 6to4) joignaient la boucle locale ou les métadonnées | Haute | Corrigé à la source (adresse figée contrôlée, IPv4 embarquée comprise) ; 26 cas dans `OutboundUrlGuardTest`, 7 dans `HttpsIcsFetcherTest` |
+| 2 | Perte de mise à jour : `saveSettings` réécrivait fuseau et saisies manuelles depuis un instantané périmé | Moyenne | Corrigé : `touch` à la place, écritures sous `locked` ; tests du cas d'usage et `JdbcTenantCalendarIT` |
+| 3 | Plafonds (10 sources, 200 000 jours) vérifiés sur un instantané : état hors plafond, lectures en 400 | Moyenne | Corrigé : état relu et revérifié sous verrou ; course sur la dixième source dans `JdbcTenantCalendarIT` |
+| 4 | `RECURRENCE-ID` ignoré : occurrence annulée ou déplacée restée fermée | Moyenne | Corrigé dans le parseur ; 5 tests |
+| 5 | Empreinte sur les octets : un agenda qui régénère `DTSTAMP` aurait toujours donné 409 | Moyenne | Corrigé : empreinte des périodes et libellés ; tests du parseur et de l'API |
+| 6 | Délai de 10 s non tenu sur les en-têtes de réponse | Basse/moyenne | Corrigé : chien de garde qui coupe la connexion ; test à serveur brut (30 s avant, 3,7 s la classe après) |
+| 8 | `url_ciphertext` conservé après un changement de type de source | Basse | Corrigé dans `saveSource` ; test d'intégration |
+| 9 | Upsert refusé en silence pour l'identifiant d'un autre tenant | Basse | Corrigé : exception, aucune période écrite ; test d'intégration |
+| 10 | Application d'un bundle en transactions séparées | Basse | Corrigé : un seul verrou ; test de promotion |
+| 12 | `toString()` des enregistrements `Origin` et `Plan` portait l'URL | Basse | Corrigé |
+| 7, 11 et résidus de 3, 6, 9 | Coût de `toCalendar()`, multipart de 25 Mo, bornes d'en-têtes, FK composite, `THISANDFUTURE`, journaux DEBUG | Basse | Issue #34 |
+
+Seconde revue indépendante : voir ci-dessous.

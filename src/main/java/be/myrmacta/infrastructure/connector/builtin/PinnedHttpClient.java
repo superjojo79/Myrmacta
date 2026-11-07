@@ -9,6 +9,11 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -41,6 +46,13 @@ import org.apache.hc.core5.util.Timeout;
 public final class PinnedHttpClient {
 
     private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
+
+    /** Coupe les appels {@link #get} qui dépassent leur délai total. Un seul fil, démon : il ne fait que fermer. */
+    private static final ScheduledExecutorService WATCHDOG = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = new Thread(task, "pinned-http-watchdog");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private PinnedHttpClient() {}
 
@@ -135,39 +147,60 @@ public final class PinnedHttpClient {
         long deadline = System.nanoTime() + total.toNanos();
         ClassicHttpRequest request = ClassicRequestBuilder.get(url).build();
         try (CloseableHttpClient client = client(pin, hostOf(url), Timeout.of(connect), Timeout.of(socketRead), null)) {
-            ClassicHttpResponse response = client.executeOpen(null, request, null);
-            // Fermer un flux « chunked » ou à longueur fixe lit d'abord ce qui reste : sur un abandon, la connexion se
-            // coupe tout de suite, sans quoi un serveur lent garde l'appel ouvert bien au-delà du délai.
-            boolean complete = false;
+            // Le délai de lecture ne borne que l'attente d'un octet : un serveur qui goutte-à-goutte ses en-têtes le
+            // renouvelle sans fin. Le chien de garde coupe la connexion à l'échéance, en-têtes comprises.
+            AtomicBoolean expired = new AtomicBoolean();
+            ScheduledFuture<?> watchdog = WATCHDOG.schedule(() -> {
+                expired.set(true);
+                client.close(CloseMode.IMMEDIATE);
+            }, total.toMillis(), TimeUnit.MILLISECONDS);
             try {
-                int status = response.getCode();
-                if (status != 200 || response.getEntity() == null) {
-                    return new Fetched(status, new byte[0]);
+                return read(client, request, maxBytes, deadline);
+            } catch (IOException | RuntimeException failure) {
+                if (expired.get()) {
+                    throw new IOException("timed out");
                 }
-                if (response.getEntity().getContentLength() > maxBytes) {
+                throw failure;
+            } finally {
+                watchdog.cancel(false);
+            }
+        }
+    }
+
+    private static Fetched read(CloseableHttpClient client, ClassicHttpRequest request, long maxBytes, long deadline)
+            throws IOException {
+        ClassicHttpResponse response = client.executeOpen(null, request, null);
+        // Fermer un flux « chunked » ou à longueur fixe lit d'abord ce qui reste : sur un abandon, la connexion se
+        // coupe tout de suite, sans quoi un serveur lent garde l'appel ouvert bien au-delà du délai.
+        boolean complete = false;
+        try {
+            int status = response.getCode();
+            if (status != 200 || response.getEntity() == null) {
+                return new Fetched(status, new byte[0]);
+            }
+            if (response.getEntity().getContentLength() > maxBytes) {
+                throw new IOException("response too large");
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            InputStream stream = response.getEntity().getContent();
+            int read;
+            while ((read = stream.read(chunk)) != -1) {
+                out.write(chunk, 0, read);
+                if (out.size() > maxBytes) {
                     throw new IOException("response too large");
                 }
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                byte[] chunk = new byte[8192];
-                InputStream stream = response.getEntity().getContent();
-                int read;
-                while ((read = stream.read(chunk)) != -1) {
-                    out.write(chunk, 0, read);
-                    if (out.size() > maxBytes) {
-                        throw new IOException("response too large");
-                    }
-                    if (System.nanoTime() > deadline) {
-                        throw new IOException("timed out");
-                    }
+                if (System.nanoTime() > deadline) {
+                    throw new IOException("timed out");
                 }
-                complete = true;
-                return new Fetched(status, out.toByteArray());
-            } finally {
-                if (response instanceof ModalCloseable modal) {
-                    modal.close(complete ? CloseMode.GRACEFUL : CloseMode.IMMEDIATE);
-                } else {
-                    response.close();
-                }
+            }
+            complete = true;
+            return new Fetched(status, out.toByteArray());
+        } finally {
+            if (response instanceof ModalCloseable modal) {
+                modal.close(complete ? CloseMode.GRACEFUL : CloseMode.IMMEDIATE);
+            } else {
+                response.close();
             }
         }
     }

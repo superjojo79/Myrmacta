@@ -133,11 +133,18 @@ public class OutboundUrlGuard {
             throw new IllegalArgumentException("Webhook URL host is not allowed");
         }
         if (isLiteralAddress(normalizedHost)) {
+            InetAddress literal;
             try {
-                return new PinnedEndpoint(uri, InetAddress.getByName(normalizedHost));
+                literal = InetAddress.getByName(normalizedHost);
             } catch (UnknownHostException ex) {
                 throw new IllegalArgumentException("Webhook URL host cannot be resolved: " + host, ex);
             }
+            // TODO §121 (revue de #33) : la graphie de l'hôte ne suffit pas (plusieurs graphies IPv6 désignent la même
+            // adresse). Ce qui compte est l'adresse que l'on fige : elle subit le même contrôle qu'une adresse résolue.
+            if (isBlockedResolvedAddress(literal)) {
+                throw new IllegalArgumentException("Webhook URL host is not allowed");
+            }
+            return new PinnedEndpoint(uri, literal);
         }
         InetAddress[] addresses = resolveAll(normalizedHost);
         for (InetAddress address : addresses) {
@@ -196,8 +203,45 @@ public class OutboundUrlGuard {
                 return true;
             }
         }
-        // IPv6 unique local addresses fc00::/7 — not covered by isSiteLocalAddress().
-        return bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
+        if (bytes.length == 16) {
+            // IPv6 unique local addresses fc00::/7 — not covered by isSiteLocalAddress().
+            if ((bytes[0] & 0xfe) == 0xfc) {
+                return true;
+            }
+            return embedsBlockedIpv4(bytes);
+        }
+        return false;
+    }
+
+    /**
+     * Une IPv6 qui porte une IPv4 la rejoint par une passerelle ou une pile double : IPv4-compatible ({@code ::/96}),
+     * NAT64 ({@code 64:ff9b::/96}) et 6to4 ({@code 2002::/16}). L'IPv4 portée subit le contrôle d'une IPv4. Les formes
+     * IPv4-mappées ({@code ::ffff:0:0/96}) sont déjà converties en IPv4 par le JDK.
+     */
+    private static boolean embedsBlockedIpv4(byte[] bytes) {
+        boolean zeroPrefix = true;
+        for (int i = 0; i < 12; i++) {
+            zeroPrefix &= bytes[i] == 0;
+        }
+        boolean compatible = zeroPrefix;
+        boolean nat64 = bytes[0] == 0x00 && bytes[1] == 0x64 && (bytes[2] & 0xff) == 0xff && (bytes[3] & 0xff) == 0x9b;
+        for (int i = 4; i < 12 && nat64; i++) {
+            nat64 &= bytes[i] == 0;
+        }
+        boolean sixToFour = (bytes[0] & 0xff) == 0x20 && bytes[1] == 0x02;
+        byte[] embedded;
+        if (compatible || nat64) {
+            embedded = new byte[] {bytes[12], bytes[13], bytes[14], bytes[15]};
+        } else if (sixToFour) {
+            embedded = new byte[] {bytes[2], bytes[3], bytes[4], bytes[5]};
+        } else {
+            return false;
+        }
+        try {
+            return isBlockedResolvedAddress(InetAddress.getByAddress(embedded));
+        } catch (UnknownHostException impossible) {
+            return true;
+        }
     }
 
     private static String extractAuthorityHost(String url) {

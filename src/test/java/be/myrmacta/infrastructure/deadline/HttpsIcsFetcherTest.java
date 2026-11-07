@@ -9,6 +9,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  * TODO §121 (D-CAL-ICS-URL) — téléchargement d'un calendrier par URL : garde réseau (§44), aucune redirection,
@@ -172,6 +175,42 @@ class HttpsIcsFetcherTest {
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
     }
 
+    // TODO §121 (revue de #33) — le délai de 10 s couvre aussi la connexion et les en-têtes, pas seulement le corps : chaque
+    // ligne d'en-tête arrive avant le délai de lecture, donc sans délai total l'appel resterait ouvert (100 × 300 ms).
+    @Test
+    @Timeout(10)
+    void aServerThatDripsResponseHeadersIsStoppedByTheTotalDeadline() throws Exception {
+        ServerSocket raw = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
+        Thread server = new Thread(() -> {
+            try (Socket client = raw.accept()) {
+                byte[] buffer = new byte[4096];
+                client.getInputStream().read(buffer);
+                OutputStream out = client.getOutputStream();
+                out.write("HTTP/1.1 200 OK\r\n".getBytes(StandardCharsets.US_ASCII));
+                for (int i = 0; i < 100; i++) {
+                    out.write(("X-Drip-" + i + ": v\r\n").getBytes(StandardCharsets.US_ASCII));
+                    out.flush();
+                    Thread.sleep(300);
+                }
+            } catch (IOException | InterruptedException clientHungUp) {
+                // le client a coupé : c'est ce qu'on attend
+            }
+        });
+        server.setDaemon(true);
+        server.start();
+        long start = System.nanoTime();
+        try {
+            assertThatThrownBy(() -> fetcher().fetch("http://127.0.0.1:" + raw.getLocalPort() + "/ical/" + SECRET + "/basic.ics"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("timed out")
+                    .hasMessageNotContaining(SECRET);
+
+            assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
+        } finally {
+            raw.close();
+        }
+    }
+
     @Test
     void aServerThatNeverAnswersTimesOut() throws Exception {
         HttpServer server = serve(exchange -> {
@@ -227,7 +266,11 @@ class HttpsIcsFetcherTest {
                 Duration.ofMillis(1500));
         for (String target : new String[] {"https://10.0.0.5/" + SECRET, "https://192.168.1.1/" + SECRET,
                 "https://169.254.169.254/latest/meta-data/" + SECRET, "https://127.0.0.1/" + SECRET, "https://localhost/" + SECRET,
-                "https://[::1]/" + SECRET, "https://0.0.0.0/" + SECRET, "https://2130706433/" + SECRET}) {
+                "https://[::1]/" + SECRET, "https://0.0.0.0/" + SECRET, "https://2130706433/" + SECRET,
+                // Revue de #33 : des graphies IPv6 qui joignent la boucle locale, le réseau interne ou les métadonnées.
+                "https://[::ffff:7f00:1]/" + SECRET, "https://[::ffff:a9fe:a9fe]/" + SECRET, "https://[0:0:0:0:0:0:0:1]/" + SECRET,
+                "https://[::]/" + SECRET, "https://[64:ff9b::7f00:1]/" + SECRET, "https://[::7f00:1]/" + SECRET,
+                "https://[2002:7f00:1::]/" + SECRET}) {
             assertThatThrownBy(() -> production.fetch(target)).as(target)
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("refused")

@@ -49,7 +49,8 @@ public final class McpDesignToolCatalog implements DesignToolsPort {
      * créer, par l'assistant, un connecteur actif ou un type de dossier).
      */
     static final Set<String> CONFIRMATION_TOOLS = Set.of(
-            "define_dossier_type", "define_connector_instance", "define_task_question_schema", "define_document_template");
+            "define_dossier_type", "define_connector_instance", "define_task_question_schema", "define_document_template",
+            "define_notification_template");
 
     /** Clés qui désignent un secret par leur nom (en plus des champs déclarés secrets par le schéma des connecteurs). */
     private static final Pattern SECRET_KEY =

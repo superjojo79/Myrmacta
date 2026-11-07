@@ -134,18 +134,22 @@ public final class DocumentTemplateArtifacts {
      * n'est pas déjà un nom sûr est simplifiée, et une empreinte de la combinaison d'origine garantit l'unicité.
      */
     public static String entryKey(DocumentTemplateDoc doc) {
-        String key = part(doc.templateKey());
-        String variant = doc.variantKey() == null ? "_" : part(doc.variantKey());
-        String locale = doc.locale() == null ? "_" : part(doc.locale());
-        String plain = key + "." + variant + "." + locale;
-        String original = doc.templateKey() + "." + (doc.variantKey() == null ? "_" : doc.variantKey()) + "."
-                + (doc.locale() == null ? "_" : doc.locale());
+        return entryKey(doc.templateKey(), doc.variantKey(), doc.locale());
+    }
+
+    /** Même règle pour les gabarits de notification (TODO §123) : un seul nommage des fichiers de template dans un bundle. */
+    public static String entryKey(String templateKey, String variantKey, String locale) {
+        String key = part(templateKey);
+        String variant = variantKey == null ? "_" : part(variantKey);
+        String loc = locale == null ? "_" : part(locale);
+        String plain = key + "." + variant + "." + loc;
+        String original = templateKey + "." + (variantKey == null ? "_" : variantKey) + "." + (locale == null ? "_" : locale);
         // Revue de clôture #279 (B5) : une variante ou une langue littérale « _ » se distingue de la valeur par défaut
-        boolean literalDefault = "_".equals(doc.variantKey()) || "_".equals(doc.locale());
+        boolean literalDefault = "_".equals(variantKey) || "_".equals(locale);
         if (plain.equals(original) && !literalDefault) {
             return plain;
         }
-        return plain + "-" + hash(doc.templateKey() + "\u0000" + doc.variantKey() + "\u0000" + doc.locale());
+        return plain + "-" + hash(templateKey + "\u0000" + variantKey + "\u0000" + locale);
     }
 
     private static String part(String value) {

@@ -193,6 +193,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case DEADLINE -> additional.typeSettings().planDeadline(entry, bundle, byKey, targetGroups);
                 case PARCOURS -> additional.parcours().plan(entry);
                 case CALENDAR -> additional.typeSettings().planCalendar(entry);
+                case NOTIFICATION_TEMPLATE -> additional.notificationTemplates().plan(entry);
             };
             byKey.put(entry.type() + "/" + entry.key(), planned);
             entries.add(planned);
@@ -588,6 +589,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 || planned.type() == ArtifactType.DMN
                 // TODO §117 (D-PROMO-MCP-TEMPLATE) — un brouillon de template ne s'exécute pas avant qu'un humain l'active
                 || planned.type() == ArtifactType.DOCUMENT_TEMPLATE
+                // TODO §123 — de même, un brouillon de gabarit de notification attend l'activation humaine
+                || planned.type() == ArtifactType.NOTIFICATION_TEMPLATE
                 || (planned.type() == ArtifactType.WORKFLOW_CONFIG && planned.reason().startsWith(PromotionSupport.JOINED_TO_DRAFT));
     }
 
@@ -614,6 +617,7 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
                 case DEADLINE -> additional.typeSettings().applyDeadline(entry, planned.action());
                 case PARCOURS -> additional.parcours().apply(actor, entry, planned.action());
                 case CALENDAR -> additional.typeSettings().applyCalendar(entry, planned.action());
+                case NOTIFICATION_TEMPLATE -> additional.notificationTemplates().apply(entry, actor.userId());
             };
             return new ReportEntry(entry.type(), entry.key(), ImportOutcome.APPLIED, PromotionSupport.withWarningsOf(planned, message));
         } catch (RuntimeException e) {

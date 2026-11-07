@@ -23,6 +23,7 @@ le permet — l'affichage du menu est indicatif, le contrôle réel se fait côt
 | Pilotage | Nouveau dossier | `/dossiers/new` | tout utilisateur authentifié |
 | Admin | Types (de dossier) | `/admin/dossier-types` | `TENANT_ADMIN` |
 | Admin | Templates | `/admin/templates` | `TENANT_ADMIN` |
+| Admin | Gabarits de notification | `/admin/notification-templates` | `TENANT_ADMIN` |
 | Admin | Connecteurs | `/admin/connectors` | `TENANT_ADMIN` |
 | Admin | Workflows | `/admin/workflow-types` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
 | Admin | Tables de décision | `/admin/dmn-editor` | `TENANT_ADMIN` ou `WORKFLOW_ADMIN` |
@@ -755,6 +756,48 @@ Dans le tableau des templates existants (`templateKey` — libellé — version 
 | **Nouvelle version** | crée un brouillon versionné à partir du template existant |
 | **Activer** | rend une version active (utilisable en génération de document) |
 | **Archiver** | retire une version de la circulation |
+
+### Gabarits de notification (Admin → Gabarits de notification, `TENANT_ADMIN`) — TODO §123
+
+Écran `/admin/notification-templates`. Un gabarit de notification est le texte d'un e-mail (objet, corps texte, corps
+HTML facultatif) avec des **variables** ; la brique « Notifier » le désigne par sa clé. Cet écran sert à rédiger, vérifier
+et mettre en ligne les gabarits ; il est réservé au `TENANT_ADMIN` (tout autre rôle reçoit 403).
+
+**Créer un brouillon.** Le formulaire demande :
+
+| Champ | Rôle |
+|---|---|
+| Clé du gabarit | identifiant référencé par la brique « Notifier » (minuscules, chiffres et tirets) |
+| Variante, Langue | facultatifs ; laissés vides, le gabarit est la version par défaut |
+| Libellé | nom lisible dans la liste |
+| Objet | gabarit texte, une seule ligne une fois rendu |
+| Corps texte | gabarit texte, toujours envoyé |
+| Corps HTML | facultatif ; s'il est rempli, l'e-mail contient les deux versions |
+
+Les variables s'écrivent `[[${dossier.reference}]]` ; `dossier.*` expose la référence, le type, le statut, le libellé et les
+champs non sensibles du dossier, `variables.*` les variables scalaires du processus. Une variable absente fait échouer
+l'envoi (jamais d'e-mail à moitié rempli), et un champ sensible n'est jamais rendu. Une condition s'écrit
+`th:if="${dossier.status} == 'OPEN'"` (comparaison hors accolades). Les zones de saisie sont de simples zones de texte,
+sans éditeur visuel.
+
+**Aperçu.** Le panneau de droite contient un **modèle d'exemple** JSON (`{"dossier": {...}, "variables": {...}}`) à adapter.
+**Aperçu** (dans le formulaire) rend le texte en cours de saisie ; **Aperçu** (dans une ligne de la liste) rend le gabarit
+enregistré, brouillon compris. L'objet et le corps texte s'affichent tels quels ; le corps HTML s'affiche dans un cadre isolé
+qui n'exécute aucun script. Un modèle qui n'est pas un objet JSON valide n'est pas envoyé.
+
+**Cycle de vie** (liste : clé — libellé, variante, langue, version, statut) :
+
+| Action | Effet |
+|---|---|
+| **Modifier** | brouillon seulement : recharge le gabarit dans le formulaire ; la clé, la variante et la langue ne changent plus ; un corps HTML vidé est supprimé |
+| **Activer** | contrôle complet (syntaxe de l'objet, du corps texte et du corps HTML, politique HTML) puis met la version en ligne ; la version active précédente est archivée |
+| **Archiver** | retire la version de la circulation |
+| **Nouvelle version** | crée un brouillon à partir de cette version (on ne modifie jamais une version active) |
+
+**Erreurs.** Un contenu refusé (HTML hors politique, expression invalide, champ obligatoire absent) s'affiche en haut de
+l'écran sous la forme « Gabarit refusé : … » ; le message nomme la partie (`subject`, `textBody`, `htmlBody`) et la règle
+violée, et le formulaire reste rempli. Une action impossible dans l'état actuel (modifier une version non brouillon, doublon
+de version ou de version active) s'affiche sous la forme « Action impossible dans l'état actuel : … ».
 
 ------
 

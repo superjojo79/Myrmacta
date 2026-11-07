@@ -95,6 +95,26 @@ Issue : #19 · Spec du domaine : docs/specs/09-notifications.md (et 49-digital-m
 | Dernier changeSet : `048-tenant-calendar-source-masked-url.yaml` ; dernier point du registre : §122 | `src/main/resources/db/changelog/`, `docs/decisions/` |
 | Écran d'admin des templates de document : `TemplatesAdminView.vue`, route `/admin/templates` | `frontend/src/views/admin/` |
 
+**Résultats des vérifications (lot 1, 2026-11-07)** — font foi sur la liste « À vérifier » ci-dessous :
+- moteur TEXT : 14 processeurs chargés (Insert, Replace, Utext désactivés), épinglés par `SafeHtmlTemplateEngineFactoryTest` ;
+- **`[[${x}]]` échappe en entités HTML même en mode TEXT** : le renderer décode en une passe `&amp; &lt; &gt; &quot; &#39;` sur
+  l'objet et le corps texte ; `[(…)]` reste refusé ;
+- **multipart** : `new MimeMessageHelper(msg, true, "UTF-8")` + `setText(text, html)` produit `multipart/mixed` >
+  `multipart/related` > `multipart/alternative` > (text/plain, text/html), avec ou sans pièce jointe. Le lot 2 l'accepte
+  tel quel (le test GreenMail vérifie la présence des deux parties `text/plain` et `text/html`, pas la racine) ;
+- JSONata : `dossier.fields.canal = "EMAIL" and variables.mailSenderAuthenticated = true` donne `false` sans erreur quand
+  la variable est absente.
+
+**Noms livrés au lot 1, à utiliser par les lots suivants :** exceptions `NotificationTemplateNotFoundException`,
+`NotificationTemplateStateException`, `NotificationTemplateValidationException(part, rule)` (sous-paquet
+`domain.notification.template.model`) ; rendu en échec : `TemplateProcessingException` (paquet document). La brique (lot 2)
+attrape `NotificationTemplateNotFoundException` et `TemplateProcessingException`. Condition dans un gabarit :
+`th:if="${dossier.status} == 'OPEN'"` (comparaison hors accolades, grammaire D-40) — à mettre dans le guide (lot 5).
+
+**Tests sur PostgreSQL externe (conteneur root) :** `MYRMACTA_TEST_PG_URL=jdbc:postgresql://localhost:5432/postgres`,
+`MYRMACTA_TEST_PG_USER=postgres`, `MYRMACTA_TEST_PG_PASSWORD=postgres`, et `-Dspring.test.context.cache.maxSize=3` (sinon
+`max_connections=100` est épuisé par les contextes en cache).
+
 **À vérifier par l'implémenteur avant d'écrire du code** (Précédent « API supposée ») :
 - les processeurs que Thymeleaf 3.1 charge en mode `TEXT` (`StandardTextTagProcessor`, `StandardIfTagProcessor`,
   `StandardEachTagProcessor`, `StandardInliningTextProcessor`, `StandardBlockTagProcessor`, …) : écrire un test qui
@@ -345,7 +365,7 @@ Chaque lot : une branche, une PR (titre Conventional Commits), `./mvnw verify` v
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Domaine, persistance (changeSet 049), moteur TEXT, renderer, politique HTML, checker, API REST + gestionnaire d'exceptions. CS1 (sauf Playwright), CS3 et CS6 au niveau renderer et checker, CS9. Titre : `feat: gabarits de notification versionnés avec variables, objet et corps texte ou HTML` | à faire | |
+| 1 | Domaine, persistance (changeSet 049), moteur TEXT, renderer, politique HTML, checker, API REST + gestionnaire d'exceptions. CS1 (sauf Playwright), CS3 et CS6 au niveau renderer et checker, CS9. Titre : `feat: gabarits de notification versionnés avec variables, objet et corps texte ou HTML` | livré (branche `feat/19-lot1-gabarits-domaine`) | voir PR lot 1 |
 | 2 | Brique « Notifier » (`notificationTemplate`, `Variant`, `Locale`), `BlockAttributeRules`, catalogue v7 et source de valeurs, `ParcoursCompiler`, `NotificationEvent.htmlBody`, outbox, `EmailPort`, `SmtpEmailAdapter` multipart. CS2 à CS5. Titre : `feat: la brique Notifier envoie un e-mail rendu depuis un gabarit` | à faire | |
 | 3 | Outils MCP (trois), `McpToolModes`, catalogue de l'assistant, promotion (H1). CS7, CS10. Titre : `feat: outils MCP et promotion des gabarits de notification` | à faire | |
 | 4 | Écran d'administration, i18n, Vitest, Playwright, `GUIDE-UTILISATEUR.md`. CS1 (Playwright). Titre : `feat: écran d'administration des gabarits de notification` | à faire | |
@@ -358,14 +378,15 @@ le lot 5 dépend de tous.
 pas de pause. L'ajout de champs à `EmailPort` et à la charge utile de l'outbox est rétrocompatible. Le catalogue de la
 palette passe en version 7 : c'est un changement de contrat MCP additif, annoncé dans la PR.
 
-Prochaine action : lot 1, en TDD, en commençant par `NotificationHtmlPolicyTest` et par le test du moteur TEXT (processeurs
-chargés).
+Prochaine action : lots 2, 3 et 4 en parallèle, chacun depuis `feat/19-lot1-gabarits-domaine`.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
-| 2026-11-07 | `scripts/check-docs.sh` (cadrage) | voir le commit de cadrage |
+| 2026-11-07 | `scripts/check-docs.sh` (cadrage) | ok |
+| 2026-11-07 | lot 1 : `./mvnw verify -Dmaven.compiler.release=21 -Dspring.test.context.cache.maxSize=3` | Tests run: 4670, Failures: 0, Errors: 0, Skipped: 5 — BUILD SUCCESS |
+| 2026-11-07 | lot 1 : `scripts/check-docs.sh` | ok |
 
 ## Revue de clôture
 

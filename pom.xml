@@ -46,6 +46,8 @@
         <jsonata.version>0.9.10</jsonata.version>
         <poi.version>6.0.0</poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
+        <!-- TODO §121 (D-CAL-ICS) — lecture des calendriers ICS (BSD-3-Clause), en infrastructure seulement. -->
+        <ical4j.version>4.4.0</ical4j.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.2</spring-ai.version>
         <skip.frontend>false</skip.frontend>
@@ -284,6 +286,18 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
             <version>${commons-csv.version}</version>
+        </dependency>
+        <!-- TODO §121 (D-CAL-ICS) — groovy n'est utilisé que par les extensions Groovy d'ical4j : exclu. -->
+        <dependency>
+            <groupId>org.mnode.ical4j</groupId>
+            <artifactId>ical4j</artifactId>
+            <version>${ical4j.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.groovy</groupId>
+                    <artifactId>groovy</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Tests -->

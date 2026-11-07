@@ -1,5 +1,7 @@
 package be.myrmacta.domain.promotion.artifact;
 
+import be.myrmacta.domain.deadline.model.CalendarEntry;
+import be.myrmacta.domain.deadline.model.CalendarSource;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.model.TenantCalendar;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
@@ -18,6 +20,8 @@ import be.myrmacta.domain.promotion.model.ConfigurationBundle;
 import be.myrmacta.domain.promotion.model.PlanAction;
 import be.myrmacta.domain.promotion.model.PlanEntry;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.CalendarDoc;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.CalendarEntryDoc;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.CalendarSourceDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DeadlineDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DossierTypeDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.ReplyWorkflowDoc;
@@ -87,9 +91,53 @@ public final class TypeSettingsArtifacts {
         return calendars.find(tenantId).map(StoredTenantCalendar::calendar).orElseGet(TenantCalendar::defaults);
     }
 
+    /** TODO §121 (D-CAL-PROMO-2) — l'identifiant d'une source et son auteur ne voyagent pas ; la clé est le nom. */
     static CalendarDoc calendarDoc(TenantCalendar calendar) {
-        return new CalendarDoc(calendar.zoneId(), calendar.weekend().name(),
-                calendar.holidays().stream().map(LocalDate::toString).toList());
+        return new CalendarDoc(calendar.zoneId(), calendar.weekend().name(), null,
+                calendar.manual().stream().map(TypeSettingsArtifacts::entryDoc).toList(),
+                calendar.sources().stream().sorted(Comparator.comparing(CalendarSource::nameKey))
+                        .map(source -> new CalendarSourceDoc(source.name(), source.kind().name(),
+                                source.loadedAt() == null ? null : source.loadedAt().toString(),
+                                source.closedDays().stream().map(TypeSettingsArtifacts::entryDoc).toList()))
+                        .toList());
+    }
+
+    private static CalendarEntryDoc entryDoc(CalendarEntry entry) {
+        return new CalendarEntryDoc(entry.start().toString(), entry.end().toString(), entry.nature().name(), entry.label());
+    }
+
+    private static CalendarEntry entry(CalendarEntryDoc doc) {
+        LocalDate start = LocalDate.parse(doc.start());
+        LocalDate end = doc.end() == null || doc.end().isBlank() ? start : LocalDate.parse(doc.end());
+        return new CalendarEntry(start, end, CalendarEntry.Nature.parse(doc.nature()), doc.label());
+    }
+
+    /**
+     * Le calendrier d'un bundle. Une source de même nom que l'une des sources d'ici en garde l'identifiant ; l'ancien
+     * format ({@code holidays}) donne des saisies manuelles {@code CLOSED}. Lève {@link IllegalArgumentException}
+     * ou {@link DateTimeParseException} si le contenu est invalide.
+     */
+    private TenantCalendar incomingCalendar(CalendarDoc doc) {
+        List<CalendarEntry> manual = new ArrayList<>(doc.entries().stream().map(TypeSettingsArtifacts::entry).toList());
+        if (doc.holidays() != null) {
+            if (!doc.entries().isEmpty()) {
+                throw new IllegalArgumentException("calendar holidays and entries are mutually exclusive");
+            }
+            doc.holidays().forEach(day -> manual.add(CalendarEntry.day(LocalDate.parse(day), CalendarEntry.Nature.CLOSED, null)));
+        }
+        Map<String, CalendarSource> here = new java.util.HashMap<>();
+        currentCalendar().sources().forEach(source -> here.put(source.nameKey(), source));
+        List<CalendarSource> sources = new ArrayList<>();
+        for (CalendarSourceDoc source : doc.sources()) {
+            CalendarSource existing = source.name() == null ? null : here.get(source.name().strip().toLowerCase(java.util.Locale.ROOT));
+            CalendarSource.Kind kind = CalendarSource.Kind.parse(source.kind());
+            // L'URL ne voyage pas (D-CAL-PROMO-2) : une source par URL déjà ici garde la sienne, donc sa forme masquée.
+            String maskedUrl = existing != null && existing.kind() == kind ? existing.maskedUrl() : null;
+            sources.add(new CalendarSource(existing != null ? existing.id() : java.util.UUID.randomUUID(), source.name(), kind,
+                    source.entries().stream().map(TypeSettingsArtifacts::entry).toList(),
+                    source.loadedAt() == null ? null : Instant.parse(source.loadedAt()), "promotion", null, null, maskedUrl));
+        }
+        return new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()), manual, sources);
     }
 
     static ReplyWorkflowDoc replyDoc(ReplyWorkflowSetting s) {
@@ -191,8 +239,7 @@ public final class TypeSettingsArtifacts {
         CalendarDoc doc = PromotionSupport.decode(codec, entry, CalendarDoc.class);
         TenantCalendar incoming;
         try {
-            incoming = new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()),
-                    doc.holidays().stream().map(LocalDate::parse).toList());
+            incoming = incomingCalendar(doc);
         } catch (IllegalArgumentException | DateTimeParseException invalid) {
             return blocked(entry, invalid.getMessage() == null ? "invalid calendar" : invalid.getMessage());
         }
@@ -207,9 +254,17 @@ public final class TypeSettingsArtifacts {
             return "unchanged";
         }
         CalendarDoc doc = PromotionSupport.decode(codec, entry, CalendarDoc.class);
-        TenantCalendar incoming = new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()),
-                doc.holidays().stream().map(LocalDate::parse).toList());
-        calendars.save(new StoredTenantCalendar(tenantId, incoming, Instant.now(), "promotion"));
+        // Une seule transaction sous verrou : un calendrier promu à moitié (réglage nouveau, sources anciennes) n'existe pas.
+        calendars.locked(tenantId, () -> {
+            TenantCalendar incoming = incomingCalendar(doc);
+            calendars.save(new StoredTenantCalendar(tenantId, incoming, Instant.now(), "promotion"));
+            Set<java.util.UUID> kept = new java.util.HashSet<>();
+            incoming.sources().forEach(source -> kept.add(source.id()));
+            currentCalendar().sources().stream().filter(source -> !kept.contains(source.id()))
+                    .forEach(source -> calendars.deleteSource(tenantId, source.id()));
+            incoming.sources().forEach(source -> calendars.saveSource(tenantId, source, null));
+            return null;
+        });
         return action == PlanAction.CREATE ? "created" : "updated";
     }
 

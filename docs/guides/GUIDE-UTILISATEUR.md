@@ -151,15 +151,38 @@ Chaque rappel et chaque escalade n'a lieu qu'une fois ; reporter l'échéance (c
 (le rappel recule et l'escalade attend le prochain jour ouvrable). Un dossier en brouillon, clôturé ou archivé n'est
 pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
 
-**Calendrier (TODO §120).** La page **Types** porte une section **Calendrier**, réservée à l'administrateur du tenant :
+**Calendrier (TODO §120, §121).** La page **Types** porte une section **Calendrier**, réservée à l'administrateur du tenant :
 
 - **Fuseau** : jour courant et minuit des minuteurs d'échéance. Défaut `UTC`.
 - **Week-end** : samedi et dimanche (défaut), vendredi et samedi, ou dimanche seul.
-- **Jours fériés** : une date `AAAA-MM-JJ` par ligne, 400 au plus. Ils ne comptent que pour un délai marqué ouvrable.
-- **Ajouter les fériés fédéraux belges** : ajoute les dix dates légales de l'année civile en cours et de la suivante.
-  On peut les retirer. Rien ne se réécrit tout seul l'année suivante.
+- **Dates et périodes** : on choisit une date (**Du**) ou une période (**Du** et **Au**, bornes incluses, 366 jours au
+  plus), une **nature** et un libellé facultatif, puis **Ajouter** ; **Enregistrer le calendrier** envoie le tout.
+  - **Fermé** : le jour ne compte pas pour un délai marqué ouvrable (jour férié, congé collectif).
+  - **Ouvré forcé** : le jour compte, même un samedi ou un dimanche, et même s'il est fermé par une source.
+  - 2 000 lignes manuelles au plus. Le tableau mêle vos lignes et celles des sources, triées par date ; seules les
+    vôtres se suppriment.
+- **Sources** : jeux de jours fermés rechargeables en un bloc, 10 au plus. **Charger les fériés fédéraux belges**
+  crée la source « Fériés fédéraux belges » (année en cours et suivante) ou la recharge : une date supprimée à la
+  main n'y revient donc pas, car vos lignes manuelles passent avant les sources et ne sont jamais touchées par un
+  rechargement. Un jour d'une source recouvert par un jour ouvré forcé est signalé « Surchargé ».
+- **Ajouter un calendrier ICS** : donnez un nom à la source, choisissez un fichier `.ics` (1 Mio et 5 000 événements au
+  plus) puis **Aperçu**. L'aperçu liste les périodes ajoutées, retirées et masquées (un jour ouvré forcé saisi à la main
+  garde la main) et les événements ignorés, avant que rien ne soit écrit. **Confirmer** enregistre la source ; si le
+  fichier a changé entre-temps, relancez l'aperçu.
+  - Seules les journées entières comptent ; les événements horaires, annulés ou « libres » sont ignorés. Les
+    événements récurrents sont déroulés de l'année précédente jusqu'à deux ans plus tard.
+  - **Par URL** : choisissez le type « URL ICS » et collez l'adresse de l'agenda (https). C'est le serveur qui la
+    télécharge (10 s et 1 Mio au plus, sans redirection ni identifiant) ; il doit donc pouvoir joindre l'hôte. Ces
+    adresses contiennent souvent un jeton : elle est conservée chiffrée, et l'écran n'en montre plus que l'hôte. Pour
+    la modifier, **Changer l'URL** ; une source importée d'un autre environnement affiche « URL à ressaisir ».
+  - **Recharger** une source par fichier demande un nouveau fichier, montre l'aperçu, puis remplace uniquement les jours de cette
+    source : vos lignes manuelles et les autres sources ne bougent pas.
+    Une source par URL se recharge d'un clic, avec l'URL conservée. Si le téléchargement échoue, ses jours ne changent
+    pas et l'erreur s'affiche sur la source jusqu'au prochain rechargement réussi.
+  - **Supprimer** une source supprime ses jours (et son URL), après confirmation.
+- Les jours fermés ne comptent que pour un délai marqué ouvrable.
 
-Le calendrier voyage avec la promotion de configuration.
+Le calendrier voyage avec la promotion de configuration : saisies et sources, avec leurs périodes.
 
 **Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
 un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :

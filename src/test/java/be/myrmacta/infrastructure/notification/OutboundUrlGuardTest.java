@@ -329,4 +329,96 @@ class OutboundUrlGuardTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("disallowed network");
     }
+
+    /**
+     * TODO §121 (revue de #33) — une adresse écrite en littéral IPv6 était figée sans contrôle de l'adresse : seule la
+     * graphie de l'hôte était examinée. Toutes ces formes joignent la machine locale, un réseau privé ou les
+     * métadonnées du nuage.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://[::ffff:7f00:1]/", // IPv4-mappée, 127.0.0.1 en hexadécimal
+        "https://[::ffff:a9fe:a9fe]/", // IPv4-mappée, 169.254.169.254
+        "https://[::ffff:a00:5]/", // IPv4-mappée, 10.0.0.5
+        "https://[0:0:0:0:0:ffff:7f00:1]/",
+        "https://[0:0:0:0:0:0:0:1]/", // ::1 en forme longue
+        "https://[0000::1]/",
+        "https://[::]/", // adresse « any »
+        "https://[0:0:0:0:0:0:0:0]/",
+        "https://[::7f00:1]/", // IPv4-compatible
+        "https://[::a00:5]/",
+        "https://[::a9fe:a9fe]/",
+        "https://[64:ff9b::7f00:1]/", // NAT64
+        "https://[64:ff9b::a9fe:a9fe]/",
+        "https://[64:ff9b::a00:5]/",
+        "https://[2002:7f00:1::]/", // 6to4 embarquant 127.0.0.1
+        "https://[2002:a9fe:a9fe::1]/",
+        "https://[fe80::1]/",
+        "https://[fd00::1]/",
+        "https://[ff02::1]/"
+    })
+    void ipv6LiteralsThatReachInternalAddresses_areRejected(String url) {
+        assertThatThrownBy(() -> strict.assertSafe(url)).as(url).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://[2606:4700:4700::1111]/", // un résolveur public
+        "https://[2001:4860:4860::8888]/",
+        "https://[64:ff9b::808:808]/", // NAT64 vers 8.8.8.8
+        "https://[::ffff:808:808]/", // IPv4-mappée vers 8.8.8.8
+        "https://[2002:808:808::1]/"
+    })
+    void ipv6LiteralsThatReachPublicAddresses_stayAccepted(String url) {
+        assertThatCode(() -> strict.assertSafe(url)).as(url).doesNotThrowAnyException();
+    }
+
+    @Test
+    void aNameResolvingToAnIpv6FormOfAnInternalAddress_isRejected() throws Exception {
+        Map<String, InetAddress> hosts = Map.of(
+                "nat64.attacker.example", InetAddress.getByName("64:ff9b::7f00:1"),
+                "compat.attacker.example", InetAddress.getByName("::a00:5"),
+                "sixtofour.attacker.example", InetAddress.getByName("2002:a9fe:a9fe::1"));
+        OutboundUrlGuard guard = new OutboundUrlGuard(false, h -> new InetAddress[] {hosts.get(h.toLowerCase(Locale.ROOT))});
+
+        for (String host : hosts.keySet()) {
+            assertThatThrownBy(() -> guard.assertSafe("https://" + host + "/hook")).as(host)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("disallowed network");
+        }
+    }
+
+    @Test
+    void theAddressTheGuardPinsIsNeverAnInternalOne() {
+        for (String url : new String[] {"https://[::ffff:7f00:1]/", "https://[::]/", "https://[0:0:0:0:0:0:0:1]/"}) {
+            assertThatThrownBy(() -> strict.resolveSafe(url)).as(url).isInstanceOf(IllegalArgumentException.class);
+        }
+        assertThat(strict.resolveSafe("https://[2606:4700:4700::1111]/").address().isLoopbackAddress()).isFalse();
+    }
+
+    /** TODO §121 (seconde revue de #33) — plages réservées de l'IANA qui ne sont pas l'Internet public. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://198.18.0.1/", "https://198.19.255.254/", // 198.18.0.0/15 : bancs d'essai, proxys « fake-IP »
+        "https://[::ffff:c612:1]/", // 198.18.0.1 en IPv4-mappée
+        "https://192.0.0.170/", "https://192.0.0.8/", // 192.0.0.0/24 : protocole IETF
+        "https://240.0.0.1/", "https://250.1.2.3/", "https://255.255.255.255/", // 240.0.0.0/4 : réservé et diffusion
+        "https://[64:ff9b:1::7f00:1]/", "https://[64:ff9b:1:ffff::1]/", // NAT64 à usage local (RFC 8215), tout le /48
+        "https://[::ffff:0:7f00:1]/", "https://[::ffff:0:a00:5]/", // IPv4 traduite (SIIT) vers une IPv4 interne
+        "https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/" // Teredo
+    })
+    void reservedSpecialPurposeRanges_areRejected(String url) {
+        assertThatThrownBy(() -> strict.assertSafe(url)).as(url).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://198.17.255.255/", "https://198.20.0.1/", // de part et d'autre de 198.18.0.0/15
+        "https://192.0.1.1/", "https://191.255.255.255/", // autour de 192.0.0.0/24
+        "https://[2001:db9::1]/", "https://[2001:4860:4860::8844]/", // hors Teredo 2001::/32
+        "https://[::ffff:0808:0808]/", "https://[64:ff9b::808:808]/", "https://[::ffff:0:808:808]/" // vers 8.8.8.8
+    })
+    void addressesNextToTheReservedRanges_stayAcceptedWhenPublic(String url) {
+        assertThatCode(() -> strict.assertSafe(url)).as(url).doesNotThrowAnyException();
+    }
 }

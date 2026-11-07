@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 048-tenant-calendar-source-masked-url
+      author: myrmacta
+      comment: >-
+        TODO §121 (D-CAL-ICS-URL) — forme masquée (schéma et hôte) de l'URL d'une source ICS_URL, seule montrée par
+        l'API ; l'URL entière reste chiffrée dans url_ciphertext (changeset 047).
+      changes:
+        - addColumn:
+            tableName: tenant_calendar_source
+            columns:
+              - column: {name: masked_url, type: varchar(300)}

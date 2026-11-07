@@ -3,6 +3,8 @@ package be.myrmacta.infrastructure.config;
 import be.myrmacta.domain.deadline.port.out.DeadlineAlertClaims;
 import be.myrmacta.domain.deadline.port.out.DeadlineCandidates;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
+import be.myrmacta.domain.deadline.port.out.IcsCalendarParser;
+import be.myrmacta.domain.deadline.port.out.IcsFetcher;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.deadline.usecase.EvaluateDeadlinesUseCaseImpl;
@@ -33,8 +35,9 @@ class DeadlineConfig {
 
     @Bean
     ManageTenantCalendarUseCaseImpl manageTenantCalendarUseCase(
-            TenantProperties tenantProperties, TenantCalendarRepository calendars, TenantAdminGuard guard) {
-        return new ManageTenantCalendarUseCaseImpl(tenantProperties.id(), calendars, guard, Clock.systemUTC());
+            TenantProperties tenantProperties, TenantCalendarRepository calendars, TenantAdminGuard guard, IcsCalendarParser icsParser,
+            IcsFetcher icsFetcher) {
+        return new ManageTenantCalendarUseCaseImpl(tenantProperties.id(), calendars, guard, Clock.systemUTC(), icsParser, icsFetcher);
     }
 
     @Bean

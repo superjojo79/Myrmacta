@@ -1,5 +1,7 @@
 package be.myrmacta.infrastructure.web.dossier;
 
+import be.myrmacta.domain.deadline.model.CalendarSourceConflictException;
+import be.myrmacta.domain.deadline.model.CalendarSourceNotFoundException;
 import be.myrmacta.domain.dossier.model.AccessDeniedException;
 import be.myrmacta.domain.dossier.model.DossierConflictException;
 import be.myrmacta.domain.dossier.model.DossierFieldValidationException;
@@ -45,6 +47,18 @@ public class DossierExceptionHandler {
     @ExceptionHandler({DossierNotFoundException.class, DossierElementNotFoundException.class})
     ProblemDetail handleNotFound(RuntimeException ex) {
         return problem(HttpStatus.NOT_FOUND, "Dossier resource not found", ex.getMessage());
+    }
+
+    /** TODO §121 (D-CAL-SOURCE) — aucune source de calendrier de ce tenant avec cet identifiant. */
+    @ExceptionHandler(CalendarSourceNotFoundException.class)
+    ProblemDetail handleCalendarSourceNotFound(CalendarSourceNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Calendar source not found", ex.getMessage());
+    }
+
+    /** TODO §121 (D-CAL-SOURCE, D-CAL-ICS-PREVIEW) — nom déjà pris, ou contenu changé depuis l'aperçu. */
+    @ExceptionHandler(CalendarSourceConflictException.class)
+    ProblemDetail handleCalendarSourceConflict(CalendarSourceConflictException ex) {
+        return problem(HttpStatus.CONFLICT, "Calendar source conflict", ex.getMessage());
     }
 
     @ExceptionHandler(TenantRetentionSettingsNotFoundException.class)

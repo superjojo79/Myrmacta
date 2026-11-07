@@ -1,12 +1,19 @@
 package be.myrmacta.infrastructure.connector.builtin;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.DnsResolver;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -22,6 +29,8 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.apache.hc.core5.io.CloseMode;
+import org.apache.hc.core5.io.ModalCloseable;
 import org.apache.hc.core5.util.Timeout;
 
 /**
@@ -34,9 +43,16 @@ import org.apache.hc.core5.util.Timeout;
  * ne repasse pas par la garde. Aucun proxy : un proxy résoudrait le nom de son côté (D-44). Le délai borne la connexion
  * et la lecture du corps.
  */
-final class PinnedHttpClient {
+public final class PinnedHttpClient {
 
     private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
+
+    /** Coupe les appels {@link #get} qui dépassent leur délai total. Un seul fil, démon : il ne fait que fermer. */
+    private static final ScheduledExecutorService WATCHDOG = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = new Thread(task, "pinned-http-watchdog");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private PinnedHttpClient() {}
 
@@ -55,7 +71,26 @@ final class PinnedHttpClient {
         if (pin == null) {
             throw new IOException("http-rest call has no pinned address");
         }
-        String expectedHost = hostOf(request.url());
+        Timeout connect = Timeout.of(request.connectTimeout());
+        Timeout read = Timeout.of(request.requestTimeout());
+        ClassicHttpRequest httpRequest = requestOf(request);
+        try (CloseableHttpClient client = client(pin, hostOf(request.url()), connect, read, sslContext);
+                ClassicHttpResponse response = client.executeOpen(null, httpRequest, null)) {
+            int status = response.getCode();
+            InputStream stream = response.getEntity() == null ? null : response.getEntity().getContent();
+            byte[] bytes = readBounded(stream, request.maxResponseBytes());
+            return new HttpRestConnector.HttpCallResponse(status, new String(bytes, StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * Client à adresse figée : le {@link DnsResolver} ne rend que {@code pin} et seulement pour {@code expectedHost}
+     * (D-44), aucune redirection, aucun nouvel essai, aucun cookie, et aucun proxy (HttpClient 5 ne consulte le
+     * ProxySelector de la JVM que via useSystemProperties() ou setProxySelector ; le planificateur direct le fixe, un
+     * proxy referait le DNS et sortirait de l'adresse figée).
+     */
+    private static CloseableHttpClient client(
+            InetAddress pin, String expectedHost, Timeout connect, Timeout read, SSLContext sslContext) {
         DnsResolver resolver = new DnsResolver() {
             @Override
             public InetAddress[] resolve(String host) throws UnknownHostException {
@@ -71,8 +106,6 @@ final class PinnedHttpClient {
                 return host;
             }
         };
-        Timeout connect = Timeout.of(request.connectTimeout());
-        Timeout read = Timeout.of(request.requestTimeout());
         PoolingHttpClientConnectionManagerBuilder connections = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDnsResolver(resolver)
                 .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(read).build())
@@ -85,26 +118,90 @@ final class PinnedHttpClient {
                     .setSslContext(sslContext)
                     .buildClassic());
         }
-        ClassicHttpRequest httpRequest = requestOf(request);
-        try (CloseableHttpClient client = HttpClients.custom()
-                        .setConnectionManager(connections.build())
-                        // D-44. HttpClient 5 ne consulte le ProxySelector de la JVM que via
-                        // useSystemProperties() ou setProxySelector. Le planificateur direct le fixe :
-                        // un proxy referait le DNS et sortirait de l'adresse figée.
-                        .setRoutePlanner(new DefaultRoutePlanner(DefaultSchemePortResolver.INSTANCE))
-                        .disableRedirectHandling()
-                        .disableAutomaticRetries()
-                        .disableCookieManagement()
-                        .setDefaultRequestConfig(RequestConfig.custom()
-                                .setResponseTimeout(read)
-                                .setConnectionRequestTimeout(connect)
-                                .build())
-                        .build();
-                ClassicHttpResponse response = client.executeOpen(null, httpRequest, null)) {
+        return HttpClients.custom()
+                .setConnectionManager(connections.build())
+                .setRoutePlanner(new DefaultRoutePlanner(DefaultSchemePortResolver.INSTANCE))
+                .disableRedirectHandling()
+                .disableAutomaticRetries()
+                .disableCookieManagement()
+                .setDefaultRequestConfig(RequestConfig.custom()
+                        .setResponseTimeout(read)
+                        .setConnectionRequestTimeout(connect)
+                        .build())
+                .build();
+    }
+
+    /** Réponse d'un {@link #get}. {@code body} reste vide pour un statut autre que 200. */
+    public record Fetched(int status, byte[] body) {}
+
+    /**
+     * TODO §121 (D-CAL-ICS-URL) — {@code GET} borné pour un calendrier ICS : adresse figée par la garde, aucune
+     * redirection, aucun en-tête d'authentification, taille et durée totale bornées. Le corps d'un statut autre que 200
+     * n'est pas lu. Le délai {@code total} couvre le corps entier : un serveur qui goutte-à-goutte n'étire pas l'appel
+     * au-delà de lui (au plus {@code total} plus un délai de lecture).
+     *
+     * @throws IOException trop gros ({@code "response too large"}), trop lent ({@code "timed out"}) ou injoignable
+     */
+    public static Fetched get(String url, InetAddress pin, Duration connect, Duration socketRead, Duration total, long maxBytes)
+            throws IOException {
+        long deadline = System.nanoTime() + total.toNanos();
+        ClassicHttpRequest request = ClassicRequestBuilder.get(url).build();
+        try (CloseableHttpClient client = client(pin, hostOf(url), Timeout.of(connect), Timeout.of(socketRead), null)) {
+            // Le délai de lecture ne borne que l'attente d'un octet : un serveur qui goutte-à-goutte ses en-têtes le
+            // renouvelle sans fin. Le chien de garde coupe la connexion à l'échéance, en-têtes comprises.
+            AtomicBoolean expired = new AtomicBoolean();
+            ScheduledFuture<?> watchdog = WATCHDOG.schedule(() -> {
+                expired.set(true);
+                client.close(CloseMode.IMMEDIATE);
+            }, total.toMillis(), TimeUnit.MILLISECONDS);
+            try {
+                return read(client, request, maxBytes, deadline);
+            } catch (IOException | RuntimeException failure) {
+                if (expired.get()) {
+                    throw new IOException("timed out");
+                }
+                throw failure;
+            } finally {
+                watchdog.cancel(false);
+            }
+        }
+    }
+
+    private static Fetched read(CloseableHttpClient client, ClassicHttpRequest request, long maxBytes, long deadline)
+            throws IOException {
+        ClassicHttpResponse response = client.executeOpen(null, request, null);
+        // Fermer un flux « chunked » ou à longueur fixe lit d'abord ce qui reste : sur un abandon, la connexion se
+        // coupe tout de suite, sans quoi un serveur lent garde l'appel ouvert bien au-delà du délai.
+        boolean complete = false;
+        try {
             int status = response.getCode();
-            InputStream stream = response.getEntity() == null ? null : response.getEntity().getContent();
-            byte[] bytes = readBounded(stream, request.maxResponseBytes());
-            return new HttpRestConnector.HttpCallResponse(status, new String(bytes, StandardCharsets.UTF_8));
+            if (status != 200 || response.getEntity() == null) {
+                return new Fetched(status, new byte[0]);
+            }
+            if (response.getEntity().getContentLength() > maxBytes) {
+                throw new IOException("response too large");
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            InputStream stream = response.getEntity().getContent();
+            int read;
+            while ((read = stream.read(chunk)) != -1) {
+                out.write(chunk, 0, read);
+                if (out.size() > maxBytes) {
+                    throw new IOException("response too large");
+                }
+                if (System.nanoTime() > deadline) {
+                    throw new IOException("timed out");
+                }
+            }
+            complete = true;
+            return new Fetched(status, out.toByteArray());
+        } finally {
+            if (response instanceof ModalCloseable modal) {
+                modal.close(complete ? CloseMode.GRACEFUL : CloseMode.IMMEDIATE);
+            } else {
+                response.close();
+            }
         }
     }
 

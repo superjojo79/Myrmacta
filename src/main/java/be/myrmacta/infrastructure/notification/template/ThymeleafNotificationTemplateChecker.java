@@ -8,6 +8,7 @@ import be.myrmacta.infrastructure.document.ThymeleafTemplateSyntaxChecker;
 import java.util.List;
 import java.util.Objects;
 import org.thymeleaf.templatemode.TemplateMode;
+import org.unbescape.html.HtmlEscape;
 
 /**
  * Contrôle d'activation d'un gabarit de notification (registre §123) : syntaxe et grammaire d'expression de l'objet et du
@@ -42,10 +43,21 @@ public class ThymeleafNotificationTemplateChecker implements NotificationTemplat
     }
 
     private void checkSyntax(String part, String source, TemplateMode mode) {
-        // Le pré-traitement __${…}__ évalue une donnée comme une expression : le contrôle d'expressions ne le voit pas.
-        if (source != null && source.contains(PREPROCESSING)) {
-            throw new NotificationTemplateValidationException(
-                    part, "the Thymeleaf pre-processing sequence '__' is not allowed");
+        if (source != null) {
+            // Le moteur lit les entités HTML avant d'évaluer : &#95;&#95;${x}&#95;&#95; est un pré-traitement __${x}__,
+            // et &#36;{x} une expression ${x}. On contrôle donc aussi le texte décodé.
+            String decoded = HtmlEscape.unescapeHtml(source);
+            if (decoded.contains(PREPROCESSING)) {
+                throw new NotificationTemplateValidationException(
+                        part, "the Thymeleaf pre-processing sequence '__' is not allowed (also written with HTML entities)");
+            }
+            if (!decoded.equals(source)) {
+                try {
+                    syntaxChecker.assertExpressionsAllowed(decoded);
+                } catch (InvalidTemplateSyntaxException ex) {
+                    throw new NotificationTemplateValidationException(part, ex.getMessage());
+                }
+            }
         }
         try {
             syntaxChecker.check(source, mode);

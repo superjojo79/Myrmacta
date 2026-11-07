@@ -220,7 +220,7 @@ class ThymeleafNotificationTemplateRendererTest {
     @Test
     void theRenderedTotal_isBounded() {
         ThymeleafNotificationTemplateRenderer small =
-                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0));
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0, 0, 0));
         NotificationTemplate big =
                 template("S", "[# th:each=\"i : ${variables.items}\"]" + "0123456789".repeat(5) + "[/]", null);
 
@@ -252,7 +252,7 @@ class ThymeleafNotificationTemplateRendererTest {
     @Test
     void theOutputIsBoundedWhileRendering_notAfterwards() {
         ThymeleafNotificationTemplateRenderer small =
-                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 1000, 0, 0, 0));
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 1000, 0, 0, 0, 0, 0));
         NotificationTemplate big = template(
                 "S", "[# th:each=\"i : ${#numbers.sequence(1,1000)}\"]xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx[/]", null);
 
@@ -265,7 +265,7 @@ class ThymeleafNotificationTemplateRendererTest {
     @Test
     void theTotalOfTheParts_counts() {
         ThymeleafNotificationTemplateRenderer small =
-                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0));
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0, 0, 0));
         String sixty = "0123456789".repeat(6);
 
         assertThatThrownBy(() -> small.render(template(sixty, sixty, null), model("R", "L")))
@@ -324,5 +324,118 @@ class ThymeleafNotificationTemplateRendererTest {
                     .isInstanceOf(TemplateProcessingException.class)
                     .satisfies(e -> assertThat(e.getMessage()).doesNotContain("Pièce manquante"));
         }
+    }
+
+    // ---- Seconde revue : contournements du premier correctif --------------------------------------------------------
+
+    private static final String SECRET = "SECRETVALUE";
+
+    private Map<String, Object> secretModel() {
+        Map<String, Object> model = model("R", "L");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> variables = (Map<String, Object>) model.get("variables");
+        variables.put("a", "${variables.s}");
+        variables.put("s", SECRET);
+        variables.put("x", "x".repeat(1000));
+        model.put("a", "${variables.s}");
+        return model;
+    }
+
+    /** Le rendu échoue en TemplateProcessingException en moins de 2 s, sans citer de valeur. */
+    private void assertFailsFast(NotificationTemplate template) {
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(
+                        () -> renderer.render(template, secretModel()))
+                .isInstanceOf(TemplateProcessingException.class)
+                .satisfies(e -> assertThat(e.getMessage()).doesNotContain(SECRET).doesNotContain("2000000000")));
+    }
+
+    @Test
+    void f0_preProcessingWrittenWithHtmlEntities_isRefusedByTheEngine() {
+        for (String underscores : List.of("&#95;&#95;", "&#x5f;&#x5F;", "&lowbar;&lowbar;", "&UnderBar;&UnderBar;")) {
+            String expr = underscores + "${variables.a}" + underscores;
+            assertFailsFast(template("S", "T", "<p th:text=\"" + expr + "\">x</p>"));
+            assertFailsFast(template("S", "T", "<p data-th-text=\"" + expr + "\">x</p>"));
+            assertFailsFast(template("S", "T", "<p>[[" + expr + "]]</p>"));
+            assertFailsFast(template("S", "[[" + expr + "]]", null));
+            assertFailsFast(template("S", "[# th:text=\"" + expr + "\"][/]", null));
+            assertFailsFast(template("S", "T", "<p th:with=\"z=" + expr + "\" th:text=\"${z}\">x</p>"));
+            assertFailsFast(template("S", "T", "<p th:text=\"${" + expr + "}\">x</p>"));
+            assertFailsFast(template("S", "[# th:with=\"z=" + expr + "\"][[${z}]][/]", null));
+        }
+    }
+
+    private static final String LONG_C = "c".repeat(1500);
+    private static final String REPLACE_BOMB = "[[${#strings.length(#strings.replace(#strings.replace("
+            + "#strings.repeat('a',1000),'a',#strings.repeat('b',1000)),'b','" + LONG_C + "'))}]]";
+
+    @Test
+    void f1_nestedReplaceCannotProduceAHugeString() {
+        assertFailsFast(template("S", REPLACE_BOMB, null));
+        assertFailsFast(template("S", "T", "<p th:text=\"" + REPLACE_BOMB.substring(2, REPLACE_BOMB.length() - 2).replace("\"", "") + "\">x</p>"));
+    }
+
+    @Test
+    void f2_aHeavyLiteralIsChargedToTheBudget() {
+        String heavy = "b".repeat(30_000);
+        assertFailsFast(template(
+                "S",
+                "[# th:each=\"i : ${#numbers.sequence(1,300)}\"][# th:with=\"n=${#strings.length(#strings.replace("
+                        + "#strings.repeat('a',1000),'a','" + heavy + "'))}\"][/][/]",
+                null));
+        // sans remplacement : 300 évaluations d'un littéral de 30 Ko
+        assertFailsFast(template(
+                "S",
+                "[# th:each=\"i : ${#numbers.sequence(1,1000)}\"][# th:with=\"n=${#strings.length('" + heavy + "')}\"][/][/]",
+                null));
+    }
+
+    @Test
+    void f3_aStepThatTruncatesToIntIsRefused() {
+        assertFailsFast(template(
+                "S", "[# th:each=\"i : ${#numbers.sequence(1,50000000,4294967297)}\"]x[/]", null));
+        assertFailsFast(template(
+                "S", "[# th:each=\"i : ${#numbers.sequence(1,5,-9223372036854775808)}\"]x[/]", null));
+        assertFailsFast(template("S", "[[${#strings.repeat('a',4294967297)}]]", null));
+    }
+
+    @Test
+    void f4_doublingThroughNestedWith_isStoppedBeforeMemoryRunsOut() {
+        StringBuilder text = new StringBuilder("[# th:with=\"a=${variables.x}+${variables.x}\"]");
+        StringBuilder html = new StringBuilder("<div th:with=\"a=${variables.x}+${variables.x}\">");
+        String previous = "a";
+        for (char c = 'b'; c <= 't'; c++) {
+            text.append("[# th:with=\"").append(c).append("=${").append(previous).append("}+${").append(previous).append("}\"]");
+            html.append("<div th:with=\"").append(c).append("=${").append(previous).append("}+${").append(previous).append("}\">");
+            previous = String.valueOf(c);
+        }
+        text.append("ok").append("[/]".repeat(20));
+        html.append("ok").append("</div>".repeat(20));
+        assertFailsFast(template("S", text.toString(), null));
+        assertFailsFast(template("S", "T", html.toString()));
+    }
+
+    @Test
+    void theBudgetCannotBeShadowedByTheTemplate() {
+        assertFailsFast(template(
+                "S",
+                "[# th:with=\"myrmacta$renderBudget=1\"][# th:each=\"a : ${#numbers.sequence(1,1000)}\"]"
+                        + "[# th:each=\"b : ${#numbers.sequence(1,1000)}\"][# th:each=\"c : ${#numbers.sequence(1,1000)}\"]"
+                        + "[/][/][/][/]",
+                null));
+    }
+
+    @Test
+    void f2_aRenderTimeLimit_failsTheRendering() {
+        ThymeleafNotificationTemplateRenderer impatient = new ThymeleafNotificationTemplateRenderer(
+                new NotificationTemplateProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 1));
+        NotificationTemplate slow = template(
+                "S",
+                "[# th:each=\"i : ${#numbers.sequence(1,1000)}\"][# th:with=\"n=${#strings.length(variables.motivation)}\"][/][/]",
+                null);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(
+                        () -> impatient.render(slow, model("R", "L")))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("time limit"));
     }
 }

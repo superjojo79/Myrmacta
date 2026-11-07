@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.unbescape.html.HtmlEscape;
 
 /**
  * Rend un gabarit de notification (registre §123) : l'objet et le corps texte en mode TEXT, le corps HTML en mode HTML puis
@@ -26,7 +27,8 @@ import org.thymeleaf.context.Context;
  * <p>Bornes de coût (revue de clôture) : le rendu écrit dans un {@link Writer} borné qui s'arrête dès que la somme des
  * parties dépasse {@code renderedMaxBytes} ; l'évaluateur borne {@code #numbers.sequence} et {@code #strings.repeat},
  * refuse {@code #strings.randomAlphanumeric} et débite un budget d'évaluations par rendu. Le pré-traitement
- * {@code __${…}__} est refusé (il évaluerait une donnée comme une expression).
+ * {@code __${…}__} est refusé avant tout traitement, quelle que soit la graphie : la source est décodée (entités HTML)
+ * comme le fait le moteur, puis toute séquence {@code __} est refusée (voir le registre §123).
  *
  * <p>Les messages d'erreur nomment le gabarit, la partie et l'expression, jamais une valeur ; la cause d'origine n'est pas
  * attachée (son message peut citer une valeur).
@@ -58,7 +60,11 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
 
     public ThymeleafNotificationTemplateRenderer(NotificationTemplateProperties properties) {
         Objects.requireNonNull(properties, "properties");
-        this.limits = new ExpressionLimits(properties.utilityMaxSize(), properties.renderBudget());
+        this.limits = new ExpressionLimits(
+                properties.utilityMaxSize(),
+                properties.stringMaxChars(),
+                properties.renderBudget(),
+                properties.renderTimeoutMillis());
         this.textEngine = SafeHtmlTemplateEngineFactory.textStringEngine(limits);
         this.htmlEngine = SafeHtmlTemplateEngineFactory.htmlStringEngine(limits);
         this.renderedSubjectMaxChars = properties.renderedSubjectMaxChars();
@@ -69,7 +75,12 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
     public RenderedNotification render(NotificationTemplate template, Map<String, Object> model) {
         Objects.requireNonNull(template, "template");
         Context context = context(template, model);
-        limits.newBudget(context);
+        try (ExpressionLimits.Scope ignored = limits.begin()) {
+            return render(template, context);
+        }
+    }
+
+    private RenderedNotification render(NotificationTemplate template, Context context) {
         ByteBudget bytes = new ByteBudget(renderedMaxBytes);
 
         String subject = oneLine(
@@ -108,7 +119,7 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
             String source,
             Context context,
             ByteBudget bytes) {
-        if (source.contains(PREPROCESSING)) {
+        if (HtmlEscape.unescapeHtml(source).contains(PREPROCESSING)) {
             throw failure(template, part, "the pre-processing sequence '__' is not allowed");
         }
         BoundedWriter writer = new BoundedWriter(bytes);

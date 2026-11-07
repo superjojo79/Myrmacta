@@ -1,6 +1,7 @@
 package be.myrmacta.infrastructure.document;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import org.thymeleaf.context.IContext;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 import org.thymeleaf.expression.Dates;
@@ -44,31 +44,23 @@ final class SafeThymeleafExpressionSupport {
 
     /**
      * Évalue avec des bornes de coût (gabarits de notification, registre §123) ; {@code limits == null} : comportement
-     * inchangé (templates de document). Chaque évaluation débite le budget du rendu (1, plus la taille d'une collection
-     * obtenue, car elle sera parcourue par un {@code th:each}). Les messages ne citent aucune valeur ni expression.
+     * inchangé (templates de document). Chaque évaluation débite le budget du rendu (voir {@link ExpressionLimits}) et son
+     * résultat est plafonné. Les messages ne citent aucune valeur ni expression.
      */
     static Object evaluate(IContext context, String raw, ExpressionLimits limits) {
         Object value = new Parser(raw, context, limits).parseTop();
         if (limits != null) {
-            chargeBudget(context, value);
+            assertStringWithinLimit(value, limits);
+            ExpressionLimits.charge(1L + (raw == null ? 0 : raw.length()) / 64 + weight(value));
         }
         return value;
     }
 
-    static final String COST_MESSAGE = "Template cost limit exceeded";
-
-    private static void chargeBudget(IContext context, Object value) {
-        Object holder = context.getVariable(ExpressionLimits.BUDGET_VARIABLE);
-        if (!(holder instanceof AtomicLong remaining)) {
-            return;
+    /** Poids d'une valeur : sa longueur divisée par 64 pour une chaîne, sa taille pour une collection. */
+    private static long weight(Object value) {
+        if (value instanceof CharSequence text) {
+            return text.length() / 64;
         }
-        long cost = 1L + sizeOf(value);
-        if (remaining.addAndGet(-cost) < 0) {
-            throw new TemplateProcessingException(COST_MESSAGE + " (evaluation budget exhausted)");
-        }
-    }
-
-    private static long sizeOf(Object value) {
         if (value instanceof Collection<?> collection) {
             return collection.size();
         }
@@ -79,6 +71,13 @@ final class SafeThymeleafExpressionSupport {
             return Array.getLength(value);
         }
         return 0L;
+    }
+
+    private static void assertStringWithinLimit(Object value, ExpressionLimits limits) {
+        if (value instanceof CharSequence text && text.length() > limits.stringMaxChars()) {
+            throw new TemplateProcessingException(
+                    ExpressionLimits.COST_MESSAGE + " (string longer than " + limits.stringMaxChars() + " characters)");
+        }
     }
 
     static List<String> extractVariableExpressions(String html) {
@@ -355,7 +354,17 @@ final class SafeThymeleafExpressionSupport {
                 try {
                     Object[] invokeArgs = coerceArguments(method, args);
                     method.setAccessible(true);
-                    return method.invoke(target, invokeArgs);
+                    Object result = method.invoke(target, invokeArgs);
+                    if (limits != null) {
+                        assertResultWithinLimits(result);
+                    }
+                    return result;
+                } catch (InvocationTargetException ex) {
+                    if (limits != null && ex.getCause() instanceof Error error) {
+                        // Une OutOfMemoryError (ou autre Error) n'est pas une raison d'essayer une autre surcharge.
+                        throw error;
+                    }
+                    last = ex;
                 } catch (ReflectiveOperationException | IllegalArgumentException ex) {
                     last = ex;
                 }
@@ -364,47 +373,122 @@ final class SafeThymeleafExpressionSupport {
         }
 
         private static TemplateProcessingException costLimit(String reason) {
-            return new TemplateProcessingException(COST_MESSAGE + " (" + reason + ")");
+            return new TemplateProcessingException(ExpressionLimits.COST_MESSAGE + " (" + reason + ")");
         }
 
-        /** Bornes des utilitaires qui fabriquent une grande sortie à partir d'un petit gabarit. */
+        /**
+         * Bornes d'un appel d'utilitaire, vérifiées avant de l'exécuter : opérandes (chaînes plafonnées, entiers dans la
+         * plage {@code int}), sorties démultipliées à partir d'un petit gabarit ({@code sequence}, {@code repeat},
+         * {@code replace}, {@code join}, {@code format*}) et poids des opérandes débité du budget.
+         */
         private void assertWithinLimits(String objectName, String methodName, List<Object> args) {
             int max = limits.utilityMaxSize();
+            int stringMax = limits.stringMaxChars();
             if ("strings".equals(objectName) && "randomAlphanumeric".equals(methodName)) {
                 throw costLimit("#strings.randomAlphanumeric is not allowed");
             }
+            long operandWeight = 0;
+            for (Object arg : args) {
+                if (arg instanceof CharSequence text && text.length() > stringMax) {
+                    throw costLimit("string operand longer than " + stringMax + " characters");
+                }
+                if (arg instanceof Number number) {
+                    intValue(number);
+                }
+                operandWeight += weight(arg);
+            }
+            ExpressionLimits.charge(1 + operandWeight);
             if ("numbers".equals(objectName) && "sequence".equals(methodName)) {
-                long from = longArg(args, 0);
-                long to = longArg(args, 1);
-                long step = args.size() > 2 ? longArg(args, 2) : 1L;
+                long from = intArg(args, 0);
+                long to = intArg(args, 1);
+                long step = args.size() > 2 ? intArg(args, 2) : 1L;
                 if (step == 0) {
                     throw costLimit("#numbers.sequence step");
                 }
-                long span = Math.abs(to - from);
-                if (span / Math.abs(step) + 1 > max) {
+                if (Math.abs(to - from) / Math.abs(step) + 1 > max) {
                     throw costLimit("#numbers.sequence size exceeds " + max);
                 }
             }
             if ("strings".equals(objectName) && "repeat".equals(methodName)) {
-                long times = longArg(args, 1);
-                int length = Math.max(1, String.valueOf(args.get(0)).length());
+                long times = intArg(args, 1);
+                long length = Math.max(1, String.valueOf(args.get(0)).length());
                 if (times < 0 || times > max || times * length > max) {
                     throw costLimit("#strings.repeat size exceeds " + max);
                 }
             }
             if ("numbers".equals(objectName) && methodName.contains("ormat")) {
-                // Seuls les entiers après le nombre à formater (nombre de chiffres) sont bornés.
+                // Seuls les nombres après le nombre à formater (nombre de chiffres) sont bornés.
                 for (int i = 1; i < args.size(); i++) {
-                    if (args.get(i) instanceof Number number && !(number instanceof Double) && number.longValue() > max) {
+                    if (args.get(i) instanceof Number number && Math.abs(number.doubleValue()) > max) {
                         throw costLimit("#numbers." + methodName + " digits exceed " + max);
                     }
                 }
             }
+            if ("strings".equals(objectName) && methodName.contains("eplace") && args.size() == 3) {
+                long total = charCount(args.get(0));
+                long before = String.valueOf(args.get(1)).length();
+                long after = String.valueOf(args.get(2)).length();
+                long matches = before == 0 ? total + 1 : total / before;
+                if (total + matches * Math.max(0, after - before) > stringMax) {
+                    throw costLimit("#strings.replace result would exceed " + stringMax + " characters");
+                }
+            }
+            if ("strings".equals(objectName) && methodName.contains("oin") && args.size() >= 2) {
+                long count = weight(args.get(0));
+                long separator = String.valueOf(args.get(1)).length();
+                if (charCount(args.get(0)) + count * separator > stringMax) {
+                    throw costLimit("#strings." + methodName + " result would exceed " + stringMax + " characters");
+                }
+            }
         }
 
-        private static long longArg(List<Object> args, int position) {
-            if (position < args.size() && args.get(position) instanceof Number number && !(number instanceof Double)) {
-                return number.longValue();
+        private void assertResultWithinLimits(Object result) {
+            assertStringWithinLimit(result, limits);
+            if (result != null && (result instanceof Collection<?> || result.getClass().isArray())
+                    && weight(result) > limits.stringMaxChars()) {
+                throw costLimit("collection larger than " + limits.stringMaxChars() + " elements");
+            }
+            ExpressionLimits.charge(weight(result));
+        }
+
+        /** Nombre de caractères d'une chaîne, ou de tous les éléments d'une collection ou d'un tableau. */
+        private static long charCount(Object value) {
+            if (value instanceof Collection<?> collection) {
+                long total = 0;
+                for (Object element : collection) {
+                    total += String.valueOf(element).length();
+                }
+                return total;
+            }
+            if (value != null && value.getClass().isArray() && !value.getClass().getComponentType().isPrimitive()) {
+                long total = 0;
+                for (int i = 0; i < Array.getLength(value); i++) {
+                    total += String.valueOf(Array.get(value, i)).length();
+                }
+                return total;
+            }
+            return String.valueOf(value).length();
+        }
+
+        /** Un entier dans la plage {@code int} (un décimal entier est accepté), sinon refus : pas de troncature. */
+        private static int intValue(Number number) {
+            if (number instanceof Double || number instanceof Float) {
+                double value = number.doubleValue();
+                if (value != Math.rint(value) || Math.abs(value) > Integer.MAX_VALUE) {
+                    throw costLimit("numeric argument out of range");
+                }
+                return (int) value;
+            }
+            long value = number.longValue();
+            if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+                throw costLimit("numeric argument out of range");
+            }
+            return (int) value;
+        }
+
+        private static int intArg(List<Object> args, int position) {
+            if (position < args.size() && args.get(position) instanceof Number number) {
+                return intValue(number);
             }
             throw costLimit("numeric argument expected");
         }

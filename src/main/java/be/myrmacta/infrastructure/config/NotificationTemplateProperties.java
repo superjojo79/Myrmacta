@@ -15,8 +15,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param previewModelMaxBytes taille maximale du modèle JSON d'un aperçu
  * @param utilityMaxSize taille maximale (éléments ou caractères) produite par {@code #numbers.sequence} et
  *     {@code #strings.repeat}, et plafond des chiffres demandés à {@code #numbers.format*}
- * @param renderBudget budget d'évaluations par rendu : une évaluation coûte 1, plus le nombre d'éléments d'une collection
- *     obtenue (borne les {@code th:each} imbriqués à sortie vide)
+ * @param stringMaxChars longueur maximale de toute chaîne produite par une évaluation ou passée à un utilitaire
+ * @param renderBudget budget par rendu : une évaluation coûte 1, plus la longueur de l'expression, la taille des opérandes
+ *     et du résultat (une chaîne pèse sa longueur divisée par 64, une collection sa taille) ; borne les {@code th:each}
+ *     imbriqués à sortie vide
+ * @param renderTimeoutMillis durée maximale d'un rendu, contrôlée à chaque évaluation
  */
 @ConfigurationProperties(prefix = "app.notification.template")
 public record NotificationTemplateProperties(
@@ -27,13 +30,17 @@ public record NotificationTemplateProperties(
         int renderedMaxBytes,
         int previewModelMaxBytes,
         int utilityMaxSize,
-        long renderBudget) {
+        int stringMaxChars,
+        long renderBudget,
+        long renderTimeoutMillis) {
 
     public static final int DEFAULT_RENDERED_SUBJECT_MAX_CHARS = 255;
     public static final int DEFAULT_RENDERED_MAX_BYTES = 1_048_576;
     public static final int DEFAULT_PREVIEW_MODEL_MAX_BYTES = 65_536;
     public static final int DEFAULT_UTILITY_MAX_SIZE = 1_000;
+    public static final int DEFAULT_STRING_MAX_CHARS = 100_000;
     public static final long DEFAULT_RENDER_BUDGET = 100_000;
+    public static final long DEFAULT_RENDER_TIMEOUT_MILLIS = 2_000;
 
     public NotificationTemplateProperties {
         if (subjectMaxChars <= 0) {
@@ -57,13 +64,19 @@ public record NotificationTemplateProperties(
         if (utilityMaxSize <= 0) {
             utilityMaxSize = DEFAULT_UTILITY_MAX_SIZE;
         }
+        if (stringMaxChars <= 0) {
+            stringMaxChars = DEFAULT_STRING_MAX_CHARS;
+        }
         if (renderBudget <= 0) {
             renderBudget = DEFAULT_RENDER_BUDGET;
+        }
+        if (renderTimeoutMillis <= 0) {
+            renderTimeoutMillis = DEFAULT_RENDER_TIMEOUT_MILLIS;
         }
     }
 
     public static NotificationTemplateProperties defaults() {
-        return new NotificationTemplateProperties(0, 0, 0, 0, 0, 0, 0, 0);
+        return new NotificationTemplateProperties(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     /**

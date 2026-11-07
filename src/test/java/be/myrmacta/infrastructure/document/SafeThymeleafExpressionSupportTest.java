@@ -269,4 +269,19 @@ class SafeThymeleafExpressionSupportTest {
             return "ok";
         }
     }
+
+    @Test
+    void f5_anErrorRaisedByAUtility_isNotSwallowed() {
+        Context context = context();
+        context.setVariable("bomb", new Object() {
+            @Override
+            public String toString() {
+                throw new OutOfMemoryError("simulated");
+            }
+        });
+        ExpressionLimits limits = new ExpressionLimits(1000, 100_000, 100_000, 2_000);
+
+        assertThatThrownBy(() -> SafeThymeleafExpressionSupport.evaluate(context, "#strings.length(bomb)", limits))
+                .isInstanceOf(OutOfMemoryError.class);
+    }
 }

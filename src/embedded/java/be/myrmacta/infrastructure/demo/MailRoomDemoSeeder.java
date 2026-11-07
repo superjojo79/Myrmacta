@@ -15,6 +15,8 @@ import be.myrmacta.domain.mailroom.model.DepositFile;
 import be.myrmacta.domain.mailroom.model.ReplyWorkflowSetting;
 import be.myrmacta.domain.mailroom.port.in.DepositMailUseCase;
 import be.myrmacta.domain.mailroom.port.in.ManageReplyWorkflowUseCase;
+import be.myrmacta.domain.notification.template.port.in.ActivateNotificationTemplateUseCase;
+import be.myrmacta.domain.notification.template.port.in.CreateNotificationTemplateUseCase;
 import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.domain.workflow.model.WorkflowStatusDefinition;
 import be.myrmacta.domain.workflow.model.WorkflowTypeConfig;
@@ -72,6 +74,8 @@ public class MailRoomDemoSeeder {
     private final DeployBpmnProcessUseCase deployBpmn;
     private final ManageReplyWorkflowUseCase replyWorkflows;
     private final ManageDeadlineUseCase deadlines;
+    private final CreateNotificationTemplateUseCase createNotificationTemplate;
+    private final ActivateNotificationTemplateUseCase activateNotificationTemplate;
     private final ManageConnectorInstanceUseCase connectors;
     private final ConnectorTriggerRuntime runtime;
     private final DepositMailUseCase deposits;
@@ -81,6 +85,7 @@ public class MailRoomDemoSeeder {
             TenantProperties tenant, DossierTypeRepository types, UserGroupsUseCase groups, CreateDossierTypeUseCase createType,
             SaveWorkflowTypeConfigUseCase saveConfig, DeployDecisionTableUseCase deployDmn, DeployBpmnProcessUseCase deployBpmn,
             ManageReplyWorkflowUseCase replyWorkflows, ManageDeadlineUseCase deadlines, ManageConnectorInstanceUseCase connectors,
+            CreateNotificationTemplateUseCase createNotificationTemplate, ActivateNotificationTemplateUseCase activateNotificationTemplate,
             ConnectorTriggerRuntime runtime, DepositMailUseCase deposits, PlatformTransactionManager transactionManager) {
         this.example = Path.of(exampleDir);
         this.json = json;
@@ -93,6 +98,8 @@ public class MailRoomDemoSeeder {
         this.deployBpmn = deployBpmn;
         this.replyWorkflows = replyWorkflows;
         this.deadlines = deadlines;
+        this.createNotificationTemplate = createNotificationTemplate;
+        this.activateNotificationTemplate = activateNotificationTemplate;
         this.connectors = connectors;
         this.runtime = runtime;
         this.deposits = deposits;
@@ -137,6 +144,13 @@ public class MailRoomDemoSeeder {
                     List.of(), DEMO_ACTOR, DEMO_ACTOR), ADMIN);
         }
         deployDmn.deploy("routage-courrier.dmn", bytes("routage-courrier.dmn"));
+        // Issue #19 : l'accusé de réception de l'exemple (gabarit actif avant le premier courrier attesté).
+        JsonNode acknowledgement = read("config/gabarit-accuse-reception.json");
+        var template = createNotificationTemplate.create(new CreateNotificationTemplateUseCase.CreateCommand(
+                acknowledgement.get("templateKey").asString(), null, null, acknowledgement.get("label").asString(),
+                acknowledgement.get("subject").asString(), acknowledgement.get("textBody").asString(),
+                acknowledgement.get("htmlBody").asString(), DEMO_ACTOR));
+        activateNotificationTemplate.activate(template.id(), DEMO_ACTOR);
         for (String bpmn : List.of("traiter-facture.bpmn20.xml", "traiter-reponse.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
             deployBpmn.deploy(bpmn, bytes(bpmn));
         }

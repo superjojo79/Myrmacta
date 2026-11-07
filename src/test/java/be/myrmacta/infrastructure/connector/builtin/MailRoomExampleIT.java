@@ -31,6 +31,13 @@ import be.myrmacta.infrastructure.deadline.DeadlineAlertJob;
 import be.myrmacta.infrastructure.mcp.McpActorScope;
 import be.myrmacta.infrastructure.mcp.tool.MailRoomMcpTools;
 import be.myrmacta.support.OidcClientTestConfiguration;
+import com.icegreen.greenmail.junit5.GreenMailExtension;
+import com.icegreen.greenmail.util.ServerSetup;
+import jakarta.mail.BodyPart;
+import jakarta.mail.Multipart;
+import jakarta.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +45,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +58,7 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -58,6 +67,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -82,6 +93,17 @@ class MailRoomExampleIT {
     private static final ObjectMapper JSON = JsonMapper.builder().build();
     private static final String TENANT = "tenant_dev";
     private static final String OPERATOR = "operateur-courrier";
+    private static final int SMTP_PORT = freePort();
+
+    /** Issue #19 (CS8) : l'accusé de réception part par le vrai relais de l'outbox vers un serveur SMTP en mémoire. */
+    @RegisterExtension
+    static final GreenMailExtension MAIL = new GreenMailExtension(new ServerSetup(SMTP_PORT, "127.0.0.1", "smtp"));
+
+    @DynamicPropertySource
+    static void smtp(DynamicPropertyRegistry registry) {
+        registry.add("spring.mail.host", () -> "127.0.0.1");
+        registry.add("spring.mail.port", () -> SMTP_PORT);
+    }
 
     @MockitoBean private ImapMailbox mailbox;
     @MockitoBean private SftpClientPort sftp;
@@ -417,6 +439,142 @@ class MailRoomExampleIT {
         assertThat(read(get("/api/dossiers/{id}/elements", mailId)).toString()).contains("terminée par " + OPERATOR);
     }
 
+    /**
+     * Issue #19 (CS8) — un e-mail dont l'expéditeur est attesté reçoit un accusé de réception rendu depuis le gabarit (objet,
+     * référence du courrier, date), en texte et en HTML, marqué comme message automatique. Une réponse qui rejoint un fil
+     * n'en reçoit pas un second.
+     */
+    @Test
+    void anEmailFromAnAttestedSenderIsAcknowledgedOnce_aReplyInItsThreadIsNot() throws Exception {
+        configureTheExample();
+        String sender = "ack1@expediteur.example";
+        deliver(new ImapMailbox.Mail("<ack1@expediteur.example>", sender, "Expéditeur", "Demande de renseignements 1",
+                Instant.parse("2026-10-30T09:00:00Z"), "Bonjour", false,
+                "mx.example.com; dmarc=pass header.from=expediteur.example", List.of(), 0));
+        String mailId = awaitMailDossier("Demande de renseignements 1");
+        awaitSortingTask(mailId);
+        String reference = read(get("/api/dossiers/{id}", mailId)).get("reference").asString();
+
+        MimeMessage ack = onlyAcknowledgement(sender);
+        assertThat(ack.getSubject()).isEqualTo("Accusé de réception : Demande de renseignements 1");
+        assertThat(ack.getHeader("Auto-Submitted")).containsExactly("auto-generated");
+        List<BodyPart> parts = leafParts(ack);
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).getContentType()).startsWith("text/plain");
+        assertThat((String) parts.get(0).getContent())
+                .contains("« Demande de renseignements 1 »", "référence " + reference, "le " + LocalDate.now(ZoneOffset.UTC));
+        assertThat(parts.get(1).getContentType()).startsWith("text/html");
+        assertThat((String) parts.get(1).getContent()).contains("<b>" + reference + "</b>");
+
+        // Une réponse du même expéditeur, dans le fil d'un courrier connu, rejoint ce fil : pas de second accusé.
+        deliver(new ImapMailbox.Mail("<ack1-re@expediteur.example>", sender, "Expéditeur", "RE: Demande de renseignements 1",
+                Instant.parse("2026-10-31T09:00:00Z"), "Précision", false,
+                "mx.example.com; dmarc=pass header.from=expediteur.example", List.of(), 0,
+                MailThread.of("<ack1@expediteur.example>", "<ack1@expediteur.example>", "")));
+        String reply = awaitMailDossier("RE: Demande de renseignements 1");
+        awaitRouted(reply);
+        assertThat(read(get("/api/dossiers/{id}/workflows", reply)).get("content").get(0).get("status").asString())
+                .isEqualTo("RATTACHE");
+        assertAcknowledgements(sender, 1);
+    }
+
+    /** Issue #19 (CS8) — un courrier papier n'a pas d'adresse à qui répondre : aucun accusé. */
+    @Test
+    void aPaperMailIsNotAcknowledged() throws Exception {
+        configureTheExample();
+        JsonNode example = JSON.readTree(EXAMPLE.resolve("config/connecteur-sftp-pdf.exemple.json").toFile());
+        Map<String, Object> config = JSON.convertValue(example.get("config"), Map.class);
+        ConnectorInstanceData scans = new ConnectorInstanceData(UUID.randomUUID(), TENANT, example.get("name").asString(),
+                example.get("connectorType").asString(), true, config);
+        String sender = "papier@cabinet.example";
+        byte[] pdf = "%PDF-1.4 lettre papier".getBytes(StandardCharsets.US_ASCII);
+        byte[] index = ("{\"expediteur\":\"" + sender + "\",\"objet\":\"Lettre papier sans accuse\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{pdf,PDF}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/sans-accuse.pdf", pdf.length)));
+        when(sftp.listFiles(any(), eq("/scans/entree"), eq("*.{json,JSON}")))
+                .thenReturn(List.of(new SftpClientPort.RemoteFile("/scans/entree/sans-accuse.json", index.length)));
+        when(sftp.download(any(), eq("/scans/entree/sans-accuse.pdf"), anyLong())).thenReturn(pdf);
+        when(sftp.download(any(), eq("/scans/entree/sans-accuse.json"), anyLong())).thenReturn(index);
+
+        triggerRuntime.onIncomingEvent(scans, Map.of());
+
+        String mailId = awaitMailDossierByField("objet", "Lettre papier sans accuse");
+        ProcessInstance sorting = awaitSortingTask(mailId);
+        assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("accuseReception", false);
+        assertAcknowledgements(sender, 0);
+    }
+
+    /** Issue #19 (CS8, backscatter) — un expéditeur que NOTRE serveur de réception n'atteste pas n'est jamais accusé. */
+    @Test
+    void anEmailFromAnUnattestedSenderIsNotAcknowledged() throws Exception {
+        configureTheExample();
+        String sender = "usurpe@expediteur.example";
+        deliver(new ImapMailbox.Mail("<usurpe@expediteur.example>", sender, "Expéditeur", "Demande non attestee",
+                Instant.parse("2026-10-30T09:30:00Z"), "Bonjour", false,
+                "mx.example.com; dmarc=fail header.from=expediteur.example", List.of(), 0));
+        String mailId = awaitMailDossier("Demande non attestee");
+        ProcessInstance sorting = awaitSortingTask(mailId);
+        assertThat(runtimeService.getVariables(sorting.getId()))
+                .containsEntry("mailSenderAuthenticated", false)
+                .containsEntry("accuseReception", false);
+        assertAcknowledgements(sender, 0);
+    }
+
+    /** Les messages reçus par cette adresse : le relais planifié peut aussi vider les lignes d'autres tests. */
+    private List<MimeMessage> acknowledgements(String address) throws Exception {
+        List<MimeMessage> mine = new ArrayList<>();
+        for (MimeMessage message : MAIL.getReceivedMessages()) {
+            if (message.getAllRecipients()[0].toString().equals(address)) {
+                mine.add(message);
+            }
+        }
+        return mine;
+    }
+
+    private MimeMessage onlyAcknowledgement(String address) throws Exception {
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
+        while (acknowledgements(address).isEmpty() && Instant.now().isBefore(deadline)) {
+            Thread.sleep(100);
+        }
+        Thread.sleep(1_500); // laisse arriver un éventuel doublon
+        assertThat(acknowledgements(address)).as("accusé de réception à " + address).hasSize(1);
+        return acknowledgements(address).getFirst();
+    }
+
+    /** Plus d'un tour du relais (1 s) après le tri : autant de lignes d'outbox et de messages reçus que prévu pour cette adresse. */
+    private void assertAcknowledgements(String address, int expected) throws Exception {
+        Thread.sleep(2_500);
+        assertThat(jdbc.queryForObject("select count(*) from notification_outbox where payload_json::text like ?",
+                Long.class, "%" + address + "%")).isEqualTo((long) expected);
+        assertThat(acknowledgements(address)).as("accusés de réception à " + address).hasSize(expected);
+    }
+
+    private static List<BodyPart> leafParts(MimeMessage message) throws Exception {
+        List<BodyPart> leaves = new ArrayList<>();
+        collect((Multipart) message.getContent(), leaves);
+        return leaves;
+    }
+
+    private static void collect(Multipart multipart, List<BodyPart> leaves) throws Exception {
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart part = multipart.getBodyPart(i);
+            if (part.getContent() instanceof Multipart nested) {
+                collect(nested, leaves);
+            } else {
+                leaves.add(part);
+            }
+        }
+    }
+
+    private static int freePort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     /** Le courrier dont un champ vaut cette valeur, une fois le relais de l'outbox terminé (voir {@link #awaitMailDossier}). */
     private String awaitMailDossierByField(String field, String value) throws Exception {
         Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
@@ -474,6 +632,13 @@ class MailRoomExampleIT {
                                 "application/xml", Files.readAllBytes(EXAMPLE.resolve("routage-courrier.dmn"))))
                         .with(admin).with(csrf()))
                 .andExpect(status().isCreated());
+        // Issue #19 (D-NOTIF-TPL-ACK) : le gabarit de l'accusé de réception, activé (geste humain) avant le premier courrier.
+        String templateId = JSON.readTree(mockMvc.perform(post("/api/notification-templates").with(admin).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Files.readString(EXAMPLE.resolve("config/gabarit-accuse-reception.json"))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+        mockMvc.perform(post("/api/notification-templates/{id}/activate", templateId).with(admin).with(csrf()))
+                .andExpect(status().isOk());
         for (String bpmn : List.of("traiter-facture.bpmn20.xml", "traiter-reponse.bpmn20.xml", "tri-courrier.bpmn20.xml")) {
             mockMvc.perform(multipart("/api/workflow-bpmn-deployments").file(new MockMultipartFile("file", bpmn,
                                     "application/xml", Files.readAllBytes(EXAMPLE.resolve(bpmn))))
@@ -598,6 +763,10 @@ class MailRoomExampleIT {
         assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.REPLY_WORKFLOW, "FACTURE")).isPresent();
         assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.DEADLINE, "FACTURE")).isPresent();
         assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.DMN, "routageCourrier")).isPresent();
+        // Issue #19 (H1) : le gabarit de l'accusé de réception voyage aussi (version active), et se rejoue sans changement.
+        assertThat(bundle.find(be.myrmacta.domain.promotion.model.ArtifactType.NOTIFICATION_TEMPLATE,
+                be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts.entryKey("accuse-reception-courrier", null, null)))
+                .isPresent();
 
         JsonNode same = promotion("plan", bundle, admin);
         for (JsonNode e : same.get("entries")) {

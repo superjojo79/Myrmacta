@@ -1083,7 +1083,10 @@ Pour un message métier explicite (pas juste « ça a bougé »), poser :
 |---|---|---|
 | `notificationChannels` | oui | liste ou CSV parmi `EMAIL`, `WEBHOOK`, `BROWSER` |
 | `notificationTo` | selon canal | destinataire email : adresse littérale, ou en attribut `flowable:notificationTo` une source `dossierField:<champ>` / `variable:<nom>` (voir ci-dessous) |
-| `notificationSubject` / `notificationBody` | selon canal | contenu email |
+| `notificationSubject` / `notificationBody` | selon canal | contenu email, littéral (exclus si `notificationTemplate` est posé) |
+| `notificationTemplate` | non | **attribut seulement** : clé d'un gabarit de notification actif, qui fournit l'objet et le corps (voir « Gabarit de notification » ci-dessous) |
+| `notificationVariant` | non | **attribut seulement** : variante du gabarit, littérale ou `variable:<nom>` ; exige `notificationTemplate` |
+| `notificationLocale` | non | **attribut seulement** : langue du gabarit (ex. `fr`), littérale ou `variable:<nom>` ; exige `notificationTemplate` |
 | `notificationUserId` | pour `BROWSER` | **un seul** utilisateur — pour notifier plusieurs intervenants (ex. tous les participants), utiliser un `multiInstanceLoopCharacteristics` Flowable standard sur cette tâche, itérant sur une variable liste, ou combiner avec le mécanisme (b) qui couvre déjà le cas générique |
 | `notificationWebhookConfigId` | pour `WEBHOOK` | UUID de la config webhook tenant |
 | `notificationPayload` | non | `Map` libre, transmis tel quel au canal |
@@ -1139,9 +1142,86 @@ abandon visible sur la fiche dossier). Le connecteur `smtp` n'envoie pas de piè
              flowable:notificationAttachmentName="autorisation.pdf"/>
 ```
 
-Le contenu peut référencer les champs dynamiques exposés selon la méthode du §3
+Le contenu littéral peut référencer les champs dynamiques exposés selon la méthode du §3
 (`notificationBody` reste une simple variable process — construire la chaîne avec une expression
-FEEL/UEL Flowable ou une tâche amont qui la compose).
+FEEL/UEL Flowable ou une tâche amont qui la compose). Pour un texte qui change sans redéployer le process, qui cite le
+dossier ou une variable, ou qui existe en plusieurs langues, utiliser un **gabarit**.
+
+#### Gabarit de notification (issue #19, TODO §123)
+
+Un gabarit est géré dans **Admin → Gabarits de notification** (rôle `TENANT_ADMIN`), par l'API
+`/api/notification-templates` ou, en brouillon, par les outils MCP `define_notification_template`,
+`list_notification_templates` et `preview_notification_template`. Il porte une clé, une variante et une langue facultatives,
+un objet, un corps texte et un corps HTML facultatif ; son cycle est `DRAFT → ACTIVE → ARCHIVED`, une seule version active
+par combinaison. **L'activation est un geste humain** (jamais l'assistant). La brique le désigne par sa clé :
+
+```xml
+<serviceTask id="accuse" name="E-mail : accusé de réception" flowable:async="true"
+             flowable:delegateExpression="${notificationDispatchTask}"
+             flowable:notificationChannels="EMAIL"
+             flowable:notificationTo="variable:mailFrom"
+             flowable:notificationTemplate="accuse-reception-courrier"
+             flowable:notificationLocale="variable:langue"/>
+```
+
+Règles, contrôlées **au déploiement** (le refus nomme l'attribut et l'activité) :
+
+- `notificationTemplate`, `notificationVariant` et `notificationLocale` ne sont lus que dans l'**attribut** du BPMN
+  déployé : une variable de process du même nom est ignorée (un utilisateur ne peut pas désigner un autre gabarit).
+- `notificationTemplate` **exclut** `notificationSubject` et `notificationBody` (les deux à la fois sont refusés).
+- Il exige `notificationChannels="EMAIL"`, **seul** (un autre canal en plus est refusé), et `notificationTo` écrit dans le
+  BPMN. Le gabarit n'a pas d'effet sur `WEBHOOK` ni `BROWSER`.
+- `notificationVariant` et `notificationLocale` exigent `notificationTemplate` ; leur valeur est une clé littérale
+  (lettres minuscules, chiffres, tirets) ou `variable:<nom>`. Une variable absente ou vide vaut « pas de variante » ou « pas
+  de langue » : la cascade de résolution `(clé, variante, langue)` s'applique, comme pour les templates de document.
+- Le gabarit n'a **pas** besoin d'exister au déploiement (il peut arriver après, par la promotion de configuration) : sa
+  clé n'est vérifiée qu'à l'envoi. Sans version active pour la combinaison, l'étape échoue en nommant la clé.
+- Avec un gabarit au corps HTML, l'e-mail part en `multipart/alternative` (texte et HTML) ; sans corps HTML, en texte seul.
+  Il porte toujours `Auto-Submitted: auto-generated`.
+
+**Ce qu'un gabarit peut écrire.** L'objet et le corps texte utilisent l'inline échappé `[[${…}]]` ; le corps HTML utilise
+`th:text="${…}"` et quelques attributs `th:`. Le contenu des accolades suit la grammaire des templates de document (D-40,
+[08-templates-documents.md](../specs/08-templates-documents.md) « Grammaire des expressions ») : chemin de propriétés,
+littéral, utilitaires `#strings`, `#dates`, `#numbers`, `#lists`. Le modèle offert au gabarit est celui des expressions
+métier (§3sexies), sans `connectorResult` :
+
+| Racine | Contenu |
+|---|---|
+| `dossier` | `reference`, `type`, `status`, `label`, `fields.<champ>` — champs **déclarés dans le type et non sensibles** seulement |
+| `variables` | toutes les variables de process **scalaires** (texte, nombre, booléen, date en ISO, UUID) |
+
+```text
+Objet  : Accusé de réception : [[${variables.accuseObjet}]]
+Corps  : Votre courrier est enregistré sous la référence [[${dossier.reference}]].
+HTML   : <p th:if="${dossier.status} == 'OPEN'">Reçu le <span th:text="${variables.dateReception}">date</span></p>
+```
+
+- **La comparaison se place hors des accolades** : `th:if="${dossier.status} == 'OPEN'"`, pas `${dossier.status == 'OPEN'}`
+  (refusé à l'activation, comme `and`, `or`, le ternaire, l'indexation et l'appel de méthode dans les accolades).
+- **Attributs `th:` permis dans le corps HTML** : `th:text`, `th:if`, `th:unless`, `th:each`, `th:with`, `th:switch`,
+  `th:case`, `th:remove` et l'élément `th:block`. Pas de `th:utext`, `th:href`, `th:attr`, `th:style`, `th:src`, `th:inline`,
+  ni d'inline non échappé `[(…)]` : une variable ne fabrique ni une URL ni un attribut. Les liens restent littéraux
+  (`http`, `https`, `mailto`).
+- **Politique HTML** : balises de mise en forme seulement (pas d'image, de `<style>`, de `<script>` ni de formulaire), pas
+  d'attribut `on*`, un attribut `style` sans `url(`, `expression(`, `@import` ni `javascript:`. Un corps hors politique est
+  **refusé à l'activation** avec la règle violée, jamais nettoyé en silence ; le HTML rendu repasse encore par un nettoyeur
+  avant l'envoi.
+- **Rendu strict.** Une variable ou une propriété **absente ou nulle** fait échouer le rendu, comme pour un document : l'étape
+  échoue (incident si la brique est asynchrone, refus 422 de la complétion ou du démarrage sinon) et **aucun e-mail n'est
+  écrit** dans l'outbox. Le message nomme le gabarit et l'expression, jamais une valeur. Le rendu échoue aussi si l'objet
+  rendu dépasse 255 caractères, est vide, ou si le message rendu dépasse 1 Mio.
+- **Valeurs facultatives : les calculer en amont.** Comme pour la génération de documents (§5), poser avant « Notifier » une
+  brique « Évaluer une expression » (§3sexies) qui donne une valeur par défaut à tout ce qui peut manquer, puis citer cette
+  variable. De même pour borner une valeur longue : `$substring(dossier.fields.objet, 0, 200)` garde l'objet d'un courrier
+  sous la limite de l'objet d'e-mail. Le gabarit de l'accusé de réception de la mail room
+  (`exemples/digital-mail-room/config/gabarit-accuse-reception.json`) calcule ainsi `accuseObjet` et `dateReception`.
+
+> **Attention aux données sensibles.** Un champ `sensitive` du type de dossier n'est jamais exposé : `${dossier.fields.<champ>}`
+> échoue comme une propriété absente. Le gabarit voit en revanche **toutes** les variables de process scalaires. Une variable
+> qui recopierait la valeur d'un champ sensible (réponse de formulaire de tâche, valeur posée au démarrage, résultat de
+> connecteur copié dans une variable) est donc rendue dans l'e-mail, et l'e-mail part en clair. Ne pas nommer ni citer dans un
+> gabarit une variable qui porte une donnée sensible, et ne jamais recopier un champ sensible dans une variable de process.
+> Le contenu rendu, comme l'adresse du destinataire, est conservé en clair dans l'outbox jusqu'à son envoi.
 
 ---
 
@@ -1156,7 +1236,7 @@ Référence rapide — `delegateExpression`, variables lues (entrée) et écrite
 | `${documentGenerationTask}` | génère un PDF depuis un template | `documentType`, `documentVariant`?, `documentLocale`?, + toute variable utile au template | `generatedDocumentId` |
 | `${attachGeneratedDocumentTask}` | rattache le PDF généré au dossier (`DossierElement`) | `dossierId` (réservée), `generatedDocumentId` | — |
 | `${connectorServiceTask}` | invoque un connecteur en rôle SERVICE | `connectorInstanceId`, `connectorInput`? ou attribut littéral `connectorRequest` (expression qui produit l'entrée, prime sur `connectorInput` — §4) | `connectorResult`? |
-| `${notificationDispatchTask}` | envoie une notification (outbox) | `notificationChannels` + champs selon canal (§6c) | — |
+| `${notificationDispatchTask}` | envoie une notification (outbox) ; avec `notificationTemplate`, l'objet et le corps (texte, HTML facultatif) sont rendus depuis un gabarit de notification | `notificationChannels` + champs selon canal ; attributs littéraux `notificationTemplate`, `notificationVariant`?, `notificationLocale`? (canal `EMAIL` seul, `notificationTo` dans le BPMN ; exclut `notificationSubject` et `notificationBody`) ; lit le dossier (champs non sensibles) et les variables scalaires (§6c) | — |
 | `${signatureRequestTask}` | demande une signature électronique (§3quater) | `signatureDocument`, `signatureMode`, `signatureDeadlineDays`, `<flowable:signer>` (attributs du bloc) | `signatureRequestId` ; à la reprise : `signatureOutcome` |
 | `${businessExpressionTask}` | évalue une expression métier bornée (§3sexies) | attributs littéraux `formula`, `formulaResult` ; lit le dossier (champs non sensibles), `connectorResult`, variables scalaires | la variable nommée par `formulaResult` |
 | `${fieldMappingTask}` | enregistre des valeurs calculées dans des champs du dossier, en un patch (§3septies) | attribut littéral `fieldMapping` (lignes `champ = expression`) ; lit le dossier (champs non sensibles), `connectorResult` (+ `json`), variables | champs du dossier |

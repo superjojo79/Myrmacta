@@ -1,0 +1,7 @@
+{
+  "templateKey": "demande-informations-riverain",
+  "label": "Demande d'informations complémentaires — autorisation riverain",
+  "subject": "Votre demande d'autorisation riverain [[${dossier.reference}]] : informations complémentaires",
+  "textBody": "Bonjour,\n\nPour instruire votre demande d'autorisation riverain [[${dossier.reference}]], nos services ont besoin des informations suivantes :\n\n[[${variables.motivation}]]\n\nSans réponse de votre part dans les 30 jours, la demande sera refusée.\n\nCordialement,\nLe service des autorisations riverains",
+  "htmlBody": "<p>Bonjour,</p>\n<p>Pour instruire votre demande d'autorisation riverain <b th:text=\"${dossier.reference}\">référence</b>, nos services ont besoin des informations suivantes :</p>\n<blockquote style=\"white-space: pre-line\" th:text=\"${variables.motivation}\">motivation</blockquote>\n<p>Sans réponse de votre part dans les 30 jours, la demande sera refusée.</p>\n<p>Cordialement,<br/>Le service des autorisations riverains</p>"
+}

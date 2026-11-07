@@ -415,7 +415,7 @@ export default {
   },
   promotion: {
     title: 'Promotion de configuration',
-    intro: 'Exportez la configuration d’un environnement (recette, par exemple), puis importez-la sur un autre : un plan à blanc montre ce qui serait créé, modifié ou bloqué avant toute écriture. Aucun secret n’est exporté ; les processus BPMN et tables DMN arrivent en {drafts}, les templates de documents en brouillons à activer ; un connecteur est créé {disabled} (relisez ses adresses, puis activez-le) ; un groupe arrive sans ses membres.',
+    intro: 'Exportez la configuration d’un environnement (recette, par exemple), puis importez-la sur un autre : un plan à blanc montre ce qui serait créé, modifié ou bloqué avant toute écriture. Aucun secret n’est exporté ; les processus BPMN et tables DMN arrivent en {drafts}, les templates de documents et les gabarits de notification en brouillons à activer ; un connecteur est créé {disabled} (relisez ses adresses, puis activez-le) ; un groupe arrive sans ses membres.',
     introDrafts: 'brouillons à publier',
     introDisabled: 'désactivé',
     export: 'Exporter',
@@ -442,7 +442,7 @@ export default {
     lastImports: 'Derniers imports',
     noImport: 'Aucun import enregistré.',
     logLine: '{applied} appliqué(s), {unchanged} inchangé(s), {skipped} ignoré(s), {failed} échec(s)',
-    confirmApply: 'Appliquer ce bundle ({count} artefact(s) à créer ou modifier) ? Les processus BPMN et tables DMN arrivent en brouillons à publier, les templates de documents en brouillons à activer.',
+    confirmApply: 'Appliquer ce bundle ({count} artefact(s) à créer ou modifier) ? Les processus BPMN et tables DMN arrivent en brouillons à publier, les templates de documents et les gabarits de notification en brouillons à activer.',
     artifacts: {
       DOSSIER_TYPE: 'Type de dossier',
       TASK_QUESTION_SCHEMA: 'Schéma de questions',
@@ -454,6 +454,7 @@ export default {
       REPLY_WORKFLOW: 'Workflow « réponse »',
       DEADLINE: 'Échéance',
       DOCUMENT_TEMPLATE: 'Template de document',
+      NOTIFICATION_TEMPLATE: 'Gabarit de notification',
       PARCOURS: 'Parcours',
     },
     planActions: { CREATE: 'Créer', UPDATE: 'Modifier', UNCHANGED: 'Inchangé', CONFLICT: 'Conflit', BLOCKED: 'Bloqué' },

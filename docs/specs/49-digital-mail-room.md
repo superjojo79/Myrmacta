@@ -36,12 +36,32 @@ Le process de tri de l'exemple (`tri-courrier.bpmn20.xml`) :
 1. ouvre le courrier (première étape **asynchrone** : le courrier routé ne doit pas être clôturé avant la confirmation du
    démarrage) ;
 2. **Rattacher au fil** (`attachToThreadTask`, §4) : une réponse à un fil connu le rejoint et est classée ;
-3. sinon, prépare les entrées et appelle la **table de routage** (`routageCourrier` : canal, domaine de l'expéditeur) ;
+3. sinon, accuse réception d'un e-mail attesté (ci-dessous), puis prépare les entrées et appelle la **table de routage**
+   (`routageCourrier` : canal, domaine de l'expéditeur) ;
 4. **Router le courrier** (`routeMailTask`, D-MAILROOM-ROUTE) :
    - `OUVRIR` : crée le dossier métier lié, y démarre le process pour le groupe désigné (le groupe est porté par le lien,
      D-GROUP-LINK) et écrit l'échéance (`routageDelaiJours`) dans le champ désigné du type métier (§115) ;
    - tout le reste, ou une valeur hors catalogue, envoie à la **file de tri** (groupe `groupeTri`) ;
 5. clôt le courrier une fois routé, rattaché ou classé.
+
+**Accusé de réception (issue #19, §123 D-NOTIF-TPL-ACK).** Sur un **nouveau** courrier seulement (pas une réponse rattachée
+à un fil), le tri évalue `dossier.fields.canal = "EMAIL" and variables.mailSenderAuthenticated = true` dans la variable
+`accuseReception` (brique « Évaluer une expression » ; une variable absente, comme pour un courrier papier, donne `false`
+sans erreur). Si elle est vraie, deux calculs préparent les valeurs que le rendu strict exige (`accuseObjet`, l'objet du
+courrier limité à 200 caractères, et `dateReception`, la date UTC du tri), puis une brique « Notifier » **asynchrone**
+(`notificationTo="variable:mailFrom"`, `notificationTemplate="accuse-reception-courrier"`) écrit l'e-mail dans l'outbox. Le
+gabarit (`config/gabarit-accuse-reception.json`, objet, texte et HTML) cite l'objet, la référence du dossier et la date.
+
+- **Pas de backscatter.** L'accusé ne part que si le serveur de réception **atteste** l'expéditeur
+  (`mailSenderAuthenticated`, posé par `InboundMailRouting`, §87) : une adresse usurpée n'en reçoit pas. Un courrier papier
+  (SFTP, dépôt) n'a pas d'adresse, `mailFrom` n'étant posé que par le connecteur e-mail.
+- **Pas de boucle.** L'e-mail sortant porte `Auto-Submitted: auto-generated`, et un message automatique reçu par un connecteur
+  e-mail est refusé, jamais devenu un dossier.
+- **Échec visible.** L'étape étant asynchrone, un gabarit sans version active, un rendu en échec ou une adresse inutilisable
+  créent un incident rejouable sur le tri (bandeau d'incident de la fiche, Admin → Incidents) ; le routage de ce courrier
+  attend le rejeu. L'activation du gabarit fait partie de l'installation de l'exemple ; la démo reproductible (§10) l'installe.
+- **Promotion.** Le gabarit voyage avec les autres artefacts de l'exemple (`NOTIFICATION_TEMPLATE`, version active) ; il
+  arrive en brouillon à activer sur la cible.
 
 **File de tri :** la tâche « Trier le courrier » est candidate du groupe COURRIER. Un opérateur la prend, rattache le
 courrier, la réaffecte à un autre groupe (D-GROUP-REASSIGN, note de trace : qui, quand, d'où, vers où) ou la termine.
@@ -109,6 +129,7 @@ La promotion de configuration ([spec 35](35-promotion-configuration.md), §117) 
 
 - les groupes, sans leurs membres ;
 - les types de dossier, les configurations de workflow, la table de routage et les processus ;
+- le gabarit de l'accusé de réception (version active, importé en brouillon à activer) ;
 - le workflow « réponse » et l'échéance d'un type.
 
 Le plan signale un groupe nommé par la table de routage ou par `groupeTri` qui n'existe ni sur la cible ni dans le bundle.
@@ -139,7 +160,9 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 **Tests de référence :**
 
 - `MailRoomExampleIT` : e-mail routé, file de tri, fil, réponse forgée, workflow réponse, échéances, minuteur, PDF SFTP,
-  dépôt, outils MCP ;
+  dépôt, outils MCP ; accusé de réception (serveur SMTP en mémoire) : un e-mail attesté en reçoit un (objet, référence, date,
+  texte et HTML, `Auto-Submitted`), une réponse rattachée à son fil, un courrier papier et un expéditeur non attesté n'en
+  reçoivent aucun ; le gabarit voyage dans le bundle ;
 - `McpEndpointApiTest` : outils de la mail room par la chaîne M2M, appel sans JWT refusé ;
 - `MailRoomDemoSeederIT` (profil `embedded-db`) ;
 - tests unitaires des briques, du job, des connecteurs et des outils ;

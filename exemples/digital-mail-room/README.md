@@ -28,6 +28,14 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
     - une facture d'un fournisseur connu ouvre un **dossier « facture » lié**, dont la tâche va au groupe COMPTABILITE, avec
       une échéance à 30 jours ;
     - le reste part à la **file de tri** du groupe COURRIER ;
+  - un e-mail reçu d'un expéditeur **attesté** reçoit un **accusé de réception** (issue #19, §123 D-NOTIF-TPL-ACK) :
+    - il est rendu depuis le gabarit `accuse-reception-courrier` (`config/gabarit-accuse-reception.json`) : objet du
+      courrier, référence du dossier et date de réception, en texte et en HTML ;
+    - la brique « Notifier » est asynchrone, destinée à l'expéditeur (`notificationTo="variable:mailFrom"`) ; le message
+      porte l'en-tête `Auto-Submitted: auto-generated`, et un message automatique reçu ne devient jamais un courrier ;
+    - ni un courrier papier (SFTP, dépôt), ni un expéditeur que le serveur de réception n'atteste pas
+      (`mailSenderAuthenticated` faux), ni une réponse rattachée à un fil n'en reçoivent : pas d'accusé vers une adresse
+      usurpée (backscatter) ;
   - une tâche se réaffecte à un autre groupe depuis la fiche du dossier, avec une note de trace ;
   - une **réponse** à un e-mail connu (reçu ou envoyé par « Notifier ») rejoint le dossier de son fil :
     - lien vers ce dossier, pièces copiées, participants prévenus ;
@@ -52,7 +60,8 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
 | `config/type-dossier.json` | Type `COURRIER` : canal, expéditeur, objet, texte, service destinataire, échéance |
 | `config/workflow-config.json` | Statuts du courrier : reçu, à trier, routé, rattaché, traité, classé |
 | `routage-courrier.dmn` | Table de routage `routageCourrier` (entrées `canal`, `domaineExpediteur`) |
-| `tri-courrier.bpmn20.xml` | Processus `triCourrier` : ouvrir le courrier, « Rattacher au fil », sinon préparer les entrées, table, « Router le courrier », puis routé ou « Trier le courrier » |
+| `config/gabarit-accuse-reception.json` | Gabarit de notification `accuse-reception-courrier` (objet, corps texte, corps HTML) : corps de `POST /api/notification-templates` ou de l'outil MCP `define_notification_template` |
+| `tri-courrier.bpmn20.xml` | Processus `triCourrier` : ouvrir le courrier, « Rattacher au fil », sinon accusé de réception d'un e-mail attesté, préparer les entrées, table, « Router le courrier », puis routé ou « Trier le courrier » |
 | `config/type-facture.json`, `config/workflow-config-facture.json`, `traiter-facture.bpmn20.xml` | Dossier métier « facture » ouvert par le routage, et son process `traiterFacture` (attend `courrierRecu` pendant le traitement) |
 | `config/type-reponse-facture.json`, `config/workflow-config-reponse.json`, `traiter-reponse.bpmn20.xml` | Dossier enfant « réponse à la facture » et son process `traiterReponse` (échéance à 10 jours, tâche, minuteur « échue », clôture) |
 | `config/reponse-facture.json` | Workflow réponse du type FACTURE (corps de `PUT /api/dossier-types/FACTURE/reply-workflow`, sans `_commentaire`) |
@@ -68,15 +77,18 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
    (Admin → Types de dossiers, ou `POST /api/dossier-types`). Donner l'ACL `EDIT` de chaque type aux membres des groupes concernés.
 3. Créer les configurations de workflow `config/workflow-config.json`, `config/workflow-config-facture.json` et
    `config/workflow-config-reponse.json`. La forme du fichier est celle de l'outil MCP : avec l'API REST, renommer `processDefinitionKey` en `workflowKey`.
-4. Déployer la table `routage-courrier.dmn` (Admin → Tables de décision), puis `traiter-facture.bpmn20.xml`,
+4. Créer le gabarit de notification `accuse-reception-courrier` depuis `config/gabarit-accuse-reception.json`
+   (Admin → Gabarits de notification, ou `POST /api/notification-templates`), puis l'**activer** : sans version active,
+   l'accusé de réception échoue à l'envoi (incident rejouable sur le tri) au lieu de partir.
+5. Déployer la table `routage-courrier.dmn` (Admin → Tables de décision), puis `traiter-facture.bpmn20.xml`,
    `traiter-reponse.bpmn20.xml` et `tri-courrier.bpmn20.xml` (Admin → Workflows).
-5. Déclarer le workflow réponse du type FACTURE (Admin → Types → Modifier les champs → « Réponse à un courrier »), selon
+6. Déclarer le workflow réponse du type FACTURE (Admin → Types → Modifier les champs → « Réponse à un courrier »), selon
    `config/reponse-facture.json`, puis son échéance (même panneau, section « Échéance »), selon `config/echeance-facture.json`.
-6. Créer le connecteur depuis `config/connecteur-imap.exemple.json` (Admin → Connecteurs) : hôte, compte, secret, et
+7. Créer le connecteur depuis `config/connecteur-imap.exemple.json` (Admin → Connecteurs) : hôte, compte, secret, et
    `trustedAuthservId` de votre serveur de réception.
-7. Pour les PDF numérisés, créer le connecteur depuis `config/connecteur-sftp-pdf.exemple.json` : serveur, compte, secret et
+8. Pour les PDF numérisés, créer le connecteur depuis `config/connecteur-sftp-pdf.exemple.json` : serveur, compte, secret et
    empreinte de la clé hôte du partenaire.
-8. Pour le dépôt à la main, créer le point de dépôt depuis `config/connecteur-depot.exemple.json`. Les agents qui ont l'ACL
+9. Pour le dépôt à la main, créer le point de dépôt depuis `config/connecteur-depot.exemple.json`. Les agents qui ont l'ACL
    `EDIT` du type COURRIER le voient dans « Déposer un courrier ».
 
 Adapter la table à son organisation se fait sans code : une ligne par règle (canal, domaine de l'expéditeur), avec le
@@ -89,7 +101,15 @@ service, le type de dossier, le process et le délai.
   tri ouvre donc le courrier, le met en cours, puis le clôture une fois routé ou classé.
 - **Message sans objet :** il est rangé dans `Myrmacta-rejected`, puisque l'objet est mappé et qu'un champ mappé ne peut pas être vide. Remettez-le
   dans la boîte après lui avoir donné un objet.
+- **Accusé de réception :**
+  - un serveur d'envoi d'e-mails doit être configuré sur l'instance (canal `EMAIL`) ;
+  - le tri accuse **avant** le routage : l'accusé est un job asynchrone du tri, donc un échec d'envoi du job (gabarit non
+    activé, adresse inutilisable) crée un incident visible et rejouable, qui retient le routage de ce courrier ;
+  - le rendu est strict : l'objet du courrier (limité à 200 caractères par l'expression `accuseObjet`, pour tenir dans les
+    255 caractères d'un objet d'e-mail) et la date (`dateReception`, UTC) sont calculés en amont, par « Évaluer une expression » ;
+  - pour ne pas accuser réception, retirer le gabarit n'y suffit pas : l'accusé est une étape du processus (supprimer la
+    brique « E-mail : accusé de réception » et ses deux calculs).
 - **Canal :** il vaut `EMAIL` par défaut. Le connecteur SFTP le pose à `PAPIER` (`defaultFields`). La table de routage de
   l'exemple n'a de règle que pour l'e-mail : un courrier papier part donc à la file de tri.
 
-Test de référence : `MailRoomExampleIT`. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre) ; un agent travaille la file de tri par les outils MCP (fil d'une facture, rattachement à blanc puis réel, réaffectation, fin de la tâche de tri).
+Test de référence : `MailRoomExampleIT`. Un e-mail attesté reçoit un accusé de réception (relu par un serveur SMTP en mémoire : objet, référence, date, texte et HTML), une réponse rattachée à son fil non ; un courrier papier et un expéditeur non attesté n'en reçoivent pas. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre) ; un agent travaille la file de tri par les outils MCP (fil d'une facture, rattachement à blanc puis réel, réaffectation, fin de la tâche de tri).

@@ -22,6 +22,7 @@ from xml.sax.saxutils import escape, quoteattr
 PROCESS_ID = "autorisationRiverain"
 PROCESS_NAME = "Autorisation riverain (véhicule)"
 TEMPLATE_KEY = "decision-autorisation-riverain"
+GABARIT_INFORMATIONS = "demande-informations-riverain"  # gabarit de notification (config/gabarit-demande-informations.json)
 DELAI = "P30D"  # durée ISO 8601 — PT5M pour une recette accélérée
 
 COL_W, X0 = 170, 80
@@ -81,16 +82,19 @@ class Model:
     def expression(self, node_id, name, col, row, formula, result):
         self.service(node_id, name, col, row, "businessExpressionTask", formula=formula, formulaResult=result)
 
-    def email(self, node_id, name, col, row, subject, body, decision=False):
+    def email(self, node_id, name, col, row, subject=None, body=None, decision=False, template=None):
         # Destinataire lu dans le dossier (champ obligatoire « email », relu au moment de l'envoi — TODO §93).
         # Asynchrone : une adresse mal saisie crée un incident rejouable au lieu de bloquer l'agent qui
         # complète la tâche précédente (docs/guides/GUIDE-CONCEPTION-BPMN.md §6c).
         # E-mails de décision : le PDF, généré puis joint au dossier en amont, part en pièce jointe (issue #183).
+        # Avec `template`, l'objet et le corps viennent d'un gabarit de notification (issue #19, §123) : ils ne se
+        # combinent pas avec notificationSubject / notificationBody.
         attachment = ({"notificationAttachment": "variable:generatedDocumentId",
                        "notificationAttachmentName": PIECE_JOINTE} if decision else {})
+        content = ({"notificationTemplate": template} if template
+                   else {"notificationSubject": subject, "notificationBody": body})
         self.service(node_id, name, col, row, "notificationDispatchTask", **{"async": "true"},
-                     notificationChannels="EMAIL", notificationTo="dossierField:email",
-                     notificationSubject=subject, notificationBody=body, **attachment)
+                     notificationChannels="EMAIL", notificationTo="dossierField:email", **content, **attachment)
 
     def timer(self, node_id, name, host, top):
         self.node(node_id, "boundaryEvent", name, None, None,
@@ -148,18 +152,16 @@ def build(portail, preverification=False):
                     "demande sera refusée.</documentation>")
         m.flow("dossierSuspendu", "complement")
     else:
+        # Gabarit « demande-informations-riverain » (issue #19, §123) : il cite la motivation saisie à l'instruction
+        # (variable `motivation`, obligatoire dans le questionnaire d'instruction, donc présente à cette étape).
         m.email("mailDemandeInfos", "E-mail : informations demandées", 7 + o, "infos",
-                "Votre demande d'autorisation riverain : informations complémentaires",
-                "Bonjour,\n\nPour instruire votre demande d'autorisation riverain, nos services ont besoin "
-                "d'informations complémentaires. Un gestionnaire vous précisera les éléments attendus. "
-                "Sans réponse de votre part dans les 30 jours, la demande sera refusée." + SIGNATURE)
+                template=GABARIT_INFORMATIONS)
         c = 8 + o
         m.node("complement", "userTask", "Encoder les compléments reçus", c, "infos",
                {"flowable:formKey": "user-question:complement-recu-autorisation-riverain"},
-               body="<documentation>Contacter le demandeur pour lui préciser les informations attendues "
-                    "(motivation saisie à l'instruction), puis encoder sa réponse et ajouter les pièces "
-                    "reçues au dossier. Sans réponse dans les 30 jours, la demande est refusée "
-                    "automatiquement.</documentation>")
+               body="<documentation>Le demandeur a reçu par e-mail la motivation saisie à l'instruction (les "
+                    "informations attendues). Encoder sa réponse et ajouter les pièces reçues au dossier. "
+                    "Sans réponse dans les 30 jours, la demande est refusée automatiquement.</documentation>")
         m.flow("dossierSuspendu", "mailDemandeInfos")
         m.flow("mailDemandeInfos", "complement")
     m.timer("delaiComplement", "30 jours sans réponse", "complement", top=False)

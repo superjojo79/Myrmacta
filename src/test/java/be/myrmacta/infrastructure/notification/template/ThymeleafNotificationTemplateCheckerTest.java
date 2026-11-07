@@ -98,4 +98,13 @@ class ThymeleafNotificationTemplateCheckerTest {
         assertThatCode(() -> checker.check(template("Re: <b>urgent</b>", "<img> et onclick= sont du texte", null)))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void preProcessing_isRefused_inEveryPart() {
+        assertRefused(template("S", "[[__${a}__]]", null), "textBody", "__");
+        assertRefused(template("S", "[# th:text=\"${__${a}__}\"][/]", null), "textBody", "__");
+        assertRefused(template("a __${a}__", "T", null), "subject", "__");
+        assertRefused(template("S", "T", "<p th:text=\"__${a}__\">x</p>"), "htmlBody", "__");
+        assertRefused(template("S", "T", "<p th:text=\"${__${a}__}\">x</p>"), "htmlBody", "__");
+    }
 }

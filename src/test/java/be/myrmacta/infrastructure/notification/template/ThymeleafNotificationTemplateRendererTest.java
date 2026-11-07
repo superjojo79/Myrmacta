@@ -13,7 +13,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class ThymeleafNotificationTemplateRendererTest {
 
@@ -218,7 +220,7 @@ class ThymeleafNotificationTemplateRendererTest {
     @Test
     void theRenderedTotal_isBounded() {
         ThymeleafNotificationTemplateRenderer small =
-                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0));
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0));
         NotificationTemplate big =
                 template("S", "[# th:each=\"i : ${variables.items}\"]" + "0123456789".repeat(5) + "[/]", null);
 
@@ -235,5 +237,92 @@ class ThymeleafNotificationTemplateRendererTest {
         assertThat(result.subject()).isEqualTo("Bonjour");
         assertThat(result.textBody()).isEqualTo("Texte");
         assertThat(result.htmlBody()).contains("<p>Texte</p>");
+    }
+
+    private static final String BIG_LOOP = "[# th:each=\"i : ${#numbers.sequence(1,4000)}\"]"
+            + "[# th:each=\"j : ${#numbers.sequence(1,4000)}\"]xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx[/][/]";
+
+    @Test
+    void aHugeLoopNest_failsAsATemplateProcessingException_quickly_withoutOutOfMemory() {
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(
+                        () -> renderer.render(template("S", BIG_LOOP, null), model("R", "L")))
+                .isInstanceOf(TemplateProcessingException.class));
+    }
+
+    @Test
+    void theOutputIsBoundedWhileRendering_notAfterwards() {
+        ThymeleafNotificationTemplateRenderer small =
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 1000, 0, 0, 0));
+        NotificationTemplate big = template(
+                "S", "[# th:each=\"i : ${#numbers.sequence(1,1000)}\"]xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx[/]", null);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(
+                        () -> small.render(big, model("R", "L")))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("1000"));
+    }
+
+    @Test
+    void theTotalOfTheParts_counts() {
+        ThymeleafNotificationTemplateRenderer small =
+                new ThymeleafNotificationTemplateRenderer(new NotificationTemplateProperties(0, 0, 0, 0, 100, 0, 0, 0));
+        String sixty = "0123456789".repeat(6);
+
+        assertThatThrownBy(() -> small.render(template(sixty, sixty, null), model("R", "L")))
+                .isInstanceOf(TemplateProcessingException.class);
+    }
+
+    @Test
+    void hugeUtilityArguments_areRefused_withoutAValueInTheMessage() {
+        for (String expression : List.of(
+                "${#numbers.sequence(1,2000000000)}",
+                "${#strings.repeat('a',2000000000)}",
+                "${#strings.repeat('abcdefghij',500)}",
+                "${#strings.randomAlphanumeric(10)}",
+                "${#numbers.formatInteger(1,2000000000)}")) {
+            String body = "[# th:each=\"i : " + expression + "\"]x[/]";
+            assertThatThrownBy(() -> renderer.render(template("S", "[[" + expression + "]]" + body, null), model("R", "L")))
+                    .as(expression)
+                    .isInstanceOf(TemplateProcessingException.class)
+                    .satisfies(e -> assertThat(e.getMessage()).doesNotContain("2000000000"));
+        }
+    }
+
+    @Test
+    void nestedEmptyLoops_failByBudget() {
+        String nest = "[# th:each=\"a : ${#numbers.sequence(1,1000)}\"][# th:each=\"b : ${#numbers.sequence(1,1000)}\"]"
+                + "[# th:each=\"c : ${#numbers.sequence(1,1000)}\"][/][/][/]";
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(
+                        () -> renderer.render(template("S", nest, null), model("R", "L")))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("budget"));
+    }
+
+    @Test
+    void normalBoundedUtilitiesStillRender() {
+        RenderedNotification result = renderer.render(
+                template(
+                        "S",
+                        "[# th:each=\"i : ${#numbers.sequence(1,3)}\"][[${i}]][/] [[${#strings.repeat('ab',3)}]]",
+                        null),
+                model("R", "L"));
+
+        assertThat(result.textBody()).isEqualTo("123 ababab");
+    }
+
+    @Test
+    void preProcessing_isRefusedAtRendering_andNeverLeaksTheValue() {
+        Map<String, Object> model = model("R", "L");
+        model.put("a", "${variables.motivation}");
+
+        for (NotificationTemplate t : List.of(
+                template("S", "[[__${a}__]]", null),
+                template("S", "T", "<p th:text=\"__${a}__\">x</p>"),
+                template("__${a}__", "T", null))) {
+            assertThatThrownBy(() -> renderer.render(t, model))
+                    .isInstanceOf(TemplateProcessingException.class)
+                    .satisfies(e -> assertThat(e.getMessage()).doesNotContain("Pièce manquante"));
+        }
     }
 }

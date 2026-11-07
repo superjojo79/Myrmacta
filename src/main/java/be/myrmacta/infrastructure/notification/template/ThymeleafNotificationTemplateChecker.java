@@ -16,6 +16,8 @@ import org.thymeleaf.templatemode.TemplateMode;
  */
 public class ThymeleafNotificationTemplateChecker implements NotificationTemplateChecker {
 
+    private static final String PREPROCESSING = "__";
+
     private static final int MAX_REPORTED_VIOLATIONS = 20;
 
     private final ThymeleafTemplateSyntaxChecker syntaxChecker;
@@ -40,6 +42,11 @@ public class ThymeleafNotificationTemplateChecker implements NotificationTemplat
     }
 
     private void checkSyntax(String part, String source, TemplateMode mode) {
+        // Le pré-traitement __${…}__ évalue une donnée comme une expression : le contrôle d'expressions ne le voit pas.
+        if (source != null && source.contains(PREPROCESSING)) {
+            throw new NotificationTemplateValidationException(
+                    part, "the Thymeleaf pre-processing sequence '__' is not allowed");
+        }
         try {
             syntaxChecker.check(source, mode);
         } catch (InvalidTemplateSyntaxException ex) {

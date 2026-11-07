@@ -6,11 +6,13 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.thymeleaf.context.IContext;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 import org.thymeleaf.expression.Dates;
@@ -33,11 +35,50 @@ final class SafeThymeleafExpressionSupport {
     private SafeThymeleafExpressionSupport() {}
 
     static void assertAllowed(String raw) {
-        new Parser(raw, null).parseTop();
+        new Parser(raw, null, null).parseTop();
     }
 
     static Object evaluate(IContext context, String raw) {
-        return new Parser(raw, context).parseTop();
+        return evaluate(context, raw, null);
+    }
+
+    /**
+     * Évalue avec des bornes de coût (gabarits de notification, registre §123) ; {@code limits == null} : comportement
+     * inchangé (templates de document). Chaque évaluation débite le budget du rendu (1, plus la taille d'une collection
+     * obtenue, car elle sera parcourue par un {@code th:each}). Les messages ne citent aucune valeur ni expression.
+     */
+    static Object evaluate(IContext context, String raw, ExpressionLimits limits) {
+        Object value = new Parser(raw, context, limits).parseTop();
+        if (limits != null) {
+            chargeBudget(context, value);
+        }
+        return value;
+    }
+
+    static final String COST_MESSAGE = "Template cost limit exceeded";
+
+    private static void chargeBudget(IContext context, Object value) {
+        Object holder = context.getVariable(ExpressionLimits.BUDGET_VARIABLE);
+        if (!(holder instanceof AtomicLong remaining)) {
+            return;
+        }
+        long cost = 1L + sizeOf(value);
+        if (remaining.addAndGet(-cost) < 0) {
+            throw new TemplateProcessingException(COST_MESSAGE + " (evaluation budget exhausted)");
+        }
+    }
+
+    private static long sizeOf(Object value) {
+        if (value instanceof Collection<?> collection) {
+            return collection.size();
+        }
+        if (value instanceof Map<?, ?> map) {
+            return map.size();
+        }
+        if (value != null && value.getClass().isArray()) {
+            return Array.getLength(value);
+        }
+        return 0L;
     }
 
     static List<String> extractVariableExpressions(String html) {
@@ -116,11 +157,13 @@ final class SafeThymeleafExpressionSupport {
     private static final class Parser {
         private final String source;
         private final IContext context;
+        private final ExpressionLimits limits;
         private int index;
 
-        private Parser(String raw, IContext context) {
+        private Parser(String raw, IContext context, ExpressionLimits limits) {
             this.source = raw == null ? "" : raw.trim();
             this.context = context;
+            this.limits = limits;
             this.index = 0;
         }
 
@@ -303,6 +346,9 @@ final class SafeThymeleafExpressionSupport {
             if (validateOnly()) {
                 return null;
             }
+            if (limits != null) {
+                assertWithinLimits(objectName, methodName, args);
+            }
             Object target = utilityInstance(objectName, context.getLocale());
             Exception last = null;
             for (Method method : candidates) {
@@ -315,6 +361,52 @@ final class SafeThymeleafExpressionSupport {
                 }
             }
             throw new TemplateProcessingException("Unsupported Thymeleaf expression: " + source, last);
+        }
+
+        private static TemplateProcessingException costLimit(String reason) {
+            return new TemplateProcessingException(COST_MESSAGE + " (" + reason + ")");
+        }
+
+        /** Bornes des utilitaires qui fabriquent une grande sortie à partir d'un petit gabarit. */
+        private void assertWithinLimits(String objectName, String methodName, List<Object> args) {
+            int max = limits.utilityMaxSize();
+            if ("strings".equals(objectName) && "randomAlphanumeric".equals(methodName)) {
+                throw costLimit("#strings.randomAlphanumeric is not allowed");
+            }
+            if ("numbers".equals(objectName) && "sequence".equals(methodName)) {
+                long from = longArg(args, 0);
+                long to = longArg(args, 1);
+                long step = args.size() > 2 ? longArg(args, 2) : 1L;
+                if (step == 0) {
+                    throw costLimit("#numbers.sequence step");
+                }
+                long span = Math.abs(to - from);
+                if (span / Math.abs(step) + 1 > max) {
+                    throw costLimit("#numbers.sequence size exceeds " + max);
+                }
+            }
+            if ("strings".equals(objectName) && "repeat".equals(methodName)) {
+                long times = longArg(args, 1);
+                int length = Math.max(1, String.valueOf(args.get(0)).length());
+                if (times < 0 || times > max || times * length > max) {
+                    throw costLimit("#strings.repeat size exceeds " + max);
+                }
+            }
+            if ("numbers".equals(objectName) && methodName.contains("ormat")) {
+                // Seuls les entiers après le nombre à formater (nombre de chiffres) sont bornés.
+                for (int i = 1; i < args.size(); i++) {
+                    if (args.get(i) instanceof Number number && !(number instanceof Double) && number.longValue() > max) {
+                        throw costLimit("#numbers." + methodName + " digits exceed " + max);
+                    }
+                }
+            }
+        }
+
+        private static long longArg(List<Object> args, int position) {
+            if (position < args.size() && args.get(position) instanceof Number number && !(number instanceof Double)) {
+                return number.longValue();
+            }
+            throw costLimit("numeric argument expected");
         }
 
         private static Class<?> utilityType(String objectName) {

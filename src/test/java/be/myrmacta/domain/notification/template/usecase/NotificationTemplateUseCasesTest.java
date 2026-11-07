@@ -420,4 +420,23 @@ class NotificationTemplateUseCasesTest {
                 .isInstanceOfSatisfying(
                         NotificationTemplateValidationException.class, e -> assertThat(e.part()).isEqualTo("id"));
     }
+
+    @Test
+    void resolve_validatesVariantAndLocale_andNeverEchoesThem() {
+        for (String bad : List.of("{a=b, c=SECRET}", "x\nINFO forged line", "Upper Case", "a".repeat(200))) {
+            assertThatThrownBy(() -> resolve.resolve(new TemplateResolutionKey("k", bad, null)))
+                    .isInstanceOf(NotificationTemplateValidationException.class)
+                    .satisfies(e -> assertThat(e.getMessage()).doesNotContain("SECRET").doesNotContain("forged"));
+            assertThatThrownBy(() -> resolve.resolve(new TemplateResolutionKey("k", null, bad)))
+                    .isInstanceOf(NotificationTemplateValidationException.class)
+                    .satisfies(e -> assertThat(e.getMessage()).doesNotContain("SECRET").doesNotContain("forged"));
+        }
+    }
+
+    @Test
+    void resolve_notFound_doesNotEchoVariantOrLocale() {
+        assertThatThrownBy(() -> resolve.resolve(new TemplateResolutionKey("absent", "vip", "fr-BE")))
+                .isInstanceOf(NotificationTemplateNotFoundException.class)
+                .satisfies(e -> assertThat(e.getMessage()).contains("absent").doesNotContain("vip").doesNotContain("fr-BE"));
+    }
 }

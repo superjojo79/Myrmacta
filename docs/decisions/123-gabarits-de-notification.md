@@ -52,3 +52,22 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (§6c, catalogue §7, mise en garde sur les données sensibles),
 `docs/guides/GUIDE-UTILISATEUR.md` (nouvel écran `/admin/notification-templates`), `docs/decisions/identifiants.md`
 (identifiants ci-dessus), `exemples/digital-mail-room/`, `exemples/autorisation-riverain/` (README, DIFFICULTES §4).
+
+**Revue de clôture (lot 1).**
+
+- **Bornes de coût du rendu** — propres aux gabarits de notification (les templates de document sont inchangés ; leur
+  durcissement fait l'objet d'une issue). Le rendu écrit dans un `Writer` borné : la somme des octets de l'objet, du corps
+  texte et du corps HTML ne dépasse jamais `app.notification.template.rendered-max-bytes` (1 048 576), contrôlée pendant le
+  rendu et non après. `app.notification.template.utility-max-size` (1 000) borne le nombre d'éléments de
+  `#numbers.sequence`, la longueur produite par `#strings.repeat` et les chiffres demandés à `#numbers.format*` ;
+  `#strings.randomAlphanumeric` est refusé. `app.notification.template.render-budget` (100 000) est un budget par rendu,
+  porté par le contexte : chaque évaluation d'expression coûte 1, plus la taille de la collection obtenue, ce qui fait
+  échouer proprement des `th:each` imbriqués à sortie vide. Toute violation (y compris `StackOverflowError` et
+  `OutOfMemoryError`) lève `TemplateProcessingException`, sans valeur dans le message.
+- **Pré-traitement `__…__` refusé** — le contrôle d'activation refuse toute séquence `__` dans l'objet, le corps texte et le
+  corps HTML (le contrôle d'expressions ne voit que `${` et `*{`, et `__${x}__` ferait évaluer une donnée comme une
+  expression). Le moteur la refuse aussi au rendu (gabarits activés avant ce correctif, promotion).
+- **Variante et langue validées à la résolution** — `resolve` applique les règles de format de l'écriture
+  (`[a-z0-9][a-z0-9-]{0,99}` pour la variante, étiquette BCP 47 courte pour la langue) ; une valeur non conforme (texte
+  avec saut de ligne, `Map` sérialisée) donne une erreur de validation sans la valeur. `NotificationTemplateNotFoundException`
+  ne recopie plus la variante ni la langue, seulement la clé (littérale du BPMN).

@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 049-notification-template
+      author: myrmacta
+      comment: >-
+        TODO §123 — gabarits de notification versionnés : clé (template_key, variant_key, locale), cycle DRAFT, ACTIVE,
+        ARCHIVED, une seule version active par clé (index unique partiel, comme document_template). Objet et corps texte
+        obligatoires, corps HTML facultatif.
+      changes:
+        - createTable:
+            tableName: notification_template
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_notification_template
+                    nullable: false
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: template_key, type: varchar(128), constraints: {nullable: false}}
+              - column: {name: variant_key, type: varchar(128)}
+              - column: {name: locale, type: varchar(32)}
+              - column: {name: label, type: varchar(255)}
+              - column: {name: version, type: integer, constraints: {nullable: false}}
+              - column: {name: status, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: subject, type: text, constraints: {nullable: false}}
+              - column: {name: text_body, type: text, constraints: {nullable: false}}
+              - column: {name: html_body, type: text}
+              - column: {name: created_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: updated_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: updated_by, type: varchar(255)}
+        - createIndex:
+            tableName: notification_template
+            indexName: ix_notification_template_tenant_key
+            columns:
+              - column: {name: tenant_id}
+              - column: {name: template_key}
+        - sqlFile:
+            path: sql/049-notification-template-unique-indexes-postgresql.sql
+            relativeToChangelogFile: true
+            dbms: postgresql
+            splitStatements: true

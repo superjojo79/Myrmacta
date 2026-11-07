@@ -35,6 +35,14 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
 
     @Override
     public void check(String htmlContent) {
+        check(htmlContent, TemplateMode.HTML);
+    }
+
+    /**
+     * Même contrôle pour un autre mode (TEXT : objet et corps texte des gabarits de notification, registre §123) :
+     * mêmes interpolations non échappées refusées, mêmes fragments refusés, même grammaire d'expression (D-40).
+     */
+    public void check(String htmlContent, TemplateMode mode) {
         if (htmlContent != null
                 && (UNESCAPED_ATTRIBUTE.matcher(htmlContent).find() || UNESCAPED_INLINE.matcher(htmlContent).find())) {
             throw new InvalidTemplateSyntaxException(
@@ -49,12 +57,12 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
                     "document-template-syntax-check",
                     null,
                     new StringTemplateResource(htmlContent),
-                    TemplateMode.HTML,
+                    mode,
                     AlwaysValidCacheEntryValidity.INSTANCE);
             templateEngine
                     .getConfiguration()
                     .getTemplateManager()
-                    .parseString(templateData, htmlContent, 0, 0, TemplateMode.HTML, false);
+                    .parseString(templateData, htmlContent, 0, 0, mode, false);
             for (String expression : SafeThymeleafExpressionSupport.extractVariableExpressions(htmlContent)) {
                 SafeThymeleafExpressionSupport.assertAllowed(expression);
             }

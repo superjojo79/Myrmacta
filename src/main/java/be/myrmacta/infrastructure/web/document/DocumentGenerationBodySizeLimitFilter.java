@@ -24,14 +24,24 @@ public class DocumentGenerationBodySizeLimitFilter extends OncePerRequestFilter 
             "/api/documents/generate", "/api/documents/preview", "/api/documents/preview/pdf");
 
     private final long maxBodyBytes;
+    private final Set<String> paths;
 
     public DocumentGenerationBodySizeLimitFilter(long maxBodyBytes) {
+        this(maxBodyBytes, PATHS);
+    }
+
+    /**
+     * Même mécanisme pour d'autres chemins POST (aperçu d'un gabarit de notification, registre §123), avec leur propre
+     * plafond.
+     */
+    public DocumentGenerationBodySizeLimitFilter(long maxBodyBytes, Set<String> paths) {
         this.maxBodyBytes = maxBodyBytes;
+        this.paths = Set.copyOf(paths);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !("POST".equalsIgnoreCase(request.getMethod()) && PATHS.contains(request.getRequestURI()));
+        return !("POST".equalsIgnoreCase(request.getMethod()) && paths.contains(request.getRequestURI()));
     }
 
     @Override

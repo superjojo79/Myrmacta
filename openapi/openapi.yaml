@@ -348,6 +348,49 @@ paths:
       responses:
         "200":
           description: OK
+  /api/notification-templates/{id}:
+    get:
+      tags:
+      - notification-template-controller
+      operationId: getNotificationTemplate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
+    put:
+      tags:
+      - notification-template-controller
+      operationId: updateNotificationTemplate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationTemplateUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
   /api/dossiers/{id}/elements/{elementId}/piece-type:
     put:
       tags:
@@ -1250,6 +1293,133 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/NotificationWebhookResponse"
+  /api/notification-templates:
+    get:
+      tags:
+      - notification-template-controller
+      operationId: listNotificationTemplates
+      parameters:
+      - name: templateKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PageResponseNotificationTemplateResponse"
+    post:
+      tags:
+      - notification-template-controller
+      operationId: createNotificationTemplate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationTemplateCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
+  /api/notification-templates/{id}/new-version:
+    post:
+      tags:
+      - notification-template-controller
+      operationId: newNotificationTemplateVersion
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
+  /api/notification-templates/{id}/archive:
+    post:
+      tags:
+      - notification-template-controller
+      operationId: archiveNotificationTemplate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
+  /api/notification-templates/{id}/activate:
+    post:
+      tags:
+      - notification-template-controller
+      operationId: activateNotificationTemplate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
+  /api/notification-templates/preview:
+    post:
+      tags:
+      - notification-template-controller
+      operationId: previewNotificationTemplate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationTemplatePreviewRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplatePreviewResponse"
   /api/mail-deposit-points/{id}/deposits:
     post:
       tags:
@@ -3302,6 +3472,34 @@ paths:
             text/event-stream:
               schema:
                 $ref: "#/components/schemas/SseEmitter"
+  /api/notification-templates/resolve:
+    get:
+      tags:
+      - notification-template-controller
+      operationId: resolveNotificationTemplate
+      parameters:
+      - name: templateKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: variantKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/NotificationTemplateResponse"
   /api/mail-deposit-points:
     get:
       tags:
@@ -4279,6 +4477,54 @@ components:
           format: date-time
         lastCompiledSha256:
           type: string
+    NotificationTemplateUpdateRequest:
+      type: object
+      properties:
+        label:
+          type: string
+        subject:
+          type: string
+        textBody:
+          type: string
+        htmlBody:
+          type: string
+    NotificationTemplateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        label:
+          type: string
+        version:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - ARCHIVED
+        subject:
+          type: string
+        textBody:
+          type: string
+        htmlBody:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
     ClassifyAttachmentRequest:
       type: object
       properties:
@@ -4743,6 +4989,52 @@ components:
         updatedAt:
           type: string
           format: date-time
+    NotificationTemplateCreateRequest:
+      type: object
+      properties:
+        templateKey:
+          type: string
+        variantKey:
+          type: string
+        locale:
+          type: string
+        label:
+          type: string
+        subject:
+          type: string
+        textBody:
+          type: string
+        htmlBody:
+          type: string
+    NotificationTemplatePreviewContent:
+      type: object
+      properties:
+        subject:
+          type: string
+        textBody:
+          type: string
+        htmlBody:
+          type: string
+    NotificationTemplatePreviewRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        template:
+          $ref: "#/components/schemas/NotificationTemplatePreviewContent"
+        model:
+          type: object
+          additionalProperties: {}
+    NotificationTemplatePreviewResponse:
+      type: object
+      properties:
+        subject:
+          type: string
+        textBody:
+          type: string
+        htmlBody:
+          type: string
     DepositResponse:
       type: object
       properties:
@@ -6659,6 +6951,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NotificationWebhookResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    PageResponseNotificationTemplateResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationTemplateResponse"
         page:
           type: integer
           format: int32

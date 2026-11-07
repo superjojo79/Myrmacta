@@ -99,4 +99,29 @@ class ThymeleafTemplateSyntaxCheckerTest {
     void fragmentsAreRefused(String html) {
         assertThatThrownBy(() -> checker.check(html)).isInstanceOf(InvalidTemplateSyntaxException.class);
     }
+
+    /** Gabarits de notification (TODO §123) : objet et corps texte contrôlés en mode TEXT, même grammaire. */
+    @Test
+    void textMode_acceptsInliningAndConditionals() {
+        assertThatCode(() -> checker.check(
+                        "Bonjour [[${dossier.label}]]\n[# th:if=\"${variables.x}\"]oui[/]",
+                        org.thymeleaf.templatemode.TemplateMode.TEXT))
+                .doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "[[${T(java.lang.Runtime).getRuntime()}]]",
+                "[[${#beans.x}]]",
+                "[(${dossier.label})]",
+                "[( ${dossier.label} )]",
+                "[# th:utext=\"${dossier.label}\"]x[/]",
+                "[# th:replace=\"${x}\"]x[/]",
+                "[[${dossier.label]]",
+    })
+    void textMode_appliesTheSameRefusals(String text) {
+        assertThatThrownBy(() -> checker.check(text, org.thymeleaf.templatemode.TemplateMode.TEXT))
+                .isInstanceOf(InvalidTemplateSyntaxException.class);
+    }
 }

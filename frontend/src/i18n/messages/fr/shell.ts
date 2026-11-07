@@ -15,6 +15,7 @@ export default {
     mailDeposit: 'Déposer un courrier',
     types: 'Types',
     templates: 'Templates',
+    notificationTemplates: 'Gabarits de notification',
     connectors: 'Connecteurs',
     promotion: 'Promotion',
     purgeQueue: 'File purge',

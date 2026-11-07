@@ -50,6 +50,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/TemplatesAdminView.vue'),
   },
   {
+    path: '/admin/notification-templates',
+    name: 'admin-notification-templates',
+    meta: { roles: ['TENANT_ADMIN'] },
+    component: () => import('@/views/admin/NotificationTemplatesAdminView.vue'),
+  },
+  {
     path: '/admin/connectors',
     name: 'admin-connectors',
     meta: { roles: ['TENANT_ADMIN'] },

@@ -177,9 +177,9 @@ npm install -D vue-tsc
   `npm run test:all`. Rapport : `frontend/reports/mutation/` (HTML et JSON, ignoré par git).
 - **Périmètre :** la logique sans rendu, `src/stores`, `src/composables`, `src/api`, `portal`. Les composants `.vue`
   et la logique BPMN de `src/components` restent hors mutation (coût, voir §108).
-- **CI :** [`mutation.yml`](../../.github/workflows/mutation.yml), run complet chaque semaine avec seuil bloquant
-  (cliquet, `thresholds.break`), run ciblé sur les fichiers modifiés de chaque PR (ou visés par une spec modifiée),
-  sans seuil.
+- **CI :** [`mutation.yml`](../../.github/workflows/mutation.yml), run complet chaque semaine et run ciblé
+  sur les fichiers modifiés de chaque PR (ou visés par une spec modifiée), avec le même seuil bloquant
+  (cliquet, `thresholds.break`).
 - **Écrire un test compatible :** les specs tournent aussi dans le bac à sable de Stryker
   (`frontend/.stryker-tmp/sandbox-*`). Une fixture du backend se lit par `repoFile('src/test/resources/…')`
   (`src/test/repoRoot.ts`), jamais par un chemin relatif au répertoire courant.

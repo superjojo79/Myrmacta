@@ -198,8 +198,7 @@ class ArchitectureRulesTest {
             "be.myrmacta.infrastructure.persistence.deadline.JdbcDeadlineCandidates",
             "be.myrmacta.infrastructure.persistence.dossier.JdbcDossierUniqueValueStore",
             "be.myrmacta.infrastructure.persistence.dossier.SequentialReferenceGenerator",
-            "be.myrmacta.infrastructure.persistence.precheck.JdbcPrecheckRunRepository",
-            "be.myrmacta.infrastructure.persistence.workflow.JdbcPortalIdentityRepository");
+            "be.myrmacta.infrastructure.persistence.precheck.JdbcPrecheckRunRepository");
 
     @ArchTest
     static final ArchRule persistence_goes_through_jpa_only = noClasses()

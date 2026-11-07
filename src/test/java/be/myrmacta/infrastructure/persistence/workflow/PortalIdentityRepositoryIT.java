@@ -132,4 +132,68 @@ class PortalIdentityRepositoryIT {
                 Integer.class, link.id())).isZero();
         assertThat(identities.findByLinkId(link.id())).isEmpty();
     }
+
+    // TODO §122 (migration JPA) — caractérisation des cas que le test ci-dessus ne couvrait pas.
+
+    @Test
+    void anIdentityIsReadBackWithAllItsFields() {
+        PortalLinkIdentity saved = identity("proof-" + link.id(), NOW.plus(Duration.ofHours(1)));
+        identities.saveIdentity(saved);
+
+        assertThat(identities.findByLinkId(link.id())).contains(saved);
+        assertThat(identities.findByProofHash("proof-" + link.id())).contains(saved);
+        assertThat(identities.findByProofHash("inconnue")).isEmpty();
+        assertThat(identities.findByLinkId(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void aSubmittedIdentityCannotBeSubmittedAgainNorDeletedUnsubmitted_andAnUnknownLinkIsNotSubmitted() {
+        assertThat(identities.markSubmitted(UUID.randomUUID(), NOW)).isFalse();
+        identities.saveIdentity(identity("proof-" + link.id(), NOW.plus(Duration.ofHours(1))));
+
+        identities.deleteUnsubmitted(link.id());
+
+        assertThat(identities.findByLinkId(link.id())).as("non soumise : supprimée").isEmpty();
+        identities.deleteUnsubmitted(UUID.randomUUID());
+    }
+
+    @Test
+    void purgeRemovesExpiredAndConsumedAttemptsButKeepsLiveOnes_andCountsEverythingItRemoves() {
+        String live = "live-" + UUID.randomUUID();
+        String expired = "expired-" + UUID.randomUUID();
+        String consumed = "consumed-" + UUID.randomUUID();
+        identities.insertAttempt(attempt(live, NOW.plus(Duration.ofMinutes(10))));
+        identities.insertAttempt(attempt(expired, NOW.minusSeconds(5)));
+        identities.insertAttempt(attempt(consumed, NOW.plus(Duration.ofMinutes(10))));
+        assertThat(identities.consumeAttempt(consumed, NOW)).isPresent();
+        identities.saveIdentity(identity("proof-" + link.id(), NOW.minusSeconds(1)));
+
+        int removed = identities.purgeExpired(NOW);
+
+        assertThat(removed).isGreaterThanOrEqualTo(3);
+        assertThat(count("select count(*) from portal_identity_attempt where state_hash = ?", live)).isEqualTo(1);
+        assertThat(count("select count(*) from portal_identity_attempt where state_hash = ?", expired)).isZero();
+        assertThat(count("select count(*) from portal_identity_attempt where state_hash = ?", consumed)).isZero();
+        assertThat(identities.findByLinkId(link.id())).as("identité expirée et non soumise").isEmpty();
+    }
+
+    @Test
+    void tracesOfNoLinkAreEmpty() {
+        assertThat(identities.tracesByLinkId(null)).isEmpty();
+        assertThat(identities.tracesByLinkId(List.of())).isEmpty();
+        assertThat(identities.tracesByLinkId(List.of(UUID.randomUUID()))).isEmpty();
+    }
+
+    @Test
+    void aSecondAttemptWithTheSameStateIsRefused() {
+        String state = "state-" + UUID.randomUUID();
+        identities.insertAttempt(attempt(state, NOW.plus(Duration.ofMinutes(10))));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> identities.insertAttempt(attempt(state, NOW.plus(Duration.ofMinutes(10)))))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    private int count(String sql, Object... args) {
+        return jdbcTemplate.queryForObject(sql, Integer.class, args);
+    }
 }

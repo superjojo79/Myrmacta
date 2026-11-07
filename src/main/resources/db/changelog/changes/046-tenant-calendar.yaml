@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 046-tenant-calendar
+      author: myrmacta
+      comment: >-
+        TODO §120 (D-CAL-ZONE, D-CAL-WEEKEND, D-CAL-HOLIDAYS) — fuseau, week-end et jours fériés du tenant.
+        TODO §120 (D-CAL-SITES) — mode calendaire ou ouvrable du rappel d'échéance.
+      changes:
+        - createTable:
+            tableName: tenant_calendar
+            columns:
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: zone_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: weekend, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: holidays, type: text, constraints: {nullable: false}}
+              - column: {name: updated_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: updated_by, type: varchar(255)}
+        - addPrimaryKey:
+            tableName: tenant_calendar
+            columnNames: tenant_id
+            constraintName: pk_tenant_calendar
+        - addColumn:
+            tableName: dossier_type_deadline
+            columns:
+              - column:
+                  name: reminder_day_count
+                  type: varchar(16)
+                  defaultValue: CALENDAR
+                  constraints: {nullable: false}

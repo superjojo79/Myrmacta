@@ -85,7 +85,9 @@ groupes de l'utilisateur sur les dossiers qu'il peut modifier ; il peut les pren
     Chaque palier n'a lieu qu'une fois.
 - **Process :** la brique « Calculer une échéance » (`computeDeadlineTask`) pose `echeanceRappel` et `echeanceDepassee`. Un
   minuteur peut porter ces deux noms dans son `timeDate`, et rien d'autre (§69). Cela permet la course « traité ou échu ».
-- Jours calendaires, UTC. Le calendrier ouvrable est suivi par [#8](https://github.com/superjojo79/Myrmacta/issues/8).
+- Le délai de routage (`routageDelaiJours`) est calendaire, sauf si la sortie DMN `routageDelaiOuvrable` vaut `OUVRABLE`
+  ou `true` (§120). Week-end, jours fériés et fuseau sont ceux du tenant. Sans calendrier enregistré : samedi-dimanche,
+  aucun férié, UTC.
 
 ## 8. MCP (D-MAILROOM-MCP)
 

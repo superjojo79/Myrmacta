@@ -1,7 +1,11 @@
 package be.myrmacta.domain.promotion.artifact;
 
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
+import be.myrmacta.domain.deadline.model.TenantCalendar;
+import be.myrmacta.domain.deadline.model.WeekendPattern;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
+import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
+import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository.StoredTenantCalendar;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
 import be.myrmacta.domain.dossier.model.FieldType;
@@ -13,11 +17,15 @@ import be.myrmacta.domain.promotion.model.BundleEntry;
 import be.myrmacta.domain.promotion.model.ConfigurationBundle;
 import be.myrmacta.domain.promotion.model.PlanAction;
 import be.myrmacta.domain.promotion.model.PlanEntry;
+import be.myrmacta.domain.promotion.model.doc.ConfigDocs.CalendarDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DeadlineDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DossierTypeDoc;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.ReplyWorkflowDoc;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
 import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -41,6 +49,7 @@ public final class TypeSettingsArtifacts {
     private final WorkflowTypeConfigRepository workflowConfigs;
     private final ManageReplyWorkflowUseCase replyWorkflows;
     private final ManageDeadlineUseCase deadlines;
+    private final TenantCalendarRepository calendars;
 
     public TypeSettingsArtifacts(
             String tenantId,
@@ -48,11 +57,13 @@ public final class TypeSettingsArtifacts {
             DossierTypeRepository types,
             WorkflowTypeConfigRepository workflowConfigs,
             ManageReplyWorkflowUseCase replyWorkflows,
-            ManageDeadlineUseCase deadlines) {
+            ManageDeadlineUseCase deadlines,
+            TenantCalendarRepository calendars) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.codec = Objects.requireNonNull(codec, "codec");
         this.types = Objects.requireNonNull(types, "types");
         this.workflowConfigs = Objects.requireNonNull(workflowConfigs, "workflowConfigs");
+        this.calendars = Objects.requireNonNull(calendars, "calendars");
         this.replyWorkflows = Objects.requireNonNull(replyWorkflows, "replyWorkflows");
         this.deadlines = Objects.requireNonNull(deadlines, "deadlines");
     }
@@ -68,7 +79,17 @@ public final class TypeSettingsArtifacts {
             deadlines.get(type.code()).ifPresent(d -> entries.add(new BundleEntry(ArtifactType.DEADLINE, type.code(),
                     codec.encode(deadlineDoc(d)))));
         }
+        entries.add(new BundleEntry(ArtifactType.CALENDAR, "tenant", codec.encode(calendarDoc(currentCalendar()))));
         return entries;
+    }
+
+    private TenantCalendar currentCalendar() {
+        return calendars.find(tenantId).map(StoredTenantCalendar::calendar).orElseGet(TenantCalendar::defaults);
+    }
+
+    static CalendarDoc calendarDoc(TenantCalendar calendar) {
+        return new CalendarDoc(calendar.zoneId(), calendar.weekend().name(),
+                calendar.holidays().stream().map(LocalDate::toString).toList());
     }
 
     static ReplyWorkflowDoc replyDoc(ReplyWorkflowSetting s) {
@@ -76,7 +97,7 @@ public final class TypeSettingsArtifacts {
     }
 
     static DeadlineDoc deadlineDoc(DeadlineSetting s) {
-        return new DeadlineDoc(s.dossierTypeCode(), s.fieldName(), s.reminderDays(), s.escalationGroup());
+        return new DeadlineDoc(s.dossierTypeCode(), s.fieldName(), s.reminderDays(), s.escalationGroup(), s.reminderDayCount());
     }
 
     // ------------------------------------------------------------------ workflow « réponse »
@@ -129,7 +150,8 @@ public final class TypeSettingsArtifacts {
         PromotionSupport.requireSameKey(entry, doc.dossierTypeCode());
         DeadlineSetting setting;
         try {
-            setting = new DeadlineSetting(tenantId, doc.dossierTypeCode(), doc.fieldName(), doc.reminderDays(), doc.escalationGroup());
+            setting = new DeadlineSetting(tenantId, doc.dossierTypeCode(), doc.fieldName(), doc.reminderDays(), doc.escalationGroup(),
+                    doc.reminderDayCount());
         } catch (IllegalArgumentException e) {
             return blocked(entry, e.getMessage());
         }
@@ -161,7 +183,33 @@ public final class TypeSettingsArtifacts {
 
     public String applyDeadline(BundleEntry entry, PlanAction action) {
         DeadlineDoc doc = PromotionSupport.decode(codec, entry, DeadlineDoc.class);
-        deadlines.set(doc.dossierTypeCode(), doc.fieldName(), doc.reminderDays(), doc.escalationGroup());
+        deadlines.set(doc.dossierTypeCode(), doc.fieldName(), doc.reminderDays(), doc.escalationGroup(), doc.reminderDayCount());
+        return action == PlanAction.CREATE ? "created" : "updated";
+    }
+
+    public PlanEntry planCalendar(BundleEntry entry) {
+        CalendarDoc doc = PromotionSupport.decode(codec, entry, CalendarDoc.class);
+        TenantCalendar incoming;
+        try {
+            incoming = new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()),
+                    doc.holidays().stream().map(LocalDate::parse).toList());
+        } catch (IllegalArgumentException | DateTimeParseException invalid) {
+            return blocked(entry, invalid.getMessage() == null ? "invalid calendar" : invalid.getMessage());
+        }
+        boolean stored = calendars.find(tenantId).isPresent();
+        return same(calendarDoc(currentCalendar()), calendarDoc(incoming))
+                ? new PlanEntry(entry.type(), entry.key(), PlanAction.UNCHANGED, "")
+                : new PlanEntry(entry.type(), entry.key(), stored ? PlanAction.UPDATE : PlanAction.CREATE, "");
+    }
+
+    public String applyCalendar(BundleEntry entry, PlanAction action) {
+        if (action == PlanAction.UNCHANGED) {
+            return "unchanged";
+        }
+        CalendarDoc doc = PromotionSupport.decode(codec, entry, CalendarDoc.class);
+        TenantCalendar incoming = new TenantCalendar(doc.zoneId(), WeekendPattern.parse(doc.weekend()),
+                doc.holidays().stream().map(LocalDate::parse).toList());
+        calendars.save(new StoredTenantCalendar(tenantId, incoming, Instant.now(), "promotion"));
         return action == PlanAction.CREATE ? "created" : "updated";
     }
 

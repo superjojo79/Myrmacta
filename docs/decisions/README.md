@@ -138,6 +138,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 117 | [Promotion de configuration, tranche 2 : groupes, templates, parcours, réglages de type](117-promotion-de-configuration-tranche-2.md) | clos | — |
 | 118 | [Licence PolyForm Noncommercial 1.0.0 et addendum de droit belge](118-licence-polyform-noncommercial-et-addendum-belge.md) | clos | — |
 | 119 | [Observabilité de la migration Liquibase par instance de tenant](119-observabilite-migration-liquibase-par-tenant.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
+| 120 | [Calendrier de jours ouvrables des échéances](120-calendrier-jours-ouvrables.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 
 ## Sections de l'ancien registre
 

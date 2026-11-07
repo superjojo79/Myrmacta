@@ -1,5 +1,8 @@
 package be.myrmacta.infrastructure.flowable;
 
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
+import be.myrmacta.domain.deadline.model.DayCount;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
@@ -10,7 +13,6 @@ import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,13 +26,14 @@ import org.springframework.stereotype.Component;
 /**
  * TODO §115 (D-DEADLINE-TIMER) — brique « Calculer une échéance ». Paramètres littéraux seulement (jamais une variable de même
  * nom) : {@code champEcheance} (champ {@code DATE} non sensible du dossier), {@code delaiJours} (repli : aujourd'hui + délai),
- * {@code rappelJours}. Écrit les variables réservées :
+ * {@code rappelJours}, {@code delaiOuvrable} et {@code rappelOuvrable} ({@code OUVRABLE} ou {@code CALENDAIRE}, absent = calendaire).
+ * Écrit les variables réservées :
  *
  * <ul>
  *   <li>{@code echeance} : la date, {@code AAAA-MM-JJ} ;
- *   <li>{@code echeanceRappel} : {@code rappelJours} jours avant, à 00:00 UTC ;
- *   <li>{@code echeanceDepassee} : le lendemain de l'échéance, à 00:00 UTC (le jour même est encore dans les temps, comme
- *       l'escalade de la plateforme, D-DEADLINE-ESCALATE).
+ *   <li>{@code echeanceRappel} : {@code rappelJours} avant, à 00:00 dans le fuseau du tenant ;
+ *   <li>{@code echeanceDepassee} : le lendemain calendaire, à 00:00 dans le fuseau du tenant (TODO §120, D-CAL-TIMER). Le jour
+ *       même est encore dans les temps.
  * </ul>
  *
  * Un minuteur porte ensuite {@code ${echeanceRappel}} ou {@code ${echeanceDepassee}}. Sans date ni délai, la brique échoue :
@@ -42,20 +45,25 @@ class ComputeDeadlineDelegate implements JavaDelegate {
     static final String FIELD = "champEcheance";
     static final String DELAY_DAYS = "delaiJours";
     static final String REMINDER_DAYS = "rappelJours";
+    static final String DELAY_BUSINESS = "delaiOuvrable";
+    static final String REMINDER_BUSINESS = "rappelOuvrable";
 
     private final DossierRepository dossiers;
     private final DossierTypeRepository types;
+    private final TenantCalendars calendars;
     private final TenantProperties tenantProperties;
     private final Clock clock;
 
     @Autowired
-    ComputeDeadlineDelegate(DossierRepository dossiers, DossierTypeRepository types, TenantProperties tenantProperties) {
-        this(dossiers, types, tenantProperties, Clock.systemUTC());
+    ComputeDeadlineDelegate(DossierRepository dossiers, DossierTypeRepository types, TenantCalendars calendars, TenantProperties tenantProperties) {
+        this(dossiers, types, calendars, tenantProperties, Clock.systemUTC());
     }
 
-    ComputeDeadlineDelegate(DossierRepository dossiers, DossierTypeRepository types, TenantProperties tenantProperties, Clock clock) {
+    ComputeDeadlineDelegate(
+            DossierRepository dossiers, DossierTypeRepository types, TenantCalendars calendars, TenantProperties tenantProperties, Clock clock) {
         this.dossiers = Objects.requireNonNull(dossiers, "dossiers");
         this.types = Objects.requireNonNull(types, "types");
+        this.calendars = Objects.requireNonNull(calendars, "calendars");
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
@@ -65,18 +73,36 @@ class ComputeDeadlineDelegate implements JavaDelegate {
         String field = text(DeployedActivityParameters.getLiteral(execution, FIELD));
         Integer delay = integer(execution, DELAY_DAYS);
         int reminder = Optional.ofNullable(integer(execution, REMINDER_DAYS)).orElse(0);
+        DayCount delayCount = dayCount(execution, DELAY_BUSINESS);
+        DayCount reminderCount = dayCount(execution, REMINDER_BUSINESS);
+        BusinessCalendar calendar = calendars.get(tenantProperties.id());
         LocalDate deadline = field == null ? null : fromField(execution, field);
         if (deadline == null && delay != null) {
-            deadline = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC).plusDays(delay);
+            try {
+                deadline = calendar.add(calendar.today(clock.instant()), delay, delayCount);
+            } catch (IllegalArgumentException impossible) {
+                throw new FlowableException(execution.getCurrentActivityId() + ": délai impossible : " + delay);
+            }
         }
         if (deadline == null) {
             throw new FlowableException(execution.getCurrentActivityId() + ": aucune échéance — "
                     + (field == null ? "ni champ ni délai" : "champ " + field + " vide et pas de délai"));
         }
+        LocalDate remindOn;
+        try {
+            remindOn = calendar.subtract(deadline, reminder, reminderCount);
+        } catch (IllegalArgumentException impossible) {
+            throw new FlowableException(execution.getCurrentActivityId() + ": rappel impossible : " + reminder);
+        }
         execution.setVariable(WorkflowVariables.ECHEANCE, deadline.toString());
-        execution.setVariable(WorkflowVariables.ECHEANCE_RAPPEL,
-                deadline.minusDays(reminder).atStartOfDay(ZoneOffset.UTC).toInstant().toString());
-        execution.setVariable(WorkflowVariables.ECHEANCE_DEPASSEE, deadline.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toString());
+        execution.setVariable(WorkflowVariables.ECHEANCE_RAPPEL, calendar.startOfDay(remindOn).toString());
+        execution.setVariable(WorkflowVariables.ECHEANCE_DEPASSEE, calendar.startOfDay(deadline.plusDays(1)).toString());
+    }
+
+    private static DayCount dayCount(DelegateExecution execution, String name) {
+        String raw = text(DeployedActivityParameters.getLiteral(execution, name));
+        return DayCount.tryParse(raw).orElseThrow(() -> new FlowableException(execution.getCurrentActivityId() + ": " + name
+                + " vaut CALENDAIRE ou OUVRABLE"));
     }
 
     /** La valeur du champ, relue dans le dossier (pas l'instantané du démarrage) ; un champ non {@code DATE} ou sensible est refusé. */

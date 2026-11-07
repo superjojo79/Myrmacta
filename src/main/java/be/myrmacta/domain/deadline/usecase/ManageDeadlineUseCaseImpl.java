@@ -1,5 +1,6 @@
 package be.myrmacta.domain.deadline.usecase;
 
+import be.myrmacta.domain.deadline.model.DayCount;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
@@ -35,8 +36,14 @@ public final class ManageDeadlineUseCaseImpl implements ManageDeadlineUseCase {
 
     @Override
     public DeadlineSetting set(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup) {
+        return set(dossierTypeCode, fieldName, reminderDays, escalationGroup, DayCount.CALENDAR);
+    }
+
+    @Override
+    public DeadlineSetting set(
+            String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup, DayCount reminderDayCount) {
         DossierType type = requireType(dossierTypeCode);
-        DeadlineSetting setting = new DeadlineSetting(tenantId, dossierTypeCode, fieldName, reminderDays, escalationGroup);
+        DeadlineSetting setting = new DeadlineSetting(tenantId, dossierTypeCode, fieldName, reminderDays, escalationGroup, reminderDayCount);
         boolean dateField = type.fieldDefinitions().stream()
                 .anyMatch(definition -> definition.name().equals(setting.fieldName()) && definition.type() == FieldType.DATE);
         if (!dateField) {

@@ -147,8 +147,19 @@ l'échéance des dossiers de ce type (la liste ne propose que les champs de type
   groupe, dont les membres sont prévenus. Une note dans l'historique du dossier dit quelles tâches ont été réaffectées.
 
 Chaque rappel et chaque escalade n'a lieu qu'une fois ; reporter l'échéance (corriger le champ) en relance de nouveaux.
-Les délais sont en jours calendaires (week-ends et jours fériés compris). Un dossier en brouillon, clôturé ou archivé n'est
+**Décompte du rappel** : *Jours calendaires* (week-ends et fériés compris, escalade le lendemain) ou *Jours ouvrables*
+(le rappel recule et l'escalade attend le prochain jour ouvrable). Un dossier en brouillon, clôturé ou archivé n'est
 pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
+
+**Calendrier (TODO §120).** La page **Types** porte une section **Calendrier**, réservée à l'administrateur du tenant :
+
+- **Fuseau** : jour courant et minuit des minuteurs d'échéance. Défaut `UTC`.
+- **Week-end** : samedi et dimanche (défaut), vendredi et samedi, ou dimanche seul.
+- **Jours fériés** : une date `AAAA-MM-JJ` par ligne, 400 au plus. Ils ne comptent que pour un délai marqué ouvrable.
+- **Ajouter les fériés fédéraux belges** : ajoute les dix dates légales de l'année civile en cours et de la suivante.
+  On peut les retirer. Rien ne se réécrit tout seul l'année suivante.
+
+Le calendrier voyage avec la promotion de configuration.
 
 **Workflow réponse (courrier entrant, TODO §113).** Le panneau **Modifier les champs** porte une section **Réponse à
 un courrier**. Elle dit quel process lancer quand une réponse par e-mail rejoint un dossier de ce type (Digital Mail Room) :

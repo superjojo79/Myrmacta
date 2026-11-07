@@ -11,12 +11,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
+import be.myrmacta.domain.deadline.model.DayCount;
 import be.myrmacta.domain.deadline.model.DeadlineCandidate;
 import be.myrmacta.domain.deadline.model.DeadlineLevel;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
 import be.myrmacta.domain.deadline.port.out.DeadlineAlertClaims;
 import be.myrmacta.domain.deadline.port.out.DeadlineCandidates;
 import be.myrmacta.domain.deadline.port.out.DeadlineSettings;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DossierWorkflowLink;
 import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
@@ -50,6 +53,7 @@ class EvaluateDeadlinesUseCaseImplTest {
     private static final LocalDate DEADLINE = LocalDate.parse("2026-11-30");
 
     private final DeadlineSettings settings = mock(DeadlineSettings.class);
+    private final TenantCalendars calendars = mock(TenantCalendars.class);
     private final DeadlineCandidates candidates = mock(DeadlineCandidates.class);
     private final DeadlineAlertClaims claims = mock(DeadlineAlertClaims.class);
     private final DossierWorkflowLinkRepository links = mock(DossierWorkflowLinkRepository.class);
@@ -67,8 +71,9 @@ class EvaluateDeadlinesUseCaseImplTest {
 
     @BeforeEach
     void setUp() {
-        useCase = new EvaluateDeadlinesUseCaseImpl(settings, candidates, claims, links, participants, notifications, groups, engine,
-                linkGroups, elements);
+        useCase = new EvaluateDeadlinesUseCaseImpl(settings, calendars, candidates, claims, links, participants, notifications, groups,
+                engine, linkGroups, elements);
+        when(calendars.get(TENANT)).thenReturn(BusinessCalendar.defaults());
         DeadlineSetting setting = new DeadlineSetting(TENANT, "FACTURE", "echeance", 5, "DIRECTION");
         when(settings.findAll(TENANT)).thenReturn(List.of(setting));
         when(candidates.list(setting)).thenReturn(List.of(new DeadlineCandidate(dossierId, "DOS-FACTURE-1", "FACTURE", "2026-11-30")));
@@ -138,6 +143,22 @@ class EvaluateDeadlinesUseCaseImplTest {
                 .isEqualTo("Échéance du 2026-11-30 dépassée : 2 tâche(s) réaffectée(s) au groupe DIRECTION (Traiter la facture, Valider)");
         assertThat(note.getValue().addedBy()).isEqualTo("system");
         assertThat(note.getValue().metadata()).containsEntry("event", "DEADLINE_ESCALATED").containsEntry("escalated", true);
+    }
+
+    @Test
+    void aBusinessDayReminderWaitsUntilMondayToEscalateAFridayDeadline() {
+        DeadlineSetting setting = new DeadlineSetting(TENANT, "FACTURE", "echeance", 1, "DIRECTION", DayCount.BUSINESS);
+        when(settings.findAll(TENANT)).thenReturn(List.of(setting));
+        when(candidates.list(setting)).thenReturn(List.of(new DeadlineCandidate(dossierId, "DOS-FACTURE-1", "FACTURE", "2026-11-06")));
+
+        useCase.scan(TENANT, at("2026-11-07"), Runnable::run);
+
+        verify(claims, never()).claim(any(), any(), eq(DeadlineLevel.ESCALADE), any(), any());
+        verify(claims, never()).claim(any(), any(), eq(DeadlineLevel.RAPPEL), any(), any());
+
+        useCase.scan(TENANT, at("2026-11-09"), Runnable::run);
+
+        verify(claims).claim(eq(TENANT), eq(dossierId), eq(DeadlineLevel.ESCALADE), eq(LocalDate.parse("2026-11-06")), any());
     }
 
     @Test

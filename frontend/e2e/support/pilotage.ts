@@ -254,6 +254,50 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
   })
+  await page.route('**/api/tenant/calendar/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        tenantId: 'tenant_dev',
+        zoneId: 'Europe/Brussels',
+        weekend: 'SATURDAY_SUNDAY',
+        holidays: ['2026-11-11', '2026-12-25'],
+        updatedAt: '2026-11-06T00:00:00Z',
+        updatedBy: 'admin',
+      }),
+    })
+  })
+  await page.route('**/api/tenant/calendar', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON() as { zoneId: string; weekend: string; holidays: string[] }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tenantId: 'tenant_dev',
+          zoneId: body.zoneId,
+          weekend: body.weekend,
+          holidays: body.holidays,
+          updatedAt: '2026-11-06T00:00:00Z',
+          updatedBy: 'admin',
+        }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        tenantId: 'tenant_dev',
+        zoneId: 'UTC',
+        weekend: 'SATURDAY_SUNDAY',
+        holidays: [],
+        updatedAt: null,
+        updatedBy: null,
+      }),
+    })
+  })
   await page.route('**/api/tenant/retention-settings', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({

@@ -11,6 +11,7 @@ import {
   revokeDossierTypeAcl,
 } from '@/api/dossierTypes'
 import { getRetentionSettings, upsertRetentionSettings } from '@/api/retentionSettings'
+import TenantCalendarPanel from '@/components/admin/TenantCalendarPanel.vue'
 import { getSlaSettings, upsertSlaSettings } from '@/api/slaSettings'
 import { listNotificationWebhooks, type NotificationWebhook } from '@/api/notificationWebhooks'
 import type { DossierPermission, DossierType, FieldDefinition, PieceType, SchemaDuplicate } from '@/api/types'
@@ -364,6 +365,8 @@ const { t } = useI18n()
         <button type="submit" data-testid="retention-save">{{ t('admin.types.saveRetention') }}</button>
       </form>
     </section>
+
+    <TenantCalendarPanel />
 
     <section class="retention-block" aria-labelledby="sla-heading">
       <h2 id="sla-heading">{{ t('admin.types.slaTitle') }}</h2>

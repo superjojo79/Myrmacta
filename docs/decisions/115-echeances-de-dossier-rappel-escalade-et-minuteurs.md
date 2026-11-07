@@ -66,3 +66,6 @@ fériés par tenant) est reporté à l'issue
 
 **Limite connue :** la promotion de configuration ne transporte pas encore le réglage d'échéance (même limite que
 D-MAILROOM-REPLY-WORKFLOW).
+
+**Suite (§120).** Le calendrier reporté par D-DEADLINE-CALENDAR est livré : fuseau, week-end et jours fériés du tenant,
+décompte ouvrable choisi à chaque délai. Les délais déjà posés ne sont pas recalculés.

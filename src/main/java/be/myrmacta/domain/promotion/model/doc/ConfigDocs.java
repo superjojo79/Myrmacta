@@ -114,10 +114,27 @@ public final class ConfigDocs {
     }
 
     /** TODO §117 (D-PROMO-TYPE-SETTINGS) — échéance d'un type de dossier (D-DEADLINE-FIELD). */
-    public record DeadlineDoc(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup) {
+    public record DeadlineDoc(
+            String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup,
+            be.myrmacta.domain.deadline.model.DayCount reminderDayCount) {
+
+        public DeadlineDoc(String dossierTypeCode, String fieldName, int reminderDays, String escalationGroup) {
+            this(dossierTypeCode, fieldName, reminderDays, escalationGroup, be.myrmacta.domain.deadline.model.DayCount.CALENDAR);
+        }
 
         public DeadlineDoc {
             java.util.Objects.requireNonNull(dossierTypeCode, "dossierTypeCode");
+            if (reminderDayCount == null) {
+                reminderDayCount = be.myrmacta.domain.deadline.model.DayCount.CALENDAR;
+            }
+        }
+    }
+
+    /** TODO §120 (D-CAL-PROMO) — calendrier du tenant. {@code holidays} : dates ISO. */
+    public record CalendarDoc(String zoneId, String weekend, java.util.List<String> holidays) {
+
+        public CalendarDoc {
+            holidays = holidays == null ? java.util.List.of() : java.util.List.copyOf(holidays);
         }
     }
 

@@ -25,12 +25,14 @@ public enum ArtifactType {
     /** TODO §117 (D-PROMO-TEMPLATE) — version active d'un template de document, importée en brouillon. */
     DOCUMENT_TEMPLATE("document-templates", ".json", 2),
     /** TODO §117 (D-PROMO-PARCOURS) — définition d'un parcours, enregistrée sans compilation. */
-    PARCOURS("parcours", ".json", 2);
+    PARCOURS("parcours", ".json", 2),
+    /** TODO §120 (D-CAL-PROMO) — fuseau, week-end et jours fériés du tenant. Une seule entrée, clé {@code tenant}. */
+    CALENDAR("calendar", ".json", 2);
 
     /** Ordre d'application : une dépendance passe avant ce qui la référence. */
     private static final List<ArtifactType> APPLY_ORDER =
             List.of(USER_GROUP, DOSSIER_TYPE, TASK_QUESTION_SCHEMA, DOCUMENT_TEMPLATE, CONNECTOR_INSTANCE, DMN, BPMN, WORKFLOW_CONFIG, REPLY_WORKFLOW,
-                    DEADLINE, PARCOURS);
+                    DEADLINE, PARCOURS, CALENDAR);
 
     private final String directory;
     private final String extension;

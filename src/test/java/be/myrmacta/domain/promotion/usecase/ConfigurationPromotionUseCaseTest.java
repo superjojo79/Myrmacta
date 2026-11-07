@@ -41,7 +41,9 @@ import be.myrmacta.domain.document.port.out.TemplateSyntaxChecker;
 import be.myrmacta.domain.promotion.model.doc.ConfigDocs.DocumentTemplateDoc;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
+import be.myrmacta.domain.deadline.model.DayCount;
 import be.myrmacta.domain.deadline.port.in.ManageDeadlineUseCase;
+import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.FieldDefinition;
 import be.myrmacta.domain.dossier.model.FieldType;
@@ -202,9 +204,16 @@ class ConfigurationPromotionUseCaseTest {
                 manageConnector, catalog, dmnDeployment, mock(DmnParserPort.class), workflowDeployment, bpmnParser, workflowConfigs,
                 saveWorkflowConfig, propose, journalRepo,
                 new AdditionalArtifacts(new UserGroupArtifacts(userGroups, CODEC), new GroupReferenceCheck(groupRefs),
-                        new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines),
+                        new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines,
+                                emptyCalendar()),
                         new DocumentTemplateArtifacts(TENANT, templateCodec, templateRepo, createTemplate, templateSyntax, 1000),
                         new ParcoursArtifacts(TENANT, CODEC, parcoursRepo, manageParcours, workflowDeployment)));
+    }
+
+    private static TenantCalendarRepository emptyCalendar() {
+        TenantCalendarRepository calendars = mock(TenantCalendarRepository.class);
+        when(calendars.find(any())).thenReturn(Optional.empty());
+        return calendars;
     }
 
     private static BundleEntry json(ArtifactType type, String key, Object doc) {
@@ -803,6 +812,14 @@ class ConfigurationPromotionUseCaseTest {
     }
 
     @Test
+    void anOldDeadlineDocumentWithoutADayCountStaysOnCalendarDays() {
+        var doc = CODEC.decode("""
+                {"dossierTypeCode":"FACTURE","fieldName":"echeance","reminderDays":5,"escalationGroup":null}
+                """.getBytes(java.nio.charset.StandardCharsets.UTF_8), DeadlineDoc.class);
+        assertThat(doc.reminderDayCount()).isEqualTo(DayCount.CALENDAR);
+    }
+
+    @Test
     void aDeadlineNeedsADateFieldOfTheTypeAndAnExistingOrImportedEscalationGroup() {
         typeHere("FACTURE", field("echeance", FieldType.DATE), field("montant", FieldType.NUMBER));
         var plan = useCase.plan(ADMIN, bundle(
@@ -818,7 +835,7 @@ class ConfigurationPromotionUseCaseTest {
         assertThat(useCase.plan(ADMIN, b, Map.of()).find(ArtifactType.DEADLINE, "FACTURE").orElseThrow().action())
                 .isEqualTo(PlanAction.CREATE);
         useCase.apply(ADMIN, b, Map.of(), Map.of(), null, Channel.ADMIN);
-        verify(deadlines).set("FACTURE", "echeance", 5, "DIRECTION");
+        verify(deadlines).set("FACTURE", "echeance", 5, "DIRECTION", DayCount.CALENDAR);
     }
 
     @Test

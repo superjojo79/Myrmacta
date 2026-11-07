@@ -1,7 +1,7 @@
 // TODO §108 — tests de mutation du frontend (StrykerJS + Vitest), hors `npm run test:all`.
-// `npm run test:mutation` : tout le périmètre, seuil `break` appliqué (run hebdomadaire de .github/workflows/mutation.yml).
-// Sur une PR : `STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate <fichiers>` (scripts/mutation-targets-frontend.sh),
-// sans seuil. `--ignoreStatic` : sur un run ciblé, un mutant statique (constante exécutée au chargement du module)
+// `npm run test:mutation` : tout le périmètre, seuil `break` appliqué (run hebdomadaire et PR de mutation.yml).
+// Run local ciblé sans seuil : `STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate <fichiers>`.
+// `--ignoreStatic` : sur un run ciblé, un mutant statique (constante exécutée au chargement du module)
 // recharge tout le module, dépasse le délai et compterait comme tué ; ignoré, ou « survivant » s'il est aussi couvert
 // test par test (faux survivant visible plutôt que faux tué). Le run complet les garde : 78 sur 1 686 le 2026-10-28.
 // Rapport : reports/mutation/index.html.

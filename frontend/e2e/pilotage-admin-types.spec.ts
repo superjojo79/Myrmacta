@@ -134,6 +134,111 @@ test('E2E-CAL-3 the entry form refuses an end before the start and sends nothing
   await expect(page.getByTestId('entry-row-manual')).toHaveCount(0)
 })
 
+const ICS = Buffer.from('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n')
+
+async function openCalendar(page: import('@playwright/test').Page) {
+  await mockSession(page)
+  await openApp(page)
+  await page.getByRole('link', { name: 'Types' }).click()
+  await expect(page.getByRole('heading', { name: 'Calendrier' })).toBeVisible()
+}
+
+async function importIcs(page: import('@playwright/test').Page, name: string) {
+  await page.getByTestId('source-name').fill(name)
+  await page.getByTestId('source-file').setInputFiles({ name: 'ecoles.ics', mimeType: 'text/calendar', buffer: ICS })
+  await page.getByTestId('source-preview').click()
+}
+
+test('E2E-CAL-4 admin previews an ICS file, then confirms it with the preview sha', async ({ page }) => {
+  await openCalendar(page)
+
+  await importIcs(page, 'Écoles')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('2026-12-28 → 2026-12-31')
+  await expect(dialog).toContainText('1 événement(s) horaire(s)')
+  await expect(page.getByTestId('calendar-source')).toHaveCount(0)
+
+  const created = page.waitForRequest((request) => request.url().endsWith('/api/tenant/calendar/sources') && request.method() === 'POST')
+  await page.getByTestId('import-confirm').click()
+  const body = (await created).postData() ?? ''
+  expect(body).toContain('name="expectedSha256"')
+  expect(body).toContain('sha-new')
+
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('calendar-source')).toContainText('Écoles')
+  await expect(page.getByTestId('entry-row-source')).toContainText('Congé')
+})
+
+test('E2E-CAL-5 Escape closes the preview and imports nothing', async ({ page }) => {
+  await openCalendar(page)
+  await importIcs(page, 'Écoles')
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByTestId('calendar-sources-empty')).toBeVisible()
+})
+
+test('E2E-CAL-6 admin reloads a file source and the manual entries stay', async ({ page }) => {
+  await openCalendar(page)
+  await page.getByTestId('entry-start').fill('2026-12-24')
+  await page.getByTestId('entry-label').fill('Pont')
+  await page.getByTestId('entry-add').click()
+  await page.getByTestId('calendar-save').click()
+  await expect(page.getByTestId('calendar-saved')).toBeVisible()
+  await importIcs(page, 'Écoles')
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('entry-row-source')).toContainText('Congé')
+
+  await page.getByTestId('source-reload').click()
+  await page.getByTestId('source-reload-file').setInputFiles({ name: 'ecoles-2027.ics', mimeType: 'text/calendar', buffer: ICS })
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('2027-01-04')
+  await expect(page.getByTestId('import-removed')).toContainText('2026-12-28 → 2026-12-31')
+  await page.getByTestId('import-confirm').click()
+
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('entry-row-source')).toContainText('Rentrée')
+  await expect(page.getByTestId('entry-row-source')).not.toContainText('Congé')
+  await expect(page.getByTestId('entry-row-manual')).toContainText('Pont')
+})
+
+test('E2E-CAL-7 a reload whose content changed since the preview asks to preview again', async ({ page }) => {
+  await openCalendar(page)
+  await importIcs(page, 'Écoles')
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('calendar-source')).toBeVisible()
+
+  await page.getByTestId('source-reload').click()
+  await page.getByTestId('source-reload-file').setInputFiles({ name: 'stale.ics', mimeType: 'text/calendar', buffer: ICS })
+  await page.getByTestId('import-confirm').click()
+
+  await expect(page.getByTestId('import-error')).toContainText("relancez l'aperçu")
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByTestId('import-cancel').click()
+  await expect(page.getByTestId('entry-row-source')).toContainText('Congé')
+})
+
+test('E2E-CAL-8 admin deletes a source after confirming', async ({ page }) => {
+  await openCalendar(page)
+  await importIcs(page, 'Écoles')
+  await page.getByTestId('import-confirm').click()
+  await expect(page.getByTestId('calendar-source')).toHaveCount(1)
+
+  await page.getByTestId('source-delete').click()
+  await expect(page.getByTestId('calendar-source')).toContainText('Supprimer la source « Écoles »')
+  await page.getByTestId('source-delete-cancel').click()
+  await expect(page.getByTestId('calendar-source')).toHaveCount(1)
+
+  await page.getByTestId('source-delete').click()
+  await page.getByTestId('source-delete-confirm').click()
+
+  await expect(page.getByTestId('calendar-sources-empty')).toBeVisible()
+  await expect(page.getByTestId('entry-row-source')).toHaveCount(0)
+})
+
 test('E2E-RET-1 admin saves tenant retention default', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

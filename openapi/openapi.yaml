@@ -761,6 +761,134 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserGroupResponse"
+  /api/tenant/calendar/sources:
+    post:
+      tags:
+      - tenant-calendar-controller
+      operationId: createSource
+      parameters:
+      - name: name
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: expectedSha256
+        in: query
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CalendarResponse"
+  /api/tenant/calendar/sources/{id}/reload:
+    post:
+      tags:
+      - tenant-calendar-controller
+      operationId: reloadSource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: expectedSha256
+        in: query
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CalendarResponse"
+  /api/tenant/calendar/sources/{id}/preview:
+    post:
+      tags:
+      - tenant-calendar-controller
+      operationId: previewReload
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PreviewResponse"
+  /api/tenant/calendar/sources/preview:
+    post:
+      tags:
+      - tenant-calendar-controller
+      operationId: previewNewSource
+      parameters:
+      - name: name
+        in: query
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PreviewResponse"
   /api/tenant/calendar/belgian-federal-holidays:
     post:
       tags:
@@ -3635,6 +3763,21 @@ paths:
               schema:
                 type: string
                 format: byte
+  /api/tenant/calendar/sources/{id}:
+    delete:
+      tags:
+      - tenant-calendar-controller
+      operationId: deleteSource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
   /api/dossier-types/{code}/acl/{userId}:
     delete:
       tags:
@@ -4348,6 +4491,45 @@ components:
         label:
           type: string
         idpGroup:
+          type: string
+    PreviewResponse:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          type: string
+        added:
+          type: array
+          items:
+            $ref: "#/components/schemas/RangeDto"
+        removed:
+          type: array
+          items:
+            $ref: "#/components/schemas/RangeDto"
+        masked:
+          type: array
+          items:
+            $ref: "#/components/schemas/RangeDto"
+        ignored:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        sha256:
+          type: string
+        periodCount:
+          type: integer
+          format: int32
+    RangeDto:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
           type: string
     CreateTaskQuestionSchemaRequest:
       type: object

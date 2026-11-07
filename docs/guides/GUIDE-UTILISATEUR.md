@@ -165,6 +165,15 @@ pas suivi. Ce réglage voyage avec la promotion de configuration (§ Promotion).
   crée la source « Fériés fédéraux belges » (année en cours et suivante) ou la recharge : une date supprimée à la
   main n'y revient donc pas, car vos lignes manuelles passent avant les sources et ne sont jamais touchées par un
   rechargement. Un jour d'une source recouvert par un jour ouvré forcé est signalé « Surchargé ».
+- **Ajouter un calendrier ICS** : donnez un nom à la source, choisissez un fichier `.ics` (1 Mio et 5 000 événements au
+  plus) puis **Aperçu**. L'aperçu liste les périodes ajoutées, retirées et masquées (un jour ouvré forcé saisi à la main
+  garde la main) et les événements ignorés, avant que rien ne soit écrit. **Confirmer** enregistre la source ; si le
+  fichier a changé entre-temps, relancez l'aperçu.
+  - Seules les journées entières comptent ; les événements horaires, annulés ou « libres » sont ignorés. Les
+    événements récurrents sont déroulés de l'année précédente jusqu'à deux ans plus tard.
+  - **Recharger** une source demande un nouveau fichier, montre l'aperçu, puis remplace uniquement les jours de cette
+    source : vos lignes manuelles et les autres sources ne bougent pas.
+  - **Supprimer** une source supprime ses jours, après confirmation.
 - Les jours fermés ne comptent que pour un délai marqué ouvrable.
 
 Le calendrier voyage avec la promotion de configuration : saisies et sources, avec leurs périodes.

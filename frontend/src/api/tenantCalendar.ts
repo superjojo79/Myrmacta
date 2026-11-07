@@ -61,3 +61,57 @@ export async function addBelgianFederalHolidays(): Promise<TenantCalendar> {
   const { data } = await axios.post<TenantCalendar>('/api/tenant/calendar/belgian-federal-holidays')
   return data
 }
+
+/** Suite de jours consécutifs, bornes incluses, dates ISO. */
+export interface DayRange {
+  start: string
+  end: string
+}
+
+export type IgnoreReason = 'TIMED' | 'CANCELLED' | 'TRANSPARENT' | 'INVALID'
+
+/** Ce que l'application d'un fichier ICS changerait (TODO §121, D-CAL-ICS-PREVIEW). `sha256` est à renvoyer pour appliquer. */
+export interface SourcePreview {
+  sourceId: string
+  name: string
+  kind: SourceKind
+  added: DayRange[]
+  removed: DayRange[]
+  masked: DayRange[]
+  ignored: Partial<Record<IgnoreReason, number>>
+  sha256: string
+  periodCount: number
+}
+
+function form(fields: Record<string, string | File>): FormData {
+  const data = new FormData()
+  for (const [key, value] of Object.entries(fields)) data.append(key, value)
+  return data
+}
+
+/** Aperçu d'un fichier ICS comme nouvelle source ; n'écrit rien. */
+export async function previewNewSource(name: string, file: File): Promise<SourcePreview> {
+  const { data } = await axios.post<SourcePreview>('/api/tenant/calendar/sources/preview', form({ name, file }))
+  return data
+}
+
+/** Crée la source ; `expectedSha256` est celui de l'aperçu (409 si le contenu a changé ou si le nom est pris). */
+export async function createSource(name: string, file: File, expectedSha256: string): Promise<TenantCalendar> {
+  const { data } = await axios.post<TenantCalendar>('/api/tenant/calendar/sources', form({ name, file, expectedSha256 }))
+  return data
+}
+
+export async function previewReload(sourceId: string, file: File): Promise<SourcePreview> {
+  const { data } = await axios.post<SourcePreview>(`/api/tenant/calendar/sources/${sourceId}/preview`, form({ file }))
+  return data
+}
+
+/** Remplace les jours de la source ; ni les autres sources ni les saisies manuelles ne bougent. */
+export async function reloadSource(sourceId: string, file: File, expectedSha256: string): Promise<TenantCalendar> {
+  const { data } = await axios.post<TenantCalendar>(`/api/tenant/calendar/sources/${sourceId}/reload`, form({ file, expectedSha256 }))
+  return data
+}
+
+export async function deleteSource(sourceId: string): Promise<void> {
+  await axios.delete(`/api/tenant/calendar/sources/${sourceId}`)
+}

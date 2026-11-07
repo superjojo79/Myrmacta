@@ -254,46 +254,112 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     await route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
   })
-  // TODO §121 : le calendrier garde son état entre les appels (saisies renvoyées telles qu'enregistrées, source belge fixe).
+  // TODO §121 : le calendrier garde son état entre les appels (saisies, sources, aperçus, rechargements, suppressions).
+  type CalendarEntryMock = { start: string; end: string; nature: string; label: string | null }
+  type CalendarSourceMock = {
+    id: string
+    name: string
+    kind: string
+    maskedUrl: string | null
+    entryCount: number
+    loadedAt: string
+    loadedBy: string
+    lastError: string | null
+    entries: CalendarEntryMock[]
+  }
   const calendar = {
     tenantId: 'tenant_dev',
     zoneId: 'UTC',
     weekend: 'SATURDAY_SUNDAY',
-    entries: [] as unknown[],
-    sources: [] as unknown[],
+    entries: [] as CalendarEntryMock[],
+    sources: [] as CalendarSourceMock[],
     holidays: [] as string[],
     updatedAt: null as string | null,
     updatedBy: null as string | null,
   }
-  await page.route('**/api/tenant/calendar/**', async (route) => {
-    calendar.sources = [
-      {
-        id: 'src-be',
-        name: 'Fériés fédéraux belges',
-        kind: 'BE_FEDERAL',
-        maskedUrl: null,
-        entryCount: 2,
-        loadedAt: '2026-11-07T10:00:00Z',
-        loadedBy: 'admin',
-        lastError: null,
-        entries: [
-          { start: '2026-12-25', end: '2026-12-25', nature: 'CLOSED', label: 'Noël' },
-          { start: '2027-01-01', end: '2027-01-01', nature: 'CLOSED', label: "Jour de l'an" },
-        ],
-      },
-    ]
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(calendar) })
+  const closedDay = (start: string, end: string, label: string): CalendarEntryMock => ({ start, end, nature: 'CLOSED', label })
+  const sourceOf = (id: string, name: string, kind: string, entries: CalendarEntryMock[]): CalendarSourceMock => ({
+    id,
+    name,
+    kind,
+    maskedUrl: null,
+    entryCount: entries.length,
+    loadedAt: '2026-11-07T10:00:00Z',
+    loadedBy: 'admin',
+    lastError: null,
+    entries,
   })
-  await page.route('**/api/tenant/calendar', async (route) => {
-    if (route.request().method() === 'PUT') {
-      const body = route.request().postDataJSON() as { zoneId: string; weekend: string; entries: unknown[] }
-      calendar.zoneId = body.zoneId
-      calendar.weekend = body.weekend
-      calendar.entries = body.entries
+  /** Champ texte d'un corps multipart brut. */
+  const multipartField = (body: string, name: string): string => new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`).exec(body)?.[1] ?? ''
+  const json = (status: number, body: unknown) => ({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  await page.route(/\/api\/tenant\/calendar(\/.*)?$/, async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname.replace(/^.*\/api\/tenant\/calendar/, '')
+    const method = request.method()
+    const body = request.postData() ?? ''
+    if (path === '' && method === 'PUT') {
+      const sent = request.postDataJSON() as { zoneId: string; weekend: string; entries: CalendarEntryMock[] }
+      calendar.zoneId = sent.zoneId
+      calendar.weekend = sent.weekend
+      calendar.entries = sent.entries
       calendar.updatedAt = '2026-11-07T00:00:00Z'
       calendar.updatedBy = 'admin'
+    } else if (path === '/belgian-federal-holidays' && method === 'POST') {
+      const entries = [closedDay('2026-12-25', '2026-12-25', 'Noël'), closedDay('2027-01-01', '2027-01-01', "Jour de l'an")]
+      calendar.sources = [...calendar.sources.filter((source) => source.kind !== 'BE_FEDERAL'), sourceOf('src-be', 'Fériés fédéraux belges', 'BE_FEDERAL', entries)]
+    } else if (path === '/sources/preview' && method === 'POST') {
+      await route.fulfill(
+        json(200, {
+          sourceId: 'src-new',
+          name: multipartField(body, 'name'),
+          kind: 'ICS_FILE',
+          added: [{ start: '2026-12-28', end: '2026-12-31' }],
+          removed: [],
+          masked: [],
+          ignored: { TIMED: 1 },
+          sha256: 'sha-new',
+          periodCount: 1,
+        }),
+      )
+      return
+    } else if (path === '/sources' && method === 'POST') {
+      if (multipartField(body, 'expectedSha256') !== 'sha-new') {
+        await route.fulfill(json(409, { status: 409, detail: 'The content changed since the preview' }))
+        return
+      }
+      calendar.sources = [...calendar.sources, sourceOf('src-ics', multipartField(body, 'name'), 'ICS_FILE', [closedDay('2026-12-28', '2026-12-31', 'Congé')])]
+      await route.fulfill(json(201, calendar))
+      return
+    } else if (/^\/sources\/[^/]+\/preview$/.test(path) && method === 'POST') {
+      await route.fulfill(
+        json(200, {
+          sourceId: path.split('/')[2],
+          name: calendar.sources.find((source) => source.id === path.split('/')[2])?.name ?? '',
+          kind: 'ICS_FILE',
+          added: [{ start: '2027-01-04', end: '2027-01-04' }],
+          removed: [{ start: '2026-12-28', end: '2026-12-31' }],
+          masked: [],
+          ignored: {},
+          sha256: 'sha-reload',
+          periodCount: 1,
+        }),
+      )
+      return
+    } else if (/^\/sources\/[^/]+\/reload$/.test(path) && method === 'POST') {
+      const id = path.split('/')[2]
+      if (body.includes('filename="stale.ics"')) {
+        await route.fulfill(json(409, { status: 409, detail: 'The content changed since the preview' }))
+        return
+      }
+      calendar.sources = calendar.sources.map((source) =>
+        source.id === id ? sourceOf(id, source.name, source.kind, [closedDay('2027-01-04', '2027-01-04', 'Rentrée')]) : source,
+      )
+    } else if (/^\/sources\/[^/]+$/.test(path) && method === 'DELETE') {
+      calendar.sources = calendar.sources.filter((source) => source.id !== path.split('/')[2])
+      await route.fulfill({ status: 204 })
+      return
     }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(calendar) })
+    await route.fulfill(json(200, calendar))
   })
   await page.route('**/api/tenant/retention-settings', async (route) => {
     if (route.request().method() === 'GET') {

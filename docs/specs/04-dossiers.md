@@ -1097,13 +1097,28 @@ D-CAL-API, D-CAL-PROMO-2).
 - **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié ; la
   réponse porte `entries`, `sources` et `holidays` calculé) ; `POST /api/tenant/calendar/belgian-federal-holidays`
   crée ou recharge la source `BE_FEDERAL` (années courante et suivante, fuseau du tenant).
+  - **Sources ICS par fichier** (multipart, D-CAL-ICS, D-CAL-ICS-PREVIEW) : `POST .../sources/preview` (`name`, `file`) et
+    `POST .../sources/{id}/preview` (`file`) rendent l'aperçu sans rien écrire (jours ajoutés, retirés, masqués par un jour
+    ouvré forcé, événements ignorés par motif, SHA-256, nombre de périodes) ; `POST .../sources` (`name`, `file`,
+    `expectedSha256`, 201) et `POST .../sources/{id}/reload` (`file`, `expectedSha256`) appliquent ; `DELETE
+    .../sources/{id}` (204) supprime la source et ses jours.
+  - Codes : 400 (fichier illisible, de plus de 1 Mio ou de plus de 5 000 événements, nom vide, source `BE_FEDERAL`
+    rechargée par fichier), 404 (source d'un autre tenant ou inconnue), 409 (nom déjà pris, ignorant la casse, ou
+    contenu différent de celui de l'aperçu), 403 (hors `TENANT_ADMIN` ou sans jeton CSRF).
+  - Lecture : `Ical4jIcsCalendarParser` (ical4j 4.4.0, infrastructure seulement ; groovy exclu). Journées entières
+    (`VALUE=DATE`, `DTEND` exclusif, `DURATION` admise, un jour sans fin) ; `RRULE`, `RDATE` et `EXDATE` déroulés de
+    l'année N-1 à N+2 dans le fuseau du tenant, une fréquence plus fine que quotidienne étant refusée ; événements
+    horaires, `CANCELLED` et `TRANSPARENT` écartés et comptés ; 10 000 périodes au plus. Aucun appel réseau
+    (`ical4j.properties`).
 - **Écran** : Admin → Types → Calendrier. Formulaire Du / Au / nature / libellé (`CalendarEntryForm`), tableau trié
   des saisies et des jours de source (`CalendarEntryList`, jour de source recouvert par un jour ouvré forcé signalé),
-  sources (`CalendarSourcesPanel`).
+  sources (`CalendarSourcesPanel` : ajout d'un fichier `.ics`, rechargement, suppression après confirmation) et boîte
+  d'aperçu avant import (`CalendarImportPreview` : modale, focus piégé, Échap annule).
 - **Promotion.** L'artefact `CALENDAR` est un instantané complet (saisies et sources déroulées, sans URL) ; un ancien
   bundle à liste plate s'importe en saisies manuelles. Une source de même nom garde son identifiant ; une source absente
   du bundle est supprimée.
 - **Tests.** `CalendarEntryTest`, `TenantCalendarTest`, `BusinessCalendarTest`, `ManageTenantCalendarUseCaseImplTest`,
   `TenantCalendarApiTest` (chaîne HTTP et sécurité, isolation du tenant), `TenantCalendarEntriesMigrationIT`,
-  `TypeSettingsArtifactsCalendarTest` ; Vitest (`TenantCalendarPanel`, `CalendarEntryForm`, `CalendarEntryList`,
-  `CalendarSourcesPanel`) et Playwright `E2E-CAL-1` à `3`.
+  `TypeSettingsArtifactsCalendarTest`, `Ical4jIcsCalendarParserTest` ; Vitest (`TenantCalendarPanel`,
+  `CalendarEntryForm`, `CalendarEntryList`, `CalendarSourcesPanel`, `CalendarImportPreview`) et Playwright `E2E-CAL-1`
+  à `8`.

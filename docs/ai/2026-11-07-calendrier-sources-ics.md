@@ -36,20 +36,20 @@ Issue : #33 · Spec du domaine : docs/specs/04-dossiers.md · Points du registre
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Modèle, saisie manuelle, changeset 047, source `BE_FEDERAL`, promotion v2, écran | livré (à pousser) | — |
-| 2 | Sources ICS par fichier : ical4j, aperçu/application SHA-256, rechargement, suppression | à faire | — |
+| 1 | Modèle, saisie manuelle, changeset 047, source `BE_FEDERAL`, promotion v2, écran | livré | a10e1d7b |
+| 2 | Sources ICS par fichier : ical4j, aperçu/application SHA-256, rechargement, suppression | livré | voir commit |
 | 3 | Sources ICS par URL : fetcher anti-SSRF, URL chiffrée et masquée | à faire | — |
 | 4 | Revue indépendante, documentation de clôture, suppression de ce document | à faire | — |
 
-Prochaine action : lot 2.
+Prochaine action : lot 3.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
-| 2026-11-07 | `./mvnw verify -Dmaven.compiler.release=21 -Dskip.frontend=true` (PostgreSQL 16 local, root) | voir PR |
-| 2026-11-07 | `cd frontend && npx vitest run src/components/admin/` | 24 passés |
-| 2026-11-07 | `cd frontend && npx playwright test e2e/pilotage-admin-types.spec.ts` | 18 passés |
+| 2026-11-07 | `./mvnw verify -Dmaven.compiler.release=21` (frontend compris, PostgreSQL 16 local, `max_connections=800`) après le lot 2 | 4 327 tests, 0 échec, `BUILD SUCCESS` |
+| 2026-11-07 | `cd frontend && npm run lint && npx vitest run` | lint propre, 884 tests passés |
+| 2026-11-07 | `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test e2e/pilotage-admin-types.spec.ts -g E2E-CAL` | 8 passés (`E2E-CAL-1` à `8`) |
 | 2026-11-07 | `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture

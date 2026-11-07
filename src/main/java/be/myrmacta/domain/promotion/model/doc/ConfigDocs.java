@@ -173,6 +173,25 @@ public final class ConfigDocs {
     }
 
     /**
+     * TODO §123 — version active d'un gabarit de notification pour une combinaison (clé, variante, langue) ;
+     * variante et langue vides = valeur par défaut. Les champs sont normalisés comme à la création d'un gabarit (objet sans blancs de
+     * tête ni de fin, corps HTML blanc = pas de corps HTML), pour que la comparaison avec la cible converge.
+     */
+    public record NotificationTemplateDoc(
+            String templateKey, String variantKey, String locale, String label, String subject, String textBody, String htmlBody) {
+
+        public NotificationTemplateDoc {
+            java.util.Objects.requireNonNull(templateKey, "templateKey");
+            variantKey = be.myrmacta.domain.notification.template.NotificationTemplateSupport.normalizeOptional(variantKey);
+            locale = be.myrmacta.domain.notification.template.NotificationTemplateSupport.normalizeOptional(locale);
+            label = be.myrmacta.domain.notification.template.NotificationTemplateSupport.normalizeOptional(label);
+            subject = subject == null ? "" : subject.trim();
+            textBody = textBody == null ? "" : textBody;
+            htmlBody = htmlBody == null || htmlBody.isBlank() ? null : htmlBody;
+        }
+    }
+
+    /**
      * TODO §117 (D-PROMO-PARCOURS) — définition d'un parcours. {@code inSync} (repère de l'export, hors comparaison) : faux si, sur
      * la source, la définition a changé depuis sa dernière compilation ou si le processus déployé n'est pas cette compilation.
      */

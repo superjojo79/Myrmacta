@@ -207,7 +207,18 @@ class ConfigurationPromotionUseCaseTest {
                         new TypeSettingsArtifacts(TENANT, CODEC, types, workflowConfigs, replyWorkflows, deadlines,
                                 emptyCalendar()),
                         new DocumentTemplateArtifacts(TENANT, templateCodec, templateRepo, createTemplate, templateSyntax, 1000),
-                        new ParcoursArtifacts(TENANT, CODEC, parcoursRepo, manageParcours, workflowDeployment)));
+                        new ParcoursArtifacts(TENANT, CODEC, parcoursRepo, manageParcours, workflowDeployment),
+                        emptyNotificationTemplates()));
+    }
+
+    /** TODO §123 — les gabarits de notification ont leur propre test ({@code NotificationTemplateArtifactsTest}). */
+    private static be.myrmacta.domain.promotion.artifact.NotificationTemplateArtifacts emptyNotificationTemplates() {
+        var repository = mock(be.myrmacta.domain.notification.template.port.out.NotificationTemplateRepository.class);
+        when(repository.pageByTenantId(any(), any(), any())).thenReturn(be.myrmacta.domain.shared.PageResult.of(List.of(), 0, 100, 0));
+        return new be.myrmacta.domain.promotion.artifact.NotificationTemplateArtifacts(TENANT, CODEC, repository,
+                mock(be.myrmacta.domain.notification.template.port.in.CreateNotificationTemplateUseCase.class),
+                mock(be.myrmacta.domain.notification.template.port.out.NotificationTemplateChecker.class),
+                be.myrmacta.domain.notification.template.model.NotificationTemplateLimits.DEFAULTS);
     }
 
     private static TenantCalendarRepository emptyCalendar() {

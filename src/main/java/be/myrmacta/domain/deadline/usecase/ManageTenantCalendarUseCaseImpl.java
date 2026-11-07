@@ -140,7 +140,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
             download = download(snapshot, name, sourceId, url);
             parsed = parse(snapshot, download.content());
         } catch (IllegalArgumentException failure) {
-            recordFailure(sourceId, failure);
+            recordFailure(snapshot, sourceId, failure);
             throw failure;
         }
         return commit(actor, name, sourceId, parsed, download.origin(), expectedSha256);
@@ -209,8 +209,10 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
      * Un rechargement en échec garde ses jours et retient l'erreur, que l'on voit ensuite sur la source. La source est
      * relue sous verrou : un autre administrateur a pu la recharger avec succès pendant ce téléchargement.
      */
-    private void recordFailure(UUID sourceId, IllegalArgumentException failure) {
-        if (sourceId == null) {
+    private void recordFailure(TenantCalendar snapshot, UUID sourceId, IllegalArgumentException failure) {
+        // Pas de verrou, donc pas de ligne par défaut créée, pour une source qui n'existe pas (ou plus) en tout cas.
+        if (sourceId == null || snapshot.sources().stream()
+                .noneMatch(source -> source.id().equals(sourceId) && source.kind() == CalendarSource.Kind.ICS_URL)) {
             return;
         }
         repository.locked(tenantId, () -> {

@@ -1116,7 +1116,7 @@ D-CAL-API, D-CAL-PROMO-2).
     l'année N-1 à N+2 dans le fuseau du tenant, une fréquence plus fine que quotidienne étant refusée ; événements
     horaires, `CANCELLED` et `TRANSPARENT` écartés et comptés ; 10 000 périodes au plus. Les `RECURRENCE-ID` retirent
     l'occurrence remplacée de la série. L'empreinte (SHA-256) porte sur les périodes lues et leurs libellés, pas sur
-    les octets. Aucun appel réseau (`ical4j.properties`).
+    les octets. La lecture est bornée à 5 s de CPU (400 au-delà). Aucun appel réseau (`ical4j.properties`).
   - **Concurrence.** Les écritures passent par `TenantCalendarRepository.locked` (verrou de la ligne `tenant_calendar`,
     une transaction) ; le téléchargement se fait avant, hors verrou. Les plafonds, les noms et l'empreinte sont
     revérifiés sous verrou, et une opération sur une source ne réécrit jamais les saisies manuelles.

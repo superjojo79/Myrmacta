@@ -395,4 +395,30 @@ class OutboundUrlGuardTest {
         }
         assertThat(strict.resolveSafe("https://[2606:4700:4700::1111]/").address().isLoopbackAddress()).isFalse();
     }
+
+    /** TODO §121 (seconde revue de #33) — plages réservées de l'IANA qui ne sont pas l'Internet public. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://198.18.0.1/", "https://198.19.255.254/", // 198.18.0.0/15 : bancs d'essai, proxys « fake-IP »
+        "https://[::ffff:c612:1]/", // 198.18.0.1 en IPv4-mappée
+        "https://192.0.0.170/", "https://192.0.0.8/", // 192.0.0.0/24 : protocole IETF
+        "https://240.0.0.1/", "https://250.1.2.3/", "https://255.255.255.255/", // 240.0.0.0/4 : réservé et diffusion
+        "https://[64:ff9b:1::7f00:1]/", "https://[64:ff9b:1:ffff::1]/", // NAT64 à usage local (RFC 8215), tout le /48
+        "https://[::ffff:0:7f00:1]/", "https://[::ffff:0:a00:5]/", // IPv4 traduite (SIIT) vers une IPv4 interne
+        "https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/" // Teredo
+    })
+    void reservedSpecialPurposeRanges_areRejected(String url) {
+        assertThatThrownBy(() -> strict.assertSafe(url)).as(url).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://198.17.255.255/", "https://198.20.0.1/", // de part et d'autre de 198.18.0.0/15
+        "https://192.0.1.1/", "https://191.255.255.255/", // autour de 192.0.0.0/24
+        "https://[2001:db9::1]/", "https://[2001:4860:4860::8844]/", // hors Teredo 2001::/32
+        "https://[::ffff:0808:0808]/", "https://[64:ff9b::808:808]/", "https://[::ffff:0:808:808]/" // vers 8.8.8.8
+    })
+    void addressesNextToTheReservedRanges_stayAcceptedWhenPublic(String url) {
+        assertThatCode(() -> strict.assertSafe(url)).as(url).doesNotThrowAnyException();
+    }
 }

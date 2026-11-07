@@ -13,10 +13,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /** TODO §121 (D-CAL-ICS) — journées entières, récurrences N-1 à N+2, événements écartés, plafonds, aucun réseau. */
 class Ical4jIcsCalendarParserTest {
@@ -222,6 +224,84 @@ class Ical4jIcsCalendarParserTest {
 
         assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"), d("2026-01-19"));
         assertThat(parsed.ignored()).containsEntry(IcsIgnoreReason.TIMED, 1);
+    }
+
+    // TODO §121 (seconde revue de #33) — borne de temps : une récurrence qui part de l'an 1 oblige ical4j à parcourir chaque
+    // jour jusqu'à la fenêtre (environ 64 ms par événement) sans produire une seule période, donc sans que le plafond de
+    // 10 000 périodes ne se déclenche. 5 000 événements de 116 octets tiennent sous 1 Mio : environ cinq minutes de CPU.
+    @Test
+    @Timeout(15)
+    void aFileWhoseRecurrencesAreTooExpensiveToUnrollIsRefusedWithinTheTimeBudget() {
+        Ical4jIcsCalendarParser tight = new Ical4jIcsCalendarParser(Duration.ofMillis(300));
+        StringBuilder events = new StringBuilder();
+        for (int i = 0; i < 150; i++) {
+            events.append(event("lent" + i, "DTSTART;VALUE=DATE:00010101", "RRULE:FREQ=DAILY;COUNT=2023;BYMONTH=1;BYMONTHDAY=1", "SUMMARY:Lent"));
+        }
+        long start = System.nanoTime();
+
+        assertThatThrownBy(() -> tight.parse(ics(events.toString()), BRUSSELS, 2025, 2028))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("too expensive");
+
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
+    }
+
+    @Test
+    void theRecurrenceWindowIncludesBothEdgeDaysAndNothingBeyond() {
+        ParsedIcs newYear = parser.parse(ics(event("a", "DTSTART;VALUE=DATE:19900101", "RRULE:FREQ=YEARLY", "SUMMARY:Jour de l'an")), BRUSSELS, 2025, 2028);
+        ParsedIcs newYearsEve = parser.parse(ics(event("b", "DTSTART;VALUE=DATE:19901231", "RRULE:FREQ=YEARLY", "SUMMARY:Saint-Sylvestre")),
+                BRUSSELS, 2025, 2028);
+
+        assertThat(newYear.closedDays()).extracting(CalendarEntry::start)
+                .containsExactly(d("2025-01-01"), d("2026-01-01"), d("2027-01-01"), d("2028-01-01"));
+        assertThat(newYearsEve.closedDays()).extracting(CalendarEntry::start)
+                .containsExactly(d("2025-12-31"), d("2026-12-31"), d("2027-12-31"), d("2028-12-31"));
+    }
+
+    @Test
+    void anOccurrenceStartedBeforeTheWindowButOverlappingItIsKept() {
+        // Congé du 30 décembre au 2 janvier, chaque année. Celui de 2024 recouvre le 1er et le 2 janvier 2025 (début de la
+        // fenêtre) ; celui qui commence le 30 décembre 2026 démarre dans la fenêtre et déborde sur 2027.
+        ParsedIcs parsed = parser.parse(ics(event("c", "DTSTART;VALUE=DATE:20241230", "DTEND;VALUE=DATE:20250103", "RRULE:FREQ=YEARLY", "SUMMARY:Congé")),
+                BRUSSELS, 2025, 2026);
+
+        assertThat(parsed.closedDays()).containsExactly(closed("2024-12-30", "2025-01-02", "Congé"), closed("2025-12-30", "2026-01-02", "Congé"),
+                closed("2026-12-30", "2027-01-02", "Congé"));
+    }
+
+    @Test
+    void theDefaultBudgetLeavesRoomForARealCalendar() {
+        StringBuilder events = new StringBuilder();
+        for (int i = 0; i < 300; i++) {
+            events.append(event("e" + i, "DTSTART;VALUE=DATE:19900101", "RRULE:FREQ=YEARLY", "SUMMARY:Annuel " + i));
+        }
+
+        assertThat(parser.parse(ics(events.toString()), BRUSSELS, 2025, 2028).closedDays()).hasSize(300 * 4);
+    }
+
+    // TODO §121 (seconde revue de #33) — la forme canonique doit être injective : un libellé qui contient les séparateurs
+    // ne peut pas se faire passer pour deux périodes.
+    @Test
+    void theShaCannotBeForgedByALabelThatContainsTheSeparators() {
+        String forged = event("a", "DTSTART;VALUE=DATE:20260105", "SUMMARY:A\\n2026-02-02|2026-02-02|B");
+        String genuine = event("a", "DTSTART;VALUE=DATE:20260105", "SUMMARY:A") + event("b", "DTSTART;VALUE=DATE:20260202", "SUMMARY:B");
+
+        ParsedIcs one = parser.parse(ics(forged), BRUSSELS, 2025, 2028);
+        ParsedIcs two = parser.parse(ics(genuine), BRUSSELS, 2025, 2028);
+
+        assertThat(one.closedDays()).hasSize(1);
+        assertThat(two.closedDays()).hasSize(2);
+        assertThat(one.sha256()).isNotEqualTo(two.sha256());
+    }
+
+    @Test
+    void labelsThatDifferOnlyByTheirLengthOrSeparatorPositionDoNotCollide() {
+        ParsedIcs a = parser.parse(ics(event("a", "DTSTART;VALUE=DATE:20260105", "SUMMARY:x|y") + event("b", "DTSTART;VALUE=DATE:20260106", "SUMMARY:z")),
+                BRUSSELS, 2025, 2028);
+        ParsedIcs b = parser.parse(ics(event("a", "DTSTART;VALUE=DATE:20260105", "SUMMARY:x") + event("b", "DTSTART;VALUE=DATE:20260106", "SUMMARY:y|z")),
+                BRUSSELS, 2025, 2028);
+
+        assertThat(a.sha256()).isNotEqualTo(b.sha256());
     }
 
     @Test

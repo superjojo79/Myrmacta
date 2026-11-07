@@ -709,6 +709,19 @@ class ManageTenantCalendarUseCaseImplTest {
         assertThatThrownBy(() -> useCase.deleteSource(ADMIN, id)).isInstanceOf(CalendarSourceNotFoundException.class);
     }
 
+    // TODO §121 (seconde revue de #33) — un rechargement refusé d'une source inconnue ne prend pas le verrou : il ne doit pas
+    // créer la ligne de réglage par défaut (qui ferait annoncer UPDATE au lieu de CREATE à la promotion).
+    @Test
+    void aRefusedReloadOfAnUnknownSourceTakesNoLockAndCreatesNoRow() {
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, UUID.randomUUID(), "ftp://exemple.org/a.ics", "abc"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> useCase.applyUrlSource(ADMIN, null, UUID.randomUUID(), URL, "abc"))
+                .isInstanceOf(CalendarSourceNotFoundException.class);
+
+        assertThat(repository.lockRuns).isZero();
+        assertThat(repository.stored).isNull();
+    }
+
     /** Téléchargeur de test : rend ce qu'on lui a préparé et garde les URL demandées. */
     private static final class StubFetcher implements IcsFetcher {
 
@@ -759,6 +772,7 @@ class ManageTenantCalendarUseCaseImplTest {
         final List<String> unlockedWrites = new ArrayList<>();
         int saves;
         int touches;
+        int lockRuns;
         private boolean inLock;
         /** Une modification concurrente, jouée au moment où le verrou est pris (après les lectures hors verrou). */
         Runnable beforeLock;
@@ -771,6 +785,7 @@ class ManageTenantCalendarUseCaseImplTest {
 
         @Override
         public <T> T locked(String tenantId, java.util.function.Supplier<T> work) {
+            lockRuns++;
             if (beforeLock != null) {
                 Runnable concurrent = beforeLock;
                 beforeLock = null;

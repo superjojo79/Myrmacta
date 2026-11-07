@@ -104,6 +104,43 @@ class TypeSettingsArtifactsCalendarTest {
         assertThat(target.lockedRuns).isEqualTo(1);
     }
 
+    // TODO §121 (seconde revue de #33) — l'URL ne voyage pas : une source par URL déjà ici, de même nom, garde la sienne ;
+    // sa forme masquée doit donc rester, faute de quoi la source afficherait « URL à ressaisir » et perdrait son secret.
+    @Test
+    void aSameNameUrlSourceKeepsItsMaskedUrlWhenABundleReplacesItsDays() {
+        CalendarSource here = new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_URL, List.of(), Instant.parse("2026-11-07T10:00:00Z"),
+                "admin", "sha", null, "https://calendar.example.org/…");
+        Memory target = new Memory(new TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(), List.of(here)));
+        TenantCalendar incoming = new TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(),
+                List.of(new CalendarSource(UUID.randomUUID(), "écoles", CalendarSource.Kind.ICS_URL,
+                        List.of(CalendarEntry.day(LocalDate.parse("2027-01-04"), Nature.CLOSED, "Rentrée")), null, "promotion", null, null)));
+        BundleEntry bundle = calendarEntry(artifacts(new Memory(incoming)).export());
+        TypeSettingsArtifacts importer = artifacts(target);
+
+        importer.applyCalendar(bundle, importer.planCalendar(bundle).action());
+
+        assertThat(target.sources).hasSize(1);
+        assertThat(target.sources.getFirst().id()).isEqualTo(here.id());
+        assertThat(target.sources.getFirst().maskedUrl()).isEqualTo("https://calendar.example.org/…");
+        assertThat(target.sources.getFirst().closedDays()).hasSize(1);
+    }
+
+    @Test
+    void aBundleSourceOfAnotherKindDoesNotInheritTheMaskedUrl() {
+        CalendarSource here = new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_URL, List.of(), null, "admin", "sha", null,
+                "https://calendar.example.org/…");
+        Memory target = new Memory(new TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(), List.of(here)));
+        TenantCalendar incoming = new TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(),
+                List.of(new CalendarSource(UUID.randomUUID(), "Écoles", CalendarSource.Kind.ICS_FILE, List.of(), null, "promotion", null, null)));
+        BundleEntry bundle = calendarEntry(artifacts(new Memory(incoming)).export());
+        TypeSettingsArtifacts importer = artifacts(target);
+
+        importer.applyCalendar(bundle, importer.planCalendar(bundle).action());
+
+        assertThat(target.sources.getFirst().kind()).isEqualTo(CalendarSource.Kind.ICS_FILE);
+        assertThat(target.sources.getFirst().maskedUrl()).isNull();
+    }
+
     @Test
     void importingAgainOverTheSameCalendarIsUnchanged_andWritesNothing() {
         Memory target = new Memory(populated());

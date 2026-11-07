@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -48,6 +49,23 @@ import net.fortuna.ical4j.transform.recurrence.Frequency;
 @org.springframework.stereotype.Component
 class Ical4jIcsCalendarParser implements IcsCalendarParser {
 
+    /**
+     * Budget de temps de la lecture (seconde revue de #33). Une récurrence qui part de l'an 1 coûte environ 64 ms par
+     * événement à dérouler jusqu'à la fenêtre sans produire de période : 5 000 événements tiendraient sous 1 Mio et
+     * occuperaient un fil cinq minutes. Vérifié avant chaque événement : la lecture s'arrête au plus un événement après.
+     */
+    static final Duration DEFAULT_BUDGET = Duration.ofSeconds(5);
+
+    private final long budgetNanos;
+
+    Ical4jIcsCalendarParser() {
+        this(DEFAULT_BUDGET);
+    }
+
+    Ical4jIcsCalendarParser(Duration budget) {
+        this.budgetNanos = budget.toNanos();
+    }
+
     @Override
     public ParsedIcs parse(byte[] content, ZoneId zone, int fromYear, int toYear) {
         if (content == null || content.length == 0) {
@@ -62,11 +80,18 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
         if (events.size() > MAX_EVENTS) {
             throw new IllegalArgumentException("calendar has more than " + MAX_EVENTS + " events");
         }
-        Period<LocalDate> window = new Period<>(LocalDate.of(fromYear, 1, 1), LocalDate.of(toYear + 1, 1, 1));
+        // Les bornes d'un Period d'ical4j sont incluses : la fenêtre finit le 31 décembre de la dernière année, sinon une règle
+        // au 1er janvier produirait une occurrence de l'année suivante.
+        Period<LocalDate> window = new Period<>(LocalDate.of(fromYear, 1, 1), LocalDate.of(toYear, 12, 31));
         Map<IcsIgnoreReason, Integer> ignored = new EnumMap<>(IcsIgnoreReason.class);
         List<CalendarEntry> entries = new ArrayList<>();
         Map<String, Set<LocalDate>> overridden = overriddenOccurrences(events, zone);
+        long deadline = System.nanoTime() + budgetNanos;
         for (VEvent event : events) {
+            if (System.nanoTime() > deadline) {
+                throw new IllegalArgumentException("calendar file is too expensive to read (more than "
+                        + Duration.ofNanos(budgetNanos).toSeconds() + " s): recurrences starting very long ago cannot be unrolled");
+            }
             try {
                 Set<LocalDate> skipped = event.getProperty(Property.RECURRENCE_ID).isPresent()
                         ? Set.of() : overridden.getOrDefault(uidOf(event), Set.of());
@@ -143,6 +168,11 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
             }
             LocalDate occurrenceEnd = occurrence.getEnd() == null || !occurrence.getEnd().isAfter(occurrence.getStart())
                     ? occurrence.getStart().plusDays(1) : occurrence.getEnd();
+            // ical4j rend aussi une occurrence dont la fin (exclusive) touche le début de la fenêtre sans la recouvrir : on ne
+            // garde que celles qui recouvrent un jour de la fenêtre (un congé commencé avant elle y reste).
+            if (occurrenceEnd.minusDays(1).isBefore(window.getStart()) || occurrence.getStart().isAfter(window.getEnd())) {
+                continue;
+            }
             into.add(new CalendarEntry(occurrence.getStart(), occurrenceEnd.minusDays(1), CalendarEntry.Nature.CLOSED, label));
             if (into.size() > CalendarSource.MAX_ENTRIES) {
                 return null;
@@ -205,8 +235,13 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
      * échouerait toujours.
      */
     private static String fingerprint(Collection<CalendarEntry> entries) {
+        // Forme injective : début|fin|longueur:libellé. La longueur du libellé est déclarée, donc un libellé qui contient
+        // « | » ou un saut de ligne ne peut pas se faire passer pour d'autres périodes.
         String canonical = entries.stream()
-                .map(entry -> entry.start() + "|" + entry.end() + "|" + (entry.label() == null ? "" : entry.label()))
+                .map(entry -> {
+                    String label = entry.label() == null ? "" : entry.label();
+                    return entry.start() + "|" + entry.end() + "|" + label.length() + ":" + label;
+                })
                 .sorted()
                 .collect(java.util.stream.Collectors.joining("\n"));
         return sha256(canonical.getBytes(StandardCharsets.UTF_8));

@@ -35,7 +35,11 @@ VEVENT « journée entière » (`DTSTART;VALUE=DATE`, `DTEND` exclusif ; plusieu
 comptés dans l'aperçu : événements horaires, `STATUS:CANCELLED`, `TRANSP:TRANSPARENT`. `RRULE`, `RDATE` et `EXDATE`
 sont déroulés de l'année N-1 à N+2 (fuseau du tenant) et réévalués à chaque rechargement. Plafonds : 1 Mio par fichier,
 5 000 VEVENT. Le résumé (`SUMMARY`) devient le libellé, tronqué à 120 caractères. Une fréquence plus fine que
-quotidienne est refusée (événement `INVALID`).
+quotidienne est refusée (événement `INVALID`). Les bornes de la fenêtre sont incluses (du 1er janvier de N-1 au 31 décembre
+de N+2) ; une occurrence qui la recouvre sans y commencer est retenue.
+- **Budget de temps (seconde revue de #33).** La lecture s'arrête, en 400, au-delà de 5 s de CPU : une récurrence qui
+  part de l'an 1 coûte environ 64 ms à dérouler sans produire de période, et 5 000 événements tiendraient sous 1 Mio.
+  Le budget est vérifié avant chaque événement.
 - **Surcharges d'occurrence (`RECURRENCE-ID`).** Un VEVENT de même UID qu'une série en remplace une occurrence : celle-ci
   quitte la série (annulée, déplacée ou rendue transparente), le VEVENT de remplacement est lu comme un événement à part.
   Sans série dans le fichier, il n'ôte rien. `RANGE=THISANDFUTURE` n'est pas géré (traité comme une occurrence).
@@ -44,7 +48,9 @@ quotidienne est refusée (événement `INVALID`).
 surcharge manuelle, les événements ignorés par motif et le SHA-256. L'application renvoie le SHA-256 attendu ; si le
 contenu a changé entre-temps : 409. **L'empreinte décrit ce que le fichier donne** (périodes et libellés, triés), non
 ses octets : une source par URL est téléchargée une fois pour l'aperçu et une fois pour l'application, et certains
-agendas en ligne régénèrent `DTSTAMP` ou `PRODID` à chaque téléchargement (revue de #33).
+agendas en ligne régénèrent `DTSTAMP` ou `PRODID` à chaque téléchargement (revue de #33). La forme canonique est
+injective (`début|fin|longueur:libellé`) : un libellé qui contient des séparateurs ne peut pas se faire passer pour
+d'autres périodes.
 
 **D-CAL-ICS-URL** — https seulement, via `OutboundUrlGuard` et `PinnedHttpClient` (§44). Délai de 10 s au total
 (connexion 10 s, lecture 5 s par lecture, corps coupé au-delà de 10 s), 1 Mio au plus, aucune redirection suivie,
@@ -54,7 +60,8 @@ d'erreur (seul l'hôte y figure) et de l'export. Une URL avec identifiants (`use
 Rechargement manuel par un bouton ; aucun job planifié.
 - **Garde réseau (revue de #33).** `OutboundUrlGuard` contrôle l'adresse qu'il fige, pas seulement la graphie de l'hôte :
   une IPv6 littérale qui désigne une adresse interne (IPv4-mappée en hexadécimal, `::1` en forme longue, `::`, IPv4-
-  compatible, NAT64 `64:ff9b::/96`, 6to4 `2002::/16`) est refusée comme sa forme IPv4. Le délai de 10 s est tenu par un
+  compatible, NAT64 `64:ff9b::/96`, 6to4 `2002::/16`, IPv4 traduite `::ffff:0:a.b.c.d`) est refusée comme sa forme IPv4. Sont
+  refusés aussi `198.18.0.0/15`, `192.0.0.0/24`, `240.0.0.0/4`, le NAT64 local `64:ff9b:1::/48` et Teredo `2001::/32`. Le délai de 10 s est tenu par un
   chien de garde qui coupe la connexion, en-têtes de réponse comprises.
 - **Rechargement.** Sans URL dans la requête, le serveur relit celle qu'il conserve ; avec une URL, il la remplace. Une
   source importée par promotion n'a pas d'URL : l'écran dit « URL à ressaisir ». Si la clé de chiffrement a changé et

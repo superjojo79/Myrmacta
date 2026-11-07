@@ -202,10 +202,28 @@ public class OutboundUrlGuard {
             if (b0 == 100 && b1 >= 64 && b1 <= 127) {
                 return true;
             }
+            int b2 = bytes[2] & 0xff;
+            // 198.18.0.0/15 : bancs d'essai, que des proxys « fake-IP » utilisent en interne.
+            if (b0 == 198 && (b1 == 18 || b1 == 19)) {
+                return true;
+            }
+            // 192.0.0.0/24 : protocole IETF. 240.0.0.0/4 : réservé, diffusion 255.255.255.255 comprise.
+            if ((b0 == 192 && b1 == 0 && b2 == 0) || b0 >= 240) {
+                return true;
+            }
         }
         if (bytes.length == 16) {
             // IPv6 unique local addresses fc00::/7 — not covered by isSiteLocalAddress().
             if ((bytes[0] & 0xfe) == 0xfc) {
+                return true;
+            }
+            // NAT64 à usage local 64:ff9b:1::/48 (RFC 8215) : l'IPv4 n'y est pas toujours aux mêmes octets, tout est refusé.
+            if (bytes[0] == 0x00 && bytes[1] == 0x64 && (bytes[2] & 0xff) == 0xff && (bytes[3] & 0xff) == 0x9b
+                    && bytes[4] == 0x00 && bytes[5] == 0x01) {
+                return true;
+            }
+            // Teredo 2001::/32 : l'adresse du serveur et du client sont obfusquées dans l'adresse.
+            if (bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] == 0x00 && bytes[3] == 0x00) {
                 return true;
             }
             return embedsBlockedIpv4(bytes);
@@ -229,8 +247,13 @@ public class OutboundUrlGuard {
             nat64 &= bytes[i] == 0;
         }
         boolean sixToFour = (bytes[0] & 0xff) == 0x20 && bytes[1] == 0x02;
+        // IPv4 traduite (SIIT, RFC 6145) : ::ffff:0:a.b.c.d, soit 0:0:0:0:ffff:0:a.b.c.d.
+        boolean siit = (bytes[8] & 0xff) == 0xff && (bytes[9] & 0xff) == 0xff && bytes[10] == 0 && bytes[11] == 0;
+        for (int i = 0; i < 8 && siit; i++) {
+            siit &= bytes[i] == 0;
+        }
         byte[] embedded;
-        if (compatible || nat64) {
+        if (compatible || nat64 || siit) {
             embedded = new byte[] {bytes[12], bytes[13], bytes[14], bytes[15]};
         } else if (sixToFour) {
             embedded = new byte[] {bytes[2], bytes[3], bytes[4], bytes[5]};

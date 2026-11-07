@@ -36,7 +36,7 @@ Le process de tri de l'exemple (`tri-courrier.bpmn20.xml`) :
 1. ouvre le courrier (première étape **asynchrone** : le courrier routé ne doit pas être clôturé avant la confirmation du
    démarrage) ;
 2. **Rattacher au fil** (`attachToThreadTask`, §4) : une réponse à un fil connu le rejoint et est classée ;
-3. sinon, accuse réception d'un e-mail attesté (ci-dessous), puis prépare les entrées et appelle la **table de routage**
+3. sinon, ouvre en parallèle l'accusé de réception d'un e-mail attesté (ci-dessous) et prépare les entrées et appelle la **table de routage**
    (`routageCourrier` : canal, domaine de l'expéditeur) ;
 4. **Router le courrier** (`routeMailTask`, D-MAILROOM-ROUTE) :
    - `OUVRIR` : crée le dossier métier lié, y démarre le process pour le groupe désigné (le groupe est porté par le lien,
@@ -57,9 +57,11 @@ gabarit (`config/gabarit-accuse-reception.json`, objet, texte et HTML) cite l'ob
   (SFTP, dépôt) n'a pas d'adresse, `mailFrom` n'étant posé que par le connecteur e-mail.
 - **Pas de boucle.** L'e-mail sortant porte `Auto-Submitted: auto-generated`, et un message automatique reçu par un connecteur
   e-mail est refusé, jamais devenu un dossier.
-- **Échec visible.** L'étape étant asynchrone, un gabarit sans version active, un rendu en échec ou une adresse inutilisable
-  créent un incident rejouable sur le tri (bandeau d'incident de la fiche, Admin → Incidents) ; le routage de ce courrier
-  attend le rejeu. L'activation du gabarit fait partie de l'installation de l'exemple ; la démo reproductible (§10) l'installe.
+- **Branche parallèle, échec isolé.** Sur la voie « nouveau courrier », une passerelle parallèle ouvre la branche « accusé »
+  (sans jointure, avec sa propre fin) à côté du tri et du routage, et sa première étape est asynchrone : tout son travail
+  tourne dans son propre job. Un gabarit sans version active, un rendu en échec ou une adresse inutilisable créent un
+  incident rejouable sur cette branche (bandeau d'incident de la fiche, Admin → Incidents) mais **ne retiennent jamais** le
+  routage du courrier ; le process reste ouvert jusqu'au rejeu ou à la clôture de l'incident. L'activation du gabarit fait partie de l'installation de l'exemple ; la démo reproductible (§10) l'installe.
 - **Promotion.** Le gabarit voyage avec les autres artefacts de l'exemple (`NOTIFICATION_TEMPLATE`, version active) ; il
   arrive en brouillon à activer sur la cible.
 
@@ -162,7 +164,7 @@ Voir [GETTING-STARTED](../guides/GETTING-STARTED.md), « Démo de la Digital Mai
 - `MailRoomExampleIT` : e-mail routé, file de tri, fil, réponse forgée, workflow réponse, échéances, minuteur, PDF SFTP,
   dépôt, outils MCP ; accusé de réception (serveur SMTP en mémoire) : un e-mail attesté en reçoit un (objet, référence, date,
   texte et HTML, `Auto-Submitted`), une réponse rattachée à son fil, un courrier papier et un expéditeur non attesté n'en
-  reçoivent aucun ; le gabarit voyage dans le bundle ;
+  reçoivent aucun ; sans gabarit actif, l'accusé est en incident mais le courrier est routé ; le gabarit voyage dans le bundle ;
 - `McpEndpointApiTest` : outils de la mail room par la chaîne M2M, appel sans JWT refusé ;
 - `MailRoomDemoSeederIT` (profil `embedded-db`) ;
 - tests unitaires des briques, du job, des connecteurs et des outils ;

@@ -478,6 +478,54 @@ class MailRoomExampleIT {
         assertAcknowledgements(sender, 1);
     }
 
+    /**
+     * Issue #19 — l'accusé vit dans une branche parallèle : sans gabarit actif, son job échoue (incident, aucun e-mail), mais
+     * le courrier est quand même routé, et le tri se poursuit.
+     */
+    @Test
+    void aFailingAcknowledgementNeverHoldsBackTheRouting() throws Exception {
+        configureTheExample();
+        RequestPostProcessor admin = user("admin-courrier", "TENANT_ADMIN");
+        String templateId = JSON.readTree(mockMvc.perform(get("/api/notification-templates/resolve")
+                        .param("templateKey", "accuse-reception-courrier").with(admin))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("id").asString();
+        mockMvc.perform(post("/api/notification-templates/{id}/archive", templateId).with(admin).with(csrf()))
+                .andExpect(status().isOk());
+        String sender = "sansgabarit@expediteur.example";
+        try {
+            deliver(new ImapMailbox.Mail("<sansgabarit@expediteur.example>", sender, "Expéditeur", "Demande sans gabarit",
+                    Instant.parse("2026-10-30T10:00:00Z"), "Bonjour", false,
+                    "mx.example.com; dmarc=pass header.from=expediteur.example", List.of(), 0));
+            String mailId = awaitMailDossier("Demande sans gabarit");
+            ProcessInstance sorting = awaitSortingTask(mailId);
+            // Le courrier est routé (ici à la file de tri) malgré l'échec de l'accusé.
+            assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("routageResultat", "A_TRIER")
+                    .containsEntry("accuseReception", true);
+            assertThat(read(get("/api/dossiers/{id}/workflows", mailId)).get("content").get(0).get("status").asString())
+                    .isEqualTo("A_TRIER");
+            // L'accusé est en incident sur sa branche, et rien n'est parti.
+            Instant deadline = Instant.now().plus(Duration.ofSeconds(20));
+            long incidents = 0;
+            while (incidents == 0 && Instant.now().isBefore(deadline)) {
+                runJobs();
+                incidents = managementService.createDeadLetterJobQuery().processInstanceId(sorting.getId()).count()
+                        + managementService.createJobQuery().processInstanceId(sorting.getId()).withException().count()
+                        // après un échec, le moteur replanifie le job (nouvelle tentative) en « job minuté » avec son exception
+                        + managementService.createTimerJobQuery().processInstanceId(sorting.getId()).withException().count();
+                Thread.sleep(200);
+            }
+            assertThat(incidents).as("incident de l'accusé").isPositive();
+            assertAcknowledgements(sender, 0);
+        } finally {
+            // Les autres tests de la classe partagent le gabarit : nouvelle version, activée.
+            String draftId = JSON.readTree(mockMvc.perform(post("/api/notification-templates/{id}/new-version", templateId)
+                            .with(admin).with(csrf())).andExpect(status().isCreated()).andReturn().getResponse()
+                    .getContentAsString()).get("id").asString();
+            mockMvc.perform(post("/api/notification-templates/{id}/activate", draftId).with(admin).with(csrf()))
+                    .andExpect(status().isOk());
+        }
+    }
+
     /** Issue #19 (CS8) — un courrier papier n'a pas d'adresse à qui répondre : aucun accusé. */
     @Test
     void aPaperMailIsNotAcknowledged() throws Exception {
@@ -693,7 +741,12 @@ class MailRoomExampleIT {
     /** Exécuteur asynchrone coupé : les jobs (première étape du tri) sont exécutés ici, dans l'ordre. */
     private void runJobs() {
         for (var job : managementService.createJobQuery().list()) {
-            managementService.executeJob(job.getId());
+            try {
+                managementService.executeJob(job.getId());
+            } catch (RuntimeException failed) {
+                // Un job en échec (ex. l'accusé de réception sans gabarit) ne doit pas empêcher d'exécuter les autres : il reste
+                // en incident, ce que les tests concernés vérifient.
+            }
         }
     }
 
@@ -724,7 +777,9 @@ class MailRoomExampleIT {
             runJobs();
             ProcessInstance found = runtimeService.createProcessInstanceQuery().processDefinitionKey("triCourrier")
                     .variableValueEquals("dossierId", mailId).singleResult();
-            if (found != null && taskService.createTaskQuery().processInstanceId(found.getId()).count() == 1) {
+            // L'accusé de réception est une branche parallèle asynchrone : on attend aussi qu'elle ait fini (ou échoué pour de bon).
+            if (found != null && taskService.createTaskQuery().processInstanceId(found.getId()).count() == 1
+                    && managementService.createJobQuery().processInstanceId(found.getId()).count() == 0) {
                 return found;
             }
             Thread.sleep(200);

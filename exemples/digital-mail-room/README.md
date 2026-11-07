@@ -31,7 +31,7 @@ Le **registre du courrier** est la liste des dossiers filtrée sur ce type (Doss
   - un e-mail reçu d'un expéditeur **attesté** reçoit un **accusé de réception** (issue #19, §123 D-NOTIF-TPL-ACK) :
     - il est rendu depuis le gabarit `accuse-reception-courrier` (`config/gabarit-accuse-reception.json`) : objet du
       courrier, référence du dossier et date de réception, en texte et en HTML ;
-    - la brique « Notifier » est asynchrone, destinée à l'expéditeur (`notificationTo="variable:mailFrom"`) ; le message
+    - l'accusé est une branche parallèle du tri, avec une brique « Notifier » asynchrone, destinée à l'expéditeur (`notificationTo="variable:mailFrom"`) ; le message
       porte l'en-tête `Auto-Submitted: auto-generated`, et un message automatique reçu ne devient jamais un courrier ;
     - ni un courrier papier (SFTP, dépôt), ni un expéditeur que le serveur de réception n'atteste pas
       (`mailSenderAuthenticated` faux), ni une réponse rattachée à un fil n'en reçoivent : pas d'accusé vers une adresse
@@ -103,13 +103,15 @@ service, le type de dossier, le process et le délai.
   dans la boîte après lui avoir donné un objet.
 - **Accusé de réception :**
   - un serveur d'envoi d'e-mails doit être configuré sur l'instance (canal `EMAIL`) ;
-  - le tri accuse **avant** le routage : l'accusé est un job asynchrone du tri, donc un échec d'envoi du job (gabarit non
-    activé, adresse inutilisable) crée un incident visible et rejouable, qui retient le routage de ce courrier ;
+  - l'accusé vit dans une **branche parallèle** du tri (passerelle parallèle, sans jointure, sa propre fin), dont la première
+    étape est asynchrone : un échec (gabarit non activé, adresse inutilisable) crée un incident visible et rejouable sur
+    cette branche, et **ne retient jamais** le routage du courrier ; le process reste ouvert tant que l'incident n'est pas
+    rejoué ou clos ;
   - le rendu est strict : l'objet du courrier (limité à 200 caractères par l'expression `accuseObjet`, pour tenir dans les
     255 caractères d'un objet d'e-mail) et la date (`dateReception`, UTC) sont calculés en amont, par « Évaluer une expression » ;
   - pour ne pas accuser réception, retirer le gabarit n'y suffit pas : l'accusé est une étape du processus (supprimer la
-    brique « E-mail : accusé de réception » et ses deux calculs).
+    branche « accusé » : passerelle parallèle, calculs et brique « E-mail : accusé de réception »).
 - **Canal :** il vaut `EMAIL` par défaut. Le connecteur SFTP le pose à `PAPIER` (`defaultFields`). La table de routage de
   l'exemple n'a de règle que pour l'e-mail : un courrier papier part donc à la file de tri.
 
-Test de référence : `MailRoomExampleIT`. Un e-mail attesté reçoit un accusé de réception (relu par un serveur SMTP en mémoire : objet, référence, date, texte et HTML), une réponse rattachée à son fil non ; un courrier papier et un expéditeur non attesté n'en reçoivent pas. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre) ; un agent travaille la file de tri par les outils MCP (fil d'une facture, rattachement à blanc puis réel, réaffectation, fin de la tâche de tri).
+Test de référence : `MailRoomExampleIT`. Un e-mail attesté reçoit un accusé de réception (relu par un serveur SMTP en mémoire : objet, référence, date, texte et HTML), une réponse rattachée à son fil non ; un courrier papier et un expéditeur non attesté n'en reçoivent pas ; sans gabarit actif, l'accusé est en incident mais le courrier est quand même routé. Une facture d'un fournisseur connu est routée vers la comptabilité, dans un dossier « facture » lié ; un courrier inconnu va à la file de tri ; la réponse du fournisseur rejoint le dossier « facture » et ouvre un dossier enfant « réponse » où `traiterReponse` démarre ; celle d'un autre domaine non. Le rappel puis l'escalade de l'échéance de la facture sont joués en avançant l'horloge du job ; le minuteur de la réponse est déclenché, et la réponse est clôturée « échue ». Un PDF numérisé et son index deviennent un courrier PAPIER, rangé dans « traités », qui part à la file de tri ; un agent dépose un PDF depuis l'écran « Déposer » (un fichier non PDF est refusé, sans empêcher l'autre) ; un agent travaille la file de tri par les outils MCP (fil d'une facture, rattachement à blanc puis réel, réaffectation, fin de la tâche de tri).

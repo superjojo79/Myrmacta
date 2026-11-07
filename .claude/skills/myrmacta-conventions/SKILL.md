@@ -15,7 +15,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 |--------|--------|
 | Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
 | Workflow | Flowable 8 Community (BPMN 2.0) |
-| Persistence | PostgreSQL + JPA + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `MYRMACTA_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
+| Persistence | PostgreSQL + **JPA seulement** (jamais `JdbcTemplate`, `NamedParameterJdbcTemplate` ni `JdbcClient` : registre §122) + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `MYRMACTA_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
 | Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |
@@ -39,6 +39,11 @@ Règles :
 1. **Dépendance unidirectionnelle** : infrastructure → domain. Jamais l’inverse.
 2. **Domaine pur** : pas d’annotation Spring/JPA/Flowable dans `be.myrmacta.domain`.
 3. **Entités JPA ≠ modèles domaine** : `*JpaEntity` + adaptateur (`*JpaAdapter`) qui mappe (décision n° 17). Les modèles domaine sont des `record` / types immuables.
+   **Persistance en JPA seulement** (registre §122) : entité `*JpaEntity` package-private, dépôt `SpringData*Repository`, adaptateur
+   `Jpa*Adapter`. JPQL par défaut ; `@Query(nativeQuery = true)` pour le SQL propre à PostgreSQL (`insert … on conflict`,
+   `jsonb`), paramétré ; `@Lock(PESSIMISTIC_WRITE)` pour un verrou de ligne ; `@Modifying` pour les écritures groupées. Pas de
+   `JdbcTemplate`, `NamedParameterJdbcTemplate` ni `JdbcClient` : la règle ArchUnit `persistence_goes_through_jpa_only` le
+   vérifie, et sa liste `LEGACY_JDBC_ADAPTERS` (adaptateurs à migrer) ne fait que se raccourcir.
 4. **Ports** : `domain.<bc>.port.in` (use cases) et `port.out` (repos, gateways). Implémentations dans `infrastructure`.
 5. **ArchUnit en CI** : toute violation de frontière fait échouer `./mvnw verify`.
 6. **Use cases** : classes domaine `*UseCase` / `*UseCaseImpl`, câblées par constructeur — pas de `@Service` dans le domaine.
@@ -159,6 +164,7 @@ scripts/changelog-release.sh --preview       # entrées CHANGELOG des PR pas enc
 ## Anti-patterns à refuser
 
 - Annoter le domaine avec Spring/JPA « pour aller plus vite ».
+- Écrire un adaptateur de persistance avec `JdbcTemplate`, `NamedParameterJdbcTemplate` ou `JdbcClient`, ou ajouter une classe à `ArchitectureRulesTest.LEGACY_JDBC_ADAPTERS` : JPA seulement (registre §122).
 - Réintroduire un tenant résolu par requête / `ThreadLocal`.
 - Utiliser iText ou une stack PDF AGPL.
 - Servir le frontend depuis un serveur Node distinct en prod (contredit décision n° 27).

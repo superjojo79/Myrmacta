@@ -93,6 +93,6 @@ absente du bundle est supprimée. Un ancien bundle à liste plate s'importe en l
 échéances déjà posées (§120), demi-journées, calendrier par type, export ICS, vue mensuelle cliquable.
 
 **Impacte.** `CalendarEntry`, `CalendarSource`, `TenantCalendar`, `BusinessCalendar`, `BelgianFederalHolidays`,
-`ManageTenantCalendarUseCase`, `JdbcTenantCalendar`, changesets 047 et 048, `PinnedHttpClient`, `HttpsIcsFetcher`,
+`ManageTenantCalendarUseCase`, `JpaTenantCalendarRepositoryAdapter`, changesets 047 et 048, `PinnedHttpClient`, `HttpsIcsFetcher`,
 `TenantCalendarController`, `TypeSettingsArtifacts`
 et `CalendarDoc` (promotion), `openapi/openapi.yaml`, écran Admin → Types → Calendrier, spec 04, guide utilisateur.

@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /** TODO §113 (D-MAILROOM-INDEX, revue de clôture) — un Message-ID reçu réutilisé par un tiers ne masque pas l'entrée du fil. */
 @SpringBootTest
 @Import(OidcClientTestConfiguration.class)
-class JdbcMailMessageIndexIT {
+class MailMessageIndexShadowingIT {
 
     private static final String TENANT = "tenant_dev";
 

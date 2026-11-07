@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,48 +29,27 @@ import org.springframework.transaction.annotation.Transactional;
  * avorte la transaction, qui ne pourrait plus lire le dossier détenteur pour construire l'erreur.
  */
 @Component
-public class JdbcDossierUniqueValueStore implements DossierUniquenessPort {
+public class JpaDossierUniqueValueStore implements DossierUniquenessPort {
 
     /** Espace de clés propre à la fonctionnalité (premier argument de {@code pg_advisory_xact_lock*}). */
     static final int LOCK_NAMESPACE = 184_102;
 
-    private static final String LOCK_KEY = "hashtext(current_schema() || ':' || ? || ':' || ?)";
-    private static final String LOCK_SHARED_SQL = "select pg_advisory_xact_lock_shared(" + LOCK_NAMESPACE + ", " + LOCK_KEY + ")";
-    private static final String LOCK_EXCLUSIVE_SQL = "select pg_advisory_xact_lock(" + LOCK_NAMESPACE + ", " + LOCK_KEY + ")";
+    private final SpringDataDossierUniqueValueRepository repository;
 
-    private static final String DELETE_FOR_DOSSIER_SQL = "delete from dossier_unique_value where dossier_id = ?";
-
-    private static final String INSERT_SQL = """
-            insert into dossier_unique_value (tenant_id, dossier_type_code, field_name, field_value, dossier_id)
-            values (?, ?, ?, ?, ?)
-            on conflict do nothing
-            """;
-
-    private static final String HOLDER_SQL = """
-            select d.reference, u.dossier_id
-            from dossier_unique_value u join dossier d on d.id = u.dossier_id
-            where u.tenant_id = ? and u.dossier_type_code = ? and u.field_name = ? and u.field_value = ?
-            """;
-
-    private static final String DELETE_FOR_TYPE_SQL =
-            "delete from dossier_unique_value where tenant_id = ? and dossier_type_code = ?";
-
-    private final JdbcTemplate jdbcTemplate;
-
-    public JdbcDossierUniqueValueStore(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    JpaDossierUniqueValueStore(SpringDataDossierUniqueValueRepository repository) {
+        this.repository = repository;
     }
 
     /** Verrou partagé du type, jusqu'à la fin de la transaction courante (enregistrement d'un dossier). */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockTypeShared(String tenantId, String dossierTypeCode) {
-        jdbcTemplate.queryForList(LOCK_SHARED_SQL, tenantId, dossierTypeCode);
+        repository.lockShared(LOCK_NAMESPACE, tenantId, dossierTypeCode);
     }
 
     /** Verrou exclusif du type, jusqu'à la fin de la transaction courante (enregistrement du type). */
     @Transactional(propagation = Propagation.MANDATORY)
     public void lockTypeExclusive(String tenantId, String dossierTypeCode) {
-        jdbcTemplate.queryForList(LOCK_EXCLUSIVE_SQL, tenantId, dossierTypeCode);
+        repository.lockExclusive(LOCK_NAMESPACE, tenantId, dossierTypeCode);
     }
 
     /**
@@ -80,7 +58,7 @@ public class JdbcDossierUniqueValueStore implements DossierUniquenessPort {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void sync(Dossier dossier, Set<UniqueKey> keys) {
-        jdbcTemplate.update(DELETE_FOR_DOSSIER_SQL, dossier.id());
+        repository.deleteForDossier(dossier.id());
         List<FieldValidationError> conflicts = new ArrayList<>();
         for (UniqueKey key : sorted(keys)) {
             if (!insert(dossier.tenantId(), dossier.dossierTypeCode(), key, dossier.id())) {
@@ -99,7 +77,7 @@ public class JdbcDossierUniqueValueStore implements DossierUniquenessPort {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public List<UniqueKey> replaceForType(String tenantId, String dossierTypeCode, Map<UUID, Set<UniqueKey>> keysByDossier) {
-        jdbcTemplate.update(DELETE_FOR_TYPE_SQL, tenantId, dossierTypeCode);
+        repository.deleteForType(tenantId, dossierTypeCode);
         List<UniqueKey> conflicts = new ArrayList<>();
         keysByDossier.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -117,24 +95,23 @@ public class JdbcDossierUniqueValueStore implements DossierUniquenessPort {
             String tenantId, String dossierTypeCode, Set<UniqueKey> keys, UUID excludeDossierId) {
         Map<UniqueKey, String> holders = new LinkedHashMap<>();
         for (UniqueKey key : sorted(keys)) {
-            jdbcTemplate.query(HOLDER_SQL, rs -> {
-                UUID holderId = rs.getObject("dossier_id", UUID.class);
-                if (!holderId.equals(excludeDossierId)) {
-                    holders.put(key, rs.getString("reference"));
-                }
-            }, tenantId, dossierTypeCode, key.field(), key.value());
+            repository.holders(tenantId, dossierTypeCode, key.field(), key.value()).stream()
+                    .filter(holder -> !holder.getDossierId().equals(excludeDossierId))
+                    .findFirst()
+                    .ifPresent(holder -> holders.put(key, holder.getReference()));
         }
         return Map.copyOf(holders);
     }
 
     private boolean insert(String tenantId, String dossierTypeCode, UniqueKey key, UUID dossierId) {
-        return jdbcTemplate.update(INSERT_SQL, tenantId, dossierTypeCode, key.field(), key.value(), dossierId) == 1;
+        return repository.insertIfFree(tenantId, dossierTypeCode, key.field(), key.value(), dossierId) == 1;
     }
 
     private String holder(String tenantId, String dossierTypeCode, UniqueKey key) {
-        List<String> references = jdbcTemplate.query(HOLDER_SQL, (rs, i) -> rs.getString("reference"),
-                tenantId, dossierTypeCode, key.field(), key.value());
-        return references.isEmpty() ? "?" : references.getFirst();
+        return repository.holders(tenantId, dossierTypeCode, key.field(), key.value()).stream()
+                .map(SpringDataDossierUniqueValueRepository.Holder::getReference)
+                .findFirst()
+                .orElse("?");
     }
 
     /** Ordre stable d'insertion : deux transactions concurrentes prennent les clés dans le même ordre (pas d'interblocage). */

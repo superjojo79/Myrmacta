@@ -22,7 +22,7 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
 
     private final SpringDataDossierRepository repository;
     private final SpringDataDossierTypeRepository typeRepository;
-    private final JdbcDossierUniqueValueStore uniqueValues;
+    private final JpaDossierUniqueValueStore uniqueValues;
     private final DossierUniqueKeys uniqueKeys;
 
     @PersistenceContext
@@ -32,7 +32,7 @@ public class JpaDossierRepositoryAdapter implements DossierRepository {
     public JpaDossierRepositoryAdapter(
             SpringDataDossierRepository repository,
             SpringDataDossierTypeRepository typeRepository,
-            JdbcDossierUniqueValueStore uniqueValues,
+            JpaDossierUniqueValueStore uniqueValues,
             DossierFieldRules fieldRules) {
         this.repository = repository;
         this.typeRepository = typeRepository;

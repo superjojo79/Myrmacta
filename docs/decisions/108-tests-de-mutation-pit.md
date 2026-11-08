@@ -40,7 +40,8 @@ Sur la couche Spring, le coût par mutant est environ six fois plus élevé (`in
   remonte quand le score progresse, on ne le baisse pas pour faire passer une PR.
 - **CI** ([`mutation.yml`](../../.github/workflows/mutation.yml)) : chaque semaine (dimanche, 02:23 UTC) et à la demande, tout le périmètre
   avec le seuil ; sur une PR, seulement les classes du périmètre modifiées ou dont le test l'est
-  (`scripts/mutation-targets.sh`), sans seuil. Rapport HTML en artefact, mutants non tués dans le résumé du job
+  (`scripts/mutation-targets.sh`), avec le même seuil bloquant (`pit.mutationThreshold`, sans
+  `-Dpit.mutationThreshold=0`). Rapport HTML en artefact, mutants non tués dans le résumé du job
   (`scripts/mutation-summary.py`).
 
 **Extension aux adaptateurs (issue #244, 2026-10-27).** Mesure par package, tests Spring exclus :
@@ -62,12 +63,21 @@ Sur la couche Spring, le coût par mutant est environ six fois plus élevé (`in
 **Fréquence (utilisateur, 2026-10-28).** Le run complet, backend et frontend, passe d'une fois par nuit à une fois par
 semaine (dimanche, 02:23 UTC), plus le run ciblé de chaque PR et le lancement à la demande.
 
+**Seuil PIT sur les PR (utilisateur, 2026-11-07).** Le job PIT d'une PR applique le même cliquet que le run
+hebdomadaire : `pit.mutationThreshold` du `pom` (76 %), sur les seules classes mutées. Le forçage
+`-Dpit.mutationThreshold=0` est retiré. Une PR qui ne touche que des classes déjà sous ce score échoue, même
+sans baisse du score global. Le run local ciblé peut toujours passer `-Dpit.mutationThreshold=0`.
+
+**Seuil Stryker sur les PR (utilisateur, 2026-11-07).** Même règle : le job d'une PR applique `thresholds.break`
+(53 %) aux fichiers mutés. `STRYKER_NO_BREAK` n'est plus posé en CI ; `--ignoreStatic` reste. Un run local
+peut encore passer `STRYKER_NO_BREAK=1`.
+
 **Frontend (issue #245, utilisateur, 2026-10-28).** StrykerJS 10.1.1 et son lanceur Vitest (Apache-2.0, dépendances
 de développement, hors jar), configuration [`frontend/stryker.config.mjs`](../../frontend/stryker.config.mjs) :
 
 ```bash
 cd frontend && npm run test:mutation                                           # périmètre complet, seuil appliqué
-STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate src/stores/auth.ts  # ciblé, sans seuil (comme sur une PR)
+STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate src/stores/auth.ts  # ciblé local, sans seuil
 ```
 
 - **Périmètre** : la logique sans rendu, `src/stores`, `src/composables`, `src/api` et `portal` (`.ts` hors specs
@@ -81,7 +91,9 @@ STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate src/stores/auth.ts  #
   tests 68 %, 28 min sur 4 cœurs ; le seuil est ce score moins 2 points, arrondi par défaut.
 - **PR** : seuls les fichiers du périmètre modifiés, ou dont la spec l'est (`scripts/mutation-targets-frontend.sh` :
   la source homonyme, sinon les fichiers du périmètre que la spec importe, comme pour `src/api/apiCoverage.spec.ts`),
-  sans seuil (`STRYKER_NO_BREAK=1`), avec `--ignoreStatic`. Une PR qui ne change que l'outillage (configuration
+  avec le même seuil bloquant (`thresholds.break`, 53 %) et `--ignoreStatic`. Le forçage `STRYKER_NO_BREAK=1`
+  reste disponible pour un run local. Une PR qui ne touche que des fichiers déjà sous ce score échoue, même
+  sans baisse du score global. Une PR qui ne change que l'outillage (configuration
   Stryker ou Vite, dépendances, script) lance le run initial seul (`--dryRunOnly`). Un mutant statique (constante exécutée au chargement du
   module) recharge tout le module ; sur un run ciblé il dépasse le délai et compterait comme tué (`src/api/types.ts` :
   94 % ciblé contre 39 % au run complet). Ignoré, ou « survivant » s'il est aussi couvert test par test : un faux
@@ -95,10 +107,11 @@ STRYKER_NO_BREAK=1 npx stryker run --ignoreStatic --mutate src/stores/auth.ts  #
 - Résumé du job : `scripts/mutation-summary.py` lit aussi le rapport JSON de Stryker.
 
 **Écarté.** PIT dans `verify` (environ 25 min de plus à chaque build) ; l'infrastructure testée sous Spring (au moins
-3 h estimées sur 4 cœurs, faux survivants des classes Spring) ; seuil bloquant sur les PR (une PR qui touche une classe
-faible échouerait sans l'avoir dégradée) ; analyse incrémentale `withHistory` (retirée de PIT libre, réservée à
-Arcmutate, commercial). Frontend : composants `.vue` et logique BPMN (coût) ; Stryker en place (`inPlace`, un run
-interrompu laisse des fichiers mutés) ; seuil bloquant ou analyse incrémentale de Stryker sur les PR.
+3 h estimées sur 4 cœurs, faux survivants des classes Spring) ; analyse incrémentale `withHistory` (retirée de PIT
+libre, réservée à Arcmutate, commercial). Le seuil bloquant PIT sur les PR, d'abord écarté pour la même raison
+(une classe déjà faible ferait échouer la PR), est repris le 2026-11-07, de même que le seuil bloquant Stryker
+sur les PR. Frontend : composants `.vue` et logique BPMN (coût) ; Stryker en place (`inPlace`, un run
+interrompu laisse des fichiers mutés) ; analyse incrémentale de Stryker sur les PR.
 
 **Suites.** Tuer les mutants des trois manques ci-dessus : issues
 [#241](https://github.com/superjojo79/FlowForge/issues/241) (bornes JSONata),

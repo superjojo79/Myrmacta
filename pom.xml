@@ -502,7 +502,7 @@
         </profile>
         <!-- ./mvnw -Pmutation test-compile pitest:mutationCoverage — tests de mutation PIT (TODO §108).
              Hors `verify` : environ 25 min sur 4 cœurs. Workflow .github/workflows/mutation.yml : run complet
-             chaque semaine (seuil bloquant), classes modifiées sur les PR (informatif).
+             chaque semaine et sur les PR (classes modifiées) : même seuil bloquant.
              Rapport : target/pit-reports/index.html. -->
         <profile>
             <id>mutation</id>

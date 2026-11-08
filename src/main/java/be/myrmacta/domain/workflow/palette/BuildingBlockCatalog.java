@@ -16,11 +16,11 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 6;
+    public static final int VERSION = 7;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
-            "documentTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes", "workflowTypes",
-            "workflowStatuses", "dmnTables", "questionSchemas");
+            "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
+            "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas");
 
     private static final int SHORT = 200;
     private static final int LONG = 4000;
@@ -56,8 +56,16 @@ public final class BuildingBlockCatalog {
                             "Un ou plusieurs canaux."),
                     text("notificationTo", "Destinataire e-mail", 254,
                             "Adresse littérale, dossierField:<champ> (lu dans le dossier) ou variable:<nom>."),
-                    text("notificationSubject", "Objet", SHORT, "Objet du message."),
-                    text("notificationBody", "Message", LONG, "Texte littéral du message."),
+                    text("notificationSubject", "Objet", SHORT, "Objet du message (ou un gabarit)."),
+                    text("notificationBody", "Message", LONG, "Texte littéral du message (ou un gabarit)."),
+                    // Issue #19 (TODO §123) — lus dans le BPMN déployé seulement ; EMAIL et destinataire exigés.
+                    reference("notificationTemplate", "Gabarit (e-mail)", false, "notificationTemplates",
+                            "Clé d'un gabarit de notification actif : objet et corps rendus avec dossier.* et variables.*. "
+                                    + "Exclut Objet et Message ; canal EMAIL seul et destinataire dans le BPMN."),
+                    text("notificationVariant", "Variante du gabarit", 100,
+                            "Variante du gabarit : littérale ou variable:<nom> (facultatif, exige le gabarit)."),
+                    text("notificationLocale", "Langue du gabarit", 20,
+                            "Langue, ex. fr : littérale ou variable:<nom> (facultatif, exige le gabarit)."),
                     text("notificationUserId", "Utilisateur", 100, "Identifiant de l'utilisateur à notifier (navigateur)."),
                     reference("notificationWebhookConfigId", "Webhook", false, "notificationWebhooks",
                             "Configuration de webhook sortant."),

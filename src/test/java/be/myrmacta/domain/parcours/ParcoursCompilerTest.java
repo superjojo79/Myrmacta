@@ -252,6 +252,15 @@ class ParcoursCompilerTest {
                 .hasMessage("step etape: attach is true or false");
     }
 
+    /** Issue #19 — le pas « Notifier » du concepteur de parcours accepte un gabarit, sa variante et sa langue. */
+    @Test
+    void aNotifyStepCanReferenceANotificationTemplate() {
+        String xml = compile(definition(step("n", Kind.NOTIFY, Map.of("notificationChannels", "EMAIL", "notificationTo", "a@b.fr",
+                "notificationTemplate", "accuse-reception", "notificationVariant", "courte", "notificationLocale", "fr")))).xml();
+        assertThat(xml).contains("flowable:notificationTemplate=\"accuse-reception\"")
+                .contains("flowable:notificationVariant=\"courte\"").contains("flowable:notificationLocale=\"fr\"");
+    }
+
     @Test
     void expressionsAndInjectionsInParametersAreRefused() {
         assertThatThrownBy(() -> compile(definition(step("n", Kind.NOTIFY, Map.of("notificationChannels", "EMAIL", "notificationBody", "${secret}")))))

@@ -8,6 +8,10 @@ import be.myrmacta.domain.document.model.TemplateStatus;
 import be.myrmacta.domain.document.port.out.DocumentTemplateRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.notification.port.out.NotificationWebhookRepository;
+import be.myrmacta.domain.notification.template.model.NotificationTemplate;
+import be.myrmacta.domain.notification.template.port.out.NotificationTemplateRepository;
+import be.myrmacta.domain.shared.PageQuery;
+import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.palette.port.out.BlockReference;
 import be.myrmacta.domain.workflow.palette.port.out.BlockReferenceLookupPort;
 import be.myrmacta.domain.workflow.palette.port.out.ReferenceStatus;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
 
     private final DocumentTemplateRepository templates;
+    private final NotificationTemplateRepository notificationTemplates;
     private final ConnectorInstanceRepository connectors;
     private final ConnectorCatalog connectorCatalog;
     private final NotificationWebhookRepository webhooks;
@@ -39,6 +44,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
 
     BlockReferenceLookupAdapter(
             DocumentTemplateRepository templates,
+            NotificationTemplateRepository notificationTemplates,
             ConnectorInstanceRepository connectors,
             ConnectorCatalog connectorCatalog,
             NotificationWebhookRepository webhooks,
@@ -46,6 +52,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
             WorkflowTypeConfigRepository workflowTypes,
             DmnDeploymentPort dmnDeployments) {
         this.templates = templates;
+        this.notificationTemplates = notificationTemplates;
         this.connectors = connectors;
         this.connectorCatalog = connectorCatalog;
         this.webhooks = webhooks;
@@ -59,6 +66,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
     public List<BlockReference> list(String tenantId, String source) {
         return switch (source) {
             case "documentTemplates" -> activeTemplates(tenantId);
+            case "notificationTemplates" -> activeNotificationTemplates(tenantId);
             case "connectorInstances" -> connectors.listByTenantId(tenantId).stream()
                     .filter(this::isUsableService)
                     .map(c -> new BlockReference(c.id().toString(), c.name()))
@@ -83,6 +91,7 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
         }
         return switch (source) {
             case "documentTemplates" -> templateStatus(templates.listByTenantId(tenantId, value));
+            case "notificationTemplates" -> notificationTemplateStatus(tenantId, value);
             case "connectorInstances" -> uuid(value)
                     .flatMap(id -> connectors.findByIdAndTenantId(id, tenantId))
                     .filter(this::isServiceType)
@@ -110,6 +119,39 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
         return versions.stream().anyMatch(t -> t.status() == TemplateStatus.DRAFT)
                 ? ReferenceStatus.INACTIVE
                 : ReferenceStatus.MISSING;
+    }
+
+    /** Issue #19 — une clé de gabarit de notification est active si une de ses combinaisons (variante, langue) l'est. */
+    private ReferenceStatus notificationTemplateStatus(String tenantId, String key) {
+        List<NotificationTemplate> versions = allNotificationTemplates(tenantId, key);
+        if (versions.stream().anyMatch(t -> t.status() == TemplateStatus.ACTIVE)) {
+            return ReferenceStatus.ACTIVE;
+        }
+        return versions.stream().anyMatch(t -> t.status() == TemplateStatus.DRAFT)
+                ? ReferenceStatus.INACTIVE
+                : ReferenceStatus.MISSING;
+    }
+
+    private List<BlockReference> activeNotificationTemplates(String tenantId) {
+        Map<String, BlockReference> byKey = new LinkedHashMap<>();
+        for (NotificationTemplate t : allNotificationTemplates(tenantId, null)) {
+            if (t.status() == TemplateStatus.ACTIVE) {
+                byKey.putIfAbsent(t.templateKey(), new BlockReference(t.templateKey(),
+                        t.label() == null || t.label().isBlank() ? t.templateKey() : t.label()));
+            }
+        }
+        return List.copyOf(byKey.values());
+    }
+
+    private List<NotificationTemplate> allNotificationTemplates(String tenantId, String key) {
+        List<NotificationTemplate> all = new java.util.ArrayList<>();
+        PageResult<NotificationTemplate> page;
+        int index = 0;
+        do {
+            page = notificationTemplates.pageByTenantId(tenantId, key, PageQuery.of(index++, PageQuery.MAX_SIZE));
+            all.addAll(page.content());
+        } while (index < page.totalPages());
+        return all;
     }
 
     private static ReferenceStatus present(boolean present) {

@@ -33,6 +33,17 @@ class NotificationPayloadJsonTest {
         assertThat(MAPPER.readTree(NotificationPayloadJson.email("a@b.c", "S", "B")).has("attachment")).isFalse();
     }
 
+    /** Issue #19 — {@code htmlBody} voyage dans la ligne d'outbox ; absent quand il est nul (les lignes existantes restent lisibles). */
+    @Test
+    void email_withHtmlBody_carriesItAndOmitsTheKeyOtherwise() throws Exception {
+        JsonNode node = MAPPER.readTree(NotificationPayloadJson.email("a@b.c", "S", "B", "<p>\"H\"</p>", null, null));
+        assertThat(node.get("htmlBody").asText()).isEqualTo("<p>\"H\"</p>");
+        assertThat(node.get("body").asText()).isEqualTo("B");
+        assertThat(MAPPER.readTree(NotificationPayloadJson.email("a@b.c", "S", "B", null, null, null)).has("htmlBody")).isFalse();
+        assertThat(NotificationPayloadJson.email("a@b.c", "S", "B"))
+                .isEqualTo(NotificationPayloadJson.email("a@b.c", "S", "B", null, null, null));
+    }
+
     @Test
     void webhook_serializesNestedPayloadTypes() throws Exception {
         UUID id = UUID.fromString("11111111-1111-1111-1111-111111111111");

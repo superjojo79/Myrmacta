@@ -17,7 +17,8 @@ public final class ListBlockReferencesUseCaseImpl implements ListBlockReferences
      * {@code dmnTables} qui n'a pas d'API REST de liste (seul l'outil MCP {@code list_decision_tables}). Les autres
      * restent lues à leur API.
      */
-    static final Set<String> SERVED_SOURCES = Set.of("documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables");
+    static final Set<String> SERVED_SOURCES = Set.of(
+            "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dmnTables");
 
     private final String tenantId;
     private final BlockReferenceLookupPort lookup;

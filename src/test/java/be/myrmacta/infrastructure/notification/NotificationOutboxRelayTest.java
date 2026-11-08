@@ -129,6 +129,38 @@ class NotificationOutboxRelayTest {
             + "\"attachment\":{\"storageRef\":\"tenant_dev/doc.pdf\",\"fileName\":\"autorisation.pdf\","
             + "\"contentType\":\"application/pdf\"}}";
 
+    /** Issue #19 — une ligne avec {@code htmlBody} part en multipart (texte + HTML) ; sans pièce jointe, aucune relecture du stockage. */
+    @Test
+    void relay_emailWithHtmlBody_sendsTextAndHtml() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        NotificationOutboxRecord record = pending(NotificationChannel.EMAIL,
+                "{\"to\":\"a@example.com\",\"subject\":\"Hi\",\"body\":\"Body\",\"htmlBody\":\"<p>Body</p>\"}", now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        relay.relayPending(now);
+
+        verify(emailPort).send("a@example.com", "Hi", "Body", "<p>Body</p>", null);
+        verify(outboxRepository).markProcessed(record.id(), now);
+        verify(storage, never()).retrieve(anyString(), anyString());
+    }
+
+    @Test
+    void relay_emailWithHtmlBodyAndAttachment_sendsBoth() {
+        Instant now = Instant.parse("2026-08-07T12:00:00Z");
+        byte[] pdf = "%PDF-1.7 x".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(storage.retrieve("tenant_dev", "tenant_dev/doc.pdf")).thenReturn(pdf);
+        NotificationOutboxRecord record = pending(NotificationChannel.EMAIL,
+                ATTACHMENT_JSON.replace("\"body\":\"Body\",", "\"body\":\"Body\",\"htmlBody\":\"<p>Body</p>\","), now);
+        when(outboxRepository.lockNextPending(20, now)).thenReturn(List.of(record));
+
+        relay.relayPending(now);
+
+        ArgumentCaptor<EmailPort.EmailAttachmentContent> captor =
+                ArgumentCaptor.forClass(EmailPort.EmailAttachmentContent.class);
+        verify(emailPort).send(eq("a@example.com"), eq("Hi"), eq("Body"), eq("<p>Body</p>"), captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().content()).isEqualTo(pdf);
+    }
+
     @Test
     void relay_emailSuccess_marksProcessed() {
         Instant now = Instant.parse("2026-08-07T12:00:00Z");

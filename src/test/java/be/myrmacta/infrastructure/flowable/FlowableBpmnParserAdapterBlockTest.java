@@ -45,6 +45,10 @@ class FlowableBpmnParserAdapterBlockTest {
             attributes.append(" flowable:async=\"true\""); // TODO §106 (D-PRECHECK-BLOCK) : toujours asynchrone
         }
         for (BlockParameter p : block.parameters()) {
+            if (p.name().equals("notificationTemplate") || p.name().equals("notificationVariant")
+                    || p.name().equals("notificationLocale")) {
+                continue; // issue #19 : un gabarit exclut objet et corps, que l'exemple pose ; testé à part ci-dessous
+            }
             String value = sampleValue(p);
             switch (p.binding()) {
                 case ATTRIBUTE -> attributes.append(" flowable:").append(p.name()).append("=\"").append(value).append("\"");
@@ -117,6 +121,28 @@ class FlowableBpmnParserAdapterBlockTest {
 
     private static String service(String delegate, String attributes) {
         return "<serviceTask id=\"act\" flowable:delegateExpression=\"${" + delegate + "}\" " + attributes + "/>";
+    }
+
+    /** Issue #19 (CS5, TODO §123) — vrai parseur : un gabarit exclut objet et corps, exige EMAIL seul et un destinataire. */
+    @Test
+    void aNotificationTemplateIsAcceptedOnlyWithEmailAloneAndNoLiteralText() {
+        String ok = "flowable:notificationChannels=\"EMAIL\" flowable:notificationTo=\"variable:mailFrom\" "
+                + "flowable:notificationTemplate=\"accuse\" flowable:notificationVariant=\"variable:variante\" "
+                + "flowable:notificationLocale=\"fr\"";
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(service("notificationDispatchTask", ok)))).isEqualTo("testProcess");
+
+        String base = "flowable:notificationTo=\"a@example.org\" flowable:notificationTemplate=\"accuse\" ";
+        assertRefused(service("notificationDispatchTask",
+                base + "flowable:notificationChannels=\"EMAIL\" flowable:notificationSubject=\"Objet\""), "notificationSubject");
+        assertRefused(service("notificationDispatchTask",
+                base + "flowable:notificationChannels=\"EMAIL\" flowable:notificationBody=\"Corps\""), "notificationBody");
+        assertRefused(service("notificationDispatchTask", base + "flowable:notificationChannels=\"BROWSER\""), "EMAIL");
+        assertRefused(service("notificationDispatchTask", base + "flowable:notificationChannels=\"EMAIL,WEBHOOK\""), "EMAIL");
+        assertRefused(service("notificationDispatchTask",
+                "flowable:notificationChannels=\"EMAIL\" flowable:notificationTemplate=\"accuse\""), "notificationTo");
+        assertRefused(service("notificationDispatchTask",
+                "flowable:notificationChannels=\"EMAIL\" flowable:notificationTo=\"a@example.org\" "
+                        + "flowable:notificationLocale=\"fr\""), "notificationTemplate");
     }
 
     @Test

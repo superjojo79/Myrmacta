@@ -68,6 +68,11 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
             throw new NotificationValidationException("attachment requires the EMAIL channel");
         }
 
+        if (event.htmlBody() != null && !channels.contains(NotificationChannel.EMAIL)) {
+            // TODO §123 : un corps HTML n'a de sens que pour l'e-mail, jamais ignoré en silence.
+            throw new NotificationValidationException("htmlBody requires the EMAIL channel");
+        }
+
         // Validate all channels before any write (atomic fan-out).
         List<PendingOutboxWrite> writes = new ArrayList<>(channels.size());
         for (NotificationChannel channel : channels) {
@@ -170,8 +175,8 @@ public final class SendNotificationUseCaseImpl implements SendNotificationUseCas
     private static String snapshot(
             NotificationChannel channel, NotificationEvent event, Map<String, Object> payload, UUID inboxId) {
         return switch (channel) {
-            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body(), event.attachment(),
-                    event.originDossierId());
+            case EMAIL -> NotificationPayloadJson.email(event.to(), event.subject(), event.body(), event.htmlBody(),
+                    event.attachment(), event.originDossierId());
             case WEBHOOK -> NotificationPayloadJson.webhook(event.webhookConfigId(), payload);
             case BROWSER -> NotificationPayloadJson.browser(event.userId(), payload, inboxId);
         };

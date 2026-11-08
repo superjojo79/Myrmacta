@@ -6,6 +6,8 @@ import be.myrmacta.domain.notification.model.NotificationEvent;
 import be.myrmacta.domain.notification.model.NotificationValidationException;
 import be.myrmacta.domain.notification.port.in.ResolveEmailAttachmentUseCase;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
+import be.myrmacta.domain.notification.template.model.RenderedNotification;
+import be.myrmacta.domain.notification.template.model.TemplateResolutionKey;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.domain.workflow.portal.model.PortalRecipientSource;
 import be.myrmacta.domain.workflow.portal.port.out.PortalRecipientResolverPort;
@@ -20,6 +22,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component("notificationDispatchTask")
@@ -28,6 +31,10 @@ public class NotificationDispatchTask implements JavaDelegate {
     private static final String RECIPIENT = "notificationTo";
     private static final String ATTACHMENT = "notificationAttachment";
     private static final String ATTACHMENT_NAME = "notificationAttachmentName";
+    private static final String TEMPLATE = "notificationTemplate";
+    private static final String TEMPLATE_VARIANT = "notificationVariant";
+    private static final String TEMPLATE_LOCALE = "notificationLocale";
+    private static final String VARIABLE_PREFIX = "variable:";
     /** Une seule boîte {@code local@domaine} : ni espace ni séparateur de liste, ni forme « Nom <adresse> ». */
     private static final Pattern SINGLE_MAILBOX = Pattern.compile("[^\\s@,;:<>()\\[\\]\\\\\"]+@[^\\s@,;:<>()\\[\\]\\\\\"]+");
 
@@ -35,12 +42,25 @@ public class NotificationDispatchTask implements JavaDelegate {
     private final SendNotificationUseCase sendNotificationUseCase;
     private final PortalRecipientResolverPort recipientResolver;
     private final ResolveEmailAttachmentUseCase attachmentResolver;
+    private final NotificationTemplateRendering templates;
 
+    /** Sans gabarits : {@code flowable:notificationTemplate} échoue (tests unitaires des autres chemins de la brique). */
     public NotificationDispatchTask(
             TenantProperties tenantProperties,
             SendNotificationUseCase sendNotificationUseCase,
             PortalRecipientResolverPort recipientResolver,
             ResolveEmailAttachmentUseCase attachmentResolver) {
+        this(tenantProperties, sendNotificationUseCase, recipientResolver, attachmentResolver, null);
+    }
+
+    @Autowired
+    NotificationDispatchTask(
+            TenantProperties tenantProperties,
+            SendNotificationUseCase sendNotificationUseCase,
+            PortalRecipientResolverPort recipientResolver,
+            ResolveEmailAttachmentUseCase attachmentResolver,
+            NotificationTemplateRendering templates) {
+        this.templates = templates;
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.sendNotificationUseCase =
                 Objects.requireNonNull(sendNotificationUseCase, "sendNotificationUseCase");
@@ -53,20 +73,58 @@ public class NotificationDispatchTask implements JavaDelegate {
         // Revue adversariale #183 (M1, L5) : avec une pièce jointe, canaux et destinataire ne viennent que du BPMN, et le canal
         // EMAIL est vérifié avant toute lecture du document.
         boolean withAttachment = DeployedActivityParameters.getLiteral(execution, ATTACHMENT) != null;
+        // Issue #19 (TODO §123) : le gabarit n'est lu que dans le BPMN déployé ; il fige canal et destinataire.
+        String templateKey = stringOrNull(DeployedActivityParameters.getLiteral(execution, TEMPLATE));
+        boolean templated = templateKey != null;
         List<NotificationChannel> channels = withAttachment
                 ? attachmentChannels(execution)
+                : templated ? templateChannels(execution)
                 : parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
-        String to = recipient(execution, withAttachment);
-        String subject = stringOrNull(DeployedActivityParameters.get(execution, "notificationSubject"));
-        String body = stringOrNull(DeployedActivityParameters.get(execution, "notificationBody"));
+        String to = recipient(execution, withAttachment, templated);
+        RenderedNotification rendered = templated ? renderTemplate(execution, templateKey) : null;
+        String subject = templated ? rendered.subject()
+                : stringOrNull(DeployedActivityParameters.get(execution, "notificationSubject"));
+        String body = templated ? rendered.textBody()
+                : stringOrNull(DeployedActivityParameters.get(execution, "notificationBody"));
         String userId = stringOrNull(DeployedActivityParameters.get(execution, "notificationUserId"));
         UUID webhookConfigId = parseUuid(DeployedActivityParameters.get(execution, "notificationWebhookConfigId"));
         Map<String, Object> payload = parsePayload(execution.getVariable("notificationPayload"));
 
         NotificationEvent event = new NotificationEvent(channels, to, subject, body, userId, webhookConfigId, payload)
                 .withAttachment(attachment(execution))
-                .withOriginDossier(originDossier(execution));
+                .withOriginDossier(originDossier(execution))
+                .withHtmlBody(templated ? rendered.htmlBody() : null);
         sendNotificationUseCase.send(event, tenantProperties.id());
+    }
+
+    /**
+     * Issue #19 — variante et langue : littéral du BPMN déployé ou {@code variable:<nom>} ; une variable absente ou vide vaut
+     * « pas de variante » ou « pas de langue » (la cascade de résolution s'applique).
+     */
+    private RenderedNotification renderTemplate(DelegateExecution execution, String templateKey) {
+        if (templates == null) {
+            throw new IllegalStateException("notification templates are not available");
+        }
+        TemplateResolutionKey key = new TemplateResolutionKey(templateKey,
+                templateOption(execution, TEMPLATE_VARIANT), templateOption(execution, TEMPLATE_LOCALE));
+        return templates.render(execution, key);
+    }
+
+    private static String templateOption(DelegateExecution execution, String attribute) {
+        String literal = stringOrNull(DeployedActivityParameters.getLiteral(execution, attribute));
+        if (literal == null || !literal.startsWith(VARIABLE_PREFIX)) {
+            return literal;
+        }
+        return stringOrNull(execution.getVariable(literal.substring(VARIABLE_PREFIX.length())));
+    }
+
+    private static List<NotificationChannel> templateChannels(DelegateExecution execution) {
+        String literal = DeployedActivityParameters.getLiteral(execution, "notificationChannels");
+        List<NotificationChannel> channels = literal == null ? List.of() : parseChannels(literal);
+        if (!channels.equals(List.of(NotificationChannel.EMAIL))) {
+            throw new NotificationValidationException(TEMPLATE + " requires flowable:notificationChannels=\"EMAIL\" in the BPMN");
+        }
+        return channels;
     }
 
     /**
@@ -109,13 +167,14 @@ public class NotificationDispatchTask implements JavaDelegate {
      * asynchrone ({@code flowable:async}), sinon refus 422 de la complétion ou du démarrage qui l'exécute (revue M1). Le message
      * nomme la source, jamais une valeur.
      */
-    private String recipient(DelegateExecution execution, boolean withAttachment) {
+    private String recipient(DelegateExecution execution, boolean withAttachment, boolean templated) {
         String literal = DeployedActivityParameters.getLiteral(execution, RECIPIENT);
         if (literal != null && !PortalRecipientSource.hasSourcePrefix(literal)) {
             return literal; // écrit par le concepteur dans le BPMN déployé : inchangé
         }
-        if (literal == null && withAttachment) {
-            throw new NotificationValidationException(ATTACHMENT + " requires flowable:" + RECIPIENT + " in the BPMN");
+        if (literal == null && (withAttachment || templated)) {
+            throw new NotificationValidationException(
+                    (withAttachment ? ATTACHMENT : TEMPLATE) + " requires flowable:" + RECIPIENT + " in the BPMN");
         }
         if (literal == null) {
             // Revue L3 : repli sur la variable notificationTo, posée au démarrage ou à la complétion d'une tâche (saisie

@@ -17,6 +17,7 @@ const shell: typeof fr = {
     mailDeposit: 'Deposit mail',
     types: 'Types',
     templates: 'Templates',
+    notificationTemplates: 'Notification templates',
     connectors: 'Connectors',
     promotion: 'Promotion',
     purgeQueue: 'Purge queue',

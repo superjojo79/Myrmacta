@@ -34,6 +34,9 @@ const { user, isTenantAdmin, isWorkflowAdmin, canSeeReports } = storeToRefs(auth
         <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/templates">
           {{ t('shell.nav.templates') }}
         </RouterLink>
+        <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/notification-templates">
+          {{ t('shell.nav.notificationTemplates') }}
+        </RouterLink>
         <RouterLink v-if="isTenantAdmin" class="app-shell__link" to="/admin/connectors">
           {{ t('shell.nav.connectors') }}
         </RouterLink>

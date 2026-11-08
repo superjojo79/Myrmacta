@@ -281,6 +281,15 @@ app:
       # Issue #183 (D-NOTIF-ATTACH-MAX) : plafond de la pièce jointe d'un e-mail « Notifier » (octets, 7 Mio : ~9,8 Mo
       # encodé en base64, sous la limite par défaut de Postfix).
       attachment-max-bytes: 7340032
+    # TODO §123 (hypothèse H3) : bornes des gabarits de notification. Défauts du code répétés ici ; aucune variable
+    # d'environnement.
+    template:
+      subject-max-chars: 500
+      rendered-subject-max-chars: 255
+      text-body-max-bytes: 65536
+      html-body-max-bytes: 262144
+      rendered-max-bytes: 1048576
+      preview-model-max-bytes: 65536
   storage:
     type: ${APP_STORAGE_TYPE:filesystem}
     filesystem:

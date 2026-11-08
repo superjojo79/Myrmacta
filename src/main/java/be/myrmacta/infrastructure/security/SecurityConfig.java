@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.security;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.config.DocumentGenerationProperties;
 import be.myrmacta.infrastructure.config.M2mSecurityProperties;
+import be.myrmacta.infrastructure.config.NotificationTemplateProperties;
 import be.myrmacta.infrastructure.config.OidcGroupsProperties;
 import be.myrmacta.infrastructure.config.SecurityCookieProperties;
 import be.myrmacta.infrastructure.config.SecurityHeadersProperties;
@@ -15,6 +16,7 @@ import be.myrmacta.infrastructure.web.document.DocumentGenerationBodySizeLimitFi
 import be.myrmacta.infrastructure.web.security.CspReportBodySizeLimitFilter;
 import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -191,6 +193,7 @@ public class SecurityConfig {
             TenantResolutionFilter tenantResolutionFilter,
             ClientRegistrationRepository clientRegistrationRepository,
             DocumentGenerationProperties documentGenerationProperties,
+            NotificationTemplateProperties notificationTemplateProperties,
             SecurityHeadersCustomizer securityHeadersCustomizer)
             throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -214,6 +217,12 @@ public class SecurityConfig {
                 // POST /api/documents/generate, /preview et /preview/pdf (voir shouldNotFilter).
                 .addFilterBefore(
                         new DocumentGenerationBodySizeLimitFilter(documentGenerationProperties.maxBodyBytes()),
+                        SecurityContextHolderFilter.class)
+                // Même garde pour POST /api/notification-templates/preview (gabarit et modèle fournis par l'appelant).
+                .addFilterBefore(
+                        new DocumentGenerationBodySizeLimitFilter(
+                                notificationTemplateProperties.previewRequestMaxBytes(),
+                                Set.of("/api/notification-templates/preview")),
                         SecurityContextHolderFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userAuthoritiesMapper(authoritiesMapper))

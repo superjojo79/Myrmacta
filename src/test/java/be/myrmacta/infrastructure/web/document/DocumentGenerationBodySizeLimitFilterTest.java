@@ -81,6 +81,28 @@ class DocumentGenerationBodySizeLimitFilterTest {
         verify(chain).doFilter(request, response);
     }
 
+    @Test
+    void customPaths_areGuardedWithTheirOwnLimit_andTheDocumentPathsAreNot() throws Exception {
+        DocumentGenerationBodySizeLimitFilter custom = new DocumentGenerationBodySizeLimitFilter(
+                1_024L, java.util.Set.of("/api/notification-templates/preview"));
+
+        MockHttpServletRequest tooBig = new MockHttpServletRequest("POST", "/api/notification-templates/preview");
+        tooBig.setContent(new byte[2_000]);
+        MockHttpServletResponse rejected = new MockHttpServletResponse();
+        FilterChain rejectedChain = mock(FilterChain.class);
+        custom.doFilter(tooBig, rejected, rejectedChain);
+        assertThat(rejected.getStatus()).isEqualTo(413);
+        verify(rejectedChain, never()).doFilter(tooBig, rejected);
+
+        MockHttpServletRequest otherPath = new MockHttpServletRequest("POST", "/api/documents/generate");
+        otherPath.setContent(new byte[2_000]);
+        MockHttpServletResponse passed = new MockHttpServletResponse();
+        FilterChain passedChain = mock(FilterChain.class);
+        custom.doFilter(otherPath, passed, passedChain);
+        assertThat(passed.getStatus()).isEqualTo(200);
+        verify(passedChain).doFilter(otherPath, passed);
+    }
+
     private void assertRejected(String method, String path) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest(method, path);
         request.setContentType("application/json");

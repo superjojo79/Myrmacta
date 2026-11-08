@@ -10,9 +10,11 @@ import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.StringTemplateResolver;
 
 /**
- * Moteur HTML string + {@link StandardDialect} sans SpEL (DD-THYME-B2 = E).
+ * Moteurs Thymeleaf « string » (HTML, et TEXT pour les gabarits de notification, registre §123) sur un
+ * {@link StandardDialect} filtré, sans SpEL (DD-THYME-B2 = E). Public pour que les gabarits de notification réutilisent
+ * la même liste blanche ; les constantes de classement restent propres au paquet.
  */
-final class SafeHtmlTemplateEngineFactory {
+public final class SafeHtmlTemplateEngineFactory {
 
     /**
      * TODO §95 (P9) : liste blanche des processeurs du dialecte standard (Thymeleaf 3.1.5), relue un par un. Un
@@ -57,9 +59,32 @@ final class SafeHtmlTemplateEngineFactory {
 
     private SafeHtmlTemplateEngineFactory() {}
 
-    static TemplateEngine htmlStringEngine() {
+    public static TemplateEngine htmlStringEngine() {
+        return stringEngine(TemplateMode.HTML);
+    }
+
+    /** Même dialecte filtré et même évaluateur, en mode TEXT : {@code [[${x}]]} n'échappe rien (texte brut). */
+    public static TemplateEngine textStringEngine() {
+        return stringEngine(TemplateMode.TEXT);
+    }
+
+    /** Moteur HTML dont l'évaluateur borne le coût (gabarits de notification). */
+    public static TemplateEngine htmlStringEngine(ExpressionLimits limits) {
+        return stringEngine(TemplateMode.HTML, new SafeThymeleafVariableExpressionEvaluator(limits));
+    }
+
+    /** Moteur TEXT dont l'évaluateur borne le coût (gabarits de notification). */
+    public static TemplateEngine textStringEngine(ExpressionLimits limits) {
+        return stringEngine(TemplateMode.TEXT, new SafeThymeleafVariableExpressionEvaluator(limits));
+    }
+
+    private static TemplateEngine stringEngine(TemplateMode mode) {
+        return stringEngine(mode, SafeThymeleafVariableExpressionEvaluator.INSTANCE);
+    }
+
+    private static TemplateEngine stringEngine(TemplateMode mode, SafeThymeleafVariableExpressionEvaluator evaluator) {
         StringTemplateResolver resolver = new StringTemplateResolver();
-        resolver.setTemplateMode(TemplateMode.HTML);
+        resolver.setTemplateMode(mode);
         resolver.setCacheable(false);
         StandardDialect dialect = new StandardDialect() {
             @Override
@@ -69,7 +94,7 @@ final class SafeHtmlTemplateEngineFactory {
                         .collect(Collectors.toCollection(LinkedHashSet::new));
             }
         };
-        dialect.setVariableExpressionEvaluator(SafeThymeleafVariableExpressionEvaluator.INSTANCE);
+        dialect.setVariableExpressionEvaluator(evaluator);
         TemplateEngine engine = new TemplateEngine();
         engine.setDialect(dialect);
         engine.setTemplateResolver(resolver);

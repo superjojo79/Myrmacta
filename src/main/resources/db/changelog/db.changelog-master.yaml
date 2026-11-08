@@ -95,3 +95,5 @@ databaseChangeLog:
       file: db/changelog/changes/047-tenant-calendar-entries.yaml
   - include:
       file: db/changelog/changes/048-tenant-calendar-source-masked-url.yaml
+  - include:
+      file: db/changelog/changes/049-notification-template.yaml

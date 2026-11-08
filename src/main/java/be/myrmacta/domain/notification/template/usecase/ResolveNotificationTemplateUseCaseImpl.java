@@ -23,8 +23,8 @@ public final class ResolveNotificationTemplateUseCaseImpl implements ResolveNoti
         Objects.requireNonNull(key, "key");
         TemplateResolutionKey normalized = new TemplateResolutionKey(
                 NotificationTemplateSupport.requireKey(key.templateKey()),
-                NotificationTemplateSupport.normalizeOptional(key.variantKey()),
-                NotificationTemplateSupport.normalizeOptional(key.locale()));
+                NotificationTemplateSupport.optionalVariant(key.variantKey()),
+                NotificationTemplateSupport.optionalLocale(key.locale()));
         return repository
                 .findBestActive(tenantId, normalized.templateKey(), normalized.variantKey(), normalized.locale())
                 .orElseThrow(() -> new NotificationTemplateNotFoundException(normalized));

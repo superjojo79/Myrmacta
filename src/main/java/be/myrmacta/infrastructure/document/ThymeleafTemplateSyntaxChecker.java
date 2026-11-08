@@ -43,6 +43,26 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
      * mêmes interpolations non échappées refusées, mêmes fragments refusés, même grammaire d'expression (D-40).
      */
     public void check(String htmlContent, TemplateMode mode) {
+        checkParsed(htmlContent, mode);
+    }
+
+    /**
+     * Contrôle de grammaire des expressions {@code ${…}} et {@code *{…}} d'un texte déjà décodé (entités HTML défaites) :
+     * {@code &#36;{x}} est lu comme {@code ${x}} par le moteur, mais pas par l'extraction du texte brut.
+     */
+    public void assertExpressionsAllowed(String decodedText) {
+        try {
+            for (String expression : SafeThymeleafExpressionSupport.extractVariableExpressions(decodedText)) {
+                SafeThymeleafExpressionSupport.assertAllowed(expression);
+            }
+        } catch (InvalidTemplateSyntaxException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new InvalidTemplateSyntaxException("Invalid Thymeleaf template syntax: " + ex.getMessage(), ex);
+        }
+    }
+
+    private void checkParsed(String htmlContent, TemplateMode mode) {
         if (htmlContent != null
                 && (UNESCAPED_ATTRIBUTE.matcher(htmlContent).find() || UNESCAPED_INLINE.matcher(htmlContent).find())) {
             throw new InvalidTemplateSyntaxException(

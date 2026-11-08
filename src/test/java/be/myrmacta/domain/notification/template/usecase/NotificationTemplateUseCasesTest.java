@@ -439,4 +439,41 @@ class NotificationTemplateUseCasesTest {
                 .isInstanceOf(NotificationTemplateNotFoundException.class)
                 .satisfies(e -> assertThat(e.getMessage()).contains("absent").doesNotContain("vip").doesNotContain("fr-BE"));
     }
+
+    @Test
+    void render_givesTheRendererAnEmptyModel_whenNoneIsGiven_andTheModelItselfOtherwise() {
+        NotificationTemplate created = draft("k", null, null);
+        activate.activate(created.id(), "a");
+        List<Map<String, Object>> models = new ArrayList<>();
+        RenderNotificationUseCaseImpl capturing = new RenderNotificationUseCaseImpl(resolve, (template, model) -> {
+            models.add(model);
+            return new RenderedNotification("S", "T", null);
+        });
+        Map<String, Object> given = Map.of("dossier", Map.of());
+
+        capturing.render(new TemplateResolutionKey("k", null, null), null);
+        capturing.render(new TemplateResolutionKey("k", null, null), given);
+
+        assertThat(models).hasSize(2);
+        assertThat(models.get(0)).isNotNull().isEmpty();
+        assertThat(models.get(1)).isSameAs(given);
+    }
+
+    @Test
+    void preview_givesTheRendererAnEmptyModel_whenNoneIsGiven_andTheModelItselfOtherwise() {
+        List<Map<String, Object>> models = new ArrayList<>();
+        PreviewNotificationTemplateUseCaseImpl capturing = new PreviewNotificationTemplateUseCaseImpl(
+                TENANT, repository, template -> {}, (template, model) -> {
+                    models.add(model);
+                    return new RenderedNotification("S", "T", null);
+                }, LIMITS);
+        Map<String, Object> given = Map.of("variables", Map.of());
+
+        capturing.preview(new PreviewCommand(null, "Objet", "Corps", null, null));
+        capturing.preview(new PreviewCommand(null, "Objet", "Corps", null, given));
+
+        assertThat(models).hasSize(2);
+        assertThat(models.get(0)).isNotNull().isEmpty();
+        assertThat(models.get(1)).isSameAs(given);
+    }
 }

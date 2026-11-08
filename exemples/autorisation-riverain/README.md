@@ -11,7 +11,8 @@ Flux Myrmacta entièrement **configuré, sans développement** :
 Les limites rencontrées et leurs contournements sont décrits dans [DIFFICULTES.md](DIFFICULTES.md).
 L'unicité de la plaque est levée (issue #184) : la clé calculée est unique, et une seconde demande ouverte
 est refusée. Restent notamment le portail désactivé et le moteur de modèles strict. L'absence de pièce
-jointe dans les e-mails est levée (issue #183).
+jointe dans les e-mails est levée (issue #183), ainsi que les textes fixes de la demande d'informations (issue #19, §123) :
+l'e-mail cite la motivation saisie à l'instruction.
 
 ## Contenu
 
@@ -21,6 +22,7 @@ jointe dans les e-mails est levée (issue #183).
 | `config/questions.json` | Les 3 questionnaires de tâches (instruction, compléments × 2) |
 | `config/workflow-config.json` | Statuts du workflow et statuts de dossier autorisés |
 | `config/modele-document.json` + `template-decision.html` | Modèle du document de décision |
+| `config/gabarit-demande-informations.json` | Gabarit de notification `demande-informations-riverain` : objet, corps texte et corps HTML de l'e-mail « informations complémentaires », qui cite la référence et la motivation (corps de `POST /api/notification-templates`, ou outil MCP `define_notification_template`) |
 | `autorisation-riverain-sans-portail.bpmn20.xml` | Processus déployable sur une instance **sans** portail |
 | `autorisation-riverain.bpmn20.xml` | Processus cible, avec complément par le **portail** externe |
 | `autorisation-riverain-preverification.bpmn20.xml` | Variante sans portail précédée d'une **pré-vérification IA** (exige `APP_PRECHECK_ENABLED=true`) |
@@ -56,6 +58,7 @@ annulée et l'issue « autorisée tacitement » s'applique.
 | Compléments | Demandeur via le portail (cible) ; sinon e-mail et saisie par l'agent |
 | Silence du demandeur | Refus motivé après 30 jours, avec le même document |
 | Document | Un modèle unique ; le texte varie selon l'issue (`AUTORISEE`, `AUTORISEE_TACITEMENT`, `REFUSEE`, `REFUSEE_SANS_REPONSE`) |
+| E-mail « informations complémentaires » | Rendu depuis le gabarit `demande-informations-riverain` (`flowable:notificationTemplate`, issue #19, §123) : référence du dossier et motivation saisie à l'instruction (`variables.motivation`, obligatoire dans le questionnaire d'instruction, donc toujours présente : le rendu strict échouerait sinon). Variantes sans portail et avec pré-vérification ; la variante avec portail envoie un lien, pas cet e-mail |
 | E-mail | Automatique à l'adresse saisie dans le dossier (`notificationTo="dossierField:email"`, relue à l'envoi), avec le PDF de décision en pièce jointe (`notificationAttachment="variable:generatedDocumentId"`, issue #183). Envoyé en **asynchrone** : une adresse mal saisie ou un document manquant crée un incident sans bloquer l'agent |
 | Décision au dossier | Champs `decision`, `dateDecision` et `motifDecision`, renseignés par le workflow (`decision` est cherchable) |
 | Statuts du dossier | `EN_COURS` au démarrage, `SUSPENDU` en attente d'informations, `CLOTURE` à la fin |
@@ -172,6 +175,10 @@ harnais est vérifié dans `verify` avec des modèles simulés (`PrecheckEvaluat
    auteur ; s'il a été écrit par quelqu'un d'autre, passer `replaceExistingDraft=true`.
 2. **Activer le modèle de document** `decision-autorisation-riverain` dans l'administration des modèles.
    C'est un geste humain, impossible par MCP.
+   Pour les variantes sans portail et avec pré-vérification, créer aussi le gabarit de notification
+   `demande-informations-riverain` depuis `config/gabarit-demande-informations.json` (Admin → Gabarits de notification, ou
+   `POST /api/notification-templates`), puis l'**activer** : sans version active, l'e-mail « informations complémentaires »
+   échoue à l'envoi (incident rejouable), pas au déploiement.
 3. **Publier le brouillon** depuis l'écran « Brouillons à publier ». La publication est refusée tant que
    le modèle n'est pas actif.
 4. **Accorder l'ACL** du type `AUTORISATION_RIVERAIN` aux gestionnaires (`EDIT`) et aux lecteurs (`VIEW`), dans

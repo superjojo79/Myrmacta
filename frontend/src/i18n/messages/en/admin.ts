@@ -417,7 +417,7 @@ const admin: typeof fr = {
   },
   promotion: {
     title: 'Configuration promotion',
-    intro: 'Export the configuration of one environment (acceptance, for instance), then import it into another: a dry-run plan shows what would be created, changed or blocked before anything is written. No secret is exported; BPMN processes and DMN tables arrive as {drafts}, document templates as drafts to activate; a connector is created {disabled} (review its addresses, then enable it); a group arrives without its members.',
+    intro: 'Export the configuration of one environment (acceptance, for instance), then import it into another: a dry-run plan shows what would be created, changed or blocked before anything is written. No secret is exported; BPMN processes and DMN tables arrive as {drafts}, document and notification templates as drafts to activate; a connector is created {disabled} (review its addresses, then enable it); a group arrives without its members.',
     introDrafts: 'drafts to publish',
     introDisabled: 'disabled',
     export: 'Export',
@@ -444,7 +444,7 @@ const admin: typeof fr = {
     lastImports: 'Latest imports',
     noImport: 'No import recorded.',
     logLine: '{applied} applied, {unchanged} unchanged, {skipped} skipped, {failed} failed',
-    confirmApply: 'Apply this bundle ({count} artifact(s) to create or change)? BPMN processes and DMN tables arrive as drafts to publish, document templates as drafts to activate.',
+    confirmApply: 'Apply this bundle ({count} artifact(s) to create or change)? BPMN processes and DMN tables arrive as drafts to publish, document templates and notification templates as drafts to activate.',
     artifacts: {
       DOSSIER_TYPE: 'Dossier type',
       TASK_QUESTION_SCHEMA: 'Question schema',
@@ -456,6 +456,7 @@ const admin: typeof fr = {
       REPLY_WORKFLOW: 'Reply workflow',
       DEADLINE: 'Deadline',
       DOCUMENT_TEMPLATE: 'Document template',
+      NOTIFICATION_TEMPLATE: 'Notification template',
       PARCOURS: 'Journey',
     },
     planActions: { CREATE: 'Create', UPDATE: 'Update', UNCHANGED: 'Unchanged', CONFLICT: 'Conflict', BLOCKED: 'Blocked' },

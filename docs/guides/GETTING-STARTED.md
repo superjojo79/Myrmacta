@@ -551,7 +551,9 @@ scripts/demo-mailroom.sh start      # depuis la racine du dépôt, avec les vari
 
 - **Premier démarrage, base vide :** l'exemple [`exemples/digital-mail-room`](../../exemples/digital-mail-room/README.md)
   est installé. Il comprend les groupes, les types, les configurations, la table de routage, les process, le workflow
-  réponse, l'échéance de la facture et un point de dépôt.
+  réponse, l'échéance de la facture, un point de dépôt et le gabarit (activé) de l'accusé de réception. La facture reçue par
+  e-mail déclenche cet accusé : sans serveur d'envoi configuré, la ligne d'outbox échoue après ses tentatives, sans effet
+  sur le tri.
 - **Trois courriers arrivent par le vrai pipeline des connecteurs :**
   - une facture par e-mail, routée vers la COMPTABILITE dans un dossier « facture » lié ;
   - une amende déposée en PDF, qui va à la file de tri ;

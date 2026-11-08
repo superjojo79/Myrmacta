@@ -929,6 +929,7 @@ test('E2E-PROMO-2 the plan names the second-tranche artifacts and shows warnings
     entries: [
       { type: 'USER_GROUP', key: 'COMPTABILITE', action: 'BLOCKED', reason: "user group 'COMPTABILITE' needs the environment parameter 'idp_compta'", secretsRequired: [] },
       { type: 'DOCUMENT_TEMPLATE', key: 'accuse._.fr', action: 'UPDATE', reason: "saved as a new draft version: activate it in 'Templates'", secretsRequired: [] },
+      { type: 'NOTIFICATION_TEMPLATE', key: 'accuse-reception-courrier._._', action: 'CREATE', reason: 'saved as a new draft version: activate it in the notification templates screen', secretsRequired: [] },
       { type: 'DMN', key: 'routageCourrier', action: 'CREATE', reason: 'WARNING: routes to user group(s) unknown here and absent from the bundle: [JURIDIQUE] (such mail goes to the sorting queue). saved as a draft to publish', secretsRequired: [] },
       { type: 'REPLY_WORKFLOW', key: 'FACTURE', action: 'BLOCKED', reason: "the workflow configuration 'traiterReponse' only exists once its BPMN draft is published: publish it, then run the import again", secretsRequired: [] },
       { type: 'DEADLINE', key: 'FACTURE', action: 'CREATE', reason: '', secretsRequired: [] },
@@ -953,6 +954,7 @@ test('E2E-PROMO-2 the plan names the second-tranche artifacts and shows warnings
   await expect(page.getByTestId('plan-USER_GROUP-COMPTABILITE')).toContainText('Bloqué')
   await expect(page.getByTestId('plan-DOCUMENT_TEMPLATE-accuse._.fr')).toContainText('Template de document')
   await expect(page.getByTestId('plan-DOCUMENT_TEMPLATE-accuse._.fr')).toContainText('activate it')
+  await expect(page.getByTestId('plan-NOTIFICATION_TEMPLATE-accuse-reception-courrier._._')).toContainText('Gabarit de notification')
   await expect(page.getByTestId('plan-DMN-routageCourrier')).toContainText('WARNING: routes to user group(s)')
   await expect(page.getByTestId('plan-REPLY_WORKFLOW-FACTURE')).toContainText('Workflow « réponse »')
   await expect(page.getByTestId('plan-DEADLINE-FACTURE')).toContainText('Échéance')

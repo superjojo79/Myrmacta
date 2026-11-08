@@ -72,6 +72,40 @@ describe('ConfigurationPromotionView (TODO §83, D4)', () => {
     expect(api.applyImport).not.toHaveBeenCalled()
   })
 
+  it('names a notification template in the plan and in the report, and says it arrives as a draft to activate (issue #19)', async () => {
+    const notificationPlan: ImportPlan = {
+      ...plan,
+      entries: [
+        {
+          type: 'NOTIFICATION_TEMPLATE',
+          key: 'accuse-reception-courrier._._',
+          action: 'CREATE',
+          reason: 'saved as a new draft version: activate it in the notification templates screen',
+          secretsRequired: [],
+        },
+      ],
+    }
+    vi.mocked(api.planImport).mockResolvedValue(notificationPlan)
+    vi.mocked(api.applyImport).mockResolvedValue({
+      bundleSha256: 'sha-1',
+      performedAt: '2026-11-07T10:00:00Z',
+      entries: [{ type: 'NOTIFICATION_TEMPLATE', key: 'accuse-reception-courrier._._', outcome: 'APPLIED', message: 'draft version 1 saved' }],
+    })
+    const wrapper = await mountView()
+    await pickFile(wrapper)
+    await wrapper.get('form.promotion__import').trigger('submit')
+    await flushPromises()
+    const row = wrapper.get('[data-testid="plan-NOTIFICATION_TEMPLATE-accuse-reception-courrier._._"]')
+    expect(row.text()).toContain('Gabarit de notification')
+    expect(row.text()).not.toContain('NOTIFICATION_TEMPLATE')
+    expect(row.text()).toContain('activate it in the notification templates screen')
+
+    await wrapper.get('[data-testid="apply-button"]').trigger('click')
+    await flushPromises()
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('gabarits de notification'))
+    expect(wrapper.get('[data-testid="report-table"]').text()).toContain('Gabarit de notification')
+  })
+
   it('refuses invalid parameters before calling the server', async () => {
     const wrapper = await mountView()
     await pickFile(wrapper)

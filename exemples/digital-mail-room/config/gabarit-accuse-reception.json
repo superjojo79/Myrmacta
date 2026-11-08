@@ -1,0 +1,7 @@
+{
+  "templateKey": "accuse-reception-courrier",
+  "label": "Accusé de réception du courrier",
+  "subject": "Accusé de réception : [[${variables.accuseObjet}]]",
+  "textBody": "Bonjour,\n\nNous avons bien reçu votre courrier « [[${variables.accuseObjet}]] » le [[${variables.dateReception}]].\n\nIl est enregistré sous la référence [[${dossier.reference}]] et sera traité par nos services.\n\nCeci est un message automatique.\nLe service du courrier",
+  "htmlBody": "<p>Bonjour,</p>\n<p>Nous avons bien reçu votre courrier « <i th:text=\"${variables.accuseObjet}\">objet</i> » le <span th:text=\"${variables.dateReception}\">date</span>.</p>\n<p>Il est enregistré sous la référence <b th:text=\"${dossier.reference}\">référence</b> et sera traité par nos services.</p>\n<p><small>Ceci est un message automatique.<br/>Le service du courrier</small></p>"
+}

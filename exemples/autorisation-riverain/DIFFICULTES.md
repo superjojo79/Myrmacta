@@ -92,6 +92,17 @@ l'interface ne déclenche donc **aucun e-mail automatique**. L'adresse est saisi
 
 ## 4. Les textes envoyés au demandeur sont fixes
 
+**Levé le 2026-11-07, §123.** La brique « Notifier » accepte un gabarit (`flowable:notificationTemplate`), avec
+l'objet, le corps texte et un corps HTML facultatif, rendus avec `dossier.*` et `variables.*`. L'e-mail
+« informations complémentaires » des variantes sans portail et avec pré-vérification passe sur le gabarit
+`demande-informations-riverain` (`config/gabarit-demande-informations.json`) : il cite la référence du dossier et la
+motivation saisie à l'instruction, qui parvient donc au demandeur. La variable `motivation` est **obligatoire** dans le
+questionnaire d'instruction : elle existe quand l'agent demande des informations, et le rendu strict ne peut pas
+échouer sur elle. La consigne de la tâche « Encoder les compléments reçus » ne demande plus à l'agent de contacter le
+demandeur. **Ce qui reste fixe :** les e-mails de décision (accordée, refusée) et la consigne de la tâche du portail,
+que le portail affiche telle quelle (les consignes du portail sont hors périmètre du §123). Le texte ci-dessous
+décrit la situation d'origine.
+
 **Constat.** Tout texte destiné au demandeur est littéral dans le BPMN : objet et corps des e-mails,
 consignes (`documentation`) de la tâche portail. Le portail n'affiche aucune variable de process (contrat
 `PortalTaskResponse`, volontairement minimal). La motivation saisie par l'agent pour une demande

@@ -193,3 +193,74 @@ public interface BrowserPushPort {
 - **Tests de référence** : `ResolveEmailAttachmentUseCaseImplTest`, `NotificationDispatchAttachmentTest`,
   `NotificationOutboxRelayTest`, `SmtpEmailAdapterTest`, `NotifierAttachmentIT` (moteur réel, outbox et relais réels),
   `BlockAttributeRulesTest`, `blockDiagnostics.spec.ts`, E2E-PALETTE-10.
+
+---
+
+## Implémentation — gabarits de notification (issue #19, §123)
+
+- **Comportement.** Une brique « Notifier » qui porte `flowable:notificationTemplate="<clé>"` n'a plus d'objet ni de corps
+  littéraux : ils sont rendus à l'exécution depuis un gabarit (`notification_template`, changeSet 049). Un gabarit a une clé,
+  une variante et une langue facultatives, un objet, un corps texte et un corps HTML facultatif, et suit le cycle de vie des
+  templates de document (`DRAFT → ACTIVE → ARCHIVED`, une seule version active par combinaison, cascade de résolution à
+  quatre niveaux, [spec 08](08-templates-documents.md)). L'objet et le corps texte sont rendus par Thymeleaf en mode `TEXT`
+  (inline `[[${…}]]`, dont les entités HTML sont décodées), le corps HTML en mode `HTML`, avec la grammaire D-40 dans les deux
+  cas. Le modèle est celui des expressions métier (`BusinessExpressionContext`) sans `connectorResult` : `dossier`
+  (référence, type, statut, libellé, champs déclarés non sensibles) et `variables` (variables de process scalaires)
+  (D-NOTIF-TPL-MODEL). Avec un corps HTML, `SmtpEmailAdapter` produit un message multipart (`multipart/mixed`, qui contient
+  un `multipart/alternative` texte et HTML), sinon le texte seul ; `Auto-Submitted: auto-generated` est toujours posé. Le HTML rendu part dans l'outbox (`htmlBody`, absent des
+  anciennes lignes, qui restent lisibles et partent en texte seul). Sans `notificationTemplate`, la brique ne change pas.
+- **Gestion.** API REST `/api/notification-templates` (`TENANT_ADMIN` seul : liste, détail, `resolve`, création, mise à jour
+  d'un brouillon, activation, archivage, nouvelle version, aperçu), écran `/admin/notification-templates`, outils MCP
+  `define_notification_template` (brouillon seulement, contrôle avant écriture, `dryRun`, corps jamais renvoyés),
+  `list_notification_templates` et `preview_notification_template` (mode conception) : l'activation reste un geste humain.
+  La version active de chaque combinaison voyage dans la promotion de configuration (`NOTIFICATION_TEMPLATE`,
+  `NotificationTemplateArtifacts`) ; l'import crée un brouillon, jamais activé.
+- **Garde-fous.**
+  - *Politique HTML* (`NotificationHtmlPolicy`, D-NOTIF-TPL-HTML-POLICY) : balises de mise en forme seulement, ni image, ni
+    `<style>`, ni script, ni formulaire ; liens `http`, `https` et `mailto` ; attribut `style` sans `url(`, `expression(`,
+    `@import` ni `javascript:` ; attributs `th:` limités à `text`, `if`, `unless`, `each`, `with`, `switch`, `case`, `remove`
+    et l'élément `th:block`. Le corps est **refusé** à l'activation (400, règle nommée), jamais nettoyé en silence ; le HTML
+    rendu repasse par un nettoyeur jsoup de même politique (défense en profondeur).
+  - *Rendu strict* (D-NOTIF-TPL-STRICT) : une variable ou une propriété absente ou nulle fait échouer le rendu, comme pour
+    un document. La brique lève `NotificationValidationException` (incident si elle est asynchrone, 422 sinon) et rien
+    n'est écrit dans l'outbox ; le message nomme le gabarit et l'expression, jamais une valeur. Un gabarit sans version
+    active échoue de même, à l'exécution. Bornes (`app.notification.template.*`) : objet de 500 caractères au plus dans le
+    gabarit et de 255 une fois rendu (sans CR/LF), corps texte de 64 Kio, corps HTML de 256 Kio, 1 Mio rendus au total,
+    modèle d'aperçu de 64 Kio.
+  - *Coût du rendu borné* (revue de clôture, [§123](../decisions/123-gabarits-de-notification.md)) : écriture dans un
+    `Writer` borné, budget d'évaluations pondéré par la taille des résultats, échéance de 2 s par rendu, chaînes et grands
+    nombres plafonnés à 100 000 caractères ou chiffres, utilitaires de taille (`#numbers.sequence`, `#strings.repeat`,
+    chiffres de `#numbers.format*`) plafonnés à 1 000 et contrôlés dans la plage `int`, `#strings.randomAlphanumeric` refusé
+    (propriétés `app.notification.template.*`). Ces bornes ne s'appliquent qu'aux gabarits de notification.
+  - *Pré-traitement `__…__` refusé*, y compris écrit en entités HTML (`&#95;&#95;`), à l'activation comme au rendu : une
+    donnée ne peut jamais devenir une expression. Faux positif accepté : une ligne de soulignés `________`.
+  - *Champs sensibles* : un champ `sensitive` n'est jamais exposé, `${dossier.fields.<champ>}` échoue comme une propriété
+    absente. Risque résiduel assumé : une variable de process qui recopierait un champ sensible serait rendue ; il est
+    documenté dans le [guide de conception](../guides/GUIDE-CONCEPTION-BPMN.md) §6c.
+  - *Attributs lus dans le BPMN déployé* (D-NOTIF-TPL-LITERAL) : `notificationTemplate`, `notificationVariant` et
+    `notificationLocale` ne sont jamais lus dans une variable de process du même nom. `BlockAttributeRules` refuse au
+    déploiement un gabarit combiné à `notificationSubject` ou `notificationBody`, sans canal `EMAIL` ou avec un autre canal
+    en plus, ou sans `notificationTo` écrit dans le BPMN, et une variante ou une langue sans gabarit. La clé du gabarit n'est
+    pas vérifiée au déploiement (il peut arriver par la promotion).
+- **Limites.** Les rappels et escalades d'échéance, les consignes des tâches du portail, les canaux webhook et navigateur et le
+  connecteur `smtp` restent hors périmètre (D-NOTIF-TPL-SCOPE) ; pas d'éditeur WYSIWYG, pas de langue du destinataire déduite
+  de son profil (la langue est un attribut ou une variable de la brique). Le contenu rendu est conservé en clair dans l'outbox
+  jusqu'à l'envoi, comme l'adresse du destinataire.
+- **Exemples.** [`exemples/digital-mail-room`](../../exemples/digital-mail-room/README.md) : accusé de réception de la mail
+  room ([spec 49](49-digital-mail-room.md) §3) ; [`exemples/autorisation-riverain`](../../exemples/autorisation-riverain/README.md) :
+  e-mail « informations complémentaires » qui cite la motivation saisie à l'instruction.
+- **Tests de référence.**
+  - Domaine et rendu : `NotificationTemplateUseCasesTest`, `ThymeleafNotificationTemplateRendererTest`,
+    `ThymeleafNotificationTemplateCheckerTest`, `NotificationHtmlPolicyTest`, `SafeHtmlTemplateEngineFactoryTest`.
+  - Brique et déploiement : `NotificationDispatchTemplateTest`, `BlockAttributeRulesTest`, `BuildingBlockCatalogTest`,
+    `ParcoursCompilerTest`, `FlowableBpmnParserAdapterBlockTest`.
+  - Envoi : `NotifierTemplateEmailIT` (moteur, outbox et relais réels, serveur SMTP en mémoire : objet, parties, en-tête
+    anti-boucle, variable absente synchrone et asynchrone, champ sensible), `NotificationOutboxRelayTest`,
+    `SmtpEmailAdapterTest`.
+  - API, MCP et promotion : `NotificationTemplateApiTest`, `NotificationTemplatePersistenceIT`,
+    `NotificationTemplateToolsTest`, `NotificationTemplateMcpChainTest`, `NotificationTemplateArtifactsTest`,
+    `NotificationTemplatePromotionApiTest`.
+  - Écran : `NotificationTemplatesAdminView.spec.ts`, `notificationTemplates.spec.ts`,
+    `pilotage-gabarits-notification.spec.ts` (Playwright), `ConfigurationPromotionView.spec.ts`.
+  - Exemples : `MailRoomExampleIT` (accusé de réception : e-mail attesté, courrier papier, expéditeur non attesté, réponse
+    rattachée), `RiverainInformationRequestExampleIT` et `RiverainInformationRequestExampleTest`.

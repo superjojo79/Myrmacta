@@ -5,8 +5,8 @@ import java.util.UUID;
 public class NotificationTemplateNotFoundException extends RuntimeException {
 
     public NotificationTemplateNotFoundException(TemplateResolutionKey key) {
-        super("No ACTIVE notification template for key=%s variant=%s locale=%s"
-                .formatted(key.templateKey(), key.variantKey(), key.locale()));
+        // La variante et la langue peuvent venir d'une variable de process : jamais recopiées dans le message.
+        super("No ACTIVE notification template for key=%s".formatted(key.templateKey()));
     }
 
     public NotificationTemplateNotFoundException(UUID id) {

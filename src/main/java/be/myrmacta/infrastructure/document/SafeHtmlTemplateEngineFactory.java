@@ -68,7 +68,21 @@ public final class SafeHtmlTemplateEngineFactory {
         return stringEngine(TemplateMode.TEXT);
     }
 
+    /** Moteur HTML dont l'évaluateur borne le coût (gabarits de notification). */
+    public static TemplateEngine htmlStringEngine(ExpressionLimits limits) {
+        return stringEngine(TemplateMode.HTML, new SafeThymeleafVariableExpressionEvaluator(limits));
+    }
+
+    /** Moteur TEXT dont l'évaluateur borne le coût (gabarits de notification). */
+    public static TemplateEngine textStringEngine(ExpressionLimits limits) {
+        return stringEngine(TemplateMode.TEXT, new SafeThymeleafVariableExpressionEvaluator(limits));
+    }
+
     private static TemplateEngine stringEngine(TemplateMode mode) {
+        return stringEngine(mode, SafeThymeleafVariableExpressionEvaluator.INSTANCE);
+    }
+
+    private static TemplateEngine stringEngine(TemplateMode mode, SafeThymeleafVariableExpressionEvaluator evaluator) {
         StringTemplateResolver resolver = new StringTemplateResolver();
         resolver.setTemplateMode(mode);
         resolver.setCacheable(false);
@@ -80,7 +94,7 @@ public final class SafeHtmlTemplateEngineFactory {
                         .collect(Collectors.toCollection(LinkedHashSet::new));
             }
         };
-        dialect.setVariableExpressionEvaluator(SafeThymeleafVariableExpressionEvaluator.INSTANCE);
+        dialect.setVariableExpressionEvaluator(evaluator);
         TemplateEngine engine = new TemplateEngine();
         engine.setDialect(dialect);
         engine.setTemplateResolver(resolver);

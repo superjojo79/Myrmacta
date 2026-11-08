@@ -39,7 +39,7 @@ public class ExportConfigurationTool {
             description = "Export this instance's configuration as a versioned bundle of text files: user groups (without "
                     + "members), dossier types, task question schemas, connector instances (secret fields removed), deployed DMN "
                     + "tables and BPMN processes, workflow configurations, reply workflows and deadlines of dossier types, "
-                    + "journey (parcours) definitions. Document templates are listed under 'omitted' without their HTML (never "
+                    + "journey (parcours) definitions. Document and notification templates are listed under 'omitted' without their bodies (never "
                     + "returned through MCP): use the admin screen's ZIP export to carry them. Read-only, never contains secrets. "
                     + "Feed the entries to import_configuration on another instance (dry-run plan first). Too large an export is "
                     + "refused: use the admin screen's ZIP export.")
@@ -50,13 +50,13 @@ public class ExportConfigurationTool {
         List<Map<String, Object>> entries = new java.util.ArrayList<>();
         List<Map<String, Object>> omitted = new java.util.ArrayList<>();
         for (BundleEntry e : bundle.entries()) {
-            if (e.type() == ArtifactType.DOCUMENT_TEMPLATE) {
+            if (e.type() == ArtifactType.DOCUMENT_TEMPLATE || e.type() == ArtifactType.NOTIFICATION_TEMPLATE) {
                 // TODO §117 (D-PROMO-MCP-TEMPLATE, revue de clôture #279 M2) — jamais de corps HTML de template par MCP (D-TPLED-NO-ACTIVATE)
                 Map<String, Object> skipped = new LinkedHashMap<>();
                 skipped.put("type", e.type().name());
                 skipped.put("key", e.key());
                 skipped.put("sha256", e.sha256());
-                skipped.put("reason", "template HTML is never returned through MCP: use the admin screen's ZIP export");
+                skipped.put("reason", "template bodies are never returned through MCP: use the admin screen's ZIP export");
                 omitted.add(skipped);
                 continue;
             }

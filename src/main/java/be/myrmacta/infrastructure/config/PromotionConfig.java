@@ -15,7 +15,11 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.promotion.artifact.AdditionalArtifacts;
 import be.myrmacta.domain.promotion.artifact.DocumentTemplateArtifacts;
+import be.myrmacta.domain.notification.template.port.in.CreateNotificationTemplateUseCase;
+import be.myrmacta.domain.notification.template.port.out.NotificationTemplateChecker;
+import be.myrmacta.domain.notification.template.port.out.NotificationTemplateRepository;
 import be.myrmacta.domain.promotion.artifact.GroupReferenceCheck;
+import be.myrmacta.domain.promotion.artifact.NotificationTemplateArtifacts;
 import be.myrmacta.domain.promotion.artifact.ParcoursArtifacts;
 import be.myrmacta.domain.promotion.artifact.TypeSettingsArtifacts;
 import be.myrmacta.domain.promotion.artifact.UserGroupArtifacts;
@@ -77,13 +81,19 @@ class PromotionConfig {
             TemplateSyntaxChecker templateSyntax,
             ParcoursRepository parcoursRepository,
             ManageParcoursUseCase manageParcours,
-            WorkflowDeploymentPort workflowDeployment) {
+            WorkflowDeploymentPort workflowDeployment,
+            NotificationTemplateRepository notificationTemplates,
+            CreateNotificationTemplateUseCase createNotificationTemplate,
+            NotificationTemplateChecker notificationTemplateChecker,
+            NotificationTemplateProperties notificationTemplateProperties) {
         return new AdditionalArtifacts(new UserGroupArtifacts(userGroups, codec),
                 new GroupReferenceCheck(new XmlGroupReferenceExtractor()),
                 new TypeSettingsArtifacts(tenantProperties.id(), codec, types, workflowConfigs, replyWorkflows, deadlines, calendars),
                 new DocumentTemplateArtifacts(tenantProperties.id(), codec, templates, createTemplate, templateSyntax,
                         DocumentConfig.MAX_HTML_BYTES),
-                new ParcoursArtifacts(tenantProperties.id(), codec, parcoursRepository, manageParcours, workflowDeployment));
+                new ParcoursArtifacts(tenantProperties.id(), codec, parcoursRepository, manageParcours, workflowDeployment),
+                new NotificationTemplateArtifacts(tenantProperties.id(), codec, notificationTemplates,
+                        createNotificationTemplate, notificationTemplateChecker, notificationTemplateProperties.limits()));
     }
 
     @Bean

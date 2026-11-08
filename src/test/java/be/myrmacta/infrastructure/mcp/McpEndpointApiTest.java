@@ -71,6 +71,10 @@ class McpEndpointApiTest {
             "import_configuration",
             "define_document_template",
             "preview_document",
+            // TODO §123
+            "define_notification_template",
+            "list_notification_templates",
+            "preview_notification_template",
             "list_parcours",
             "get_parcours",
             "define_parcours",

@@ -11,7 +11,8 @@ public record AdditionalArtifacts(
         GroupReferenceCheck groupReferences,
         TypeSettingsArtifacts typeSettings,
         DocumentTemplateArtifacts templates,
-        ParcoursArtifacts parcours) {
+        ParcoursArtifacts parcours,
+        NotificationTemplateArtifacts notificationTemplates) {
 
     public AdditionalArtifacts {
         Objects.requireNonNull(groups, "groups");
@@ -19,5 +20,6 @@ public record AdditionalArtifacts(
         Objects.requireNonNull(typeSettings, "typeSettings");
         Objects.requireNonNull(templates, "templates");
         Objects.requireNonNull(parcours, "parcours");
+        Objects.requireNonNull(notificationTemplates, "notificationTemplates");
     }
 }

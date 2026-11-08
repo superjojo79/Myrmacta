@@ -39,9 +39,9 @@ public class ImportConfigurationTool {
             name = "import_configuration",
             description = "Dry-run (default) or stage a configuration bundle produced by export_configuration. entries: list of "
                     + "{type, key, content} (type: DOSSIER_TYPE, TASK_QUESTION_SCHEMA, CONNECTOR_INSTANCE, DMN, BPMN, "
-                    + "WORKFLOW_CONFIG, USER_GROUP, REPLY_WORKFLOW, DEADLINE, DOCUMENT_TEMPLATE, PARCOURS; content: the file text). "
+                    + "WORKFLOW_CONFIG, USER_GROUP, REPLY_WORKFLOW, DEADLINE, DOCUMENT_TEMPLATE, NOTIFICATION_TEMPLATE, PARCOURS; content: the file text). "
                     + "The plan says per artifact CREATE, UPDATE, UNCHANGED, CONFLICT or BLOCKED and why. apply=true only "
-                    + "saves BPMN, DMN and document template DRAFTS (a human publishes or activates them); everything else is "
+                    + "saves BPMN, DMN, document template and notification template DRAFTS (a human publishes or activates them); everything else is "
                     + "applied from the admin import screen. Secrets are never accepted. parameters replace {{name}} "
                     + "placeholders in connector configuration and in the identity-provider group of a user group.")
     public Map<String, Object> importConfiguration(

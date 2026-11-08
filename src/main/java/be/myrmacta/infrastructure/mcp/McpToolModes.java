@@ -36,6 +36,10 @@ public final class McpToolModes {
             Map.entry("publish_draft", Mode.DESIGN),
             Map.entry("define_document_template", Mode.DESIGN),
             Map.entry("preview_document", Mode.DESIGN),
+            // TODO §123 — gabarits de notification : conception seulement (la liste aussi, par prudence)
+            Map.entry("define_notification_template", Mode.DESIGN),
+            Map.entry("list_notification_templates", Mode.DESIGN),
+            Map.entry("preview_notification_template", Mode.DESIGN),
             Map.entry("list_parcours", Mode.DESIGN),
             Map.entry("get_parcours", Mode.DESIGN),
             Map.entry("define_parcours", Mode.DESIGN),

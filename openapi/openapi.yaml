@@ -5791,6 +5791,7 @@ components:
           - DOCUMENT_TEMPLATE
           - PARCOURS
           - CALENDAR
+          - NOTIFICATION_TEMPLATE
         key:
           type: string
         action:
@@ -5839,6 +5840,7 @@ components:
           - DOCUMENT_TEMPLATE
           - PARCOURS
           - CALENDAR
+          - NOTIFICATION_TEMPLATE
         key:
           type: string
         outcome:

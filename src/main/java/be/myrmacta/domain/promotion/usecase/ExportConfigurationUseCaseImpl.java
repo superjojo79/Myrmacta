@@ -98,6 +98,7 @@ public final class ExportConfigurationUseCaseImpl implements ExportConfiguration
                 entries.add(new BundleEntry(ArtifactType.TASK_QUESTION_SCHEMA, s.schemaKey(), codec.encode(schemaDoc(s)))));
 
         entries.addAll(additional.templates().export());
+        entries.addAll(additional.notificationTemplates().export());
 
         Set<String> usedKeys = new HashSet<>();
         connectors.listByTenantId(tenantId).stream()

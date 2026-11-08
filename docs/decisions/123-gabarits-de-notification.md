@@ -3,7 +3,7 @@
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 
 Issue [#19](https://github.com/superjojo79/Myrmacta/issues/19) (vague mail room, dernière sous-issue de
-[#217](https://github.com/superjojo79/Myrmacta/issues/217)). Cadrage validé par l'utilisateur le 2026-11-07. Livré en cinq lots (PR #39 à #42 et la PR du lot 5) ; comportement
+[#217](https://github.com/superjojo79/Myrmacta/issues/217)). Cadrage validé par l'utilisateur le 2026-11-07. Livré en cinq lots (PR #39 à #42 et #44) ; comportement
 dans la [spec 09](../specs/09-notifications.md) § « Implémentation — gabarits de notification » et la
 [spec 49](../specs/49-digital-mail-room.md). Constats bas de la revue de clôture : issue
 [#43](https://github.com/superjojo79/Myrmacta/issues/43).

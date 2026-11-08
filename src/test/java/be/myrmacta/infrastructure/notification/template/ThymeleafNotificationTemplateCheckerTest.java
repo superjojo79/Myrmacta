@@ -98,4 +98,31 @@ class ThymeleafNotificationTemplateCheckerTest {
         assertThatCode(() -> checker.check(template("Re: <b>urgent</b>", "<img> et onclick= sont du texte", null)))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void preProcessing_isRefused_inEveryPart() {
+        assertRefused(template("S", "[[__${a}__]]", null), "textBody", "__");
+        assertRefused(template("S", "[# th:text=\"${__${a}__}\"][/]", null), "textBody", "__");
+        assertRefused(template("a __${a}__", "T", null), "subject", "__");
+        assertRefused(template("S", "T", "<p th:text=\"__${a}__\">x</p>"), "htmlBody", "__");
+        assertRefused(template("S", "T", "<p th:text=\"${__${a}__}\">x</p>"), "htmlBody", "__");
+    }
+
+    @Test
+    void preProcessingWrittenWithHtmlEntities_isRefused() {
+        for (String underscores : java.util.List.of("&#95;&#95;", "&#x5f;&#x5F;", "&lowbar;&lowbar;", "&UnderBar;&UnderBar;")) {
+            String expr = underscores + "${a}" + underscores;
+            assertRefused(template("S", "T", "<p th:text=\"" + expr + "\">x</p>"), "htmlBody", "pre-processing");
+            assertRefused(template("S", "T", "<p>[[" + expr + "]]</p>"), "htmlBody", "pre-processing");
+            assertRefused(template("S", "[[" + expr + "]]", null), "textBody", "pre-processing");
+            assertRefused(template("S", "[# th:text=\"" + expr + "\"][/]", null), "textBody", "pre-processing");
+            assertRefused(template(expr, "T", null), "subject", "pre-processing");
+        }
+    }
+
+    @Test
+    void expressionsWrittenWithEntities_areSubjectToTheGrammarCheck() {
+        assertRefused(template("S", "T", "<p th:text=\"&#36;{variables.zzz.getClass}\">x</p>"), "htmlBody");
+        assertRefused(template("S", "[[&#36;{variables.zzz.getClass}]]", null), "textBody");
+    }
 }

@@ -13,9 +13,13 @@ import org.thymeleaf.standard.expression.StandardExpressionExecutionContext;
 final class SafeThymeleafVariableExpressionEvaluator implements IStandardVariableExpressionEvaluator {
 
     static final SafeThymeleafVariableExpressionEvaluator INSTANCE =
-            new SafeThymeleafVariableExpressionEvaluator();
+            new SafeThymeleafVariableExpressionEvaluator(null);
 
-    private SafeThymeleafVariableExpressionEvaluator() {}
+    private final ExpressionLimits limits;
+
+    SafeThymeleafVariableExpressionEvaluator(ExpressionLimits limits) {
+        this.limits = limits;
+    }
 
     @Override
     public Object evaluate(
@@ -26,6 +30,6 @@ final class SafeThymeleafVariableExpressionEvaluator implements IStandardVariabl
         if (raw == null || raw.isBlank()) {
             throw new TemplateProcessingException("Unsupported Thymeleaf expression: " + raw);
         }
-        return SafeThymeleafExpressionSupport.evaluate(context, raw);
+        return SafeThymeleafExpressionSupport.evaluate(context, raw, limits);
     }
 }

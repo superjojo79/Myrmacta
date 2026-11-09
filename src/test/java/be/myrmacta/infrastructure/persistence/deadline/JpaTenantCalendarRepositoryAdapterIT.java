@@ -7,8 +7,10 @@ import be.myrmacta.domain.deadline.model.CalendarEntry;
 import be.myrmacta.domain.deadline.model.CalendarEntry.Nature;
 import be.myrmacta.domain.deadline.model.CalendarSource;
 import be.myrmacta.domain.deadline.model.WeekendPattern;
+import be.myrmacta.domain.deadline.model.BusinessCalendar;
 import be.myrmacta.domain.deadline.port.in.ManageTenantCalendarUseCase;
 import be.myrmacta.domain.deadline.port.out.TenantCalendarRepository;
+import be.myrmacta.domain.deadline.port.out.TenantCalendars;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +52,9 @@ class JpaTenantCalendarRepositoryAdapterIT {
 
     @Autowired
     private TenantCalendarRepository repository;
+
+    @Autowired
+    private TenantCalendars calendars;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -246,14 +251,36 @@ class JpaTenantCalendarRepositoryAdapterIT {
     }
 
     @Test
-    void aStoredUrlThatCannotBeDecryptedIsTreatedAsMissing_notAsAnError() {
+    void aStoredUrlThatCannotBeDecryptedIsClearedAndTreatedAsMissing() {
         UUID id = UUID.randomUUID();
         repository.saveSource(TENANT, new CalendarSource(id, "Agenda", CalendarSource.Kind.ICS_URL, List.of(), null, "admin-it", null, null,
                 "https://calendar.example.org/…"), "https://calendar.example.org/ical/TOPSECRET/basic.ics");
         jdbc.update("update tenant_calendar_source set url_ciphertext = 'enc:v1:pas-du-chiffre' where id = ?", id);
 
         assertThat(repository.findSourceUrl(TENANT, id)).isEmpty();
+        assertThat(jdbc.queryForObject("select url_ciphertext from tenant_calendar_source where id = ?", String.class, id)).isNull();
+        assertThat(jdbc.queryForObject("select masked_url from tenant_calendar_source where id = ?", String.class, id)).isNull();
         assertThat(repository.findSourceUrl(TENANT, UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void getCachesTheBusinessCalendarUntilUpdatedAtChanges() {
+        LocalDate closed = LocalDate.parse("2026-12-25");
+        UUID id = UUID.randomUUID();
+        repository.save(new TenantCalendarRepository.StoredTenantCalendar(TENANT,
+                new be.myrmacta.domain.deadline.model.TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(), List.of()),
+                Instant.parse("2026-11-09T10:00:00Z"), "admin-it"));
+        repository.saveSource(TENANT, new CalendarSource(id, "Noël", CalendarSource.Kind.ICS_FILE,
+                List.of(CalendarEntry.day(closed, Nature.CLOSED, "Noël")), Instant.parse("2026-11-09T10:00:00Z"), "admin-it", "sha", null), null);
+
+        BusinessCalendar first = calendars.get(TENANT);
+        assertThat(first.isBusinessDay(closed)).isFalse();
+
+        jdbc.update("delete from tenant_calendar_entry where tenant_id = ?", TENANT);
+        assertThat(calendars.get(TENANT).isBusinessDay(closed)).isFalse();
+
+        jdbc.update("update tenant_calendar set updated_at = updated_at + interval '1 second' where tenant_id = ?", TENANT);
+        assertThat(calendars.get(TENANT).isBusinessDay(closed)).isTrue();
     }
 
     @Test

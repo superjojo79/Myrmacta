@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import be.myrmacta.infrastructure.notification.OutboundUrlGuard;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -21,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.slf4j.LoggerFactory;
 
 /**
  * TODO §121 (D-CAL-ICS-URL) — téléchargement d'un calendrier par URL : garde réseau (§44), aucune redirection,
@@ -177,6 +181,30 @@ class HttpsIcsFetcherTest {
 
     // TODO §121 (revue de #33) — le délai de 10 s couvre aussi la connexion et les en-têtes, pas seulement le corps : chaque
     // ligne d'en-tête arrive avant le délai de lecture, donc sans délai total l'appel resterait ouvert (100 × 300 ms).
+    @Test
+    void failureMessagesAndCapturedLogsNeverContainTheSecretUrl() throws Exception {
+        Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        root.addAppender(appender);
+        try {
+            HttpServer closed = serve(exchange -> respond(exchange, 200, new byte[0]));
+            String secretUrl = url(closed);
+            closed.stop(0);
+
+            assertThatThrownBy(() -> fetcher().fetch(secretUrl))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageNotContaining(SECRET)
+                    .hasMessageNotContaining("/ical/");
+
+            assertThat(appender.list)
+                    .extracting(ILoggingEvent::getFormattedMessage)
+                    .noneMatch(message -> message.contains(SECRET) || message.contains("/ical/"));
+        } finally {
+            root.detachAppender(appender);
+        }
+    }
+
     @Test
     @Timeout(10)
     void aServerThatDripsResponseHeadersIsStoppedByTheTotalDeadline() throws Exception {

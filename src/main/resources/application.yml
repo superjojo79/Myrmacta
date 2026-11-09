@@ -129,6 +129,11 @@ logging:
   structured:
     format:
       console: ecs
+  # TODO §124 (D-CAL-LOG-HC) — DEBUG sur org.apache.hc / org.apache.http écrit la ligne de requête, donc l'URL
+  # secrète d'une source ICS. Rester à WARN (ou plus haut) en exploitation ; voir docs/guides/DEPLOIEMENT.md.
+  level:
+    org.apache.hc: WARN
+    org.apache.http: WARN
 
 server:
   forward-headers-strategy: framework

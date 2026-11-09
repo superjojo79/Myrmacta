@@ -90,4 +90,10 @@ class TenantCalendarSourceJpaEntity {
     void urlCiphertext(String ciphertext) {
         this.urlCiphertext = ciphertext;
     }
+
+    /** TODO §124 (D-CAL-URL-PURGE) — plus de secret ni de forme masquée : l'URL est à ressaisir. */
+    void clearStoredUrl() {
+        this.urlCiphertext = null;
+        this.maskedUrl = null;
+    }
 }

@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 050-tenant-calendar-entry-source-fk
+      author: myrmacta
+      comment: >-
+        TODO §124 (D-CAL-FK-SOURCE) — une période ne peut référencer que une source du même tenant :
+        contrainte unique (tenant_id, id) sur la source, puis FK composite depuis tenant_calendar_entry.
+      changes:
+        - addUniqueConstraint:
+            tableName: tenant_calendar_source
+            columnNames: tenant_id, id
+            constraintName: uq_tenant_calendar_source_tenant_id
+        - dropForeignKeyConstraint:
+            baseTableName: tenant_calendar_entry
+            constraintName: fk_tenant_calendar_entry_source
+        - addForeignKeyConstraint:
+            baseTableName: tenant_calendar_entry
+            baseColumnNames: tenant_id, source_id
+            referencedTableName: tenant_calendar_source
+            referencedColumnNames: tenant_id, id
+            constraintName: fk_tenant_calendar_entry_source
+            onDelete: CASCADE

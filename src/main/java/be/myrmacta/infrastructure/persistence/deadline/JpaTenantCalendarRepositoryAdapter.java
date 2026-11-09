@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.hibernate.Session;
 import org.slf4j.Logger;
@@ -31,6 +32,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>L'URL d'une source ICS_URL est un secret (D-CAL-ICS-URL) : elle est chiffrée ici, par {@link ConnectorSecretCipher},
  * et ne sort de cette classe que pour être téléchargée ; la base ne garde en clair que sa forme masquée.
+ *
+ * <p>TODO §124 (D-CAL-CACHE) — {@link #get} conserve le calendrier déroulé tant que {@code updated_at} n'a pas changé
+ * (une instance = un tenant).
  */
 @Component
 class JpaTenantCalendarRepositoryAdapter implements TenantCalendarRepository, TenantCalendars {
@@ -46,6 +50,9 @@ class JpaTenantCalendarRepositoryAdapter implements TenantCalendarRepository, Te
     private final ConnectorSecretCipher cipher;
     private final TransactionTemplate transaction;
     private final EntityManager entityManager;
+    private final AtomicReference<CachedCalendar> cache = new AtomicReference<>();
+
+    private record CachedCalendar(Instant updatedAt, BusinessCalendar calendar) {}
 
     JpaTenantCalendarRepositoryAdapter(
             SpringDataTenantCalendarRepository headers,
@@ -80,7 +87,17 @@ class JpaTenantCalendarRepositoryAdapter implements TenantCalendarRepository, Te
     @Override
     @Transactional(readOnly = true)
     public BusinessCalendar get(String tenantId) {
-        return find(tenantId).map(stored -> stored.calendar().toCalendar()).orElseGet(BusinessCalendar::defaults);
+        Instant stamp = headers.findById(tenantId).map(TenantCalendarJpaEntity::updatedAt).orElse(null);
+        if (stamp == null) {
+            return BusinessCalendar.defaults();
+        }
+        CachedCalendar hit = cache.get();
+        if (hit != null && stamp.equals(hit.updatedAt())) {
+            return hit.calendar();
+        }
+        BusinessCalendar calendar = find(tenantId).map(stored -> stored.calendar().toCalendar()).orElseGet(BusinessCalendar::defaults);
+        cache.set(new CachedCalendar(stamp, calendar));
+        return calendar;
     }
 
     @Override
@@ -154,19 +171,39 @@ class JpaTenantCalendarRepositoryAdapter implements TenantCalendarRepository, Te
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<String> findSourceUrl(String tenantId, UUID sourceId) {
-        Optional<String> stored = sources.findByIdAndTenantId(sourceId, tenantId).map(TenantCalendarSourceJpaEntity::urlCiphertext);
-        if (stored.isEmpty()) {
+        Optional<TenantCalendarSourceJpaEntity> row = sources.findByIdAndTenantId(sourceId, tenantId);
+        if (row.isEmpty() || row.get().urlCiphertext() == null) {
             return Optional.empty();
         }
         try {
-            return Optional.of(cipher.decrypt(tenantId, stored.get()));
+            return Optional.of(cipher.decrypt(tenantId, row.get().urlCiphertext()));
         } catch (RuntimeException unreadable) {
-            // Clé changée ou valeur altérée : on demande l'URL de nouveau. Ni l'URL ni la cause n'est journalisée.
+            // Clé changée ou valeur altérée : on efface le secret (D-CAL-URL-PURGE) et on redemande l'URL.
+            // Ni l'URL ni la cause n'est journalisée.
             LOG.warn("The stored URL of calendar source {} cannot be decrypted", sourceId);
+            clearUnreadableUrl(tenantId, sourceId);
             return Optional.empty();
         }
+    }
+
+    /** Sous le verrou du calendrier : retire ciphertext et masque si la valeur est encore illisible. */
+    private void clearUnreadableUrl(String tenantId, UUID sourceId) {
+        locked(tenantId, () -> {
+            sources.findByIdAndTenantId(sourceId, tenantId).ifPresent(entity -> {
+                String ciphertext = entity.urlCiphertext();
+                if (ciphertext == null) {
+                    return;
+                }
+                try {
+                    cipher.decrypt(tenantId, ciphertext);
+                } catch (RuntimeException stillUnreadable) {
+                    entity.clearStoredUrl();
+                    sources.save(entity);
+                }
+            });
+            return null;
+        });
     }
 
     @Override

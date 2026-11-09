@@ -27,13 +27,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.Parameter;
 import net.fortuna.ical4j.model.Period;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.Recur;
 import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.parameter.Range;
 import net.fortuna.ical4j.model.property.DtEnd;
 import net.fortuna.ical4j.model.property.DtStart;
 import net.fortuna.ical4j.model.property.RDate;
@@ -85,7 +88,7 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
         Period<LocalDate> window = new Period<>(LocalDate.of(fromYear, 1, 1), LocalDate.of(toYear, 12, 31));
         Map<IcsIgnoreReason, Integer> ignored = new EnumMap<>(IcsIgnoreReason.class);
         List<CalendarEntry> entries = new ArrayList<>();
-        Map<String, Set<LocalDate>> overridden = overriddenOccurrences(events, zone);
+        Map<String, SeriesOverride> overridden = overriddenOccurrences(events, zone);
         long deadline = System.nanoTime() + budgetNanos;
         for (VEvent event : events) {
             if (System.nanoTime() > deadline) {
@@ -93,8 +96,9 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
                         + Duration.ofNanos(budgetNanos).toSeconds() + " s): recurrences starting very long ago cannot be unrolled");
             }
             try {
-                Set<LocalDate> skipped = event.getProperty(Property.RECURRENCE_ID).isPresent()
-                        ? Set.of() : overridden.getOrDefault(uidOf(event), Set.of());
+                Predicate<LocalDate> skipped = event.getProperty(Property.RECURRENCE_ID).isPresent()
+                        ? day -> false
+                        : overridden.getOrDefault(uidOf(event), SeriesOverride.NONE)::skips;
                 IcsIgnoreReason reason = unfold(event, window, skipped, entries);
                 if (reason != null) {
                     ignored.merge(reason, 1, Integer::sum);
@@ -119,7 +123,7 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
     }
 
     /** Ajoute les périodes de l'événement ; rend la raison pour laquelle il est écarté, nul s'il est retenu. */
-    private static IcsIgnoreReason unfold(VEvent event, Period<LocalDate> window, Set<LocalDate> skipped,
+    private static IcsIgnoreReason unfold(VEvent event, Period<LocalDate> window, Predicate<LocalDate> skipped,
                                           Collection<CalendarEntry> into) {
         if (event.getProperty(Property.STATUS).map(Property::getValue).filter("CANCELLED"::equalsIgnoreCase).isPresent()) {
             return IcsIgnoreReason.CANCELLED;
@@ -150,7 +154,7 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
         List<RRule<Temporal>> rules = event.getProperties(Property.RRULE);
         List<RDate<Temporal>> dates = event.getProperties(Property.RDATE);
         if (rules.isEmpty() && dates.isEmpty()) {
-            if (!skipped.contains(first)) {
+            if (!skipped.test(first)) {
                 into.add(new CalendarEntry(first, endExclusive.minusDays(1), CalendarEntry.Nature.CLOSED, label));
             }
             return null;
@@ -163,7 +167,7 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
             }
         }
         for (Period<LocalDate> occurrence : event.<LocalDate>calculateRecurrenceSet(window)) {
-            if (skipped.contains(occurrence.getStart())) {
+            if (skipped.test(occurrence.getStart())) {
                 continue;
             }
             LocalDate occurrenceEnd = occurrence.getEnd() == null || !occurrence.getEnd().isAfter(occurrence.getStart())
@@ -182,12 +186,12 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
     }
 
     /**
-     * TODO §121 (revue de #33) — {@code RECURRENCE-ID} : un VEVENT de même UID qu'une série en remplace une occurrence
-     * (annulée, déplacée ou rendue transparente). Cette occurrence quitte la série ; le VEVENT de remplacement est lu
-     * comme un événement à part. Un remplacement sans série dans le fichier n'ôte rien.
+     * TODO §121 (revue de #33) et §124 (D-CAL-THISANDFUTURE) — {@code RECURRENCE-ID} : un VEVENT de même UID qu'une série
+     * en remplace une occurrence (annulée, déplacée ou rendue transparente). Avec {@code RANGE=THISANDFUTURE}, toutes
+     * les occurrences à partir de cette date quittent la série. Le VEVENT de remplacement est lu à part.
      */
-    private static Map<String, Set<LocalDate>> overriddenOccurrences(List<VEvent> events, ZoneId zone) {
-        Map<String, Set<LocalDate>> overridden = new HashMap<>();
+    private static Map<String, SeriesOverride> overriddenOccurrences(List<VEvent> events, ZoneId zone) {
+        Map<String, SeriesOverride> overridden = new HashMap<>();
         for (VEvent event : events) {
             try {
                 Optional<RecurrenceId<Temporal>> id = event.getProperty(Property.RECURRENCE_ID);
@@ -195,14 +199,42 @@ class Ical4jIcsCalendarParser implements IcsCalendarParser {
                     continue;
                 }
                 LocalDate day = dayOf(id.get().getDate(), zone);
-                if (day != null) {
-                    overridden.computeIfAbsent(uidOf(event), key -> new HashSet<>()).add(day);
+                if (day == null) {
+                    continue;
+                }
+                SeriesOverride override = overridden.computeIfAbsent(uidOf(event), key -> new SeriesOverride());
+                Optional<Range> range = id.get().getParameter(Parameter.RANGE);
+                if (range.isPresent() && Range.THISANDFUTURE.equals(range.get())) {
+                    override.thisAndFutureFrom(day);
+                } else {
+                    override.exact.add(day);
                 }
             } catch (RuntimeException unreadable) {
                 // Un RECURRENCE-ID illisible n'ôte rien : le VEVENT est de toute façon lu seul.
             }
         }
         return overridden;
+    }
+
+    /** Occurrences retirées d'une série par des {@code RECURRENCE-ID} du même UID. */
+    private static final class SeriesOverride {
+        static final SeriesOverride NONE = new SeriesOverride();
+
+        private final Set<LocalDate> exact = new HashSet<>();
+        private LocalDate thisAndFutureFrom;
+
+        void thisAndFutureFrom(LocalDate day) {
+            if (thisAndFutureFrom == null || day.isBefore(thisAndFutureFrom)) {
+                thisAndFutureFrom = day;
+            }
+        }
+
+        boolean skips(LocalDate day) {
+            if (exact.contains(day)) {
+                return true;
+            }
+            return thisAndFutureFrom != null && !day.isBefore(thisAndFutureFrom);
+        }
     }
 
     private static LocalDate dayOf(Temporal temporal, ZoneId zone) {

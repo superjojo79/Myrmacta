@@ -22,10 +22,12 @@ import org.apache.hc.client5.http.impl.DefaultSchemePortResolver;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.routing.DefaultRoutePlanner;
+import org.apache.hc.client5.http.impl.io.ManagedHttpClientConnectionFactory;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.config.Http1Config;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
@@ -46,6 +48,15 @@ import org.apache.hc.core5.util.Timeout;
 public final class PinnedHttpClient {
 
     private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
+
+    /** TODO §124 (D-CAL-HTTP-HEADERS) — borne la mémoire lue pour les en-têtes de réponse. */
+    static final int MAX_RESPONSE_HEADERS = 100;
+    static final int MAX_HEADER_LINE_LENGTH = 8 * 1024;
+
+    private static final Http1Config HTTP1 = Http1Config.custom()
+            .setMaxHeaderCount(MAX_RESPONSE_HEADERS)
+            .setMaxLineLength(MAX_HEADER_LINE_LENGTH)
+            .build();
 
     /** Coupe les appels {@link #get} qui dépassent leur délai total. Un seul fil, démon : il ne fait que fermer. */
     private static final ScheduledExecutorService WATCHDOG = Executors.newSingleThreadScheduledExecutor(task -> {
@@ -108,6 +119,7 @@ public final class PinnedHttpClient {
         };
         PoolingHttpClientConnectionManagerBuilder connections = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDnsResolver(resolver)
+                .setConnectionFactory(ManagedHttpClientConnectionFactory.builder().http1Config(HTTP1).build())
                 .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(read).build())
                 .setDefaultConnectionConfig(ConnectionConfig.custom()
                         .setConnectTimeout(connect)

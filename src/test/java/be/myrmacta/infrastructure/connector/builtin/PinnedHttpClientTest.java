@@ -17,6 +17,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -327,6 +329,60 @@ class PinnedHttpClientTest {
                         Duration.ofMillis(200),
                         Duration.ofMillis(300))))
                 .isInstanceOf(IOException.class));
+    }
+
+    @Test
+    void tooManyResponseHeadersAreRejected() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/headers", exchange -> {
+            for (int i = 0; i < PinnedHttpClient.MAX_RESPONSE_HEADERS + 20; i++) {
+                exchange.getResponseHeaders().add("X-Pad-" + i, "v");
+            }
+            byte[] out = "ok".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, out.length);
+            exchange.getResponseBody().write(out);
+            exchange.close();
+        });
+        server.start();
+
+        assertThatThrownBy(() -> PinnedHttpClient.get(
+                        "http://127.0.0.1:" + server.getAddress().getPort() + "/headers",
+                        InetAddress.getByName("127.0.0.1"),
+                        Duration.ofSeconds(2),
+                        Duration.ofSeconds(2),
+                        Duration.ofSeconds(5),
+                        1_024))
+                .isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void aTlsHandshakeThatNeverCompletesIsStoppedByTheTotalDeadline() throws Exception {
+        ServerSocket raw = new ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"));
+        Thread acceptor = new Thread(() -> {
+            try (Socket client = raw.accept()) {
+                stalled = Thread.currentThread();
+                Thread.sleep(30_000);
+            } catch (Exception ignored) {
+                // le client a coupé
+            }
+        }, "tls-stall");
+        acceptor.setDaemon(true);
+        acceptor.start();
+        long start = System.nanoTime();
+        try {
+            assertTimeoutPreemptively(Duration.ofSeconds(3), () -> assertThatThrownBy(() -> PinnedHttpClient.get(
+                            "https://127.0.0.1:" + raw.getLocalPort() + "/stall",
+                            InetAddress.getByName("127.0.0.1"),
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(200),
+                            Duration.ofMillis(500),
+                            1_024))
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("timed out"));
+            assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
+        } finally {
+            raw.close();
+        }
     }
 
     @Test

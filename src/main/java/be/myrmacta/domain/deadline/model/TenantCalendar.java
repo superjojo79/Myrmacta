@@ -2,6 +2,7 @@ package be.myrmacta.domain.deadline.model;
 
 import be.myrmacta.domain.deadline.model.CalendarEntry.Nature;
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashSet;
@@ -67,6 +68,18 @@ public record TenantCalendar(String zoneId, WeekendPattern weekend, List<Calenda
         return new BusinessCalendar(ZoneId.of(zoneId), weekend, closedDays(), forcedOpenDays());
     }
 
+    /** Jour civil du fuseau, sans dérouler les périodes (TODO §124, D-CAL-CACHE). */
+    public LocalDate today(Instant instant) {
+        return LocalDate.ofInstant(Objects.requireNonNull(instant, "instant"), ZoneId.of(zoneId));
+    }
+
+    /** Jours ouvrés forcés (saisies manuelles {@code OPEN}), déroulés. */
+    public Set<LocalDate> forcedOpenDays() {
+        Set<LocalDate> open = new LinkedHashSet<>();
+        manual.stream().filter(entry -> entry.nature() == Nature.OPEN).forEach(entry -> open.addAll(entry.days()));
+        return open;
+    }
+
     public TenantCalendar withSettings(String newZoneId, WeekendPattern newWeekend, List<CalendarEntry> newManual) {
         return new TenantCalendar(newZoneId, newWeekend, newManual, sources);
     }
@@ -89,12 +102,6 @@ public record TenantCalendar(String zoneId, WeekendPattern weekend, List<Calenda
         }
         manual.stream().filter(entry -> entry.nature() == Nature.CLOSED).forEach(entry -> closed.addAll(entry.days()));
         return closed;
-    }
-
-    private Set<LocalDate> forcedOpenDays() {
-        Set<LocalDate> open = new LinkedHashSet<>();
-        manual.stream().filter(entry -> entry.nature() == Nature.OPEN).forEach(entry -> open.addAll(entry.days()));
-        return open;
     }
 
     private static String canonicalZone(String raw) {

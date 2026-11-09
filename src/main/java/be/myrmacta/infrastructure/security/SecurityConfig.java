@@ -13,6 +13,7 @@ import be.myrmacta.infrastructure.security.oidc.RealmAccessAuthoritiesMapper;
 import be.myrmacta.infrastructure.tenant.TenantResolutionFilter;
 import be.myrmacta.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import be.myrmacta.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
+import be.myrmacta.infrastructure.web.dossier.TenantCalendarIcsBodySizeLimitFilter;
 import be.myrmacta.infrastructure.web.security.CspReportBodySizeLimitFilter;
 import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
@@ -224,6 +225,8 @@ public class SecurityConfig {
                                 notificationTemplateProperties.previewRequestMaxBytes(),
                                 Set.of("/api/notification-templates/preview")),
                         SecurityContextHolderFilter.class)
+                // TODO §124 (D-CAL-ICS-SIZE) — sources ICS : 1 Mio + marge, avant le multipart Spring (25 Mo).
+                .addFilterBefore(new TenantCalendarIcsBodySizeLimitFilter(), SecurityContextHolderFilter.class)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userAuthoritiesMapper(authoritiesMapper))
                         // D-ASSIGN-DIR : enregistre l'utilisateur dans l'annuaire local, puis

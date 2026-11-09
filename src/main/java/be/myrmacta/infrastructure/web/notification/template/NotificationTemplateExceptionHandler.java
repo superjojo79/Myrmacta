@@ -29,6 +29,11 @@ public class NotificationTemplateExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", detail);
     }
 
+    @ExceptionHandler(NotificationTemplatePayloadTooLargeException.class)
+    ProblemDetail handlePayloadTooLarge(NotificationTemplatePayloadTooLargeException ex) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Notification template payload too large", ex.getMessage());
+    }
+
     @ExceptionHandler(NotificationTemplateNotFoundException.class)
     ProblemDetail handleNotFound(NotificationTemplateNotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Notification template not found", ex.getMessage());

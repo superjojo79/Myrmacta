@@ -28,7 +28,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
-@EnableConfigurationProperties({DocumentGenerationProperties.class, DocumentPreviewProperties.class})
+@EnableConfigurationProperties({
+    DocumentGenerationProperties.class,
+    DocumentPreviewProperties.class,
+    DocumentTemplateCostProperties.class
+})
 public class DocumentConfig {
 
     public static final int MAX_HTML_BYTES = 5 * 1024 * 1024;

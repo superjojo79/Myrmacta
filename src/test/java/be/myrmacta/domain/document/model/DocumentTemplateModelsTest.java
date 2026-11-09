@@ -82,7 +82,7 @@ class DocumentTemplateModelsTest {
     void templateNotFoundException_mentionsResolutionRequest() {
         var req = new TemplateResolutionRequest("contrat", "premium", "nl");
         var ex = new TemplateNotFoundException(req);
-        assertThat(ex.getMessage()).contains("contrat").contains("premium").contains("nl");
+        assertThat(ex.getMessage()).contains("contrat").doesNotContain("premium").doesNotContain("nl");
     }
 
     @Test

@@ -77,6 +77,32 @@ class ThymeleafHtmlTemplateProcessorTest {
     }
 
     @Test
+    void anOversizedUtility_isRefusedBeforeItAllocates() {
+        assertThatThrownBy(() -> processor.process(
+                        "<p th:text=\"${#numbers.sequence(1,5000)}\">x</p>", Map.of()))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("sequence");
+    }
+
+    @Test
+    void preProcessingDoesNotTurnDataIntoAnExpression() {
+        Map<String, Object> model = Map.of("payload", "${label}", "label", "INJECTED-MARKER");
+        try {
+            String out = processor.process("<p th:text=\"__${payload}__\">x</p>", model);
+            assertThat(out).doesNotContain("INJECTED-MARKER");
+        } catch (TemplateProcessingException ex) {
+            assertThat(ex.getMessage()).doesNotContain("INJECTED-MARKER");
+        }
+    }
+
+    @Test
+    void aSignatureLineOfUnderscores_isRendered() {
+        String out = processor.process("<p>Signature : ________</p>", Map.of());
+
+        assertThat(out).contains("Signature : ________");
+    }
+
+    @Test
     void inlinedIfAndPreprocessedSpel_throwTemplateProcessingException() {
         assertThatThrownBy(() -> processor.process(
                         "<html><body><p>[[${T(java.lang.Runtime).getRuntime()}]]</p></body></html>", Map.of()))
@@ -154,5 +180,15 @@ class ThymeleafHtmlTemplateProcessorTest {
             String out = processor.process(html, data);
             org.assertj.core.api.Assertions.assertThat(out).as(html).doesNotContain("<i>X</i>");
         }
+    }
+
+    /** Une chaîne que Thymeleaf additionnerait reste une String : {@code +} et {@code ==} ne changent pas (issue #43). */
+    @Test
+    void numericStringsStillAddAndCompare() {
+        String out = processor.process(
+                "<p th:text=\"${a} + ${b}\">x</p><p th:if=\"${a} == 100\">oui</p>",
+                Map.of("a", "100", "b", "20"));
+
+        assertThat(out).contains(">120<").contains("oui");
     }
 }

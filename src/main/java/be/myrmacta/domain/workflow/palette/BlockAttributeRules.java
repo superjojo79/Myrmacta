@@ -23,6 +23,8 @@ public final class BlockAttributeRules {
 
     private static final String SIGNATURE_DELEGATE = "signatureRequestTask";
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]+");
+    /** Même grammaire que le dépôt des gabarits de notification (issue #43). Ne remplace pas {@link #KEY}. */
+    private static final Pattern NOTIFICATION_TEMPLATE_KEY = Pattern.compile("[a-z0-9][a-z0-9-]{0,99}");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
     /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression). */
     private static final Set<String> MULTILINE = BlockParameter.MULTILINE_NAMES;
@@ -278,9 +280,16 @@ public final class BlockAttributeRules {
                 }
             }
             case REFERENCE -> {
-                boolean uuidForm = UUID_SOURCES.contains(parameter.valueSource());
-                if (uuidForm ? !UUID_FORM.matcher(value).matches() : !KEY.matcher(value).matches()) {
-                    throw new InvalidBpmnException(owner + (uuidForm ? " must be a UUID" : " has an invalid format"));
+                if ("notificationTemplates".equals(parameter.valueSource())) {
+                    if (!NOTIFICATION_TEMPLATE_KEY.matcher(value).matches()) {
+                        throw new InvalidBpmnException(
+                                owner + " must match [a-z0-9][a-z0-9-]{0,99}");
+                    }
+                } else {
+                    boolean uuidForm = UUID_SOURCES.contains(parameter.valueSource());
+                    if (uuidForm ? !UUID_FORM.matcher(value).matches() : !KEY.matcher(value).matches()) {
+                        throw new InvalidBpmnException(owner + (uuidForm ? " must be a UUID" : " has an invalid format"));
+                    }
                 }
             }
             case TEXT -> {

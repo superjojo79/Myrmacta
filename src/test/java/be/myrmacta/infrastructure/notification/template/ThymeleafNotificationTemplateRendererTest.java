@@ -312,6 +312,39 @@ class ThymeleafNotificationTemplateRendererTest {
     }
 
     @Test
+    void aSignatureLineOfUnderscores_isRendered() {
+        RenderedNotification result = renderer.render(template("S", "Signature : ________", "<p>Signature : ________</p>"),
+                model("R", "L"));
+
+        assertThat(result.textBody()).isEqualTo("Signature : ________");
+        assertThat(result.htmlBody()).contains("Signature : ________");
+    }
+
+    @Test
+    void stringConcatenationIsRefusedWhenItWouldExceedTheStringCeiling() {
+        Map<String, Object> model = model("R", "L");
+        model.put("big", "x".repeat(60_000));
+
+        assertThatThrownBy(() -> renderer.render(
+                template("S", "[# th:with=\"s=${big}+${big}\"]x[/]", null), model))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("string longer than");
+    }
+
+    @Test
+    void anEmptyIterationStillHonorsTheRenderDeadline() {
+        ThymeleafNotificationTemplateRenderer tight = new ThymeleafNotificationTemplateRenderer(
+                new NotificationTemplateProperties(500, 255, 65_536, 262_144, 1_048_576, 65_536, 1_000, 100_000, 100_000, 5));
+        Map<String, Object> model = model("R", "L");
+        model.put("rows", java.util.Collections.nCopies(8_000, "x"));
+
+        assertTimeoutPreemptively(Duration.ofSeconds(2), () -> assertThatThrownBy(() -> tight.render(
+                template("S", "[# th:each=\"i : ${rows}\"][# th:if=\"false\"]x[/][/]", null), model))
+                .isInstanceOf(TemplateProcessingException.class)
+                .hasMessageContaining("time limit"));
+    }
+
+    @Test
     void preProcessing_isRefusedAtRendering_andNeverLeaksTheValue() {
         Map<String, Object> model = model("R", "L");
         model.put("a", "${variables.motivation}");

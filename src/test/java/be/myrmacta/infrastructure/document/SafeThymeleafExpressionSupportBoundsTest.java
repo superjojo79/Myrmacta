@@ -200,6 +200,12 @@ class SafeThymeleafExpressionSupportBoundsTest {
     }
 
     @Test
+    void anIntParameterDoesNotTruncateALong() {
+        assertRefused(new Context(), "#strings.substring('hello', 2147483648)", limits(10, 100),
+                "numeric argument out of range");
+    }
+
+    @Test
     void numericArguments_mustFitAnInt() {
         Context context = new Context();
         assertRefused(context, "#numbers.sequence(1,2147483648)", limits(10, 100), "numeric argument out of range");

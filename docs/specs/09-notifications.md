@@ -217,8 +217,9 @@ public interface BrowserPushPort {
   `NotificationTemplateArtifacts`) ; l'import crée un brouillon, jamais activé.
 - **Garde-fous.**
   - *Politique HTML* (`NotificationHtmlPolicy`, D-NOTIF-TPL-HTML-POLICY) : balises de mise en forme seulement, ni image, ni
-    `<style>`, ni script, ni formulaire ; liens `http`, `https` et `mailto` ; attribut `style` sans `url(`, `expression(`,
-    `@import` ni `javascript:` ; attributs `th:` limités à `text`, `if`, `unless`, `each`, `with`, `switch`, `case`, `remove`
+    `<style>`, ni script, ni formulaire ; liens `http`, `https` et `mailto` ; attribut `style` limité à une liste blanche
+    de propriétés (pas `position`) et aux fonctions `rgb`, `rgba` et `calc`, sans `url(`, `expression(`, `@import`,
+    `javascript:` ni barre oblique inverse ; attributs `th:` limités à `text`, `if`, `unless`, `each`, `with`, `switch`, `case`, `remove`
     et l'élément `th:block`. Le corps est **refusé** à l'activation (400, règle nommée), jamais nettoyé en silence ; le HTML
     rendu repasse par un nettoyeur jsoup de même politique (défense en profondeur).
   - *Rendu strict* (D-NOTIF-TPL-STRICT) : une variable ou une propriété absente ou nulle fait échouer le rendu, comme pour
@@ -231,17 +232,22 @@ public interface BrowserPushPort {
     `Writer` borné, budget d'évaluations pondéré par la taille des résultats, échéance de 2 s par rendu, chaînes et grands
     nombres plafonnés à 100 000 caractères ou chiffres, utilitaires de taille (`#numbers.sequence`, `#strings.repeat`,
     chiffres de `#numbers.format*`) plafonnés à 1 000 et contrôlés dans la plage `int`, `#strings.randomAlphanumeric` refusé
-    (propriétés `app.notification.template.*`). Ces bornes ne s'appliquent qu'aux gabarits de notification.
-  - *Pré-traitement `__…__` refusé*, y compris écrit en entités HTML (`&#95;&#95;`), à l'activation comme au rendu : une
-    donnée ne peut jamais devenir une expression. Faux positif accepté : une ligne de soulignés `________`.
+    (propriétés `app.notification.template.*`). L'échéance est aussi contrôlée à chaque événement du gabarit et dans le
+    `Writer`. La concaténation `+` est pesée avant allocation (plafond `string-max-chars`). Les mêmes bornes de coût, hors
+    plafond d'octets rendus, s'appliquent aux templates de document ([spec 08](08-templates-documents.md)).
+  - *Pré-traitement `__…__` refusé* lorsqu'il a un contenu, y compris écrit en entités HTML (`&#95;&#95;`), à l'activation
+    comme au rendu : une donnée ne peut jamais devenir une expression. Une ligne de signature `________` reste acceptée.
+    L'analyseur n'est pas un `StandardExpressionParser`, donc Thymeleaf n'exécute pas le pré-traitement.
   - *Champs sensibles* : un champ `sensitive` n'est jamais exposé, `${dossier.fields.<champ>}` échoue comme une propriété
     absente. Risque résiduel assumé : une variable de process qui recopierait un champ sensible serait rendue ; il est
     documenté dans le [guide de conception](../guides/GUIDE-CONCEPTION-BPMN.md) §6c.
   - *Attributs lus dans le BPMN déployé* (D-NOTIF-TPL-LITERAL) : `notificationTemplate`, `notificationVariant` et
     `notificationLocale` ne sont jamais lus dans une variable de process du même nom. `BlockAttributeRules` refuse au
     déploiement un gabarit combiné à `notificationSubject` ou `notificationBody`, sans canal `EMAIL` ou avec un autre canal
-    en plus, ou sans `notificationTo` écrit dans le BPMN, et une variante ou une langue sans gabarit. La clé du gabarit n'est
-    pas vérifiée au déploiement (il peut arriver par la promotion).
+    en plus (y compris lorsqu'une pièce jointe est présente), ou sans `notificationTo` écrit dans le BPMN, et une variante
+    ou une langue sans gabarit. La clé suit la grammaire du dépôt `[a-z0-9][a-z0-9-]{0,99}`. Son existence n'est pas
+    vérifiée au déploiement (il peut arriver par la promotion). Les POST et PUT de l'API sont bornés avant lecture, y
+    compris un corps morcelé (413).
 - **Limites.** Les rappels et escalades d'échéance, les consignes des tâches du portail, les canaux webhook et navigateur et le
   connecteur `smtp` restent hors périmètre (D-NOTIF-TPL-SCOPE) ; pas d'éditeur WYSIWYG, pas de langue du destinataire déduite
   de son profil (la langue est un attribut ou une variable de la brique). Le contenu rendu est conservé en clair dans l'outbox

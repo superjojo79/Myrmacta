@@ -95,8 +95,13 @@ public final class SafeHtmlTemplateEngineFactory {
             }
         };
         dialect.setVariableExpressionEvaluator(evaluator);
+        // Pas un StandardExpressionParser : Thymeleaf n'applique plus le pré-traitement __…__ (issue #43).
+        dialect.setExpressionParser(new GuardedExpressionParser());
         TemplateEngine engine = new TemplateEngine();
         engine.setDialect(dialect);
+        if (evaluator.limited()) {
+            engine.addDialect(new RenderDeadlineDialect());
+        }
         engine.setTemplateResolver(resolver);
         return engine;
     }

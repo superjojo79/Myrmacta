@@ -100,6 +100,21 @@ class ThymeleafTemplateSyntaxCheckerTest {
         assertThatThrownBy(() -> checker.check(html)).isInstanceOf(InvalidTemplateSyntaxException.class);
     }
 
+    @Test
+    void preProcessing_isRefused_includingWhenWrittenWithEntities() {
+        assertThatThrownBy(() -> checker.check("<p th:text=\"__${title}__\">x</p>"))
+                .isInstanceOf(InvalidTemplateSyntaxException.class)
+                .hasMessageContaining("__");
+        assertThatThrownBy(() -> checker.check("<p th:text=\"&#95;&#95;${title}&#95;&#95;\">x</p>"))
+                .isInstanceOf(InvalidTemplateSyntaxException.class)
+                .hasMessageContaining("__");
+    }
+
+    @Test
+    void aSignatureLineOfUnderscores_isNotPreProcessing() {
+        assertThatCode(() -> checker.check("<p>Signature : ________</p>")).doesNotThrowAnyException();
+    }
+
     /** Gabarits de notification (TODO §123) : objet et corps texte contrôlés en mode TEXT, même grammaire. */
     @Test
     void textMode_acceptsInliningAndConditionals() {

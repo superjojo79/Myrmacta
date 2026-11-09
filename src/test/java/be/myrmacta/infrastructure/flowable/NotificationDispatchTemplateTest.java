@@ -85,6 +85,21 @@ class NotificationDispatchTemplateTest {
         assertThat(sent().htmlBody()).isNull();
     }
 
+    /** Issue #43 — avec une pièce jointe, le gabarit exige encore EMAIL seul à l'exécution. */
+    @Test
+    void aTemplateWithAnAttachmentStillRequiresEmailOnly() {
+        when(rendering.render(any(), any())).thenReturn(new RenderedNotification("S", "B", null));
+
+        assertThatThrownBy(() -> task.execute(execution(Map.of(), Map.of(
+                "notificationTemplate", "accuse",
+                "notificationChannels", "EMAIL,BROWSER",
+                "notificationAttachment", "variable:doc",
+                "notificationAttachmentName", "piece.pdf"))))
+                .isInstanceOf(NotificationValidationException.class)
+                .hasMessageContaining("EMAIL");
+        verify(send, never()).send(any(), any());
+    }
+
     /** Défense en profondeur : un BPMN déployé sans le parseur ne peut pas lire canal ou destinataire dans une variable. */
     @Test
     void aTemplateNeedsTheEmailChannelAndTheRecipientInTheDeployedBpmn() {

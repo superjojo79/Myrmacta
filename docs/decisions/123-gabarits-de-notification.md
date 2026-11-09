@@ -57,8 +57,9 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
 
 **Revue de clôture (lot 1).**
 
-- **Bornes de coût du rendu** — propres aux gabarits de notification (les templates de document sont inchangés ; leur
-  durcissement fait l'objet d'une issue). Propriétés `app.notification.template.*` :
+- **Bornes de coût du rendu** — d'abord propres aux gabarits de notification. L'issue
+  [#43](https://github.com/superjojo79/Myrmacta/issues/43) les étend aux templates de document (voir plus bas) ;
+  le plafond d'octets rendus reste propre aux notifications. Propriétés `app.notification.template.*` :
   - `rendered-max-bytes` (1 048 576) : le rendu écrit dans un `Writer` borné, la somme des octets de l'objet, du corps texte
     et du corps HTML ne le dépasse jamais, contrôlée pendant le rendu ;
   - `utility-max-size` (1 000) : éléments de `#numbers.sequence`, longueur produite par `#strings.repeat`, chiffres demandés
@@ -71,7 +72,8 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
     `th:with` ou `th:each`). Une évaluation coûte 1, plus la longueur de l'expression divisée par 64, plus le poids des
     opérandes et du résultat (une chaîne pèse sa longueur divisée par 64, une collection sa taille) : les `th:each`
     imbriqués à sortie vide et les littéraux lourds échouent proprement ;
-  - `render-timeout-millis` (2 000) : échéance du rendu, contrôlée à chaque évaluation ;
+  - `render-timeout-millis` (2 000) : échéance du rendu, contrôlée à chaque évaluation, à chaque événement du gabarit
+    et dans le `Writer` borné (issue #43 : un `th:each` dont le corps n'évalue rien reste sous l'échéance) ;
   - seuls les arguments qui servent de taille sont contrôlés dans la plage `int` (pas de troncature `long` vers `int`) :
     `#numbers.sequence` (rangs 0 à 2), `#strings.repeat` (rang 1) et le nombre de chiffres de `#numbers.format*` (rangs 1 et
     suivants) ; la valeur formatée reste libre (`Double`, `Long`, `BigDecimal`) ;
@@ -82,14 +84,43 @@ variable, aucune langue. La motivation saisie par un agent ne peut pas parvenir 
   Toute violation (y compris `StackOverflowError` et `OutOfMemoryError`) lève `TemplateProcessingException`, sans valeur dans
   le message.
 - **Pré-traitement `__…__` refusé** — le contrôle d'activation décode les entités HTML (`HtmlEscape.unescapeHtml`, comme le
-  moteur) puis refuse toute séquence `__` dans l'objet, le corps texte et le corps HTML, y compris écrite `&#95;`, `&#x5f;`,
-  `&lowbar;` ou `&UnderBar;` ; il soumet aussi à la grammaire D-40 les expressions écrites avec des entités (`&#36;{…}`). Le
-  moteur refuse de même au rendu, sur la source décodée (gabarits activés avant ce correctif, promotion). Le refus est
-  global : le texte libre `________` (ligne de signature) est un faux positif accepté. Un refus dans l'évaluateur ou dans
-  un `IStandardExpressionParser` n'est pas possible avec Thymeleaf 3.1.5 : `th:with` et `th:each` appellent le
-  pré-processeur directement (`AssignationUtils`, `EachUtils`), et l'évaluation du pré-traitement n'est pas distinguable
-  d'une évaluation ordinaire (contexte `RESTRICTED` partagé avec `[[…]]`).
+  moteur) puis refuse un fragment `__…__` dont le contenu, après trim, n'est pas vide, dans l'objet, le corps texte et le
+  corps HTML, y compris écrit `&#95;`, `&#x5f;`, `&lowbar;` ou `&UnderBar;` ; il soumet aussi à la grammaire D-40 les
+  expressions écrites avec des entités (`&#36;{…}`). Le moteur refuse de même au rendu, sur la source décodée (gabarits
+  activés avant ce correctif, promotion). Une ligne de signature `________` (groupes internes vides) n'est pas une
+  expression : elle passe (issue #43 ; le faux positif global sur toute séquence `__` est levé). L'analyseur installé
+  n'est pas un `StandardExpressionParser` : Thymeleaf n'exécute plus le pré-traitement. `th:with` et `th:each` appellent
+  le pré-processeur directement (`AssignationUtils`, `EachUtils`) ; sans ce changement de classe, un fragment non vide
+  serait évalué.
 - **Variante et langue validées à la résolution** — `resolve` applique les règles de format de l'écriture
   (`[a-z0-9][a-z0-9-]{0,99}` pour la variante, étiquette BCP 47 courte pour la langue) ; une valeur non conforme (texte
   avec saut de ligne, `Map` sérialisée) donne une erreur de validation sans la valeur. `NotificationTemplateNotFoundException`
   ne recopie plus la variante ni la langue, seulement la clé (littérale du BPMN).
+
+**Durcissements (issue #43).**
+
+- **Concaténation `+`** — une chaîne produite par une évaluation est comptée quand Thymeleaf appelle `toString` pour
+  concaténer, avant que l'opérateur n'alloue la somme. Le total repart à chaque balise ou texte, et à chaque écriture du
+  `Writer` borné : les `+` d'une même expression s'additionnent, l'expression suivante non. Au-delà de `string-max-chars`,
+  `TemplateProcessingException` (« string longer than »). Les nombres, et les chaînes que Thymeleaf additionnerait
+  (premier caractère chiffre, `+` ou `-`, et `BigDecimal` valide), ne sont pas enveloppés : `+` et `==` restent ceux de
+  Thymeleaf.
+- **Style CSS** — liste blanche de propriétés (mise en forme d'un courriel, `white-space` compris, pas `position`) et
+  fonctions limitées à `rgb`, `rgba` et `calc`. `url(`, `expression(`, `@import`, `javascript:` et la barre oblique
+  inverse restent refusés. `image(`, `image-set(` et `position:fixed` ne passent plus.
+- **Balayage des noms Thymeleaf** — le numéro de ligne est cherché dans un index, plus caractère par caractère à chaque
+  occurrence.
+- **`<body>` imbriqué** — le nettoyeur jsoup n'enveloppe plus un fragment déjà contenu dans `body`.
+- **Clé au déploiement** — `flowable:notificationTemplate` suit la grammaire du dépôt `[a-z0-9][a-z0-9-]{0,99}`
+  (minuscules, tiret). La clé globale des autres références ne change pas. L'existence du gabarit n'est pas vérifiée au
+  déploiement (`UNVERIFIED_AT_DEPLOY`) : il peut arriver après le BPMN, par la promotion.
+- **Corps des POST et PUT** `/api/notification-templates` — un `Content-Length` au-dessus du plafond de l'aperçu
+  (`previewRequestMaxBytes`) répond 413, et le flux réellement lu est borné même sans cet en-tête (transfert morcelé).
+  Le chemin comparé est celui du contrôleur, contexte et paramètre de matrice retirés.
+- **Canal avec gabarit** — une brique qui porte un gabarit exige `EMAIL` seul, y compris lorsqu'elle joint une pièce.
+  Sans gabarit, une pièce continue d'exiger `EMAIL` parmi les canaux.
+- **Templates de document** — mêmes bornes de coût (`app.document.template.*` : `utility-max-size`, `string-max-chars`,
+  `render-budget`, `render-timeout-millis`, défauts identiques, aucune variable d'environnement). Pas de plafond d'octets
+  du HTML produit (un PDF légitime peut être volumineux). Le pré-traitement exécutable est refusé à l'activation et au
+  rendu. Un argument entier hors de la plage `int` lève « numeric argument out of range » au lieu d'être tronqué. Une
+  `Error` d'un utilitaire est relancée même hors budget. `TemplateNotFoundException` ne cite que la clé.

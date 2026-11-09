@@ -545,6 +545,18 @@ démos/QA : il n'est **pas** dans le jar construit sans ce profil (la CI le vér
 combiné à un profil `prod`/`production` ou si `APP_ENVIRONMENT` est absent ou vaut `production`. Ne jamais publier l'image construite avec
 `--build-arg MAVEN_PROFILES=embedded-db` comme image de production.
 
+### Migration 047 (calendrier) — dates de l'ancienne colonne `holidays`
+
+Le changeset 047 convertit `tenant_calendar.holidays` via `btrim(d)::date`. Les écritures de §120 validaient déjà
+ces dates (`LocalDate.parse`), donc un échec est improbable. Sur un jeu réel antérieur à §120, vérifier avant
+déploiement qu'aucune valeur ne ferait échouer le cast — sinon le démarrage est bloqué.
+
+## 21. Calendrier du tenant — journaux HTTP (TODO §124)
+
+Ne **pas** passer `org.apache.hc` ni `org.apache.http` en `DEBUG` (ni `TRACE`) en exploitation. À ce niveau, la
+bibliothèque HTTP journalise la ligne de requête, donc l'URL secrète d'une source ICS (`D-CAL-LOG-HC`).
+`application.yml` fixe ces loggers à `WARN` ; un test de configuration le vérifie.
+
 ## Ce qui n'est pas (encore) couvert par ce guide
 
 - **Démarrage de l'instance et bloc reverse-proxy** : générés pour Docker Compose et Apache

@@ -1080,43 +1080,49 @@ D-DEADLINE-ESCALATE).
     - `FlowableBpmnParserAdapterUelSurfaceTest` (formes admises et refusées) ;
     - `MailRoomExampleIT` (le minuteur `${echeanceDepassee}` du process `traiterReponse` clôture la réponse échue).
 
-## Implémentation — calendrier du tenant : saisies, sources et surcharges (TODO §120, §121, issue #33)
+## Implémentation — calendrier du tenant : saisies, sources et surcharges (TODO §120, §121, §124, issues #33 et #34)
 
 Décisions : [§120](../decisions/120-calendrier-jours-ouvrables.md) (fuseau, week-end, comptage),
 [§121](../decisions/121-calendrier-saisie-sources-ics.md) (D-CAL-ENTRY, D-CAL-OVERRIDE, D-CAL-SOURCE, D-CAL-BE-SOURCE,
-D-CAL-API, D-CAL-PROMO-2).
+D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-revue-33.md) (cache, FK, en-têtes, journaux).
 
 - **Modèle.** `TenantCalendar` = fuseau, week-end, saisies manuelles (`CalendarEntry` : début, fin, nature `CLOSED`
   ou `OPEN`, libellé) et sources (`CalendarSource` : jours `CLOSED` seulement). `toCalendar()` déroule les périodes en
-  deux ensembles pour `BusinessCalendar`.
+  deux ensembles pour `BusinessCalendar` ; `TenantCalendars.get` met ce résultat en cache tant que `updated_at` est
+  inchangé (D-CAL-CACHE). L'année civile et les jours ouvrés forcés se calculent sans second déroulage.
   - Priorité (D-CAL-OVERRIDE) : manuel `OPEN`, puis manuel `CLOSED`, puis jour fermé d'une source, puis week-end.
   - Plafonds : 366 jours par période, 2 000 saisies, 10 sources, 10 000 périodes par source, 200 000 jours déroulés.
 - **Stockage.** Tables `tenant_calendar` (fuseau, week-end), `tenant_calendar_source` et `tenant_calendar_entry`
-  (changesets 047 et 048 : `masked_url`). Une saisie manuelle a `source_id` nul ; supprimer une source supprime ses jours. Les dates de
-  l'ancienne colonne `holidays` sont reprises en saisies manuelles `CLOSED`.
-- **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié ; la
-  réponse porte `entries`, `sources` et `holidays` calculé) ; `POST /api/tenant/calendar/belgian-federal-holidays`
-  crée ou recharge la source `BE_FEDERAL` (années courante et suivante, fuseau du tenant).
-  - **Sources ICS par fichier** (multipart, D-CAL-ICS, D-CAL-ICS-PREVIEW) : `POST .../sources/preview` (`name`, `file`) et
+  (changesets 047–050 : `masked_url`, FK composite `(tenant_id, source_id)`). Une saisie manuelle a `source_id` nul ;
+  supprimer une source supprime ses jours. Les dates de l'ancienne colonne `holidays` sont reprises en saisies
+  manuelles `CLOSED`.
+- **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié en entrée ;
+  la réponse porte `entries`, `sources` et `holidays` toujours vide — D-CAL-API-HOLIDAYS) ;
+  `POST /api/tenant/calendar/belgian-federal-holidays` crée ou recharge la source `BE_FEDERAL` (années courante et
+  suivante, fuseau du tenant).
+  - **Sources ICS par fichier** (multipart, D-CAL-ICS, D-CAL-ICS-PREVIEW, D-CAL-ICS-SIZE) : filtre `Content-Length`
+    (1 Mio + marge) avant le multipart Spring ; `POST .../sources/preview` (`name`, `file`) et
     `POST .../sources/{id}/preview` (`file`) rendent l'aperçu sans rien écrire (jours ajoutés, retirés, masqués par un jour
     ouvré forcé, événements ignorés par motif, SHA-256, nombre de périodes) ; `POST .../sources` (`name`, `file`,
     `expectedSha256`, 201) et `POST .../sources/{id}/reload` (`file`, `expectedSha256`) appliquent ; `DELETE
     .../sources/{id}` (204) supprime la source et ses jours.
-  - **Sources ICS par URL** (JSON, D-CAL-ICS-URL) : mêmes chemins avec un corps `{name, url, expectedSha256}` ; sur
+  - **Sources ICS par URL** (JSON, D-CAL-ICS-URL, D-CAL-URL-PURGE) : mêmes chemins avec un corps `{name, url, expectedSha256}` ; sur
     `.../sources/{id}/preview` et `.../reload` le corps peut être vide ou sans `url` : le serveur relit l'URL conservée.
-    L'API ne renvoie que `maskedUrl` (`schéma://hôte[:port]/…`). `HttpsIcsFetcher` passe par `OutboundUrlGuard` (https
-    hors profils `test` et `local`, jamais une adresse interne) et `PinnedHttpClient.get` (adresse figée, aucune
-    redirection, 1 Mio, 10 s au total) ; l'URL est chiffrée (`url_ciphertext`, `ConnectorSecretCipher`).
+    L'API ne renvoie que `maskedUrl` (`schéma://hôte[:port]/…`). Une URL illisible est effacée sous verrou. `HttpsIcsFetcher`
+    passe par `OutboundUrlGuard` (https hors profils `test` et `local`, jamais une adresse interne) et
+    `PinnedHttpClient.get` (adresse figée, aucune redirection, 1 Mio, 10 s au total, en-têtes bornés — D-CAL-HTTP-HEADERS) ;
+    l'URL est chiffrée (`url_ciphertext`, `ConnectorSecretCipher`).
   - Un rechargement par URL en échec garde les jours, retient l'erreur dans `lastError` (sans l'URL) et répond 400.
   - Codes : 400 (fichier illisible, de plus de 1 Mio ou de plus de 5 000 événements, nom vide, source `BE_FEDERAL`
     rechargée par fichier), 404 (source d'un autre tenant ou inconnue), 409 (nom déjà pris, ignorant la casse, ou
-    contenu différent de celui de l'aperçu), 403 (hors `TENANT_ADMIN` ou sans jeton CSRF).
+    contenu différent de celui de l'aperçu), 403 (hors `TENANT_ADMIN` ou sans jeton CSRF), 413 (corps déclaré trop gros).
   - Lecture : `Ical4jIcsCalendarParser` (ical4j 4.4.0, infrastructure seulement ; groovy exclu). Journées entières
     (`VALUE=DATE`, `DTEND` exclusif, `DURATION` admise, un jour sans fin) ; `RRULE`, `RDATE` et `EXDATE` déroulés de
     l'année N-1 à N+2 dans le fuseau du tenant, une fréquence plus fine que quotidienne étant refusée ; événements
     horaires, `CANCELLED` et `TRANSPARENT` écartés et comptés ; 10 000 périodes au plus. Les `RECURRENCE-ID` retirent
-    l'occurrence remplacée de la série. L'empreinte (SHA-256) porte sur les périodes lues et leurs libellés, pas sur
-    les octets. La lecture est bornée à 5 s de CPU (400 au-delà). Aucun appel réseau (`ical4j.properties`).
+    l'occurrence remplacée de la série ; `RANGE=THISANDFUTURE` retire la série à partir de cette date (D-CAL-THISANDFUTURE).
+    L'empreinte (SHA-256) porte sur les périodes lues et leurs libellés, pas sur les octets. La lecture est bornée à 5 s
+    de CPU (400 au-delà). Aucun appel réseau (`ical4j.properties`).
   - **Concurrence.** Les écritures passent par `TenantCalendarRepository.locked` (verrou de la ligne `tenant_calendar`,
     une transaction) ; le téléchargement se fait avant, hors verrou. Les plafonds, les noms et l'empreinte sont
     revérifiés sous verrou, et une opération sur une source ne réécrit jamais les saisies manuelles.

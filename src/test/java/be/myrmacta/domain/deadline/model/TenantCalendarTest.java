@@ -33,6 +33,16 @@ class TenantCalendarTest {
     }
 
     @Test
+    void todayUsesTheZoneWithoutExpandingPeriods() {
+        TenantCalendar calendar = new TenantCalendar("Europe/Brussels", WeekendPattern.SATURDAY_SUNDAY,
+                List.of(CalendarEntry.day(MONDAY, Nature.OPEN, "ouvert")), List.of(source("S",
+                        CalendarEntry.day(MONDAY.plusDays(1), Nature.CLOSED, "fermé"))));
+
+        assertThat(calendar.today(Instant.parse("2026-11-09T23:30:00Z"))).isEqualTo(LocalDate.parse("2026-11-10"));
+        assertThat(calendar.forcedOpenDays()).containsExactly(MONDAY);
+    }
+
+    @Test
     void manualEntriesAreSortedByStart() {
         TenantCalendar calendar = new TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY,
                 List.of(CalendarEntry.day(MONDAY.plusDays(5), Nature.CLOSED, "b"), CalendarEntry.day(MONDAY, Nature.CLOSED, "a")),

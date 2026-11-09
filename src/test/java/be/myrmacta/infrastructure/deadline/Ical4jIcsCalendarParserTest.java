@@ -226,6 +226,15 @@ class Ical4jIcsCalendarParserTest {
         assertThat(parsed.ignored()).containsEntry(IcsIgnoreReason.TIMED, 1);
     }
 
+    @Test
+    void thisAndFutureRemovesTheRestOfTheSeriesFromThatDay() {
+        ParsedIcs parsed = parser.parse(ics(WEEKLY + event("serie", "RECURRENCE-ID;RANGE=THISANDFUTURE;VALUE=DATE:20260112",
+                "DTSTART;VALUE=DATE:20260112", "STATUS:CANCELLED", "SUMMARY:Fin de série")), BRUSSELS, 2025, 2028);
+
+        assertThat(parsed.closedDays()).extracting(CalendarEntry::start).containsExactly(d("2026-01-05"));
+        assertThat(parsed.ignored()).containsEntry(IcsIgnoreReason.CANCELLED, 1);
+    }
+
     // TODO §121 (seconde revue de #33) — borne de temps : une récurrence qui part de l'an 1 oblige ical4j à parcourir chaque
     // jour jusqu'à la fenêtre (environ 64 ms par événement) sans produire une seule période, donc sans que le plafond de
     // 10 000 périodes ne se déclenche. 5 000 événements de 116 octets tiennent sous 1 Mio : environ cinq minutes de CPU.

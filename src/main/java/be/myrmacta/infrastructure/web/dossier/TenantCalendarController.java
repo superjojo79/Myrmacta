@@ -243,9 +243,12 @@ public class TenantCalendarController {
         }
     }
 
-    /** {@code holidays} est déprécié : les jours fermés effectifs, calculés (D-CAL-API). */
+    /**
+     * {@code holidays} est déprécié (D-CAL-API) et reste vide (D-CAL-API-HOLIDAYS, TODO §124) : lire {@code entries} et
+     * {@code sources}.
+     */
     record CalendarResponse(String tenantId, String zoneId, String weekend, List<EntryDto> entries, List<SourceDto> sources,
-                            @Schema(deprecated = true, description = "Jours fermés effectifs (sources et saisies fermées, moins les jours ouvrés forcés), calculés.")
+                            @Schema(deprecated = true, description = "Toujours vide depuis §124 : utiliser entries et sources.")
                             List<String> holidays, Instant updatedAt, String updatedBy) {
 
         static CalendarResponse from(StoredTenantCalendar stored) {
@@ -253,7 +256,7 @@ public class TenantCalendarController {
             return new CalendarResponse(stored.tenantId(), calendar.zoneId(), calendar.weekend().name(),
                     calendar.manual().stream().map(EntryDto::from).toList(),
                     calendar.sources().stream().map(SourceDto::from).toList(),
-                    calendar.effectiveClosedDays().stream().map(LocalDate::toString).toList(),
+                    List.of(),
                     stored.updatedAt(), stored.updatedBy());
         }
     }

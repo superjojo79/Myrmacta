@@ -83,7 +83,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         return repository.locked(tenantId, () -> {
             TenantCalendar current = current();
             Instant now = clock.instant();
-            int year = current.toCalendar().today(now).getYear();
+            int year = current.today(now).getYear();
             List<CalendarEntry> days = BelgianFederalHolidays.entries(year, year + 1);
             CalendarSource source = current.sources().stream()
                     .filter(existing -> existing.kind() == CalendarSource.Kind.BE_FEDERAL)
@@ -154,6 +154,8 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
                     || !repository.deleteSource(tenantId, sourceId)) {
                 throw new CalendarSourceNotFoundException(sourceId);
             }
+            // D-CAL-CACHE : sans touch, updated_at reste et TenantCalendars.get garderait les jours de la source.
+            repository.touch(tenantId, clock.instant(), actor.userId());
             return null;
         });
     }
@@ -183,7 +185,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         if (content == null || content.length == 0) {
             throw new IllegalArgumentException("calendar file is required");
         }
-        int year = snapshot.toCalendar().today(clock.instant()).getYear();
+        int year = snapshot.today(clock.instant()).getYear();
         return parser.parse(content, ZoneId.of(snapshot.zoneId()), year - 1, year + 2);
     }
 
@@ -260,7 +262,7 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
         Set<LocalDate> removed = new HashSet<>(before);
         removed.removeAll(after);
         Set<LocalDate> masked = new HashSet<>(after);
-        masked.retainAll(next.toCalendar().forcedOpen());
+        masked.retainAll(next.forcedOpenDays());
         SourcePreview preview = new SourcePreview(source.id(), source.name(), source.kind(), DayRange.compress(added),
                 DayRange.compress(removed), DayRange.compress(masked), parsed.ignored(), parsed.sha256(), source.closedDays().size());
         return new Plan(source, next, preview, origin.url());

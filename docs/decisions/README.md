@@ -142,6 +142,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 121 | [Calendrier du tenant : saisie par période, sources ICS, surcharges et rechargement](121-calendrier-saisie-sources-ics.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 | 122 | [Persistance applicative : JPA seulement](122-persistance-jpa-seulement.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 | 123 | [Gabarits de notification avec variables](123-gabarits-de-notification.md) | clos | — |
+| 124 | [Calendrier du tenant : durcissements de gravité basse (revue de #33)](124-calendrier-durcissements-revue-33.md) | clos | [Décisions actées › Opérationnel](section-decisions-operationnel.md) |
 
 ## Sections de l'ancien registre
 

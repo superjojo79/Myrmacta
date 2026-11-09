@@ -4227,8 +4227,7 @@ components:
         holidays:
           type: array
           deprecated: true
-          description: "Jours fermés effectifs (sources et saisies fermées, moins\
-            \ les jours ouvrés forcés), calculés."
+          description: "Toujours vide depuis §124 : utiliser entries et sources."
           items:
             type: string
         updatedAt:

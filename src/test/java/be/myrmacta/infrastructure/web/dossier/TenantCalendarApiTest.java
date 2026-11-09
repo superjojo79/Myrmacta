@@ -1,7 +1,6 @@
 package be.myrmacta.infrastructure.web.dossier;
 
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -95,18 +94,21 @@ class TenantCalendarApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.zoneId").value("Europe/Brussels"))
                 .andExpect(jsonPath("$.weekend").value("SUNDAY_ONLY"))
-                .andExpect(jsonPath("$.holidays[0]").value("2026-11-11"));
+                .andExpect(jsonPath("$.entries[0].start").value("2026-11-11"))
+                .andExpect(jsonPath("$.holidays").isEmpty());
 
         mockMvc.perform(post("/api/tenant/calendar/belgian-federal-holidays").with(admin()).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.holidays", hasItem("2026-04-06")))
-                .andExpect(jsonPath("$.holidays", hasItem("2026-05-14")))
-                .andExpect(jsonPath("$.holidays", hasItem("2026-11-11")))
-                .andExpect(jsonPath("$.holidays.length()").value(20));
+                .andExpect(jsonPath("$.sources[0].entryCount").value(20))
+                .andExpect(jsonPath("$.sources[0].entries[?(@.start == '2026-04-06')]").isNotEmpty())
+                .andExpect(jsonPath("$.sources[0].entries[?(@.start == '2026-05-14')]").isNotEmpty())
+                .andExpect(jsonPath("$.entries[0].start").value("2026-11-11"))
+                .andExpect(jsonPath("$.holidays").isEmpty());
 
         mockMvc.perform(post("/api/tenant/calendar/belgian-federal-holidays").with(admin()).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.holidays.length()").value(20));
+                .andExpect(jsonPath("$.sources[0].entryCount").value(20))
+                .andExpect(jsonPath("$.holidays").isEmpty());
     }
 
     @Test
@@ -134,7 +136,7 @@ class TenantCalendarApiTest {
                 .andExpect(jsonPath("$.entries[0].nature").value("OPEN"))
                 .andExpect(jsonPath("$.entries[1].end").value("2026-12-31"))
                 .andExpect(jsonPath("$.entries[1].label").value("Congé collectif"))
-                .andExpect(jsonPath("$.holidays.length()").value(8))
+                .andExpect(jsonPath("$.holidays").isEmpty())
                 .andExpect(jsonPath("$.updatedBy").value("admin-cal"));
 
         mockMvc.perform(get("/api/tenant/calendar").with(admin()))
@@ -217,8 +219,8 @@ class TenantCalendarApiTest {
                 .andExpect(jsonPath("$.sources[0].maskedUrl").doesNotExist())
                 .andExpect(jsonPath("$.sources[0].entries[?(@.start == '2026-12-25')].label", hasItem("Noël")))
                 .andExpect(jsonPath("$.entries.length()").value(1))
-                .andExpect(jsonPath("$.holidays", not(hasItem("2026-11-11"))))
-                .andExpect(jsonPath("$.holidays.length()").value(19));
+                .andExpect(jsonPath("$.entries[0].nature").value("OPEN"))
+                .andExpect(jsonPath("$.holidays").isEmpty());
     }
 
     @Test
@@ -347,7 +349,8 @@ class TenantCalendarApiTest {
                 .andExpect(jsonPath("$.sources[0].loadedBy").value("admin-cal"))
                 .andExpect(jsonPath("$.sources[0].entries[0].label").value("Noël"))
                 .andExpect(jsonPath("$.sources[0].maskedUrl").doesNotExist())
-                .andExpect(jsonPath("$.holidays", hasItem("2026-12-25")));
+                .andExpect(jsonPath("$.sources[0].entries[0].start").value("2026-12-25"))
+                .andExpect(jsonPath("$.holidays").isEmpty());
 
         mockMvc.perform(get("/api/tenant/calendar").with(admin()))
                 .andExpect(jsonPath("$.sources[0].entryCount").value(1));

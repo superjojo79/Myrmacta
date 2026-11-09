@@ -284,11 +284,41 @@ class JpaTenantCalendarRepositoryAdapterIT {
     }
 
     @Test
+    void deletingASourceInvalidatesTheCachedBusinessCalendar() {
+        LocalDate closed = LocalDate.parse("2026-12-25");
+        UUID id = UUID.randomUUID();
+        repository.save(new TenantCalendarRepository.StoredTenantCalendar(TENANT,
+                new be.myrmacta.domain.deadline.model.TenantCalendar("UTC", WeekendPattern.SATURDAY_SUNDAY, List.of(), List.of()),
+                Instant.parse("2026-11-09T10:00:00Z"), "admin-it"));
+        repository.saveSource(TENANT, new CalendarSource(id, "Noël", CalendarSource.Kind.ICS_FILE,
+                List.of(CalendarEntry.day(closed, Nature.CLOSED, "Noël")), Instant.parse("2026-11-09T10:00:00Z"), "admin-it", "sha", null), null);
+
+        assertThat(calendars.get(TENANT).isBusinessDay(closed)).isFalse();
+
+        useCase.deleteSource(ADMIN, id);
+
+        assertThat(calendars.get(TENANT).isBusinessDay(closed)).isTrue();
+    }
+
+    @Test
     void theStoredUrlOfASourceOfAnotherTenantIsNeverRead() {
         UUID id = UUID.randomUUID();
         jdbc.update("insert into tenant_calendar_source (id, tenant_id, name, kind, url_ciphertext, masked_url) values (?, ?, 'Étrangère', 'ICS_URL', 'enc:v1:x', 'https://x.example/…')",
                 id, OTHER);
 
         assertThat(repository.findSourceUrl(TENANT, id)).isEmpty();
+    }
+
+    @Test
+    void anEntryCannotReferenceASourceOfAnotherTenant() {
+        UUID foreignSource = UUID.randomUUID();
+        jdbc.update("insert into tenant_calendar_source (id, tenant_id, name, kind) values (?, ?, 'Étrangère', 'ICS_FILE')",
+                foreignSource, OTHER);
+
+        assertThatThrownBy(() -> jdbc.update("""
+                insert into tenant_calendar_entry (id, tenant_id, source_id, start_date, end_date, nature)
+                values (?, ?, ?, '2026-12-25', '2026-12-25', 'CLOSED')
+                """, UUID.randomUUID(), TENANT, foreignSource))
+                .hasMessageContaining("fk_tenant_calendar_entry_source");
     }
 }

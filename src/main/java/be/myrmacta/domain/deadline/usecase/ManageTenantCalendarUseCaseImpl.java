@@ -154,6 +154,8 @@ public final class ManageTenantCalendarUseCaseImpl implements ManageTenantCalend
                     || !repository.deleteSource(tenantId, sourceId)) {
                 throw new CalendarSourceNotFoundException(sourceId);
             }
+            // D-CAL-CACHE : sans touch, updated_at reste et TenantCalendars.get garderait les jours de la source.
+            repository.touch(tenantId, clock.instant(), actor.userId());
             return null;
         });
     }

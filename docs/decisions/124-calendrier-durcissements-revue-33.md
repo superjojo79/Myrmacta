@@ -9,7 +9,9 @@ arbitrage de l'agent sous mandat « Traite l'issue 34 », 2026-11-09. **Complèt
 **D-CAL-CACHE** — `TenantCalendars.get` conserve le `BusinessCalendar` déroulé tant que `tenant_calendar.updated_at`
 n'a pas changé (une instance = un tenant). Un miss relit les périodes et appelle `toCalendar()` une fois. L'année civile
 du tenant (ICS, fériés belges) se calcule avec `LocalDate.ofInstant(…, ZoneId.of(zoneId))`, sans dérouler. Les jours
-ouvrés forcés masquant une source se prennent sur les saisies manuelles `OPEN`, sans second `toCalendar()`.
+ouvrés forcés masquant une source se prennent sur les saisies manuelles `OPEN`, sans second `toCalendar()`. Toute
+mutation des jours (y compris `deleteSource`) appelle `touch` pour invalider le cache ; la promotion touche déjà via
+`save`.
 
 **D-CAL-API-HOLIDAYS** — le champ de réponse `holidays` (D-CAL-API, déprécié) reste présent pour la compatibilité des
 clients anciens, mais n'est plus rempli : liste vide. Les clients lisent `entries` et `sources`. Évite de sérialiser
@@ -17,7 +19,9 @@ jusqu'à 200 000 dates sur un `GET` d'administration.
 
 **D-CAL-ICS-SIZE** — avant le parse multipart Spring (plafond global 25 Mo), un filtre refuse sur `Content-Length` les
 POST vers `/api/tenant/calendar/sources` et `/api/tenant/calendar/sources/**` au-delà de 1 MiB plus une marge de
-formulaire (64 KiB). Le contrôle applicatif à 1 MiB sur le fichier reste.
+formulaire (64 KiB). Le contrôle applicatif à 1 MiB sur le fichier reste. Résidu accepté (revue de clôture #34) : sans
+`Content-Length` honnête (chunked / mensonger), le plafond disque Spring (~25 Mo) s'applique encore avant le contrôle
+fichier — même classe de résidu que pour d'autres POST authentifiés CSRF, plus faible que le filtre webhooks anonyme.
 
 **D-CAL-HTTP-HEADERS** — `PinnedHttpClient` configure HttpClient 5 (`Http1Config`) : au plus 100 en-têtes de réponse,
 ligne d'au plus 8 KiB. Complète le délai total de 10 s (D-CAL-ICS-URL).

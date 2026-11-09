@@ -275,3 +275,13 @@ une valeur par défaut non nulle —
 template. Toutes les variables du processus sont transmises au template, la variable ainsi
 calculée comprise. Tester ensuite le template avec `preview_document`, avec et sans les champs
 facultatifs.
+
+### Implémentation — coût et pré-traitement (issue #43)
+
+Le rendu (`ThymeleafHtmlTemplateProcessor`) ouvre les mêmes bornes de coût que les gabarits de notification
+([§123](../decisions/123-gabarits-de-notification.md)) : `app.document.template.utility-max-size` (1 000),
+`string-max-chars` (100 000), `render-budget` (100 000), `render-timeout-millis` (2 000). Aucune variable
+d'environnement. Il n'y a pas de plafond d'octets du HTML produit. Un fragment `__…__` au contenu non vide est refusé
+à l'activation et au rendu, entités HTML comprises ; une ligne de soulignés `________` ne l'est pas. L'analyseur
+d'expressions n'est pas un `StandardExpressionParser`. Un entier hors de la plage `int` passé à un utilitaire échoue
+(« numeric argument out of range ») au lieu d'être tronqué. `TemplateNotFoundException` ne cite que la clé du template.

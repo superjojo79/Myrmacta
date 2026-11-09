@@ -134,6 +134,19 @@ class BlockAttributeRulesTest {
         }
     }
 
+    @Test
+    void aNotificationTemplateKeyUsesTheSameGrammarAsTheStore() {
+        BlockAttributeRules.validate("act", "notificationDispatchTask", Map.of(
+                "notificationChannels", "EMAIL", "notificationTo", "a@example.org", "notificationTemplate", "accuse-reception"));
+        for (String key : List.of("Accuse", "foo.bar", "foo:bar", "Foo_bar", "-x")) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("act", "notificationDispatchTask", Map.of(
+                    "notificationChannels", "EMAIL", "notificationTo", "a@example.org", "notificationTemplate", key)))
+                    .as(key)
+                    .isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("notificationTemplate");
+        }
+    }
+
     /** Le gabarit peut arriver après le BPMN (promotion) : son existence n'est pas vérifiée au déploiement. */
     @Test
     void aTemplateReferenceIsNotCheckedAtDeployment() {

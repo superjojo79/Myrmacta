@@ -3,8 +3,8 @@ package be.myrmacta.infrastructure.document;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 
 /**
- * Bornes de coût de l'évaluateur D-40 pour les gabarits de notification (registre §123). Les templates de document n'en
- * ont pas ({@code null}) : leur comportement ne change pas.
+ * Bornes de coût de l'évaluateur D-40 (registre §123, étendues aux templates de document par l'issue #43).
+ * {@code null} laisse le comportement historique, sans budget.
  *
  * @param utilityMaxSize taille maximale (éléments ou caractères) de {@code #numbers.sequence} et {@code #strings.repeat} ;
  *     plafond des chiffres demandés à {@code #numbers.format*} ; {@code #strings.randomAlphanumeric} est refusé
@@ -12,7 +12,7 @@ import org.thymeleaf.exceptions.TemplateProcessingException;
  *     maximale de toute collection produite par un utilitaire
  * @param budget budget par rendu : chaque évaluation coûte 1, plus la longueur de l'expression et la taille des opérandes
  *     et du résultat (une chaîne pèse sa longueur divisée par 64)
- * @param timeoutMillis durée maximale d'un rendu, contrôlée à chaque évaluation
+ * @param timeoutMillis durée maximale d'un rendu, contrôlée à chaque évaluation et à chaque événement du gabarit
  */
 public record ExpressionLimits(int utilityMaxSize, int stringMaxChars, long budget, long timeoutMillis) {
 
@@ -27,7 +27,7 @@ public record ExpressionLimits(int utilityMaxSize, int stringMaxChars, long budg
     /** Ouvre un budget neuf pour un rendu ; à fermer (try-with-resources) à la fin du rendu. */
     public Scope begin() {
         Budget previous = CURRENT.get();
-        CURRENT.set(new Budget(budget, System.nanoTime() + timeoutMillis * 1_000_000L));
+        CURRENT.set(new Budget(budget, System.nanoTime() + timeoutMillis * 1_000_000L, stringMaxChars));
         return () -> {
             if (previous == null) {
                 CURRENT.remove();
@@ -35,6 +35,49 @@ public record ExpressionLimits(int utilityMaxSize, int stringMaxChars, long budg
                 CURRENT.set(previous);
             }
         };
+    }
+
+    /** Échéance du rendu en cours, y compris entre deux évaluations (issue #43). */
+    public static void checkDeadline() {
+        Budget current = CURRENT.get();
+        if (current != null && System.nanoTime() - current.deadlineNanos > 0) {
+            throw new TemplateProcessingException(COST_MESSAGE + " (render time limit exceeded)");
+        }
+    }
+
+    /**
+     * Repart le compteur de concaténation. Appelé au début de chaque balise ou texte : les {@code +} imbriqués d'une
+     * même expression s'additionnent, l'expression suivante non.
+     */
+    public static void resetMaterialized() {
+        Budget current = CURRENT.get();
+        if (current != null) {
+            current.materializing = false;
+            current.materializedChars = 0;
+        }
+    }
+
+    /**
+     * Compte une chaîne lue par le {@code +} de Thymeleaf ({@code toString} avant l'allocation). La première opérande
+     * est déjà plafonnée à l'évaluation ; les suivantes font dépasser le plafond avant que la somme n'existe.
+     */
+    public static void accountMaterialized(int chars) {
+        Budget current = CURRENT.get();
+        if (current == null) {
+            return;
+        }
+        if (!current.materializing) {
+            current.materializing = true;
+            current.materializedChars = chars;
+            return;
+        }
+        long next = current.materializedChars + chars;
+        if (next > current.stringMaxChars) {
+            throw new TemplateProcessingException(
+                    COST_MESSAGE + " (string longer than " + current.stringMaxChars + " characters)");
+        }
+        current.materializedChars = next;
+        charge(Math.max(1L, chars / 64L));
     }
 
     /** Fin d'un rendu. */
@@ -61,10 +104,14 @@ public record ExpressionLimits(int utilityMaxSize, int stringMaxChars, long budg
     private static final class Budget {
         private long remaining;
         private final long deadlineNanos;
+        private final int stringMaxChars;
+        private boolean materializing;
+        private long materializedChars;
 
-        Budget(long remaining, long deadlineNanos) {
+        Budget(long remaining, long deadlineNanos, int stringMaxChars) {
             this.remaining = remaining;
             this.deadlineNanos = deadlineNanos;
+            this.stringMaxChars = stringMaxChars;
         }
     }
 }

@@ -92,7 +92,10 @@ class NotificationHtmlPolicyTest {
     @ValueSource(strings = {
             "background:url(https://x.example/a.png)", "background: URL( 'x' )", "width:expression(alert(1))",
             "behavior:EXPRESSION (x)", "@import 'x.css'", "background:url(javascript:alert(1))", "x:javascript:alert(1)",
-            "background:\\75rl(x)", "color:red; u rl(x)", "background:&#x75;rl(x)"})
+            "background:\\75rl(x)", "color:red; u rl(x)", "background:&#x75;rl(x)",
+            "background:image-set(url(https://x.example/a.png) 1x)", "background:image(https://x.example/a.png)",
+            "list-style:image(https://x.example/a.png)", "position:fixed", "position: fixed",
+            "background:image-set('https://x.example/a.png' 1x)"})
     void aStyleThatCanLoadOrRunSomething_isRefused(String style) {
         String attribute = style.contains("\"") ? "style='" + style + "'" : "style=\"" + style + "\"";
 
@@ -159,5 +162,39 @@ class NotificationHtmlPolicyTest {
     @Test
     void clean_ofAFragment_returnsADocument() {
         assertThat(NotificationHtmlPolicy.clean("<p>x</p>")).contains("<p>x</p>").contains("<body>");
+    }
+
+    @Test
+    void clean_doesNotNestABodyInsideTheDocumentBody() {
+        String cleaned = NotificationHtmlPolicy.clean("<body><p>x</p></body>");
+
+        assertThat(cleaned).contains("<p>x</p>");
+        assertThat(count(cleaned, "<body")).isEqualTo(1);
+    }
+
+    @Test
+    void aSafeColorFunction_isAccepted() {
+        assertThat(NotificationHtmlPolicy.violations(
+                "<p style=\"color: rgb(1, 2, 3); background-color: rgba(0,0,0,0.2); width: calc(100% - 8px)\">x</p>"))
+                .isEmpty();
+    }
+
+    @Test
+    void scanningManyThymeleafNames_staysLinear() {
+        String html = "<p th:a=\"1\">x</p>\n".repeat(20_000);
+        long start = System.nanoTime();
+
+        List<String> violations = NotificationHtmlPolicy.violations(html);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(System.nanoTime() - start).isLessThan(java.time.Duration.ofSeconds(2).toNanos());
+    }
+
+    private static int count(String text, String token) {
+        int count = 0;
+        for (int from = 0; (from = text.indexOf(token, from)) >= 0; from += token.length()) {
+            count++;
+        }
+        return count;
     }
 }

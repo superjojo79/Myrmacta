@@ -109,6 +109,12 @@ class ThymeleafNotificationTemplateCheckerTest {
     }
 
     @Test
+    void aSignatureLineOfUnderscores_isNotPreProcessing() {
+        assertThatCode(() -> checker.check(template("S", "Signature : ________", "<p>Signature : ________</p>")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void preProcessingWrittenWithHtmlEntities_isRefused() {
         for (String underscores : java.util.List.of("&#95;&#95;", "&#x5f;&#x5F;", "&lowbar;&lowbar;", "&UnderBar;&UnderBar;")) {
             String expr = underscores + "${a}" + underscores;

@@ -81,7 +81,8 @@ public record NotificationTemplateProperties(
 
     /**
      * Plafond du corps d'une requête d'aperçu : un gabarit au maximum, plus un modèle, avec une marge pour l'échappement
-     * JSON. Rejeté sur {@code Content-Length} avant toute lecture du corps.
+     * JSON. Plafond des POST et PUT {@code /api/notification-templates} : un {@code Content-Length} honnête est rejeté, et
+     * le flux réel est borné même sans cet en-tête (issue #43).
      */
     public long previewRequestMaxBytes() {
         long content = 4L * subjectMaxChars + textBodyMaxBytes + htmlBodyMaxBytes + previewModelMaxBytes;

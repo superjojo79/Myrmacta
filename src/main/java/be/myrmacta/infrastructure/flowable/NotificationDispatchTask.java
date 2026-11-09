@@ -71,15 +71,16 @@ public class NotificationDispatchTask implements JavaDelegate {
     @Override
     public void execute(DelegateExecution execution) {
         // Revue adversariale #183 (M1, L5) : avec une pièce jointe, canaux et destinataire ne viennent que du BPMN, et le canal
-        // EMAIL est vérifié avant toute lecture du document.
+        // EMAIL est vérifié avant toute lecture du document. Un gabarit exige EMAIL seul, même avec une pièce (issue #43).
         boolean withAttachment = DeployedActivityParameters.getLiteral(execution, ATTACHMENT) != null;
         // Issue #19 (TODO §123) : le gabarit n'est lu que dans le BPMN déployé ; il fige canal et destinataire.
         String templateKey = stringOrNull(DeployedActivityParameters.getLiteral(execution, TEMPLATE));
         boolean templated = templateKey != null;
-        List<NotificationChannel> channels = withAttachment
-                ? attachmentChannels(execution)
-                : templated ? templateChannels(execution)
-                : parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
+        List<NotificationChannel> channels = templated
+                ? templateChannels(execution)
+                : withAttachment
+                        ? attachmentChannels(execution)
+                        : parseChannels(DeployedActivityParameters.get(execution, "notificationChannels"));
         String to = recipient(execution, withAttachment, templated);
         RenderedNotification rendered = templated ? renderTemplate(execution, templateKey) : null;
         String subject = templated ? rendered.subject()

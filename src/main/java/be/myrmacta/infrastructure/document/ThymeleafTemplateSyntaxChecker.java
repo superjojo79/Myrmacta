@@ -4,6 +4,7 @@ import be.myrmacta.domain.document.model.InvalidTemplateSyntaxException;
 import be.myrmacta.domain.document.port.out.TemplateSyntaxChecker;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
+import org.unbescape.html.HtmlEscape;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.cache.AlwaysValidCacheEntryValidity;
 import org.thymeleaf.engine.TemplateData;
@@ -63,6 +64,11 @@ public class ThymeleafTemplateSyntaxChecker implements TemplateSyntaxChecker {
     }
 
     private void checkParsed(String htmlContent, TemplateMode mode) {
+        if (htmlContent != null
+                && ThymeleafPreprocessing.containsExecutable(HtmlEscape.unescapeHtml(htmlContent))) {
+            throw new InvalidTemplateSyntaxException(
+                    "the Thymeleaf pre-processing sequence '__' is not allowed");
+        }
         if (htmlContent != null
                 && (UNESCAPED_ATTRIBUTE.matcher(htmlContent).find() || UNESCAPED_INLINE.matcher(htmlContent).find())) {
             throw new InvalidTemplateSyntaxException(

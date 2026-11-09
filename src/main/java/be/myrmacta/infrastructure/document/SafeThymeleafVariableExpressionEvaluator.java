@@ -21,6 +21,10 @@ final class SafeThymeleafVariableExpressionEvaluator implements IStandardVariabl
         this.limits = limits;
     }
 
+    boolean limited() {
+        return limits != null;
+    }
+
     @Override
     public Object evaluate(
             IExpressionContext context,

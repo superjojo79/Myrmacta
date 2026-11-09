@@ -14,10 +14,10 @@ import be.myrmacta.infrastructure.tenant.TenantResolutionFilter;
 import be.myrmacta.infrastructure.web.connector.WebhookBodySizeLimitFilter;
 import be.myrmacta.infrastructure.web.document.DocumentGenerationBodySizeLimitFilter;
 import be.myrmacta.infrastructure.web.dossier.TenantCalendarIcsBodySizeLimitFilter;
+import be.myrmacta.infrastructure.web.notification.template.NotificationTemplateBodySizeLimitFilter;
 import be.myrmacta.infrastructure.web.security.CspReportBodySizeLimitFilter;
 import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -219,11 +219,10 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new DocumentGenerationBodySizeLimitFilter(documentGenerationProperties.maxBodyBytes()),
                         SecurityContextHolderFilter.class)
-                // Même garde pour POST /api/notification-templates/preview (gabarit et modèle fournis par l'appelant).
+                // POST et PUT /api/notification-templates : Content-Length et octets réellement lus (issue #43).
                 .addFilterBefore(
-                        new DocumentGenerationBodySizeLimitFilter(
-                                notificationTemplateProperties.previewRequestMaxBytes(),
-                                Set.of("/api/notification-templates/preview")),
+                        new NotificationTemplateBodySizeLimitFilter(
+                                notificationTemplateProperties.previewRequestMaxBytes()),
                         SecurityContextHolderFilter.class)
                 // TODO §124 (D-CAL-ICS-SIZE) — sources ICS : 1 Mio + marge, avant le multipart Spring (25 Mo).
                 .addFilterBefore(new TenantCalendarIcsBodySizeLimitFilter(), SecurityContextHolderFilter.class)

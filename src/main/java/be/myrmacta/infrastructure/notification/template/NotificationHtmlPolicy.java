@@ -52,6 +52,30 @@ final class NotificationHtmlPolicy {
 
     private static final List<String> FORBIDDEN_STYLE_TOKENS = List.of("url(", "expression(", "@import", "javascript:");
 
+    /** Propriétés CSS d'un courriel. {@code position} n'y figure pas : {@code position:fixed} charge ou recouvre. */
+    private static final Set<String> ALLOWED_STYLE_PROPERTIES = Set.of(
+            "color", "background", "background-color",
+            "font", "font-family", "font-size", "font-style", "font-weight", "font-variant", "font-stretch",
+            "text-align", "text-decoration", "text-indent", "text-transform", "letter-spacing", "word-spacing",
+            "line-height", "white-space", "vertical-align",
+            "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+            "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+            "border", "border-color", "border-style", "border-width", "border-collapse", "border-spacing",
+            "border-top", "border-right", "border-bottom", "border-left",
+            "border-top-color", "border-top-style", "border-top-width",
+            "border-right-color", "border-right-style", "border-right-width",
+            "border-bottom-color", "border-bottom-style", "border-bottom-width",
+            "border-left-color", "border-left-style", "border-left-width",
+            "width", "min-width", "max-width", "height", "min-height", "max-height",
+            "display", "list-style", "list-style-type", "list-style-position",
+            "table-layout", "caption-side", "empty-cells",
+            "direction", "unicode-bidi");
+
+    /** Seules ces fonctions CSS sont permises (issue #43) : {@code image()}, {@code image-set()} chargent une ressource. */
+    private static final Set<String> ALLOWED_STYLE_FUNCTIONS = Set.of("rgb", "rgba", "calc");
+
+    private static final Pattern CSS_FUNCTION = Pattern.compile("([a-z-]+)\\(");
+
     private static final Safelist SAFELIST = buildSafelist();
 
     private NotificationHtmlPolicy() {}
@@ -89,6 +113,7 @@ final class NotificationHtmlPolicy {
             }
         }
         Document cleaned = new Cleaner(SAFELIST).clean(dirty);
+        unwrapNestedBodies(cleaned.body());
         cleaned.outputSettings().prettyPrint(false);
         return cleaned.outerHtml();
     }
@@ -98,7 +123,25 @@ final class NotificationHtmlPolicy {
             return false;
         }
         String compact = compact(style);
-        return FORBIDDEN_STYLE_TOKENS.stream().noneMatch(compact::contains);
+        if (FORBIDDEN_STYLE_TOKENS.stream().anyMatch(compact::contains)) {
+            return false;
+        }
+        Matcher functions = CSS_FUNCTION.matcher(compact);
+        while (functions.find()) {
+            if (!ALLOWED_STYLE_FUNCTIONS.contains(functions.group(1))) {
+                return false;
+            }
+        }
+        for (String declaration : compact.split(";", -1)) {
+            if (declaration.isEmpty()) {
+                continue;
+            }
+            int colon = declaration.indexOf(':');
+            if (colon <= 0 || !ALLOWED_STYLE_PROPERTIES.contains(declaration.substring(0, colon))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static boolean isAllowedLink(String href) {
@@ -122,8 +165,7 @@ final class NotificationHtmlPolicy {
             return;
         }
         if ("style".equals(name) && !isSafeStyle(value)) {
-            violations.add("attribute style on <%s> must not contain url(, expression(, @import, javascript: or a backslash%s"
-                    .formatted(tag, where(element)));
+            violations.add("attribute style on <%s> is not an allowed style%s".formatted(tag, where(element)));
         }
         if ("href".equals(name) && !isAllowedLink(value)) {
             violations.add("attribute href on <a> must start with http://, https:// or mailto:%s".formatted(where(element)));
@@ -132,6 +174,7 @@ final class NotificationHtmlPolicy {
 
     /** Balayage du texte brut : une analyse du DOM par jsoup ne vaut pas celle du parseur de Thymeleaf. */
     private static void scanThymeleafNames(String html, List<String> violations) {
+        int[] lineStarts = lineStarts(html);
         Matcher matcher = THYMELEAF_NAME.matcher(html);
         while (matcher.find()) {
             String name = matcher.group(1).toLowerCase(Locale.ROOT);
@@ -140,7 +183,7 @@ final class NotificationHtmlPolicy {
                 violations.add("Thymeleaf %s%s is not allowed (allowed: th:text, th:if, th:unless, th:each, th:with, "
                         .formatted(prefix, name)
                         + "th:switch, th:case, th:remove and the th:block element) at line %d"
-                                .formatted(lineOf(html, matcher.start())));
+                                .formatted(lineOf(lineStarts, matcher.start())));
             }
         }
     }
@@ -158,14 +201,48 @@ final class NotificationHtmlPolicy {
         return range.isTracked() ? " (line %d)".formatted(range.start().lineNumber()) : "";
     }
 
-    private static int lineOf(String text, int index) {
-        int line = 1;
-        for (int i = 0; i < index && i < text.length(); i++) {
+    /** Début de chaque ligne, une fois pour tout le balayage (le parcours par occurrence était quadratique). */
+    private static int[] lineStarts(String text) {
+        int lines = 1;
+        for (int i = 0; i < text.length(); i++) {
             if (text.charAt(i) == '\n') {
-                line++;
+                lines++;
             }
         }
-        return line;
+        int[] starts = new int[lines];
+        int line = 1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n' && line < starts.length) {
+                starts[line++] = i + 1;
+            }
+        }
+        return starts;
+    }
+
+    private static int lineOf(int[] lineStarts, int index) {
+        int low = 0;
+        int high = lineStarts.length - 1;
+        while (low < high) {
+            int mid = (low + high + 1) >>> 1;
+            if (lineStarts[mid] <= index) {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return low + 1;
+    }
+
+    /** jsoup réécrit un fragment déjà enveloppé dans {@code body} : un second {@code body} apparaît. On le retire. */
+    private static void unwrapNestedBodies(Element body) {
+        if (body == null) {
+            return;
+        }
+        for (Element nested : new ArrayList<>(body.getElementsByTag("body"))) {
+            if (nested != body) {
+                nested.unwrap();
+            }
+        }
     }
 
     /** Minuscules, sans blanc ni caractère de contrôle : {@code U R L (} ne doit pas échapper au contrôle. */

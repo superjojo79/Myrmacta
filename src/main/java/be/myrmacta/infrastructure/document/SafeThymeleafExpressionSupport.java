@@ -45,15 +45,19 @@ final class SafeThymeleafExpressionSupport {
     }
 
     /**
-     * Évalue avec des bornes de coût (gabarits de notification, registre §123) ; {@code limits == null} : comportement
-     * inchangé (templates de document). Chaque évaluation débite le budget du rendu (voir {@link ExpressionLimits}) et son
-     * résultat est plafonné. Les messages ne citent aucune valeur ni expression.
+     * Évalue avec des bornes de coût (gabarits de notification et templates de document, registre §123, issue #43) ;
+     * {@code limits == null} : pas de budget. Chaque évaluation débite le budget du rendu (voir {@link ExpressionLimits})
+     * et son résultat est plafonné. La concaténation Thymeleaf {@code +} est pesée par l'analyseur gardé, avant
+     * allocation. Les messages ne citent aucune valeur ni expression.
      */
     static Object evaluate(IContext context, String raw, ExpressionLimits limits) {
         Object value = new Parser(raw, context, limits).parseTop();
         if (limits != null) {
             assertStringWithinLimit(value, limits);
             ExpressionLimits.charge(1L + (raw == null ? 0 : raw.length()) / 64 + weight(value));
+            if (value instanceof String text && !thymeleafWouldAddAsNumber(text)) {
+                return new MeteredText(text);
+            }
         }
         return value;
     }
@@ -379,7 +383,7 @@ final class SafeThymeleafExpressionSupport {
                     }
                     return result;
                 } catch (InvocationTargetException ex) {
-                    if (limits != null && ex.getCause() instanceof Error error) {
+                    if (ex.getCause() instanceof Error error) {
                         // Une OutOfMemoryError (ou autre Error) n'est pas une raison d'essayer une autre surcharge.
                         throw error;
                     }
@@ -589,7 +593,7 @@ final class SafeThymeleafExpressionSupport {
             }
             if (value instanceof Number number) {
                 if (boxed == Integer.class) {
-                    return number.intValue();
+                    return intValue(number);
                 }
                 if (boxed == Long.class) {
                     return number.longValue();
@@ -601,10 +605,10 @@ final class SafeThymeleafExpressionSupport {
                     return number.floatValue();
                 }
                 if (boxed == Short.class) {
-                    return number.shortValue();
+                    return (short) narrow(number, Short.MIN_VALUE, Short.MAX_VALUE);
                 }
                 if (boxed == Byte.class) {
-                    return number.byteValue();
+                    return (byte) narrow(number, Byte.MIN_VALUE, Byte.MAX_VALUE);
                 }
                 if (boxed == Number.class) {
                     return number;
@@ -747,6 +751,15 @@ final class SafeThymeleafExpressionSupport {
             }
             index++;
         }
+
+        /** Entier déjà contrôlé par {@link #intValue(Number)}, refusé s'il ne tient pas dans la cible. */
+        private static int narrow(Number number, int min, int max) {
+            int value = intValue(number);
+            if (value < min || value > max) {
+                throw costLimit("numeric argument out of range");
+            }
+            return value;
+        }
     }
 
     private static void assertNotBlocked(String name) {
@@ -840,5 +853,73 @@ final class SafeThymeleafExpressionSupport {
 
     private static boolean isIdentPart(char c) {
         return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    /**
+     * Même critère que {@code EvaluationUtils.evaluateAsNumber} : premier caractère chiffre, {@code +} ou {@code -},
+     * et {@link java.math.BigDecimal} accepte le texte rogné. Ces chaînes restent des {@code String}, sinon
+     * {@code +} concatène et {@code ==} ne compare plus les nombres (issue #43).
+     */
+    private static boolean thymeleafWouldAddAsNumber(String text) {
+        if (text.isEmpty()) {
+            return false;
+        }
+        char first = text.charAt(0);
+        boolean numericStart = (first >= '0' && first <= '9') || first == '+' || first == '-';
+        if (!numericStart) {
+            return false;
+        }
+        try {
+            new java.math.BigDecimal(text.trim());
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    /**
+     * Chaîne dont {@link #toString()} pèse le {@code +} Thymeleaf avant l'allocation (issue #43). {@link #equals}
+     * délègue au texte : {@code ==} compare les classes puis {@code equals}, et les tests comparent à une chaîne.
+     */
+    private static final class MeteredText implements CharSequence {
+        private final String value;
+
+        private MeteredText(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public int length() {
+            return value.length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            return value.charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return value.subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            ExpressionLimits.accountMaterialized(value.length());
+            return value;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other instanceof MeteredText metered) {
+                return value.equals(metered.value);
+            }
+            return value.equals(other);
+        }
+
+        @Override
+        public int hashCode() {
+            return value.hashCode();
+        }
     }
 }

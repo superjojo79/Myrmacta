@@ -7,6 +7,7 @@ import be.myrmacta.domain.notification.template.port.out.NotificationTemplateRen
 import be.myrmacta.infrastructure.config.NotificationTemplateProperties;
 import be.myrmacta.infrastructure.document.ExpressionLimits;
 import be.myrmacta.infrastructure.document.SafeHtmlTemplateEngineFactory;
+import be.myrmacta.infrastructure.document.ThymeleafPreprocessing;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -28,7 +29,8 @@ import org.unbescape.html.HtmlEscape;
  * parties dépasse {@code renderedMaxBytes} ; l'évaluateur borne {@code #numbers.sequence} et {@code #strings.repeat},
  * refuse {@code #strings.randomAlphanumeric} et débite un budget d'évaluations par rendu. Le pré-traitement
  * {@code __${…}__} est refusé avant tout traitement, quelle que soit la graphie : la source est décodée (entités HTML)
- * comme le fait le moteur, puis toute séquence {@code __} est refusée (voir le registre §123).
+ * comme le fait le moteur, puis un fragment {@code __…__} au contenu non vide est refusé. Une ligne de signature
+ * {@code ________} n'en est pas un (issue #43).
  *
  * <p>Les messages d'erreur nomment le gabarit, la partie et l'expression, jamais une valeur ; la cause d'origine n'est pas
  * attachée (son message peut citer une valeur).
@@ -42,8 +44,6 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
                     "Unknown template variable:",
                     "Unsupported Thymeleaf expression:",
                     "Template cost limit exceeded");
-
-    private static final String PREPROCESSING = "__";
 
     private static final String TEMPLATE_LOCATION = " (template: ";
 
@@ -119,7 +119,7 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
             String source,
             Context context,
             ByteBudget bytes) {
-        if (HtmlEscape.unescapeHtml(source).contains(PREPROCESSING)) {
+        if (ThymeleafPreprocessing.containsExecutable(HtmlEscape.unescapeHtml(source))) {
             throw failure(template, part, "the pre-processing sequence '__' is not allowed");
         }
         BoundedWriter writer = new BoundedWriter(bytes);
@@ -179,6 +179,9 @@ public class ThymeleafNotificationTemplateRenderer implements NotificationTempla
 
         @Override
         public void write(char[] buffer, int offset, int length) {
+            // Une écriture sépare deux expressions : le + suivant ne reprend pas le total de la précédente.
+            ExpressionLimits.resetMaterialized();
+            ExpressionLimits.checkDeadline();
             long size = 0;
             for (int i = offset; i < offset + length; i++) {
                 char c = buffer[i];

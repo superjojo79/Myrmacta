@@ -988,6 +988,17 @@ infrastructure
   (`SecurityAuditLog.sensitiveFieldChanged`, niveau INFO), jamais bloqué.
 - **Tests :** `UpdateDossierFieldsUseCaseImplTest`, tests du contrôleur, Playwright `E2E-22`.
 
+## Implémentation — champs gérés par le workflow (`managedByWorkflow`, TODO §126, issue #9)
+
+- **Déclaration :** `FieldDefinition.managedByWorkflow` sur un champ racine ; incompatible avec `required`, `formula`,
+  `defaultValue` et `requiredWhen` ; interdit sur un sous-champ de groupe ; `sensitive` reste orthogonal.
+- **Écriture :** seule `fieldMappingTask` (signal `workflowMapping` sur `UpdateDossierFieldsCommand`) ; création,
+  `PATCH .../fields`, formulaires, portail, MCP et routage courrier refusent une clé touchée (`MANAGED_BY_WORKFLOW`).
+- **Lecture :** `dossier.fields.<nom>` dans les expressions métier (sauf champ `sensitive`).
+- **UI :** case dans l'éditeur de schéma du type ; affichage lecture seule (hint distinct) dans `DynamicFields`.
+- **Exemple :** `exemples/onboarding-collaborateur` — champs Provisioning gérés ; `OnboardingOrchestrationExampleIT`.
+- **Décision :** [§126](../decisions/126-champs-managed-by-workflow.md).
+
 ## Implémentation — unicité d'un champ et recherche depuis un workflow (TODO §102, issue #184)
 
 - **Déclaration :** `FieldDefinition.unique` sur un champ `STRING`, `NUMBER` ou `DATE`, non sensible, hors groupe, nom ≤ 100

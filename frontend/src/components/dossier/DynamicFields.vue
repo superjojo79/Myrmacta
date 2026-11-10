@@ -64,9 +64,18 @@ function scheduleEvaluation() {
   }, 300)
 }
 
-/** Un champ devenu sans objet ne doit pas être envoyé (le serveur refuse une valeur fournie pour un champ sans objet). */
+/**
+ * Un champ devenu sans objet ne doit pas être envoyé (le serveur refuse une valeur fournie pour un champ sans objet).
+ * Les champs calculés ou {@code managedByWorkflow} restent dans le brouillon : les retirer ferait envoyer {@code null}
+ * via le diff et le serveur refuserait la clé (TODO §126).
+ */
 function dropHiddenValues(preview: FieldRulesPreview) {
-  const stale = preview.hidden.filter((name) => props.modelValue[name] !== undefined)
+  const protectedNames = new Set(
+    props.definitions.filter((d) => isReadOnlyOutputField(d)).map((d) => d.name),
+  )
+  const stale = preview.hidden.filter(
+    (name) => props.modelValue[name] !== undefined && !protectedNames.has(name),
+  )
   if (stale.length === 0) return
   const next = { ...props.modelValue }
   for (const name of stale) delete next[name]

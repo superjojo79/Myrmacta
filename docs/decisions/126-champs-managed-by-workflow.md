@@ -1,10 +1,13 @@
 # §126 — Champs de dossier gérés par le workflow (`managedByWorkflow`)
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
+
+[x] clos (issue [#9](https://github.com/superjojo79/Myrmacta/issues/9)). Cadrage validé le 2026-11-10. Livré : drapeau
+`managedByWorkflow`, enforcement d'écriture, UI, migration `exemples/onboarding-collaborateur`. Comportement :
+[spec 04](../specs/04-dossiers.md) § « Implémentation — champs gérés par le workflow ».
 
 Issue [#9](https://github.com/superjojo79/Myrmacta/issues/9) (arbitrage, constat H1 de
-[§112](112-orchestration-technique-requete-construite-par-le-bpmn.md) / #260). Cadrage validé par l'utilisateur le
-2026-11-10. Document de travail : [docs/ai/2026-11-10-champs-managed-by-workflow.md](../ai/2026-11-10-champs-managed-by-workflow.md).
+[§112](112-orchestration-technique-requete-construite-par-le-bpmn.md) / #260).
 
 **Constat.** Un identifiant technique rendu par une application (compte IAM, matricule SIRH) ne peut pas vivre en
 sécurité dans un champ de dossier modifiable par toute personne qui a le droit EDIT (création, `PATCH .../fields`,

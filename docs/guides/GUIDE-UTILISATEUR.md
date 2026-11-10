@@ -80,6 +80,12 @@ l'écran dossier) et `sensible` (masquage à l'affichage/export pour tout acteur
 sauvegarde envoie la **liste complète** (pas un ajout unitaire) — même convention que l'outil MCP
 interne `define_dossier_type`.
 
+**Géré par le workflow (TODO §126).** Une case « Géré par le workflow » marque un champ que seule la brique
+BPMN « Enregistrer des valeurs dans le dossier » peut écrire (identifiants techniques, tickets, journaux de
+compensation). Il n'apparaît pas comme saisie à la création ni dans un formulaire de tâche ; il reste visible en
+lecture seule sur la fiche. Incompatible avec « obligatoire », une valeur par défaut ou un champ calculé. Voir
+aussi le [guide de conception BPMN](GUIDE-CONCEPTION-BPMN.md) (§ connecteur / `connectorRequest`).
+
 **Valeur unique (TODO §102).** Une case « Valeur unique » est proposée pour un champ texte, nombre ou
 date qui n'est pas sensible, y compris un champ calculé. Elle est visible mais inactive pour les autres
 types et pour un champ sensible ; la raison est affichée à côté de la case. Cochée, une même valeur ne

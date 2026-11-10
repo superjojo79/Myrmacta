@@ -877,12 +877,12 @@ racine et mêmes règles que §3sexies : `dossier` aux champs déclarés non sen
   une instance choisie par une variable.
 - Appelée depuis un process, une instance **avec `baseUrl` n'accepte que `connectorRequest`** : la variable `connectorInput`
   y est refusée. Sans `baseUrl`, elle reste acceptée, et l'en-tête d'authentification part vers l'URL qu'elle fournit.
-- **`dossier.fields` et `variables` ne sont pas des données de confiance.** Toute personne qui a le droit EDIT modifie un champ
-  du dossier ; une variable peut être posée au démarrage ou à la complétion d'une tâche qui n'est pas une `user-question`.
-  Ne désignez jamais la cible d'un `PUT` ou d'un `DELETE` par l'un d'eux sans précaution : retenez l'identifiant rendu par
-  l'application dans une variable écrite par « Évaluer une expression », remise à `null` au début de l'orchestration, après
-  la dernière tâche à formulaire libre (motif de l'exemple ci-dessous ; champs gérés par le workflow :
-  [#9](https://github.com/superjojo79/Myrmacta/issues/9)).
+- **`dossier.fields` et `variables` ne sont pas des données de confiance par défaut.** Toute personne qui a le droit EDIT
+  modifie un champ ordinaire du dossier ; une variable peut être posée au démarrage ou à la complétion d'une tâche qui n'est
+  pas une `user-question`. Pour un identifiant technique (cible d'un `PUT` / `DELETE`), déclarez le champ
+  **`managedByWorkflow`** sur le type de dossier (TODO §126) : il n'est écrit que par « Enregistrer des valeurs dans le
+  dossier », et reste lisible via `dossier.fields` dans les expressions. Sans ce drapeau, retenez l'identifiant dans une
+  variable écrite par le BPMN, remise à `null` après la dernière tâche à formulaire libre.
 - Le résultat doit être un objet : un texte, une liste ou une expression sans valeur fait échouer l'activité en la nommant.
   Une clé dont la valeur est absente (champ vide ou **sensible**) disparaît de l'objet : un champ sensible n'est jamais envoyé.
 - Les apostrophes délimitent les textes JSONata (`'POST'`) : pas besoin d'échapper des guillemets dans l'attribut XML.
@@ -913,19 +913,19 @@ Une étape « connecteur » d'un **parcours** ne porte pas de `connectorRequest`
 
 ### Orchestration technique : plusieurs applications et des validations humaines
 
-Schéma type, livré et rejoué par un test dans [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md) :
+Schéma type, livré et rejoué par un test dans [exemples/onboarding-collaborateur](../../exemples/onboarding-collaborateur/README.md)
+(TODO §126) :
 
 1. une instance `http-rest` **par application**, « service seul » (`webhookEnabled` décoché) et avec `baseUrl` ;
-2. au début du provisioning, les variables qui retiendront les identifiants sont remises à `null` (« Évaluer une
-   expression » : `null`) ;
+2. les champs qui recevront les identifiants techniques sont déclarés **`managedByWorkflow`** sur le type de dossier ;
 3. pour chaque appel : « Appeler un connecteur » (asynchrone, `connectorRequest`), « Évaluer une expression » sur le statut,
-   passerelle ; en cas de succès, « Évaluer une expression » retient l'identifiant rendu (`matricule =
-   connectorResult.json.id`) et « Enregistrer des valeurs dans le dossier » l'**affiche** (`matriculeSirh =
-   variables.matricule`). L'appel suivant et la compensation relisent la variable, jamais le champ ;
+   passerelle ; en cas de succès, « Enregistrer des valeurs dans le dossier » écrit le champ géré
+   (`matriculeSirh = connectorResult.json.id`). L'appel suivant et la compensation relisent `dossier.fields…`, jamais une
+   variable posée au démarrage ou à une tâche à formulaire libre ;
 4. les validations sont des `user-question` dont la réponse oriente une passerelle (approuver, corriger, refuser ; accès
-   étendus ou non) : leurs variables sont déclarées, une complétion ne peut pas écraser un identifiant retenu ;
-5. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur ce
-   qui a été créé.
+   étendus ou non) : leurs variables sont déclarées ;
+5. un échec mène à une tâche « incident technique » (réessayer, abandonner) ; l'abandon **compense** par des `DELETE` sur les
+   champs gérés qui existent.
 
 Réessayer rejoue la requête : prévoir côté application une clé d'idempotence ou une recherche préalable si un `POST` a pu
 aboutir malgré une réponse en erreur.

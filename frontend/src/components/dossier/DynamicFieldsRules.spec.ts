@@ -75,6 +75,33 @@ describe('DynamicFields — règles du type (TODO §80)', () => {
     expect(emitted).toEqual({ pays: 'DE' })
   })
 
+  it('does not drop a managedByWorkflow value when the field is hidden (TODO §126)', async () => {
+    const withManaged: FieldDefinition[] = [
+      ...defs,
+      {
+        name: 'identifiantIam',
+        label: 'IAM',
+        type: 'STRING',
+        required: false,
+        managedByWorkflow: true,
+        visibleWhen: "dossier.fields.pays = 'FR'",
+      },
+    ]
+    vi.mocked(evaluateFieldRules).mockResolvedValue(preview({ hidden: ['siret', 'identifiantIam'] }))
+    const wrapper = mount(DynamicFields, {
+      props: {
+        definitions: withManaged,
+        modelValue: { pays: 'DE', siret: 'SAISI', identifiantIam: 'iam-1' },
+        typeCode: 'FACT',
+        applyDefaults: false,
+      },
+    })
+    await settle()
+
+    const emitted = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as Record<string, unknown>
+    expect(emitted).toEqual({ pays: 'DE', identifiantIam: 'iam-1' })
+  })
+
   it('debounces: one call for a burst of edits, and ignores a stale response', async () => {
     let resolveFirst: (v: FieldRulesPreview) => void = () => {}
     vi.mocked(evaluateFieldRules)

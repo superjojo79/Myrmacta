@@ -1036,7 +1036,8 @@ infrastructure
 - **Démarrage :** depuis TODO §95, `noop` est refusé en `production` sans
   `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true`, et signalé en `staging`.
 - **Tests :** `ClamAvAttachmentScanAdapterTest` (faux `clamd` sur socket loopback), `ClamAvAttachmentScanIT` (vrai
-  ClamAV sous Docker, ignoré sans démon Docker).
+  ClamAV sous Docker ou Podman, seulement avec `-Dclamav.it=true` ; hors `./mvnw verify`, recette de
+  [DEPLOIEMENT.md §21](../guides/DEPLOIEMENT.md#21-recette-sur-environnement-réel-todo-125), TODO §125).
 
 ## Implémentation — échéance d'un dossier, rappel et escalade (TODO §115, lot 4a de #217)
 

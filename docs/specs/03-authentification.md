@@ -382,5 +382,5 @@ travail ([requirements](https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1
   `<tenant>.keycloak.sh` ; recette sur un vrai Keycloak par `scripts/keycloak-realm-smoke.sh` (D-BEAUTH-KC-SMOKE).
 - **Tiers du portail** : voir [26-portail-externe.md §5](26-portail-externe.md#5-authentification-forte-du-tiers-todo-104).
 - **Tests** : `KnownUserRecordingSuccessHandlerTest`, `TenantResolutionFilterTest`, `ProvisionTenantRealmScriptTest`, et la
-  recette Keycloak (16 vérifications).
+  recette Keycloak (16 vérifications, plus 11 sur le client M2M de chaque tenant depuis TODO §125).
 

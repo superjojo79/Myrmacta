@@ -133,6 +133,8 @@ class ProvisionTenantRealmScriptTest {
         assertThat(list(realm.path("roles").path("realm")).stream().map(r -> r.path("name").asText())).contains("secours");
         JsonNode flow = byField(realm.path("authenticationFlows"), "alias", "browser-fournisseurs");
         JsonNode bff = byField(realm.path("clients"), "clientId", "mon-app");
+        // Un identifiant vide passe l'égalité ci-dessous, mais Keycloak ignore alors la surcharge : mot de passe pour tous.
+        assertThat(flow.path("id").asText()).matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
         assertThat(bff.path("authenticationFlowBindingOverrides").path("browser").asText()).isEqualTo(flow.path("id").asText());
         assertThat(list(flow.path("authenticationExecutions")).stream().map(e -> e.path("authenticator").asText()))
                 .contains("auth-cookie", "identity-provider-redirector");

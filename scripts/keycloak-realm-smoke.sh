@@ -103,10 +103,14 @@ provision() {
   done
 }
 
-bff_secret() {
-  local realm="$1" id
-  id="$("$kcadm" get clients -r "$realm" -q clientId=mon-app --fields id --format csv --noquotes)"
+client_secret() {
+  local realm="$1" client="$2" id
+  id="$("$kcadm" get clients -r "$realm" -q clientId="$client" --fields id --format csv --noquotes)"
   "$kcadm" get "clients/$id/client-secret" -r "$realm" | jq -r .value
+}
+
+bff_secret() {
+  client_secret "$1" mon-app
 }
 
 password_user() {
@@ -177,6 +181,30 @@ check "idp-only : secours reconnecté par mot de passe et OTP" jq -e '.result ==
 out="$(smoke secours-sans-otp realm=myrmacta-recette_idp secret="$secret" redirect="$redirect" user=secours \
   password=Secours-definitif-2)"
 check "idp-only : secours sans OTP arrêté à l'OTP" jq -e '.result == "otp-required"' <<<"$out"
+
+# --- Machine-to-machine : client client_credentials de chaque tenant (spec 03, M2mTenantValidationFilter) ----------
+for tenant in recette_idp recette_both; do
+  realm="myrmacta-${tenant}"
+  client="myrmacta-m2m-${tenant}"
+  out="$(smoke m2m realm="$realm" client="$client" secret="$(client_secret "$realm" "$client")")"
+  check "$tenant : token client_credentials obtenu par $client" jq -e '.result == "token"' <<<"$out"
+  check "$tenant : tenant_id du token M2M = $tenant" jq -e --arg t "$tenant" '.claims.tenant_id == $t' <<<"$out"
+  # M2mJwtAuthoritiesConverter attend une liste : une chaîne contenant API_SERVICE ne suffit pas.
+  check "$tenant : rôle API_SERVICE dans le claim roles" \
+    jq -e '(.claims.roles | type) == "array" and (.claims.roles | index("API_SERVICE")) != null' <<<"$out"
+  # azp est ce que M2M_TRUSTED_CLIENT_IDS (écrit dans <tenant>.env) doit autoriser.
+  check "$tenant : azp = M2M_TRUSTED_CLIENT_IDS du .env" \
+    jq -e --arg c "$(sed -n 's/^M2M_TRUSTED_CLIENT_IDS=//p' "$work/instances/${tenant}.env")" '.claims.azp == $c' <<<"$out"
+  m2m_id="$("$kcadm" get clients -r "$realm" -q clientId="$client" --fields id --format csv --noquotes)"
+  check "$tenant : mappers M2M inchangés après deux applications" \
+    jq -e 'map(.name) | sort == ["roles", "tenant_id"]' \
+    <<<"$("$kcadm" get "clients/$m2m_id/protocol-mappers/models" -r "$realm")"
+done
+# Un secret vide serait refusé lui aussi : on exige d'abord un vrai secret, puis un 401 de refus du client.
+other_secret="$(client_secret myrmacta-recette_both myrmacta-m2m-recette_both)"
+out="$(smoke m2m realm=myrmacta-recette_idp client=myrmacta-m2m-recette_idp secret="$other_secret")"
+check "M2M : le secret d'un tenant est refusé par le client d'un autre" \
+  jq -e --arg s "$other_secret" '$s != "" and .result == "refused"' <<<"$out"
 
 if (( failures > 0 )); then
   echo "$failures vérification(s) en échec. Journaux : $work (SMOKE_KEEP=1 pour les garder)." >&2

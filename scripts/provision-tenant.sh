@@ -206,16 +206,26 @@ else
 fi
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# UUID v4. Un identifiant vide ferait ignorer par Keycloak la surcharge du flux idp-only (mot de passe pour tous) :
+# Git Bash n'a ni /proc/sys/kernel/random ni uuidgen, d'où /dev/urandom en dernier recours, et l'arrêt sinon.
 new_uuid() {
+  local uuid hex
   if [[ -r /proc/sys/kernel/random/uuid ]]; then
-    cat /proc/sys/kernel/random/uuid
+    uuid="$(cat /proc/sys/kernel/random/uuid)"
+  elif command -v uuidgen >/dev/null; then
+    uuid="$(uuidgen | tr '[:upper:]' '[:lower:]')"
   else
-    uuidgen | tr '[:upper:]' '[:lower:]'
+    hex="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+    uuid="${hex:0:8}-${hex:8:4}-4${hex:13:3}-$(printf '%x' $(( (0x${hex:16:1} & 3) | 8 )))${hex:17:3}-${hex:20:12}"
   fi
+  [[ "$uuid" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] \
+    || { echo "Impossible de générer un UUID (reçu : '$uuid')." >&2; return 1; }
+  echo "$uuid"
 }
 
 generate_realm_json() {
-  local idps_json claims_json
+  local idps_json claims_json flow_id
+  flow_id="$(new_uuid)"
   idps_json="$(printf '%s\n' "${idps[@]}" | jq -R . | jq -cs 'map(select(. != ""))')"
   claims_json="$(jq -cn \
     --arg fg "${FAS_CLAIM_GIVEN_NAME:-givenName}" --arg ff "${FAS_CLAIM_FAMILY_NAME:-surname}" \
@@ -224,7 +234,7 @@ generate_realm_json() {
     '{fas: {given: $fg, family: $ff, email: $fe}, itsme: {given: $ig, family: $if, email: $ie}}')"
   jq -n -f "${script_dir}/tenant-realm.jq" \
     --arg tenant "$tenant_id" --arg base "$PUBLIC_BASE_URL" --arg mode "$password_login" \
-    --arg flowId "$(new_uuid)" --argjson idps "$idps_json" --argjson claims "$claims_json"
+    --arg flowId "$flow_id" --argjson idps "$idps_json" --argjson claims "$claims_json"
 }
 
 # Section « realm » de <tenant>.keycloak.sh (TODO §104) : variables figées au provisionnement, puis logique littérale.

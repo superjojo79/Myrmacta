@@ -63,10 +63,10 @@ Issue : [#9](https://github.com/superjojo79/Myrmacta/issues/9) · Spec du domain
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1 | Domaine + enforcement écriture + tests backend (unitaires, HTTP, mapping) | livré | #54 |
-| 2 | Frontend (éditeur, DynamicFields, validation, Vitest + Playwright) | à faire | #54 |
+| 2 | Frontend (éditeur, DynamicFields, validation, Vitest + Playwright) | livré | #54 |
 | 3 | Exemple onboarding + guides + specs + IT onboarding ; clôture §126 / `Closes #9` | à faire | #54 |
 
-Prochaine action : livrer le lot 2 (frontend) en TDD.
+Prochaine action : livrer le lot 3 (exemple onboarding + docs).
 
 ## Preuves
 
@@ -74,6 +74,8 @@ Prochaine action : livrer le lot 2 (frontend) en TDD.
 |---|---|---|
 | 2026-11-10 | `./mvnw test -Dtest=ManagedByWorkflowFieldsTest,FieldManagedByWorkflowModelTest,UpdateDossierFieldsUseCaseImplTest,CreateDossierUseCaseImplTest,FieldMappingDelegateTest,ManagedByWorkflowApiTest -Dskip.frontend=true` | BUILD SUCCESS, 49 tests |
 | 2026-11-10 | `./mvnw test -Dtest=FieldDefinition*Test,FieldUniqueModelTest,FieldSearchModelTest,FieldLayoutTest,DossierFieldRulesTest,FieldRulesApiTest,FieldMappingSmokeIT -Dskip.frontend=true` | BUILD SUCCESS, 64 tests |
+| 2026-11-10 | `npx vitest run` (fichiers lot 2) | 80 tests verts |
+| 2026-11-10 | `npx playwright test -g E2E-MANAGED-1` | 1 passed |
 
 ## Revue de clôture
 

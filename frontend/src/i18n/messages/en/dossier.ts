@@ -4,6 +4,7 @@ const dossier: typeof fr = {
   status: 'Status',
   defaultGroup: 'General',
   computed: '(computed)',
+  managedByWorkflow: '(managed by workflow)',
   addRow: 'Add a row',
   maxRows: 'Maximum {n} rows.',
   aria: {
@@ -203,6 +204,9 @@ const dossier: typeof fr = {
     uniqueHint: 'Only once among the open dossiers of this type',
     uniqueDisabledType: 'Only for text, number or date fields',
     uniqueDisabledSensitive: 'A sensitive field cannot be unique: refusing a duplicate would reveal the value',
+    managedByWorkflow: 'Managed by workflow',
+    managedByWorkflowHint:
+      'Written only by “Map values into the dossier”; never entered at creation or in a form',
     rules: 'Rules (computation, visibility, conditional requirement)',
     rulesHint: 'JSONata expressions on simple, non-sensitive fields: {example}.',
     formula: 'Computation (computed field, read-only, recomputed on every save)',
@@ -239,6 +243,10 @@ const dossier: typeof fr = {
     computedSensitive: 'The computed field “{shown}” cannot be sensitive',
     typeNotComputed: 'A {type} field (“{shown}”) cannot be computed',
     computedReadOnly: 'The computed field “{shown}” is always present and read-only: neither “required”, nor a default value, nor “visible if”, nor “required if”',
+    managedWithFormula: 'The field “{shown}” cannot be both computed and managed by the workflow',
+    managedReadOnly:
+      'The workflow-managed field “{shown}” accepts neither “required”, nor a default value, nor “required if”',
+    subManaged: 'The sub-field “{shown}” cannot be managed by the workflow{where}',
     subRule: 'The sub-field “{shown}” cannot carry a rule{where}',
     groupNeedsSub: 'The group “{shown}” needs at least one sub-field',
     groupMaxSubs: 'The group “{shown}” has at most {max} sub-fields',
@@ -256,6 +264,7 @@ const dossier: typeof fr = {
   fieldError: {
     unique: 'Already used by dossier {reference}',
     uniqueUnknown: 'Already used by another open dossier',
+    managedByWorkflow: 'Field managed by the workflow: its value cannot be set',
     detached: '{label}: {message}',
   },
 }

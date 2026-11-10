@@ -2,6 +2,7 @@ export default {
   status: 'Statut',
   defaultGroup: 'Général',
   computed: '(calculé)',
+  managedByWorkflow: '(géré par le workflow)',
   addRow: 'Ajouter une ligne',
   maxRows: 'Maximum {n} lignes.',
   aria: {
@@ -201,6 +202,9 @@ export default {
     uniqueHint: 'Une seule fois parmi les dossiers en cours de ce type',
     uniqueDisabledType: 'Réservé aux champs texte, nombre ou date',
     uniqueDisabledSensitive: 'Un champ sensible ne peut pas être unique : le refus révélerait la valeur',
+    managedByWorkflow: 'Géré par le workflow',
+    managedByWorkflowHint:
+      'Écrit seulement par « Enregistrer des valeurs dans le dossier » ; jamais saisi à la création ni dans un formulaire',
     rules: 'Règles (calcul, visibilité, obligation conditionnelle)',
     rulesHint: 'Expressions JSONata sur les champs simples non sensibles : {example}.',
     formula: 'Calcul (champ calculé, lecture seule, recalculé à chaque enregistrement)',
@@ -237,6 +241,10 @@ export default {
     computedSensitive: 'Le champ calculé « {shown} » ne peut pas être sensible',
     typeNotComputed: 'Un champ {type} (« {shown} ») ne peut pas être calculé',
     computedReadOnly: 'Le champ calculé « {shown} » est toujours présent et en lecture seule : ni « obligatoire », ni valeur par défaut, ni « visible si », ni « obligatoire si »',
+    managedWithFormula: 'Le champ « {shown} » ne peut pas être à la fois calculé et géré par le workflow',
+    managedReadOnly:
+      'Le champ « {shown} » géré par le workflow n’accepte ni « obligatoire », ni valeur par défaut, ni « obligatoire si »',
+    subManaged: 'Le sous-champ « {shown} » ne peut pas être géré par le workflow{where}',
     subRule: 'Le sous-champ « {shown} » ne peut pas porter de règle{where}',
     groupNeedsSub: 'Le groupe « {shown} » doit avoir au moins un sous-champ',
     groupMaxSubs: 'Le groupe « {shown} » a au plus {max} sous-champs',
@@ -254,6 +262,7 @@ export default {
   fieldError: {
     unique: 'Déjà utilisé par le dossier {reference}',
     uniqueUnknown: 'Déjà utilisé par un autre dossier en cours',
+    managedByWorkflow: 'Champ géré par le workflow : sa valeur ne peut pas être saisie',
     detached: '{label} : {message}',
   },
 }

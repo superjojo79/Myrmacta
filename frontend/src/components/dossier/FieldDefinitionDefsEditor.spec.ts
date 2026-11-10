@@ -282,6 +282,33 @@ describe('FieldDefinitionDefsEditor — structured types (TODO §76, D1)', () =>
     })
   })
 
+  describe('Géré par le workflow (TODO §126)', () => {
+    it('offers the checkbox on a dossier type field and emits managedByWorkflow', async () => {
+      const wrapper = mount(FieldDefinitionDefsEditor, {
+        props: { modelValue: [{ name: 'id', label: 'Id', type: 'STRING', required: false }] },
+      })
+      expect(wrapper.find('[data-testid="field-def-managed-by-workflow"]').exists()).toBe(true)
+      await wrapper.get('[data-testid="field-def-managed-by-workflow"]').setValue(true)
+      const emitted = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as FieldDefinition[]
+      expect(emitted[0]!.managedByWorkflow).toBe(true)
+      expect(emitted[0]!.required).toBe(false)
+    })
+
+    it('is absent in task and subfields modes', () => {
+      const base = { name: 'id', label: 'Id', type: 'STRING' as const, required: false }
+      expect(
+        mount(FieldDefinitionDefsEditor, { props: { modelValue: [base], mode: 'task' } })
+          .find('[data-testid="field-def-managed-by-workflow"]')
+          .exists(),
+      ).toBe(false)
+      expect(
+        mount(FieldDefinitionDefsEditor, { props: { modelValue: [base], mode: 'subfields' } })
+          .find('[data-testid="field-def-managed-by-workflow"]')
+          .exists(),
+      ).toBe(false)
+    })
+  })
+
   describe('Valeur unique (TODO §102)', () => {
     const row = (over: Partial<FieldDefinition> = {}): FieldDefinition => ({
       name: 'plaque', label: 'Plaque', type: 'STRING', required: false, ...over,

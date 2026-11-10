@@ -12,6 +12,9 @@ export function describeFieldError(error: FieldError): string {
     if (reference) return i18n.global.t('dossier.fieldError.unique', { reference })
     return i18n.global.t('dossier.fieldError.uniqueUnknown')
   }
+  if (error.code === 'MANAGED_BY_WORKFLOW') {
+    return i18n.global.t('dossier.fieldError.managedByWorkflow')
+  }
   return error.message.trim() || error.code
 }
 

@@ -72,6 +72,23 @@ describe('DynamicFields', () => {
     expect(alert.element.closest('label')).toBeNull()
   })
 
+  it('shows a managedByWorkflow field as a read-only output with a distinct hint', () => {
+    setActivePinia(createPinia())
+    const wrapper = mount(DynamicFields, {
+      props: {
+        definitions: [
+          { name: 'identifiantIam', label: 'IAM', type: 'STRING', required: false, managedByWorkflow: true },
+          { name: 'nom', label: 'Nom', type: 'STRING', required: false },
+        ],
+        modelValue: { identifiantIam: 'iam-1', nom: 'Dupont' },
+        applyDefaults: false,
+      },
+    })
+    expect(wrapper.get('[data-testid="managed-identifiantIam"]').text()).toContain('iam-1')
+    expect(wrapper.text()).toContain('géré par le workflow')
+    expect(wrapper.findAll('input')).toHaveLength(1)
+  })
+
   it('marks a computed output and structured fields invalid, with the error outside the label', () => {
     setActivePinia(createPinia())
     const unique = (field: string) => ({

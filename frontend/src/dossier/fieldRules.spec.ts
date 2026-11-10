@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { FieldDefinition, FieldRulesPreview } from '@/api/types'
-import { hasFieldRules, isComputedField, isFieldApplicable, isFieldRequired } from './fieldRules'
+import {
+  hasFieldRules,
+  isComputedField,
+  isFieldApplicable,
+  isFieldRequired,
+  isReadOnlyOutputField,
+  isWorkflowManagedField,
+} from './fieldRules'
 
 const plain: FieldDefinition = { name: 'a', label: 'A', type: 'STRING', required: false }
 const required: FieldDefinition = { name: 'r', label: 'R', type: 'STRING', required: true }
 const computed: FieldDefinition = { name: 'c', label: 'C', type: 'NUMBER', required: false, formula: '1' }
+const managed: FieldDefinition = { name: 'id', label: 'Id', type: 'STRING', required: false, managedByWorkflow: true }
 const preview = (over: Partial<FieldRulesPreview> = {}): FieldRulesPreview => ({ computed: {}, hidden: [], requiredByRule: [], errors: [], ...over })
 
 describe('fieldRules', () => {
@@ -22,13 +30,18 @@ describe('fieldRules', () => {
     expect(isFieldApplicable(plain, preview({ hidden: ['a'] }))).toBe(false)
   })
 
-  it('required = static flag while applicable, or made required by a rule; never for a computed or hidden field', () => {
+  it('required = static flag while applicable, or made required by a rule; never for a computed, managed or hidden field', () => {
     expect(isFieldRequired(required, null)).toBe(true)
     expect(isFieldRequired(required, preview({ hidden: ['r'] }))).toBe(false)
     expect(isFieldRequired(plain, preview({ requiredByRule: ['a'] }))).toBe(true)
     expect(isFieldRequired(plain, preview())).toBe(false)
     expect(isFieldRequired({ ...computed, required: true }, preview({ requiredByRule: ['c'] }))).toBe(false)
+    expect(isFieldRequired({ ...managed, required: true }, preview({ requiredByRule: ['id'] }))).toBe(false)
     expect(isComputedField(computed)).toBe(true)
     expect(isComputedField(plain)).toBe(false)
+    expect(isWorkflowManagedField(managed)).toBe(true)
+    expect(isReadOnlyOutputField(managed)).toBe(true)
+    expect(isReadOnlyOutputField(computed)).toBe(true)
+    expect(isReadOnlyOutputField(plain)).toBe(false)
   })
 })

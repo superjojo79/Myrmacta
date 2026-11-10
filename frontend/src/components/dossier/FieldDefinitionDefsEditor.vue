@@ -109,6 +109,17 @@ function updateRow(index: number, patch: Partial<FieldDefinition>) {
   if (next.searchable && (next.sensitive || !SEARCHABLE_TYPES.includes(next.type))) next.searchable = false
   // TODO §102 : unique seulement sur texte, nombre ou date, jamais sur un champ sensible ni une colonne de groupe.
   if (next.unique && (props.mode !== 'fields' || next.sensitive || !UNIQUE_TYPES.includes(next.type))) next.unique = false
+  // TODO §126 : managedByWorkflow seulement sur un champ racine du type ; incompatible avec required / formula / défaut.
+  if (next.managedByWorkflow) {
+    if (props.mode !== 'fields') next.managedByWorkflow = false
+    else {
+      next.required = false
+      next.defaultValue = null
+      next.formula = null
+      next.requiredWhen = null
+    }
+  }
+  if (next.formula) next.managedByWorkflow = false
   rows.value[index] = next
   emitRows()
 }
@@ -295,6 +306,19 @@ function parseOptions(raw: string): string[] {
           {{ def.sensitive ? t('dossier.defsEditor.uniqueDisabledSensitive') : t('dossier.defsEditor.uniqueDisabledType') }}
         </small>
       </div>
+      <label
+        v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP'"
+        class="field-def-editor__checkbox"
+        :title="t('dossier.defsEditor.managedByWorkflowHint')"
+      >
+        <input
+          type="checkbox"
+          :checked="!!def.managedByWorkflow"
+          data-testid="field-def-managed-by-workflow"
+          @change="updateRow(index, { managedByWorkflow: ($event.target as HTMLInputElement).checked })"
+        />
+        {{ t('dossier.defsEditor.managedByWorkflow') }}
+      </label>
       <details v-if="mode === 'fields' && def.type !== 'REPEATABLE_GROUP' && def.type !== 'FILE'" class="field-def-editor__rules" data-testid="field-def-rules">
         <summary>{{ t('dossier.defsEditor.rules') }}</summary>
         <i18n-t keypath="dossier.defsEditor.rulesHint" tag="p" class="field-def-editor__hint">

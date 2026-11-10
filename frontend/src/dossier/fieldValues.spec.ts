@@ -84,6 +84,18 @@ describe('fieldValues (TODO §76, D1)', () => {
     expect(deepEqual(null, {})).toBe(false)
   })
 
+  it('strips computed and managedByWorkflow fields from a create payload (TODO §126)', () => {
+    const out = cleanStructuredFields(
+      [
+        { name: 'nom', label: 'Nom', type: 'STRING', required: false },
+        { name: 'ttc', label: 'TTC', type: 'NUMBER', required: false, formula: '1' },
+        { name: 'id', label: 'Id', type: 'STRING', required: false, managedByWorkflow: true },
+      ],
+      { nom: 'Dupont', ttc: 12, id: 'forged' },
+    )
+    expect(out).toEqual({ nom: 'Dupont' })
+  })
+
   it('cleans only the structured fields of a creation payload', () => {
     const scalar: FieldDefinition = { name: 'note', label: 'N', type: 'STRING', required: false }
     const out = cleanStructuredFields([scalar, money, ref, group], {

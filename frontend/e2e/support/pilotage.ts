@@ -1334,6 +1334,40 @@ export const RULES_TYPE = {
   ],
 }
 
+/** TODO §126 — type CLAIM avec un champ géré par le workflow et un champ saisissable. */
+export const MANAGED_TYPE = {
+  ...CLAIM_TYPE,
+  fieldDefinitions: [
+    { name: 'nom', label: 'Nom', type: 'STRING', required: true, options: [], group: null, sensitive: false },
+    {
+      name: 'identifiantIam',
+      label: 'IAM',
+      type: 'STRING',
+      required: false,
+      options: [],
+      group: null,
+      sensitive: false,
+      managedByWorkflow: true,
+    },
+  ],
+}
+
+export async function mockManagedDossier(page: Page) {
+  await page.route('**/api/dossier-types/CLAIM', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MANAGED_TYPE) }),
+  )
+  await page.route(`**/api/dossiers/${DOSSIER_ID}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        dossierBody({ fields: { nom: 'Dupont', identifiantIam: 'iam-42' }, canEdit: true }),
+      ),
+    })
+  })
+}
+
 export async function mockRulesDossier(page: Page) {
   await page.route('**/api/dossier-types/CLAIM', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RULES_TYPE) }),

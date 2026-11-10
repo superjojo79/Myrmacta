@@ -479,8 +479,8 @@ Détails (variables, plafonds, RGPD) : `docs/guides/DEPLOIEMENT.md` §15.
 
 Les tests (`./mvnw verify`) utilisent un **PostgreSQL 17 embarqué** (zonky, binaires téléchargés par
 Maven) : une instance par JVM de test, une base fraîche par contexte Spring. Aucun conteneur,
-aucune base à démarrer. Seul `ClamAvAttachmentScanIT` utilise encore Docker (conteneur ClamAV) et
-s'ignore sans démon Docker.
+aucune base à démarrer. Seul `ClamAvAttachmentScanIT` utilise encore Docker ou Podman (conteneur
+ClamAV) ; il ne tourne qu'avec `-Dclamav.it=true` (`docs/guides/DEPLOIEMENT.md` §21).
 
 - **Ne pas lancer en root** : `initdb` refuse de tourner sous l'utilisateur root (cas fréquent des
   conteneurs de CI et des bacs à sable). Lancer sous un utilisateur normal, par exemple
@@ -611,8 +611,8 @@ mémoire et 20 Go de disque au moins.
 - **Sécurité.** Tout code poussé sur le dépôt, branches des agents comprises, s'exécute sur la machine, dans le
   conteneur. Ne pas y monter le socket Docker ni un répertoire de l'hôte ; préférer une machine sans accès à des
   services sensibles du réseau local.
-- `ClamAvAttachmentScanIT` s'ignore sur ce runner (pas de démon Docker dans le conteneur) ; sur `ubuntu-latest`,
-  il tourne.
+- `ClamAvAttachmentScanIT` ne tourne qu'avec `-Dclamav.it=true` et un démon Docker, absent de ce runner : le job
+  ClamAV du workflow « Recette sur environnement réel » reste sur `ubuntu-latest` (`docs/guides/DEPLOIEMENT.md` §21).
 
 ## Pour aller plus loin
 

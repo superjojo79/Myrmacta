@@ -4,6 +4,8 @@ Appelé par scripts/keycloak-realm-smoke.sh, qui démarre Keycloak et y applique
 navigateur (formulaires HTML, redirections, cookies) avec la seule bibliothèque standard, puis échange le code
 d'autorisation comme le BFF et vérifie l'ID token reçu.
 
+Scénario « m2m » : token client_credentials du client machine-to-machine (options realm, client, secret).
+
 Usage : python3 -I keycloak_realm_smoke.py <url_keycloak> <scenario> [options]
 """
 
@@ -166,6 +168,8 @@ def main(argv):
         return 2
     kc, scenario = argv[1], argv[2]
     options = dict(arg.split("=", 1) for arg in argv[3:])
+    if scenario == "m2m":
+        return machine(kc, scenario, options)
     result, detail, enrolled = login(kc, options["realm"], options.get("client", "mon-app"), options["secret"],
                                      options["user"], options["password"], options.get("idp"),
                                      options.get("otp_secret"), options.get("new_password"),
@@ -175,6 +179,23 @@ def main(argv):
                       "claims": detail if isinstance(detail, dict) else None,
                       "page": None if isinstance(detail, dict) else _summary(detail),
                       "otp_secret": enrolled}, ensure_ascii=False))
+    return 0
+
+
+def machine(kc, scenario, options):
+    """Token client_credentials du client M2M du tenant : on rend les claims de l'access token, lu par la chaîne M2M."""
+    url = "%s/realms/%s/protocol/openid-connect/token" % (kc, options["realm"])
+    try:
+        tokens = post_json(url, {"grant_type": "client_credentials", "client_id": options["client"],
+                                 "client_secret": options["secret"]})
+        result, detail = "token", claims(tokens["access_token"])
+    except urllib.error.HTTPError as error:
+        # Seul un refus d'authentification du client compte : un 404 ou un 5xx n'est pas un refus.
+        body = json.loads(error.read() or b"{}")
+        refusal = body.get("error") in ("invalid_client", "unauthorized_client")
+        result = "refused" if error.code == 401 and refusal else "error"
+        detail = None
+    print(json.dumps({"scenario": scenario, "result": result, "claims": detail}, ensure_ascii=False))
     return 0
 
 

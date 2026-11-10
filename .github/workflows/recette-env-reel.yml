@@ -1,0 +1,48 @@
+name: Recette sur environnement réel
+
+# TODO §125 : vérifications contre de vrais services (clamd, Keycloak), hors ./mvnw verify, déclenchées à la main
+# (onglet Actions, « Run workflow »). Même contenu que la recette locale de docs/guides/DEPLOIEMENT.md §21.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Vrai clamd (Testcontainers, Docker natif d'ubuntu-latest) : protocole INSTREAM, EICAR, fail-open.
+  # Pas de vars.CI_RUNNER ici : le runner auto-hébergé (§110) n'a pas de démon Docker.
+  clamav:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: ClamAvAttachmentScanIT against a real clamd
+        run: >
+          ./mvnw -B test -Dskip.frontend=true -Djacoco.skip=true
+          -Dtest=ClamAvAttachmentScanIT -Dclamav.it=true
+
+  # Vrai Keycloak (distribution zip) : realm par tenant, FAS simulé, compte de secours, client M2M.
+  keycloak:
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Keycloak realm smoke test
+        run: bash scripts/keycloak-realm-smoke.sh

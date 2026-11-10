@@ -712,7 +712,7 @@ réponse : les terminer ou les réassigner avant.
 - `scripts/keycloak-realm-smoke.sh` rejoue la recette sur un vrai Keycloak 26.7.1 (distribution zip et Java 21, ou
   `KEYCLOAK_HOME`) : realm généré appliqué deux fois, connexion par le simulateur, compte sans `tenant_id`, aucun NRN
   dans l'ID token, rattachement d'un compte existant, mot de passe direct en `both`, refus en `idp-only`, compte de
-  secours avec OTP.
+  secours avec OTP, client M2M de chaque tenant (§21).
 
 
 ## 20. Pré-vérification IA des dossiers (TODO §106)
@@ -768,3 +768,34 @@ MYRMACTA_EVAL_BASE_URL=https://api.mistral.ai/v1 MYRMACTA_EVAL_API_KEY=… MYRMA
 ```
 
 Le rapport `target/precheck-evaluation.md` donne la précision et le rappel par type de constat.
+
+## 21. Recette sur environnement réel (TODO §125)
+
+À jouer avant le premier client, puis après toute modification de l'adaptateur ClamAV, de
+`scripts/provision-tenant.sh` ou de la version de Keycloak. Les deux recettes sont hors `./mvnw verify`.
+
+**ClamAV.** `ClamAvAttachmentScanIT` démarre un vrai `clamd` (`clamav/clamav:1.4`, Testcontainers) : un fichier
+EICAR est refusé, un fichier sain accepté, et l'arrêt de `clamd` en cours de route laisse passer le fichier en
+incrémentant le compteur de fail-open. Docker ou Podman requis (Windows : `podman machine start`, rien d'autre à
+configurer). Le premier démarrage charge les signatures et prend quelques minutes. Sans `-Dclamav.it=true`, le
+test est ignoré, y compris dans `./mvnw verify` ; avec, un démon absent le fait échouer.
+
+```bash
+./mvnw test -Dtest=ClamAvAttachmentScanIT -Dclamav.it=true -Dskip.frontend=true
+```
+
+**Keycloak.** `scripts/keycloak-realm-smoke.sh` (Java 21+, `jq`, `python3`, `curl`, `unzip`) rejoue la recette du
+§19 (« Dev local et recette »), puis vérifie le client machine-to-machine de chaque tenant : token
+`client_credentials`, claims `tenant_id`, `roles` (`API_SERVICE`) et `azp` (égal à `M2M_TRUSTED_CLIENT_IDS` du
+`<tenant>.env` généré), mappers inchangés après deux applications, refus du secret d'un
+autre tenant. Une ligne `ok` ou `ÉCHEC` par vérification ; `SMOKE_KEEP=1` garde les journaux.
+
+```bash
+bash scripts/keycloak-realm-smoke.sh
+```
+
+**En CI.** Le workflow « Recette sur environnement réel » (`.github/workflows/recette-env-reel.yml`) joue les deux
+recettes sur `ubuntu-latest` ; il ne se lance qu'à la main (onglet Actions, « Run workflow »).
+
+**Hors de cette recette.** Les connexions par FAS et itsme réels attendent un contrat (intégration BOSA,
+environnement de test itsme) ; la liste des vérifications est suivie dans une issue rattachée au §104.

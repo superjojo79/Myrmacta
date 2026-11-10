@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -23,15 +24,12 @@ import org.testcontainers.utility.DockerImageName;
  * main dans {@link ClamAvAttachmentScanAdapter} est effectivement compris par un vrai moteur
  * ClamAV, pas seulement par notre propre simulation de {@code clamd}.
  *
- * <p>Isolée du run standard {@code ./mvnw verify} par simple nommage {@code *IT.java}
- * (D-AV-CLAMAV-TEST-SCOPE — le dépôt n'a pas de {@code maven-failsafe-plugin}, et les patterns
- * par défaut de {@code maven-surefire-plugin} n'incluent pas {@code *IT.java}, vérifié en Phase
- * 4 planning). Exécution explicite : {@code ./mvnw test -Dtest=ClamAvAttachmentScanIT}.
- *
- * <p><strong>⚠️ Non exécuté dans ce bac à sable</strong> (Docker absent, même limite que {@code
- * TenantSchemaIsolationIT}/{@code D-TESTCONTAINERS-EXEC}) — écrit et compilé (vérifié via {@code
- * ./mvnw test-compile}) ; exécution/vérification réelle à faire dans un environnement avec
- * Docker (CI, ou poste de développement avec le démon Docker actif).
+ * <p>Hors du run standard {@code ./mvnw verify} (D-AV-CLAMAV-TEST-SCOPE, TODO §125) : surefire inclut
+ * les {@code *IT} depuis #157, d'où la garde explicite {@code -Dclamav.it=true}, sans laquelle le
+ * démarrage de {@code clamd} (signatures) alourdirait chaque build d'un poste où Docker ou Podman
+ * tourne. Avec la propriété, l'absence de démon est un échec, pas un test ignoré. Exécution : {@code
+ * ./mvnw test -Dtest=ClamAvAttachmentScanIT -Dclamav.it=true}, ou le workflow à la demande
+ * {@code recette-env-reel.yml}.
  */
 class ClamAvAttachmentScanIT {
 
@@ -39,13 +37,16 @@ class ClamAvAttachmentScanIT {
     // détectée par tout moteur antivirus conforme sans être un vrai virus.
     private static final String EICAR = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
 
+    @BeforeEach
+    void requiresAnExplicitRealClamdRun() {
+        Assumptions.assumeTrue(Boolean.getBoolean("clamav.it"), "-Dclamav.it=true requis (TODO §125)");
+        assertThat(DockerClientFactory.instance().isDockerAvailable())
+                .as("-Dclamav.it=true sans démon Docker ou Podman joignable")
+                .isTrue();
+    }
+
     @Test
     void realClamd_detectsEicarAndAcceptsCleanFile() {
-        Assumptions.assumeTrue(
-                DockerClientFactory.instance().isDockerAvailable(),
-                "Docker indisponible dans ce bac à sable (D-TESTCONTAINERS-EXEC) — exécuté en CI"
-                        + " (ubuntu-latest, Docker natif) ou sur un poste avec Docker actif");
-
         try (GenericContainer<?> clamd = clamdContainer()) {
             clamd.start();
             ClamAvAttachmentScanAdapter adapter = adapterFor(clamd, new SimpleMeterRegistry());
@@ -61,11 +62,6 @@ class ClamAvAttachmentScanIT {
 
     @Test
     void clamdStoppedMidway_isFailOpenWithCounter() {
-        Assumptions.assumeTrue(
-                DockerClientFactory.instance().isDockerAvailable(),
-                "Docker indisponible dans ce bac à sable (D-TESTCONTAINERS-EXEC) — exécuté en CI"
-                        + " (ubuntu-latest, Docker natif) ou sur un poste avec Docker actif");
-
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         try (GenericContainer<?> clamd = clamdContainer()) {
             clamd.start();

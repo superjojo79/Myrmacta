@@ -39,7 +39,7 @@
         <flying-saucer.version>10.7.0</flying-saucer.version>
         <jsoup.version>1.24.1</jsoup.version>
         <archunit.version>1.5.1</archunit.version>
-        <aws.sdk.version>2.57.8</aws.sdk.version>
+        <aws.sdk.version>2.57.11</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->
         <sshj.version>0.41.2</sshj.version>
         <!-- LC2 (TODO §75) — JSONata, port Java de référence (Apache 2.0) -->

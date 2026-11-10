@@ -304,6 +304,48 @@ class UpdateDossierFieldsUseCaseImplTest {
                 Set.of(new be.myrmacta.domain.dossier.model.UniqueKey("plaque", "BE-1")), existing.id());
     }
 
+    @Test
+    void update_rejectsAManagedFieldUnlessWorkflowMapping() {
+        Dossier existing = dossier(DossierStatus.OUVERT, 1, Map.of("identifiantIam", "iam-1", "nom", "Dupont"));
+        when(dossierRepository.findById(existing.id())).thenReturn(Optional.of(existing));
+        when(typeRepository.findByCode(TENANT, TYPE_CODE))
+                .thenReturn(Optional.of(type(managedField("identifiantIam"), field("nom", FieldType.STRING, false))));
+        when(dossierRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThatThrownBy(() -> useCase.update(
+                        new UpdateDossierFieldsCommand(existing.id(), Map.of("identifiantIam", "iam-forged"), "editor", 1L),
+                        actor))
+                .isInstanceOf(DossierFieldValidationException.class)
+                .satisfies(ex -> assertThat(((DossierFieldValidationException) ex).errors())
+                        .anySatisfy(err -> assertThat(err.code()).isEqualTo("MANAGED_BY_WORKFLOW")));
+        verify(dossierRepository, never()).save(any());
+
+        // Même valeur que le stocké : toujours refusé si la clé est touchée (D-MANAGED-WRITE).
+        assertThatThrownBy(() -> useCase.update(
+                        new UpdateDossierFieldsCommand(existing.id(), Map.of("identifiantIam", "iam-1"), "editor", 1L),
+                        actor))
+                .isInstanceOf(DossierFieldValidationException.class);
+
+        var allowed = useCase.update(
+                new UpdateDossierFieldsCommand(existing.id(), Map.of("identifiantIam", "iam-2"), "workflow", 1L, true),
+                AccessContext.system("flowable-field-mapping"));
+        assertThat(allowed.dossier().fields()).containsEntry("identifiantIam", "iam-2").containsEntry("nom", "Dupont");
+    }
+
+    @Test
+    void update_allowsPatchingOtherFieldsWhileLeavingManagedValuesUntouched() {
+        Dossier existing = dossier(DossierStatus.OUVERT, 1, Map.of("identifiantIam", "iam-1", "nom", "Dupont"));
+        when(dossierRepository.findById(existing.id())).thenReturn(Optional.of(existing));
+        when(typeRepository.findByCode(TENANT, TYPE_CODE))
+                .thenReturn(Optional.of(type(managedField("identifiantIam"), field("nom", FieldType.STRING, false))));
+        when(dossierRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = useCase.update(
+                new UpdateDossierFieldsCommand(existing.id(), Map.of("nom", "Martin"), "editor", 1L), actor);
+
+        assertThat(result.dossier().fields()).containsEntry("nom", "Martin").containsEntry("identifiantIam", "iam-1");
+    }
+
     private static Dossier dossier(DossierStatus status, long version, Map<String, Object> fields) {
         Instant createdAt = Instant.parse("2026-07-31T12:00:00Z");
         return new Dossier(
@@ -347,5 +389,11 @@ class UpdateDossierFieldsUseCaseImplTest {
 
     private static FieldDefinition sensitiveField(String name) {
         return new FieldDefinition(name, name, FieldType.STRING, false, null, List.of(), null, true);
+    }
+
+    private static FieldDefinition managedField(String name) {
+        return new FieldDefinition(
+                name, name, FieldType.STRING, false, null, List.of(), null, false, null, null, null, null, null, null,
+                false, null, null, false, true);
     }
 }

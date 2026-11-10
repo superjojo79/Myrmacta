@@ -140,6 +140,24 @@ class CreateDossierUseCaseImplTest {
         verify(dossierRepository, never()).save(any());
     }
 
+    @Test
+    void create_rejectsAManagedFieldInThePayload() {
+        var managed = new FieldDefinition(
+                "identifiantIam", "IAM", FieldType.STRING, false, null, null, null, false, null, null, null, null, null,
+                null, false, null, null, false, true);
+        when(typeRepository.findByCode(TENANT, TYPE_CODE))
+                .thenReturn(Optional.of(type(true, false, List.of(managed, field("nom", FieldType.STRING, false, null)))));
+
+        assertThatExceptionOfType(DossierFieldValidationException.class)
+                .isThrownBy(() -> useCase.create(
+                        new CreateDossierUseCase.CreateDossierCommand(
+                                TENANT, TYPE_CODE, "A", Map.of("identifiantIam", "iam-forged", "nom", "Dupont"), "u1"),
+                        actor))
+                .satisfies(exception -> assertThat(exception.errors())
+                        .anySatisfy(err -> assertThat(err.code()).isEqualTo("MANAGED_BY_WORKFLOW")));
+        verify(dossierRepository, never()).save(any());
+    }
+
     private static DossierType type(boolean active, boolean allowUnknownFields, List<FieldDefinition> fields) {
         return DossierType.inherit(UUID.randomUUID(), TENANT, TYPE_CODE, "Sinistre", "wf-sinistre",
                 active, allowUnknownFields, fields);

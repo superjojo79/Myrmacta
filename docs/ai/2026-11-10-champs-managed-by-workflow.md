@@ -62,16 +62,18 @@ Issue : [#9](https://github.com/superjojo79/Myrmacta/issues/9) · Spec du domain
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Domaine + enforcement écriture + tests backend (unitaires, HTTP, mapping smoke) | à faire | (cette branche / #54) |
-| 2 | Frontend (éditeur, DynamicFields, validation, Vitest + Playwright) | à faire | |
-| 3 | Exemple onboarding + guides + specs + IT onboarding ; clôture §126 / `Closes #9` | à faire | |
+| 1 | Domaine + enforcement écriture + tests backend (unitaires, HTTP, mapping) | livré | #54 |
+| 2 | Frontend (éditeur, DynamicFields, validation, Vitest + Playwright) | à faire | #54 |
+| 3 | Exemple onboarding + guides + specs + IT onboarding ; clôture §126 / `Closes #9` | à faire | #54 |
 
-Prochaine action : livrer le lot 1 en TDD.
+Prochaine action : livrer le lot 2 (frontend) en TDD.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-11-10 | `./mvnw test -Dtest=ManagedByWorkflowFieldsTest,FieldManagedByWorkflowModelTest,UpdateDossierFieldsUseCaseImplTest,CreateDossierUseCaseImplTest,FieldMappingDelegateTest,ManagedByWorkflowApiTest -Dskip.frontend=true` | BUILD SUCCESS, 49 tests |
+| 2026-11-10 | `./mvnw test -Dtest=FieldDefinition*Test,FieldUniqueModelTest,FieldSearchModelTest,FieldLayoutTest,DossierFieldRulesTest,FieldRulesApiTest,FieldMappingSmokeIT -Dskip.frontend=true` | BUILD SUCCESS, 64 tests |
 
 ## Revue de clôture
 

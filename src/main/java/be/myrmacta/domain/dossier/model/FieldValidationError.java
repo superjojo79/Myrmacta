@@ -47,6 +47,12 @@ public record FieldValidationError(String field, String code, String message, St
         return new FieldValidationError(field, "COMPUTED_READ_ONLY", "Computed field: its value cannot be set");
     }
 
+    /** TODO §126 : un champ géré par le workflow n'est jamais saisi hors {@code fieldMappingTask}. */
+    public static FieldValidationError managedByWorkflow(String field) {
+        return new FieldValidationError(
+                field, "MANAGED_BY_WORKFLOW", "Field is managed by the workflow and cannot be set");
+    }
+
     /** TODO §80 : valeur fournie pour un champ que la règle de visibilité rend sans objet. */
     public static FieldValidationError notApplicable(String field) {
         return new FieldValidationError(field, "NOT_APPLICABLE", "Field is not applicable in the current dossier state");

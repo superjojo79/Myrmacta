@@ -30,6 +30,10 @@ import java.util.regex.Pattern;
  *
  * <p>TODO §102 (issue #184) : {@code unique} — une valeur ne peut figurer que dans un seul dossier non clôturé du type
  * (D-UNIQUE-SCOPE). Réservé aux champs {@link #UNIQUE_TYPES}, non sensibles, hors groupe ; possible sur un champ calculé.
+ *
+ * <p>TODO §126 (issue #9) : {@code managedByWorkflow} — écrit seulement par {@code fieldMappingTask} (D-MANAGED-WRITE) ;
+ * incompatible avec {@code required}, {@code formula}, {@code defaultValue} et {@code requiredWhen} ; interdit sur un
+ * sous-champ de groupe ; {@code sensitive} reste orthogonal (D-MANAGED-SCHEMA).
  */
 public record FieldDefinition(
         String name,
@@ -49,7 +53,8 @@ public record FieldDefinition(
         Boolean searchable,
         String helpText,
         String width,
-        Boolean unique
+        Boolean unique,
+        Boolean managedByWorkflow
 ) {
     /** TODO §85 (LC4a) — longueur maximale de l'aide contextuelle (texte brut). */
     public static final int MAX_HELP_TEXT_CHARS = 500;
@@ -89,6 +94,7 @@ public record FieldDefinition(
         sensitive = Boolean.TRUE.equals(sensitive);
         searchable = Boolean.TRUE.equals(searchable);
         unique = Boolean.TRUE.equals(unique);
+        managedByWorkflow = Boolean.TRUE.equals(managedByWorkflow);
         fields = fields == null ? List.of() : List.copyOf(fields);
 
         helpText = blankToNull(helpText);
@@ -134,6 +140,14 @@ public record FieldDefinition(
             if (required || defaultValue != null || visibleWhen != null || requiredWhen != null) {
                 throw new IllegalArgumentException("a computed field is always present and read-only: it takes no 'required', "
                         + "default value, visibleWhen or requiredWhen (field: " + name + ")");
+            }
+        }
+        if (managedByWorkflow) {
+            // TODO §126 D-MANAGED-SCHEMA : une seule source d'écriture (fieldMappingTask) ; pas de saisie ni de défaut.
+            if (required || defaultValue != null || formula != null || requiredWhen != null) {
+                throw new IllegalArgumentException(
+                        "a managedByWorkflow field takes no 'required', default value, formula or requiredWhen (field: "
+                                + name + ")");
             }
         }
         if (searchable) {
@@ -218,6 +232,10 @@ public record FieldDefinition(
                     if (sub.isUnique()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be unique (field: " + sub.name() + ")");
                     }
+                    if (sub.isManagedByWorkflow()) {
+                        throw new IllegalArgumentException(
+                                "a sub-field of a group cannot be managedByWorkflow (field: " + sub.name() + ")");
+                    }
                     if (sub.isSensitive()) {
                         throw new IllegalArgumentException("a sub-field of a group cannot be sensitive: mark the group "
                                 + name + " itself");
@@ -250,6 +268,30 @@ public record FieldDefinition(
                 || (c >= 0x2066 && c <= 0x2069)
                 || (c >= 0x200B && c <= 0x200F)
                 || c == 0xFEFF;
+    }
+
+    /** Avant TODO §126 : sans drapeau « géré par le workflow ». */
+    public FieldDefinition(
+            String name,
+            String label,
+            FieldType type,
+            boolean required,
+            String defaultValue,
+            List<String> options,
+            String group,
+            Boolean sensitive,
+            List<FieldDefinition> fields,
+            Integer minRows,
+            Integer maxRows,
+            String formula,
+            String visibleWhen,
+            String requiredWhen,
+            Boolean searchable,
+            String helpText,
+            String width,
+            Boolean unique) {
+        this(name, label, type, required, defaultValue, options, group, sensitive, fields, minRows, maxRows, formula,
+                visibleWhen, requiredWhen, searchable, helpText, width, unique, false);
     }
 
     /** Avant TODO §102 : sans drapeau « valeur unique ». */
@@ -343,7 +385,7 @@ public record FieldDefinition(
     /** Copie avec une obligation différente (règles de visibilité / d'obligation appliquées au moment de la validation). */
     public FieldDefinition withRequired(boolean newRequired) {
         return new FieldDefinition(name, label, type, newRequired, defaultValue, options, group, sensitive, fields, minRows,
-                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique);
+                maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique, managedByWorkflow);
     }
 
     /**
@@ -352,7 +394,8 @@ public record FieldDefinition(
      */
     public FieldDefinition withHidden() {
         return new FieldDefinition(name, label, type, false, defaultValue, options, group, sensitive, fields,
-                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique);
+                minRows == null ? null : 0, maxRows, formula, visibleWhen, requiredWhen, searchable, helpText, width, unique,
+                managedByWorkflow);
     }
 
     /** Champ scalaire historique : sans sous-champs ni bornes de lignes. */
@@ -417,6 +460,11 @@ public record FieldDefinition(
         return Boolean.TRUE.equals(unique);
     }
 
+    /** {@code true} si seul {@code fieldMappingTask} peut écrire la valeur (TODO §126, D-MANAGED-WRITE). */
+    public boolean isManagedByWorkflow() {
+        return Boolean.TRUE.equals(managedByWorkflow);
+    }
+
     /** Canonical boolean reader for the {@code sensitive} metadata (redaction/exports later). */
     public boolean isSensitive() {
         return Boolean.TRUE.equals(sensitive);
@@ -445,6 +493,7 @@ public record FieldDefinition(
                 + ", requiredWhen=" + (requiredWhen != null)
                 + ", searchable=" + searchable
                 + ", unique=" + unique
+                + ", managedByWorkflow=" + managedByWorkflow
                 + "]";
     }
 }

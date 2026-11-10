@@ -12,6 +12,7 @@ import {
   createAndOpenDossier,
   mockRichDossier,
   mockRulesDossier,
+  mockManagedDossier,
 } from './support/pilotage'
 
 test('E2E-1 auth shell shows user', async ({ page }) => {
@@ -366,6 +367,25 @@ test('E2E-RICH-FIELDS-3 a viewer reads the structured values as text and as a ta
   await expect(fields.locator('table')).toContainText('1000.00 EUR')
   await expect(fields).not.toContainText('[object Object]')
   await expect(fields.getByRole('button', { name: 'Enregistrer les champs' })).toHaveCount(0)
+})
+
+test('E2E-MANAGED-1 a managedByWorkflow field is read-only on the detail and never patched', async ({ page }) => {
+  await mockSession(page)
+  await mockManagedDossier(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+
+  const fields = page.locator('.dossier-fields-editor')
+  await expect(fields.getByTestId('managed-identifiantIam')).toHaveText('iam-42')
+  await expect(fields).toContainText('géré par le workflow')
+  await expect(fields.getByLabel('Nom')).toHaveValue('Dupont')
+
+  const fieldsRequest = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().includes('/fields'))
+  await fields.getByLabel('Nom').fill('Martin')
+  await fields.getByRole('button', { name: 'Enregistrer les champs' }).click()
+  const body = (await fieldsRequest).postDataJSON() as { fields: Record<string, unknown> }
+  expect(body.fields).toEqual({ nom: 'Martin' })
+  expect(body.fields).not.toHaveProperty('identifiantIam')
 })
 
 test('E2E-RULES-1 editing: a field becomes not applicable, the computed value follows, a rule makes a field required', async ({ page }) => {

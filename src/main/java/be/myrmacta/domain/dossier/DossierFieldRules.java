@@ -29,6 +29,8 @@ import java.util.regex.Pattern;
  *       sans valeur retire le champ, un calcul en erreur refuse l'enregistrement ({@code RULE_FAILED}) ;</li>
  *   <li>un champ <b>non applicable</b> ({@code visibleWhen} faux) n'est jamais obligatoire ; une valeur <em>fournie</em> pour lui
  *       est refusée ({@code NOT_APPLICABLE}), une valeur <em>déjà stockée</em> qui devient sans objet est retirée ;</li>
+ *   <li>un champ <b>géré par le workflow</b> ({@code managedByWorkflow}, TODO §126) reste hors de ce retrait : {@code visibleWhen}
+ *       le masque pour l'UI / l'aperçu, mais ne retire pas sa valeur ni ne refuse un {@code fieldMappingTask} ;</li>
  *   <li>{@code requiredWhen} vrai rend le champ obligatoire en plus de {@code required}.</li>
  * </ul>
  */
@@ -110,11 +112,15 @@ public final class DossierFieldRules {
                 requiredNow.add(d.name());
             }
         }
-        for (String name : hidden) {
-            if (explicitKeys != null && explicitKeys.contains(name) && merged.containsKey(name)) {
-                errors.add(FieldValidationError.notApplicable(name));
+        for (FieldDefinition d : definitions) {
+            if (!hidden.contains(d.name()) || d.isManagedByWorkflow()) {
+                // TODO §126 : visibleWhen n'efface pas une valeur gérée et n'émet pas NOT_APPLICABLE pour elle.
+                continue;
             }
-            merged.remove(name);
+            if (explicitKeys != null && explicitKeys.contains(d.name()) && merged.containsKey(d.name())) {
+                errors.add(FieldValidationError.notApplicable(d.name()));
+            }
+            merged.remove(d.name());
         }
 
         // 2. Calcul, sur les champs simples restés applicables.

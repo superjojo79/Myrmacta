@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.mcp.tool;
 
 import be.myrmacta.domain.dossier.DossierFieldRules;
 import be.myrmacta.domain.dossier.DossierUniquenessCheck;
+import be.myrmacta.domain.dossier.ManagedByWorkflowFields;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierFieldValidationException;
@@ -115,6 +116,9 @@ public class CreateDossierTool {
         var errors = new java.util.ArrayList<>(
                 fieldValidator.validate(ruled.effectiveDefinitions(), ruled.fields(), type.allowUnknownFields()));
         errors.addAll(ruled.errors());
+        // TODO §126 : même garde que CreateDossierUseCaseImpl — une clé gérée n'est jamais acceptée en création.
+        errors.addAll(ManagedByWorkflowFields.rejectTouched(
+                type.fieldDefinitions(), fields == null ? java.util.Set.of() : fields.keySet()));
         // TODO §102 : un essai à blanc annonce le doublon que la création refuserait.
         errors.addAll(uniqueness.conflicts(type, DossierStatus.DRAFT, ruled.fields(),
                 errors.stream().map(FieldValidationError::field).toList(), null));

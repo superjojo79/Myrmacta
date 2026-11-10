@@ -126,6 +126,13 @@ export function validateFieldDefinitions(definitions: FieldDefinition[], owner?:
       if (def.required || !isBlank(def.defaultValue) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen)) {
         errors.push(m('computedReadOnly', { shown }))
       }
+      if (def.managedByWorkflow) errors.push(m('managedWithFormula', { shown }))
+    }
+    if (def.managedByWorkflow) {
+      if (owner) errors.push(m('subManaged', { shown, where }))
+      if (def.required || !isBlank(def.defaultValue) || !isBlank(def.requiredWhen)) {
+        errors.push(m('managedReadOnly', { shown }))
+      }
     }
     if (owner && (!isBlank(def.formula) || !isBlank(def.visibleWhen) || !isBlank(def.requiredWhen))) {
       errors.push(m('subRule', { shown, where }))

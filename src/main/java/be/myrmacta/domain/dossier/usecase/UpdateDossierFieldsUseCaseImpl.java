@@ -4,6 +4,7 @@ import be.myrmacta.domain.dossier.DossierAccessPolicy;
 import be.myrmacta.domain.dossier.DossierFieldRules;
 import be.myrmacta.domain.dossier.DossierUniquenessCheck;
 import be.myrmacta.domain.dossier.DossierFieldMerger;
+import be.myrmacta.domain.dossier.ManagedByWorkflowFields;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierConflictException;
@@ -98,6 +99,10 @@ public final class UpdateDossierFieldsUseCaseImpl implements UpdateDossierFields
         var errors = new java.util.ArrayList<>(
                 fieldValidator.validate(ruled.effectiveDefinitions(), merged, type.allowUnknownFields()));
         errors.addAll(ruled.errors());
+        // TODO §126 D-MANAGED-WRITE : hors fieldMappingTask, une clé gérée est refusée même à valeur inchangée.
+        if (!command.workflowMapping()) {
+            errors.addAll(ManagedByWorkflowFields.rejectTouched(type.fieldDefinitions(), command.fieldsPatch().keySet()));
+        }
         // TODO §102 (U8) : doublon signalé avec les autres erreurs ; le dossier lui-même ne se gêne pas.
         errors.addAll(uniqueness.conflicts(type, dossier.status(), merged,
                 errors.stream().map(be.myrmacta.domain.dossier.model.FieldValidationError::field).toList(),

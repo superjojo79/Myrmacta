@@ -107,8 +107,9 @@ class FieldMappingDelegate implements JavaDelegate {
         UpdateDossierFieldsUseCase.UpdateDossierFieldsResult written;
         try {
             written = updateFields.update(
+                    // TODO §126 D-MANAGED-WRITE : seul ce chemin pose workflowMapping=true.
                     new UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand(
-                            evaluated.dossier().id(), patch, author, null),
+                            evaluated.dossier().id(), patch, author, null, true),
                     AccessContext.system("flowable-field-mapping"));
         } catch (DossierFieldValidationException e) {
             // Les messages du validateur ne recopient jamais la valeur : on les remonte pour que l'auteur sache quel champ corriger.

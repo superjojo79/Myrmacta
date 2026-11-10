@@ -17,37 +17,31 @@
     <serviceTask id="clotureRefus" name="Clôturer le dossier" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
     <endEvent id="finRefus" name="Arrivée refusée"/>
     <serviceTask id="statutProvisioning" name="Statut : provisioning" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_PROVISIONING"/>
-    <serviceTask id="razMatricule" name="Réinitialiser : matricule" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="null" flowable:formulaResult="matricule"/>
-    <serviceTask id="razCompteIam" name="Réinitialiser : compte IAM" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="null" flowable:formulaResult="compteIam"/>
-    <serviceTask id="razLogin" name="Réinitialiser : login" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="null" flowable:formulaResult="login"/>
     <serviceTask id="appelSirh" name="Créer la fiche SIRH" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000001" flowable:connectorRequest="{'method': 'POST', 'path': '/employees', 'headers': {'Content-Type': 'application/json'},&#10; 'body': {'firstName': dossier.fields.prenom, 'lastName': dossier.fields.nom,&#10;          'personalEmail': dossier.fields.emailPersonnel, 'jobTitle': dossier.fields.fonction,&#10;          'department': dossier.fields.departement, 'startDate': dossier.fields.dateArrivee,&#10;          'managerLogin': dossier.fields.managerLogin, 'externalReference': dossier.reference}}"/>
     <serviceTask id="controleSirh" name="Contrôle : créer la fiche sirh" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.status &gt;= 200 and connectorResult.status &lt; 300" flowable:formulaResult="appelOk" flowable:async="true"/>
     <exclusiveGateway id="resultatSirh" name="Réussi ?" default="flow_resultatSirh_echecSirh"/>
     <serviceTask id="echecSirh" name="Échec : SIRH" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="'SIRH'" flowable:formulaResult="etapeEnEchec"/>
-    <serviceTask id="retenirSirh0" name="Retenir matricule" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.json.id" flowable:formulaResult="matricule"/>
-    <serviceTask id="enregistrerSirh" name="Afficher la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="matriculeSirh = variables.matricule"/>
-    <serviceTask id="appelIam" name="Créer le compte IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'POST', 'path': '/users', 'headers': {'Content-Type': 'application/json'},&#10; 'body': {'username': $replace($lowercase($substring(dossier.fields.prenom, 0, 1) &amp; dossier.fields.nom), ' ', ''),&#10;          'firstName': dossier.fields.prenom, 'lastName': dossier.fields.nom,&#10;          'employeeNumber': variables.matricule, 'enabled': false,&#10;          'attributes': {'department': dossier.fields.departement, 'manager': dossier.fields.managerLogin}}}"/>
+    <serviceTask id="enregistrerSirh" name="Enregistrer la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="matriculeSirh = connectorResult.json.id"/>
+    <serviceTask id="appelIam" name="Créer le compte IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'POST', 'path': '/users', 'headers': {'Content-Type': 'application/json'},&#10; 'body': {'username': $replace($lowercase($substring(dossier.fields.prenom, 0, 1) &amp; dossier.fields.nom), ' ', ''),&#10;          'firstName': dossier.fields.prenom, 'lastName': dossier.fields.nom,&#10;          'employeeNumber': dossier.fields.matriculeSirh, 'enabled': false,&#10;          'attributes': {'department': dossier.fields.departement, 'manager': dossier.fields.managerLogin}}}"/>
     <serviceTask id="controleIam" name="Contrôle : créer le compte iam" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.status &gt;= 200 and connectorResult.status &lt; 300" flowable:formulaResult="appelOk" flowable:async="true"/>
     <exclusiveGateway id="resultatIam" name="Réussi ?" default="flow_resultatIam_echecIam"/>
     <serviceTask id="echecIam" name="Échec : IAM" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="'IAM'" flowable:formulaResult="etapeEnEchec"/>
-    <serviceTask id="retenirIam0" name="Retenir compteIam" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.json.id" flowable:formulaResult="compteIam"/>
-    <serviceTask id="retenirIam1" name="Retenir login" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.json.username" flowable:formulaResult="login"/>
-    <serviceTask id="enregistrerIam" name="Afficher la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="identifiantIam = variables.compteIam&#10;loginIam = variables.login"/>
+    <serviceTask id="enregistrerIam" name="Enregistrer la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="identifiantIam = connectorResult.json.id&#10;loginIam = connectorResult.json.username"/>
     <serviceTask id="besoinValidationIt" name="Profil sensible ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="dossier.fields.profilPoste != 'STANDARD'" flowable:formulaResult="validationItRequise"/>
     <exclusiveGateway id="aiguillageIt" name="Validation IT ?" default="flow_aiguillageIt_accesDecides"/>
     <userTask id="validationAcces" name="Valider les accès" flowable:formKey="user-question:validation-acces-onboarding"><documentation>Le profil de poste demande des accès étendus. Choisir le groupe IAM à accorder (DEVELOPPEURS ou DIRECTION), ou STANDARD pour s'en tenir aux groupes par défaut. C'est ce choix, et non le profil de la fiche, qui désigne le groupe.</documentation></userTask>
     <exclusiveGateway id="niveauAcces" name="Niveau ?" default="flow_niveauAcces_accesDecides"/>
-    <serviceTask id="appelGroupe" name="Ajouter au groupe IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'PUT', 'path': '/users/{id}/groups/{groupe}',&#10; 'pathParams': {'id': variables.compteIam,&#10;                'groupe': variables.niveauAcces = 'DIRECTION' ? 'direction' : 'developpeurs'}}"/>
+    <serviceTask id="appelGroupe" name="Ajouter au groupe IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'PUT', 'path': '/users/{id}/groups/{groupe}',&#10; 'pathParams': {'id': dossier.fields.identifiantIam,&#10;                'groupe': variables.niveauAcces = 'DIRECTION' ? 'direction' : 'developpeurs'}}"/>
     <serviceTask id="controleGroupe" name="Contrôle : ajouter au groupe iam" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.status &gt;= 200 and connectorResult.status &lt; 300" flowable:formulaResult="appelOk" flowable:async="true"/>
     <exclusiveGateway id="resultatGroupe" name="Réussi ?" default="flow_resultatGroupe_echecGroupe"/>
     <serviceTask id="echecGroupe" name="Échec : GROUPE" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="'GROUPE'" flowable:formulaResult="etapeEnEchec"/>
-    <serviceTask id="enregistrerGroupe" name="Afficher la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="accesEtendus = true"/>
+    <serviceTask id="enregistrerGroupe" name="Enregistrer la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="accesEtendus = true"/>
     <exclusiveGateway id="accesDecides"/>
-    <serviceTask id="appelTicket" name="Commander le matériel (ITSM)" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000003" flowable:connectorRequest="{'method': 'POST', 'path': '/tickets', 'headers': {'Content-Type': 'application/json'},&#10; 'body': {'category': 'HARDWARE', 'profile': dossier.fields.profilPoste,&#10;          'title': 'Poste de travail pour ' &amp; dossier.fields.prenom &amp; ' ' &amp; dossier.fields.nom,&#10;          'dueDate': dossier.fields.dateArrivee, 'requestedFor': variables.login,&#10;          'requestedBy': dossier.fields.managerLogin, 'correlationId': dossier.reference}}"/>
+    <serviceTask id="appelTicket" name="Commander le matériel (ITSM)" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000003" flowable:connectorRequest="{'method': 'POST', 'path': '/tickets', 'headers': {'Content-Type': 'application/json'},&#10; 'body': {'category': 'HARDWARE', 'profile': dossier.fields.profilPoste,&#10;          'title': 'Poste de travail pour ' &amp; dossier.fields.prenom &amp; ' ' &amp; dossier.fields.nom,&#10;          'dueDate': dossier.fields.dateArrivee, 'requestedFor': dossier.fields.loginIam,&#10;          'requestedBy': dossier.fields.managerLogin, 'correlationId': dossier.reference}}"/>
     <serviceTask id="controleTicket" name="Contrôle : commander le matériel (itsm)" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="connectorResult.status &gt;= 200 and connectorResult.status &lt; 300" flowable:formulaResult="appelOk" flowable:async="true"/>
     <exclusiveGateway id="resultatTicket" name="Réussi ?" default="flow_resultatTicket_echecTicket"/>
     <serviceTask id="echecTicket" name="Échec : ITSM" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="'ITSM'" flowable:formulaResult="etapeEnEchec"/>
-    <serviceTask id="enregistrerTicket" name="Afficher la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="ticketMateriel = connectorResult.json.number"/>
+    <serviceTask id="enregistrerTicket" name="Enregistrer la réponse au dossier" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="ticketMateriel = connectorResult.json.number"/>
     <serviceTask id="statutProvisionne" name="Statut : provisionné" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="PROVISIONNE"/>
     <serviceTask id="clotureDossier" name="Clôturer le dossier" flowable:delegateExpression="${updateDossierStatusTask}" flowable:targetDossierStatus="CLOTURE"/>
     <endEvent id="fin" name="Collaborateur provisionné"/>
@@ -58,14 +52,14 @@
     <exclusiveGateway id="actionIncident" name="Action ?" default="flow_actionIncident_aCompteIam"/>
     <serviceTask id="statutReprise" name="Statut : provisioning" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_PROVISIONING"/>
     <exclusiveGateway id="reprise" name="Reprendre où ?" default="flow_reprise_appelTicket"/>
-    <serviceTask id="aCompteIam" name="Compte IAM créé ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$exists(variables.compteIam)" flowable:formulaResult="compteIamCree"/>
+    <serviceTask id="aCompteIam" name="Compte IAM créé ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$exists(dossier.fields.identifiantIam)" flowable:formulaResult="compteIamCree"/>
     <exclusiveGateway id="gwCompteIam" default="flow_gwCompteIam_compteIamTraite"/>
-    <serviceTask id="supprimerIam" name="Supprimer le compte IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'DELETE', 'path': '/users/{id}', 'pathParams': {'id': variables.compteIam}}"/>
+    <serviceTask id="supprimerIam" name="Supprimer le compte IAM" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000002" flowable:connectorRequest="{'method': 'DELETE', 'path': '/users/{id}', 'pathParams': {'id': dossier.fields.identifiantIam}}"/>
     <serviceTask id="journalIam" name="Journaliser" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="journalCompensation = ($exists(dossier.fields.journalCompensation) ? dossier.fields.journalCompensation &amp; ' ; ' : '') &amp; 'IAM supprimé : HTTP ' &amp; $string(connectorResult.status)"/>
     <exclusiveGateway id="compteIamTraite"/>
-    <serviceTask id="aFicheSirh" name="Fiche SIRH créée ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$exists(variables.matricule)" flowable:formulaResult="ficheSirhCreee"/>
+    <serviceTask id="aFicheSirh" name="Fiche SIRH créée ?" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$exists(dossier.fields.matriculeSirh)" flowable:formulaResult="ficheSirhCreee"/>
     <exclusiveGateway id="gwFicheSirh" default="flow_gwFicheSirh_ficheSirhTraitee"/>
-    <serviceTask id="supprimerSirh" name="Supprimer la fiche SIRH" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000001" flowable:connectorRequest="{'method': 'DELETE', 'path': '/employees/{id}', 'pathParams': {'id': variables.matricule}}"/>
+    <serviceTask id="supprimerSirh" name="Supprimer la fiche SIRH" flowable:delegateExpression="${connectorServiceTask}" flowable:async="true" flowable:connectorInstanceId="00000000-0000-4000-8000-000000000001" flowable:connectorRequest="{'method': 'DELETE', 'path': '/employees/{id}', 'pathParams': {'id': dossier.fields.matriculeSirh}}"/>
     <serviceTask id="journalSirh" name="Journaliser" flowable:delegateExpression="${fieldMappingTask}" flowable:fieldMapping="journalCompensation = ($exists(dossier.fields.journalCompensation) ? dossier.fields.journalCompensation &amp; ' ; ' : '') &amp; 'SIRH supprimé : HTTP ' &amp; $string(connectorResult.status)"/>
     <exclusiveGateway id="ficheSirhTraitee"/>
     <serviceTask id="statutAnnule" name="Statut : annulé" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="ANNULE"/>
@@ -75,15 +69,12 @@
     <sequenceFlow id="flow_controleSirh_resultatSirh" sourceRef="controleSirh" targetRef="resultatSirh"/>
     <sequenceFlow id="flow_resultatSirh_echecSirh" sourceRef="resultatSirh" targetRef="echecSirh"/>
     <sequenceFlow id="flow_echecSirh_incident" sourceRef="echecSirh" targetRef="incident"/>
-    <sequenceFlow id="flow_resultatSirh_retenirSirh0" sourceRef="resultatSirh" targetRef="retenirSirh0"><conditionExpression xsi:type="tFormalExpression">${appelOk == true}</conditionExpression></sequenceFlow>
-    <sequenceFlow id="flow_retenirSirh0_enregistrerSirh" sourceRef="retenirSirh0" targetRef="enregistrerSirh"/>
+    <sequenceFlow id="flow_resultatSirh_enregistrerSirh" sourceRef="resultatSirh" targetRef="enregistrerSirh"><conditionExpression xsi:type="tFormalExpression">${appelOk == true}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_appelIam_controleIam" sourceRef="appelIam" targetRef="controleIam"/>
     <sequenceFlow id="flow_controleIam_resultatIam" sourceRef="controleIam" targetRef="resultatIam"/>
     <sequenceFlow id="flow_resultatIam_echecIam" sourceRef="resultatIam" targetRef="echecIam"/>
     <sequenceFlow id="flow_echecIam_incident" sourceRef="echecIam" targetRef="incident"/>
-    <sequenceFlow id="flow_resultatIam_retenirIam0" sourceRef="resultatIam" targetRef="retenirIam0"><conditionExpression xsi:type="tFormalExpression">${appelOk == true}</conditionExpression></sequenceFlow>
-    <sequenceFlow id="flow_retenirIam0_retenirIam1" sourceRef="retenirIam0" targetRef="retenirIam1"/>
-    <sequenceFlow id="flow_retenirIam1_enregistrerIam" sourceRef="retenirIam1" targetRef="enregistrerIam"/>
+    <sequenceFlow id="flow_resultatIam_enregistrerIam" sourceRef="resultatIam" targetRef="enregistrerIam"><conditionExpression xsi:type="tFormalExpression">${appelOk == true}</conditionExpression></sequenceFlow>
     <sequenceFlow id="flow_appelGroupe_controleGroupe" sourceRef="appelGroupe" targetRef="controleGroupe"/>
     <sequenceFlow id="flow_controleGroupe_resultatGroupe" sourceRef="controleGroupe" targetRef="resultatGroupe"/>
     <sequenceFlow id="flow_resultatGroupe_echecGroupe" sourceRef="resultatGroupe" targetRef="echecGroupe"/>
@@ -99,10 +90,7 @@
     <sequenceFlow id="flow_validationManager_decisionManager" sourceRef="validationManager" targetRef="decisionManager"/>
     <sequenceFlow id="flow_statutRefuse_clotureRefus" sourceRef="statutRefuse" targetRef="clotureRefus"/>
     <sequenceFlow id="flow_clotureRefus_finRefus" sourceRef="clotureRefus" targetRef="finRefus"/>
-    <sequenceFlow id="flow_statutProvisioning_razMatricule" sourceRef="statutProvisioning" targetRef="razMatricule"/>
-    <sequenceFlow id="flow_razMatricule_razCompteIam" sourceRef="razMatricule" targetRef="razCompteIam"/>
-    <sequenceFlow id="flow_razCompteIam_razLogin" sourceRef="razCompteIam" targetRef="razLogin"/>
-    <sequenceFlow id="flow_razLogin_appelSirh" sourceRef="razLogin" targetRef="appelSirh"/>
+    <sequenceFlow id="flow_statutProvisioning_appelSirh" sourceRef="statutProvisioning" targetRef="appelSirh"/>
     <sequenceFlow id="flow_enregistrerSirh_appelIam" sourceRef="enregistrerSirh" targetRef="appelIam"/>
     <sequenceFlow id="flow_enregistrerIam_besoinValidationIt" sourceRef="enregistrerIam" targetRef="besoinValidationIt"/>
     <sequenceFlow id="flow_besoinValidationIt_aiguillageIt" sourceRef="besoinValidationIt" targetRef="aiguillageIt"/>
@@ -157,21 +145,15 @@
       <bpmndi:BPMNShape id="shape_clotureRefus" bpmnElement="clotureRefus"><omgdc:Bounds x="840" y="340" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_finRefus" bpmnElement="finRefus"><omgdc:Bounds x="1042" y="362" width="36" height="36"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_statutProvisioning" bpmnElement="statutProvisioning"><omgdc:Bounds x="680" y="200" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_razMatricule" bpmnElement="razMatricule"><omgdc:Bounds x="680" y="60" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_razCompteIam" bpmnElement="razCompteIam"><omgdc:Bounds x="840" y="60" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_razLogin" bpmnElement="razLogin"><omgdc:Bounds x="1000" y="60" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_appelSirh" bpmnElement="appelSirh"><omgdc:Bounds x="840" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_controleSirh" bpmnElement="controleSirh"><omgdc:Bounds x="1000" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_resultatSirh" bpmnElement="resultatSirh"><omgdc:Bounds x="1195" y="215" width="50" height="50"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_echecSirh" bpmnElement="echecSirh"><omgdc:Bounds x="1160" y="460" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_retenirSirh0" bpmnElement="retenirSirh0"><omgdc:Bounds x="1320" y="340" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_enregistrerSirh" bpmnElement="enregistrerSirh"><omgdc:Bounds x="1320" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_appelIam" bpmnElement="appelIam"><omgdc:Bounds x="1480" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_controleIam" bpmnElement="controleIam"><omgdc:Bounds x="1640" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_resultatIam" bpmnElement="resultatIam"><omgdc:Bounds x="1835" y="215" width="50" height="50"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_echecIam" bpmnElement="echecIam"><omgdc:Bounds x="1800" y="460" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_retenirIam0" bpmnElement="retenirIam0"><omgdc:Bounds x="1960" y="340" width="120" height="80"/></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="shape_retenirIam1" bpmnElement="retenirIam1"><omgdc:Bounds x="1960" y="460" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_enregistrerIam" bpmnElement="enregistrerIam"><omgdc:Bounds x="1960" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_besoinValidationIt" bpmnElement="besoinValidationIt"><omgdc:Bounds x="2120" y="200" width="120" height="80"/></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="shape_aiguillageIt" bpmnElement="aiguillageIt"><omgdc:Bounds x="2315" y="215" width="50" height="50"/></bpmndi:BPMNShape>
@@ -215,15 +197,12 @@
       <bpmndi:BPMNEdge id="edge_flow_controleSirh_resultatSirh" bpmnElement="flow_controleSirh_resultatSirh"><omgdi:waypoint x="1120" y="240"/><omgdi:waypoint x="1195" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_resultatSirh_echecSirh" bpmnElement="flow_resultatSirh_echecSirh"><omgdi:waypoint x="1220" y="265"/><omgdi:waypoint x="1220" y="500"/><omgdi:waypoint x="1160" y="500"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_echecSirh_incident" bpmnElement="flow_echecSirh_incident"><omgdi:waypoint x="1280" y="500"/><omgdi:waypoint x="1380" y="500"/><omgdi:waypoint x="1380" y="615"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_resultatSirh_retenirSirh0" bpmnElement="flow_resultatSirh_retenirSirh0"><omgdi:waypoint x="1220" y="265"/><omgdi:waypoint x="1220" y="380"/><omgdi:waypoint x="1320" y="380"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_retenirSirh0_enregistrerSirh" bpmnElement="flow_retenirSirh0_enregistrerSirh"><omgdi:waypoint x="1440" y="380"/><omgdi:waypoint x="1380" y="380"/><omgdi:waypoint x="1380" y="240"/><omgdi:waypoint x="1320" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_resultatSirh_enregistrerSirh" bpmnElement="flow_resultatSirh_enregistrerSirh"><omgdi:waypoint x="1245" y="240"/><omgdi:waypoint x="1320" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_appelIam_controleIam" bpmnElement="flow_appelIam_controleIam"><omgdi:waypoint x="1600" y="240"/><omgdi:waypoint x="1640" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_controleIam_resultatIam" bpmnElement="flow_controleIam_resultatIam"><omgdi:waypoint x="1760" y="240"/><omgdi:waypoint x="1835" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_resultatIam_echecIam" bpmnElement="flow_resultatIam_echecIam"><omgdi:waypoint x="1860" y="265"/><omgdi:waypoint x="1860" y="500"/><omgdi:waypoint x="1800" y="500"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_echecIam_incident" bpmnElement="flow_echecIam_incident"><omgdi:waypoint x="1920" y="500"/><omgdi:waypoint x="1380" y="500"/><omgdi:waypoint x="1380" y="615"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_resultatIam_retenirIam0" bpmnElement="flow_resultatIam_retenirIam0"><omgdi:waypoint x="1860" y="265"/><omgdi:waypoint x="1860" y="380"/><omgdi:waypoint x="1960" y="380"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_retenirIam0_retenirIam1" bpmnElement="flow_retenirIam0_retenirIam1"><omgdi:waypoint x="2080" y="380"/><omgdi:waypoint x="2020" y="380"/><omgdi:waypoint x="2020" y="500"/><omgdi:waypoint x="1960" y="500"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_retenirIam1_enregistrerIam" bpmnElement="flow_retenirIam1_enregistrerIam"><omgdi:waypoint x="2080" y="500"/><omgdi:waypoint x="2020" y="500"/><omgdi:waypoint x="2020" y="240"/><omgdi:waypoint x="1960" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_resultatIam_enregistrerIam" bpmnElement="flow_resultatIam_enregistrerIam"><omgdi:waypoint x="1885" y="240"/><omgdi:waypoint x="1960" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_appelGroupe_controleGroupe" bpmnElement="flow_appelGroupe_controleGroupe"><omgdi:waypoint x="2880" y="100"/><omgdi:waypoint x="2920" y="100"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_controleGroupe_resultatGroupe" bpmnElement="flow_controleGroupe_resultatGroupe"><omgdi:waypoint x="3040" y="100"/><omgdi:waypoint x="3115" y="100"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_resultatGroupe_echecGroupe" bpmnElement="flow_resultatGroupe_echecGroupe"><omgdi:waypoint x="3140" y="125"/><omgdi:waypoint x="3140" y="500"/><omgdi:waypoint x="3080" y="500"/></bpmndi:BPMNEdge>
@@ -239,10 +218,7 @@
       <bpmndi:BPMNEdge id="edge_flow_validationManager_decisionManager" bpmnElement="flow_validationManager_decisionManager"><omgdi:waypoint x="480" y="240"/><omgdi:waypoint x="555" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_statutRefuse_clotureRefus" bpmnElement="flow_statutRefuse_clotureRefus"><omgdi:waypoint x="800" y="380"/><omgdi:waypoint x="840" y="380"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_clotureRefus_finRefus" bpmnElement="flow_clotureRefus_finRefus"><omgdi:waypoint x="960" y="380"/><omgdi:waypoint x="1042" y="380"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_statutProvisioning_razMatricule" bpmnElement="flow_statutProvisioning_razMatricule"><omgdi:waypoint x="800" y="240"/><omgdi:waypoint x="740" y="240"/><omgdi:waypoint x="740" y="100"/><omgdi:waypoint x="680" y="100"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_razMatricule_razCompteIam" bpmnElement="flow_razMatricule_razCompteIam"><omgdi:waypoint x="800" y="100"/><omgdi:waypoint x="840" y="100"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_razCompteIam_razLogin" bpmnElement="flow_razCompteIam_razLogin"><omgdi:waypoint x="960" y="100"/><omgdi:waypoint x="1000" y="100"/></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="edge_flow_razLogin_appelSirh" bpmnElement="flow_razLogin_appelSirh"><omgdi:waypoint x="1120" y="100"/><omgdi:waypoint x="980" y="100"/><omgdi:waypoint x="980" y="240"/><omgdi:waypoint x="840" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_flow_statutProvisioning_appelSirh" bpmnElement="flow_statutProvisioning_appelSirh"><omgdi:waypoint x="800" y="240"/><omgdi:waypoint x="840" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_enregistrerSirh_appelIam" bpmnElement="flow_enregistrerSirh_appelIam"><omgdi:waypoint x="1440" y="240"/><omgdi:waypoint x="1480" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_enregistrerIam_besoinValidationIt" bpmnElement="flow_enregistrerIam_besoinValidationIt"><omgdi:waypoint x="2080" y="240"/><omgdi:waypoint x="2120" y="240"/></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="edge_flow_besoinValidationIt_aiguillageIt" bpmnElement="flow_besoinValidationIt_aiguillageIt"><omgdi:waypoint x="2240" y="240"/><omgdi:waypoint x="2315" y="240"/></bpmndi:BPMNEdge>

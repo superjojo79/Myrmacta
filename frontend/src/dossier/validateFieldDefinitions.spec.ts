@@ -165,6 +165,27 @@ describe('validateFieldDefinitions — structured types (TODO §76, D1)', () => 
       expect(messages({ type: 'FILE' })).toContain('ne peut pas être calculé')
     })
 
+    it('managedByWorkflow rejects required, default, formula and group sub-fields (TODO §126)', () => {
+      expect(validateFieldDefinitions([field({ managedByWorkflow: true })])).toEqual([])
+      expect(validateFieldDefinitions([field({ managedByWorkflow: true, required: true })]).join(' ')).toContain(
+        'géré par le workflow',
+      )
+      expect(validateFieldDefinitions([field({ managedByWorkflow: true, defaultValue: 'x' })]).join(' ')).toContain(
+        'géré par le workflow',
+      )
+      expect(validateFieldDefinitions([field({ managedByWorkflow: true, formula: '1' })]).join(' ')).toContain(
+        'calculé et géré',
+      )
+      const group = {
+        name: 'g',
+        label: 'G',
+        type: 'REPEATABLE_GROUP' as const,
+        required: false,
+        fields: [field({ managedByWorkflow: true })],
+      }
+      expect(validateFieldDefinitions([group]).join(' ')).toContain('ne peut pas être géré')
+    })
+
     it('bounds an expression and refuses rules on a group sub-field', () => {
       expect(validateFieldDefinitions([{ ...base, formula: '1 + '.repeat(600) + '1' }]).join(' ')).toContain('dépasse 2000')
       const group = { name: 'g', label: 'G', type: 'REPEATABLE_GROUP' as const, required: false, fields: [{ ...base, visibleWhen: 'true' }] }

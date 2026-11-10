@@ -7,7 +7,14 @@ import DynamicFieldInput from './DynamicFieldInput.vue'
 import { formatFieldValue, isStructured } from '@/dossier/fieldValues'
 import { describeFieldError } from '@/dossier/fieldErrors'
 import { evaluateFieldRules } from '@/api/dossierTypes'
-import { hasFieldRules, isComputedField, isFieldApplicable, isFieldRequired } from '@/dossier/fieldRules'
+import {
+  hasFieldRules,
+  isComputedField,
+  isFieldApplicable,
+  isFieldRequired,
+  isReadOnlyOutputField,
+  isWorkflowManagedField,
+} from '@/dossier/fieldRules'
 
 const { t } = useI18n()
 
@@ -57,9 +64,18 @@ function scheduleEvaluation() {
   }, 300)
 }
 
-/** Un champ devenu sans objet ne doit pas être envoyé (le serveur refuse une valeur fournie pour un champ sans objet). */
+/**
+ * Un champ devenu sans objet ne doit pas être envoyé (le serveur refuse une valeur fournie pour un champ sans objet).
+ * Les champs calculés ou {@code managedByWorkflow} restent dans le brouillon : les retirer ferait envoyer {@code null}
+ * via le diff et le serveur refuserait la clé (TODO §126).
+ */
 function dropHiddenValues(preview: FieldRulesPreview) {
-  const stale = preview.hidden.filter((name) => props.modelValue[name] !== undefined)
+  const protectedNames = new Set(
+    props.definitions.filter((d) => isReadOnlyOutputField(d)).map((d) => d.name),
+  )
+  const stale = preview.hidden.filter(
+    (name) => props.modelValue[name] !== undefined && !protectedNames.has(name),
+  )
   if (stale.length === 0) return
   const next = { ...props.modelValue }
   for (const name of stale) delete next[name]
@@ -143,15 +159,18 @@ function fieldErrorId(name: string): string {
         <span>
           {{ field.label }}<em v-if="isFieldRequired(field, rules)"> *</em>
           <small v-if="isComputedField(field)" class="dynamic-fields__computed-hint"> {{ t('dossier.computed') }}</small>
+          <small v-else-if="isWorkflowManagedField(field)" class="dynamic-fields__computed-hint">
+            {{ t('dossier.managedByWorkflow') }}
+          </small>
         </span>
         <output
-          v-if="!readonly && isComputedField(field)"
+          v-if="!readonly && isReadOnlyOutputField(field)"
           class="dynamic-fields__computed"
-          :data-testid="`computed-${field.name}`"
+          :data-testid="isWorkflowManagedField(field) ? `managed-${field.name}` : `computed-${field.name}`"
           :aria-invalid="messagesFor(field.name).length > 0 ? 'true' : undefined"
           :aria-describedby="messagesFor(field.name).length > 0 ? fieldErrorId(field.name) : undefined"
         >{{
-          formatFieldValue(field, computedValue(field)) || '—'
+          formatFieldValue(field, isComputedField(field) ? computedValue(field) : modelValue[field.name]) || '—'
         }}</output>
         <template v-else-if="readonly">
           <SensitiveValue :value="formatFieldValue(field, modelValue[field.name])" :sensitive="!!field.sensitive">

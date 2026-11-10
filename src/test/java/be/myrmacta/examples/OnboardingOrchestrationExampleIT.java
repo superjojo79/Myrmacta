@@ -186,12 +186,14 @@ class OnboardingOrchestrationExampleIT {
         // Profil STANDARD : pas de validation IT. L'ITSM répond 500 ; l'humain abandonne.
         assertThat(waitingTask(instance)).isEqualTo("traiterIncident");
         assertThat(dossier(dossierId).get("fields").get("dernierIncident").asString()).startsWith("ITSM : HTTP 500");
-        // Revue §112 (H1) : une personne qui a le droit EDIT change les identifiants affichés avant l'abandon ; la
-        // compensation supprime quand même ce que le workflow a créé, pas ce que le dossier affiche.
+        // TODO §126 (H1) : une personne qui a le droit EDIT ne peut plus forger les champs managedByWorkflow ; la
+        // compensation cible donc forcément les identifiants écrits par fieldMappingTask.
         mockMvc.perform(patch("/api/dossiers/{id}/fields", dossierId).with(rh()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fields\":{\"identifiantIam\":\"u-admin\",\"matriculeSirh\":\"E-0001\"}}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                        .contains("MANAGED_BY_WORKFLOW"));
         complete(instance, "traiterIncident", Map.of("actionIncident", "ABANDONNER"));
         runJobs(instance);
 
@@ -224,10 +226,20 @@ class OnboardingOrchestrationExampleIT {
 
     @Test
     @Order(4)
-    void forgedIdentifiersInTheDossierOrTheStartVariablesNeverReachTheCompensation() throws Exception {
-        // Revue §112 (H1) : identifiants saisis dans le dossier à la création et variables posées au démarrage.
-        String dossierId = createDossier(Map.of("identifiantIam", "u-admin", "matriculeSirh", "E-0001"));
-        String instance = start(dossierId, Map.of("compteIam", "u-admin", "matricule", "E-0001"));
+    void forgedManagedFieldsAreRejectedAtCreationAndCompensationDeletesNothingWithoutWorkflowIds() throws Exception {
+        // TODO §126 : les champs Provisioning sont managedByWorkflow — refusés à la création.
+        ObjectNode request = (ObjectNode) JSON.readTree(EXAMPLE.resolve("config/exemple-dossier.json").toFile());
+        ((ObjectNode) request.get("fields")).put("identifiantIam", "u-admin");
+        ((ObjectNode) request.get("fields")).put("matriculeSirh", "E-0001");
+        mockMvc.perform(post("/api/dossiers").with(rh()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                        .contains("MANAGED_BY_WORKFLOW"));
+
+        // Sans identifiants écrits par le workflow, un abandon après échec SIRH ne lance aucun DELETE.
+        String dossierId = createDossier(Map.of());
+        String instance = start(dossierId);
         APIS.fail("POST /sirh/employees", 400, "{\"error\":\"personalEmail\"}");
 
         complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));

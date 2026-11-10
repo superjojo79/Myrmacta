@@ -146,6 +146,25 @@ class DossierFieldRulesTest {
         assertThat(errors).extracting(FieldValidationError::code).contains("NOT_APPLICABLE");
     }
 
+    /** TODO §126 — visibleWhen masque l'UI mais ne retire ni n'interdit une valeur gérée par le workflow. */
+    @Test
+    void aManagedByWorkflowFieldKeepsItsValueWhenHiddenAndAcceptsAnExplicitWrite() {
+        FieldDefinition flag = plain("provisionne", FieldType.BOOLEAN);
+        FieldDefinition managed = new FieldDefinition(
+                "matriculeSirh", "Matricule", FieldType.STRING, false, null, null, null, false, null, null, null, null,
+                "dossier.fields.provisionne = true", null, null, null, null, null, true);
+        List<FieldDefinition> defs = List.of(flag, managed);
+
+        var stored = rules.apply(defs, fields("provisionne", false, "matriculeSirh", "EMP-9"), Set.of("provisionne"));
+        assertThat(stored.errors()).isEmpty();
+        assertThat(stored.hidden()).contains("matriculeSirh");
+        assertThat(stored.fields()).containsEntry("matriculeSirh", "EMP-9");
+
+        var mapped = rules.apply(defs, fields("provisionne", false, "matriculeSirh", "EMP-42"), Set.of("matriculeSirh"));
+        assertThat(mapped.errors()).isEmpty();
+        assertThat(mapped.fields()).containsEntry("matriculeSirh", "EMP-42");
+    }
+
     @Test
     void requiredWhenMakesAFieldRequiredOnlyWhenTrue() {
         List<FieldDefinition> defs = List.of(plain("montant", FieldType.NUMBER),

@@ -51,6 +51,11 @@ export interface FieldDefinition {
   searchable?: boolean
   /** TODO §102 : une valeur ne figure que dans un dossier en cours du type (STRING, NUMBER, DATE ; jamais sensible). */
   unique?: boolean
+  /**
+   * TODO §126 : écrit seulement par `fieldMappingTask` ; refusé à la création, au PATCH et dans les formulaires
+   * de saisie (D-MANAGED-WRITE).
+   */
+  managedByWorkflow?: boolean
   /** TODO §85 (LC4a) : aide contextuelle (texte brut) et largeur ('HALF' = demi-largeur ; absent = pleine). */
   helpText?: string | null
   width?: 'HALF' | null

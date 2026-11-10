@@ -193,11 +193,16 @@ export function toPayload(def: FieldDefinition, value: unknown): unknown {
 
 /**
  * Champs prêts à créer un dossier : seuls les champs structurés sont nettoyés (vides retirés, lignes vides écartées,
- * valeurs rognées) ; les champs scalaires sont transmis tels quels, comme avant.
+ * valeurs rognées) ; les champs scalaires sont transmis tels quels, comme avant. Les champs calculés et
+ * {@code managedByWorkflow} sont retirés (TODO §126) : ils ne sont jamais saisis.
  */
 export function cleanStructuredFields(definitions: FieldDefinition[], fields: Record<string, unknown>): Record<string, unknown> {
   const out = { ...fields }
   for (const def of definitions) {
+    if (def.formula || def.managedByWorkflow) {
+      delete out[def.name]
+      continue
+    }
     if (!isStructured(def.type) || !(def.name in out)) continue
     if (isBlankValue(def, out[def.name])) delete out[def.name]
     else out[def.name] = toPayload(def, out[def.name])

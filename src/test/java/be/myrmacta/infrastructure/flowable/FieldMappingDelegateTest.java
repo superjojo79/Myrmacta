@@ -98,13 +98,18 @@ class FieldMappingDelegateTest {
         when(types.findByCode("tenant_dev", "SINISTRE")).thenReturn(Optional.of(type));
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> writtenPatch() {
+    private UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand writtenCommand() {
         ArgumentCaptor<UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand> captor =
                 ArgumentCaptor.forClass(UpdateDossierFieldsUseCase.UpdateDossierFieldsCommand.class);
         verify(update).update(captor.capture(), any(AccessContext.class));
         assertThat(captor.getValue().dossierId()).isEqualTo(DOSSIER_ID);
-        return captor.getValue().fieldsPatch();
+        assertThat(captor.getValue().workflowMapping()).isTrue();
+        return captor.getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> writtenPatch() {
+        return writtenCommand().fieldsPatch();
     }
 
     @Test

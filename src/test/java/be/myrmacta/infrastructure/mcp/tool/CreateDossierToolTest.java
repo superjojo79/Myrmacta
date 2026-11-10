@@ -160,6 +160,21 @@ class CreateDossierToolTest {
         verify(createDossierUseCase, never()).create(any(), any());
     }
 
+    /** TODO §126 — l'essai à blanc refuse une clé managedByWorkflow comme la création réelle. */
+    @Test
+    void dryRun_rejectsAManagedByWorkflowField() {
+        var managed = new FieldDefinition(
+                "matriculeSirh", "Matricule", FieldType.STRING, false, null, null, null, false, null, null, null, null,
+                null, null, null, null, null, null, true);
+        when(getDossierTypeUseCase.getByCode(eq(TENANT), eq("SINISTRE"), any()))
+                .thenReturn(type(true, List.of(managed)));
+
+        assertThatThrownBy(() -> tool.createDossier("SINISTRE", "Acme", Map.of("matriculeSirh", "EMP-1"), true))
+                .isInstanceOf(DossierFieldValidationException.class)
+                .hasMessageContaining("MANAGED_BY_WORKFLOW");
+        verify(createDossierUseCase, never()).create(any(), any());
+    }
+
     /** TODO §102 — l'essai à blanc annonce le doublon que la création refuserait, avec la référence du détenteur. */
     @Test
     void dryRun_reportsADuplicateOfAUniqueField() {

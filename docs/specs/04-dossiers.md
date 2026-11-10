@@ -991,9 +991,11 @@ infrastructure
 ## Implémentation — champs gérés par le workflow (`managedByWorkflow`, TODO §126, issue #9)
 
 - **Déclaration :** `FieldDefinition.managedByWorkflow` sur un champ racine ; incompatible avec `required`, `formula`,
-  `defaultValue` et `requiredWhen` ; interdit sur un sous-champ de groupe ; `sensitive` reste orthogonal.
+  `defaultValue` et `requiredWhen` ; interdit sur un sous-champ de groupe ; `sensitive` reste orthogonal. `visibleWhen`
+  masque l'UI / l'aperçu sans effacer la valeur ni émettre `NOT_APPLICABLE`.
 - **Écriture :** seule `fieldMappingTask` (signal `workflowMapping` sur `UpdateDossierFieldsCommand`) ; création,
-  `PATCH .../fields`, formulaires, portail, MCP et routage courrier refusent une clé touchée (`MANAGED_BY_WORKFLOW`).
+  `PATCH .../fields`, formulaires, portail, MCP (y compris `dryRun`) et routage courrier refusent une clé touchée
+  (`MANAGED_BY_WORKFLOW`).
 - **Lecture :** `dossier.fields.<nom>` dans les expressions métier (sauf champ `sensitive`).
 - **UI :** case dans l'éditeur de schéma du type ; affichage lecture seule (hint distinct) dans `DynamicFields`.
 - **Exemple :** `exemples/onboarding-collaborateur` — champs Provisioning gérés ; `OnboardingOrchestrationExampleIT`.

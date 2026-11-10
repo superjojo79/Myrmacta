@@ -23,13 +23,15 @@ process « protégées » ; statu quo documenté.
 
 - **D-MANAGED-NAME** — nom du drapeau : `managedByWorkflow` (pas `readOnly`, pour le distinguer des champs `formula`).
 - **D-MANAGED-SCHEMA** — incompatible avec `required`, `formula` et `defaultValue` ; interdit sur un sous-champ de
-  `REPEATABLE_GROUP` ; `sensitive` reste orthogonal ; `requiredWhen` interdit (pas de `required`) ; `visibleWhen`,
-  `searchable` et `unique` suivent les règles existantes de `FieldDefinition`.
+  `REPEATABLE_GROUP` ; `sensitive` reste orthogonal ; `requiredWhen` interdit (pas de `required`) ; `searchable` et
+  `unique` suivent les règles existantes de `FieldDefinition`. `visibleWhen` reste autorisé pour l'UI / l'aperçu, mais
+  n'efface pas une valeur gérée et n'émet pas `NOT_APPLICABLE` (sinon un `fieldMappingTask` ou un PATCH voisin
+  perdrait l'identifiant technique).
 - **D-MANAGED-WRITE** — seule `fieldMappingTask` écrit ces champs. Toutes les autres surfaces (création, `PATCH`,
-  `dossier-fields`, portail, MCP, routage courrier, seeds hors mapping) refusent une clé touchée, y compris une valeur
-  égale à l'existante. Signal : booléen `workflowMapping` sur `UpdateDossierFieldsCommand` (défaut `false`), posé à
-  `true` uniquement par `FieldMappingDelegate`. La création n'a jamais ce signal. On n'utilise pas `AccessContext.System`
-  comme autorisation : `RouteMailDelegate` est aussi `System` et doit rester refusé.
+  `dossier-fields`, portail, MCP y compris `dryRun`, routage courrier, seeds hors mapping) refusent une clé touchée, y
+  compris une valeur égale à l'existante. Signal : booléen `workflowMapping` sur `UpdateDossierFieldsCommand` (défaut
+  `false`), posé à `true` uniquement par `FieldMappingDelegate`. La création n'a jamais ce signal. On n'utilise pas
+  `AccessContext.System` comme autorisation : `RouteMailDelegate` est aussi `System` et doit rester refusé.
 - **D-MANAGED-HTTP** — erreur de champ `MANAGED_BY_WORKFLOW` (400, `errors[]`), message sans recopier la valeur (comme
   `COMPUTED_READ_ONLY`).
 - **D-MANAGED-UI** — absent des contrôles de saisie ; visible en lecture seule sur le détail (même rendu que les champs

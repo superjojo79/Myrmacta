@@ -257,8 +257,10 @@ class SftpPdfInboundConnectorTest {
             var matcher = FileSystems.getDefault().getPathMatcher("glob:" + filenamePattern);
             List<RemoteFile> found = new ArrayList<>();
             files.forEach((path, content) -> {
-                Path file = Path.of(path);
-                if (file.getParent().toString().equals(remoteDirectory) && matcher.matches(file.getFileName())) {
+                // Chemin distant toujours en « / » : Path.of(path).getParent() donnerait « \in » sous Windows.
+                String name = SftpPdfInboundConnector.fileName(path);
+                String parent = path.substring(0, path.length() - name.length() - 1);
+                if (parent.equals(remoteDirectory) && matcher.matches(Path.of(name))) {
                     found.add(new RemoteFile(path, sizes.getOrDefault(path, (long) content.length)));
                 }
             });
@@ -278,7 +280,7 @@ class SftpPdfInboundConnectorTest {
         @Override
         public void archive(SftpConnectionConfig config, String remotePath, String archiveDirectory) {
             byte[] content = files.remove(remotePath);
-            files.put(archiveDirectory + "/" + Path.of(remotePath).getFileName(), content);
+            files.put(archiveDirectory + "/" + SftpPdfInboundConnector.fileName(remotePath), content);
         }
     }
 }

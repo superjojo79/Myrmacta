@@ -3,6 +3,8 @@ package be.myrmacta.infrastructure.connector.builtin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import be.myrmacta.domain.connector.model.ConfigField;
+import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector;
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -215,6 +218,175 @@ class SftpPdfInboundConnectorTest {
         assertThatThrownBy(() -> connector.validate(mapping)).hasMessageContaining("mapping must be a JSON object");
     }
 
+    @Test
+    void theConnectorDescribesItself() {
+        assertThat(connector.getType()).isEqualTo("sftp-pdf-inbound");
+        assertThat(connector.getLabel()).contains("SFTP");
+        assertThat(connector.getCapability()).isEqualTo(ConnectorCapability.TRIGGER);
+        assertThat(connector.getConfigSchema()).extracting(ConfigField::name).contains("remoteDirectory", "processedDirectory",
+                "rejectedDirectory", "indexFormat", "requireIndex", "mapping");
+    }
+
+    @Test
+    void theAuthenticationAndThePollIntervalAreChecked() {
+        assertThatThrownBy(() -> connector.validate(null)).hasMessageContaining("config is required");
+        Map<String, Object> privateKey = config("JSON");
+        privateKey.put("sftpAuthType", "PRIVATE_KEY");
+        privateKey.put("sftpPrivateKey", "-----BEGIN OPENSSH PRIVATE KEY-----");
+        connector.validate(privateKey);
+        privateKey.remove("sftpPrivateKey");
+        assertThatThrownBy(() -> connector.validate(privateKey)).hasMessageContaining("sftpPrivateKey is required");
+        Map<String, Object> token = config("JSON");
+        token.put("sftpAuthType", "TOKEN");
+        assertThatThrownBy(() -> connector.validate(token)).hasMessageContaining("Unsupported sftpAuthType");
+        Map<String, Object> poll = config("JSON");
+        poll.put("pollSeconds", 30);
+        connector.validate(poll);
+        poll.put("pollSeconds", 29);
+        assertThatThrownBy(() -> connector.validate(poll)).hasMessageContaining("pollSeconds must be at least 30");
+    }
+
+    /** Sans index : chaque PDF est traité aussitôt, dans l'ordre des noms, dans la limite du plafond par interrogation. */
+    @Test
+    void withoutAnIndexThePdfsAreTakenInNameOrder_upToThePerPollCap() {
+        connector = cappedAt(2);
+        for (int i = 1; i <= 3; i++) {
+            sftp.put("/in/p" + i + ".pdf", PDF);
+        }
+
+        connector.poll(instance(unmapped("NONE")), delivered::add);
+
+        assertThat(delivered).extracting(event -> event.variables().get("courrierFichier")).containsExactly("p1.pdf", "p2.pdf");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/p1.pdf", "/done/p2.pdf", "/in/p3.pdf");
+    }
+
+    @Test
+    void theRootDirectoryCanBeRead() {
+        Map<String, Object> config = unmapped("NONE");
+        config.put("remoteDirectory", "/");
+        sftp.put("/scan.pdf", PDF);
+
+        connector.poll(instance(config), delivered::add);
+
+        assertThat(delivered).singleElement().satisfies(event -> assertThat(event.variables()).containsEntry("courrierFichier", "scan.pdf"));
+        assertThat(sftp.files.keySet()).containsExactly("/done/scan.pdf");
+    }
+
+    /** Le contenu doit commencer par la signature « %PDF- » : un fichier plus court ou d'un autre type n'est jamais remis. */
+    @Test
+    void onlyAContentStartingWithThePdfSignatureIsDelivered() {
+        sftp.put("/in/court.pdf", "%PDF".getBytes(StandardCharsets.US_ASCII));
+        sftp.put("/in/exe.pdf", "MZ pas un pdf".getBytes(StandardCharsets.US_ASCII));
+        sftp.put("/in/juste.pdf", "%PDF-".getBytes(StandardCharsets.US_ASCII));
+
+        connector.poll(instance(unmapped("NONE")), delivered::add);
+
+        assertThat(delivered).extracting(event -> event.variables().get("courrierFichier")).containsExactly("juste.pdf");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/ko/court.pdf", "/ko/exe.pdf", "/done/juste.pdf");
+    }
+
+    /** Un index JSON trop gros, qui n'est pas un objet ou illisible range le PDF dans « refusés », même sans champ mappé. */
+    @Test
+    void aJsonIndexTooLargeNotAnObjectOrUnreadableRejectsItsPdf_evenWithoutMapping() {
+        sftp.put("/in/a.pdf", PDF);
+        sftp.put("/in/a.json", "{}");
+        sftp.sizes.put("/in/a.json", SftpPdfInboundConnector.MAX_INDEX_BYTES);
+        sftp.put("/in/b.pdf", PDF);
+        sftp.put("/in/b.json", "{}");
+        sftp.sizes.put("/in/b.json", SftpPdfInboundConnector.MAX_INDEX_BYTES + 1);
+        sftp.put("/in/c.pdf", PDF);
+        sftp.put("/in/c.json", "[1]");
+        sftp.put("/in/d.pdf", PDF);
+        sftp.put("/in/d.json", "{\"objet\":");
+
+        connector.poll(instance(unmapped("JSON")), delivered::add);
+
+        assertThat(delivered).extracting(event -> event.variables().get("courrierFichier")).containsExactly("a.pdf");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/a.pdf", "/done/a.json", "/ko/b.pdf", "/ko/b.json", "/ko/c.pdf",
+                "/ko/c.json", "/ko/d.pdf", "/ko/d.json");
+    }
+
+    @Test
+    void withJsonCompanionsThePerPollCapApplies_withOrWithoutTheIndex() {
+        connector = cappedAt(2);
+        for (int i = 1; i <= 3; i++) {
+            sftp.put("/in/p" + i + ".pdf", PDF);
+            sftp.put("/in/p" + i + ".json", "{\"expediteur\":\"a@b.example\",\"objet\":\"Objet " + i + "\"}");
+        }
+        connector.poll(instance(config("JSON")), delivered::add);
+        assertThat(delivered).hasSize(2);
+        assertThat(sftp.files).containsOnlyKeys("/done/p1.pdf", "/done/p1.json", "/done/p2.pdf", "/done/p2.json", "/in/p3.pdf",
+                "/in/p3.json");
+
+        sftp.files.clear();
+        delivered.clear();
+        for (int i = 1; i <= 3; i++) {
+            sftp.put("/in/s" + i + ".pdf", PDF);
+        }
+        Map<String, Object> optional = unmapped("JSON");
+        optional.put("requireIndex", false);
+        connector.poll(instance(optional), delivered::add);
+        assertThat(delivered).hasSize(2);
+        assertThat(sftp.files).containsOnlyKeys("/done/s1.pdf", "/done/s2.pdf", "/in/s3.pdf");
+    }
+
+    /** Index CSV facultatif : les PDF absents de tout index sont traités après ceux de l'index, dans la limite du plafond. */
+    @Test
+    void withAnOptionalCsvIndexTheUnlistedPdfsFillTheRestOfTheCap() {
+        connector = cappedAt(2);
+        sftp.put("/in/lot-1.pdf", PDF);
+        sftp.put("/in/x1.pdf", PDF);
+        sftp.put("/in/x2.pdf", PDF);
+        sftp.put("/in/lot.csv", "fichier,expediteur,objet\nlot-1.pdf,a@b.example,Premier\n");
+        Map<String, Object> config = config("CSV");
+        config.put("requireIndex", false);
+        config.put("defaultFields", Map.of("expediteur", "inconnu", "objet", "Sans index"));
+
+        connector.poll(instance(config), delivered::add);
+
+        assertThat(delivered).extracting(event -> event.variables().get("courrierFichier")).containsExactly("lot-1.pdf", "x1.pdf");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/lot-1.pdf", "/done/lot.csv", "/done/x1.pdf", "/in/x2.pdf");
+    }
+
+    /** Une fois le plafond atteint, l'index CSV suivant n'est pas ouvert : il reste en place pour le passage suivant. */
+    @Test
+    void onceTheCapIsReachedTheNextCsvIndexWaits() {
+        connector = cappedAt(2);
+        sftp.put("/in/p1.pdf", PDF);
+        sftp.put("/in/p2.pdf", PDF);
+        sftp.put("/in/a.csv", "fichier,expediteur,objet\np1.pdf,a@b.example,Un\np2.pdf,a@b.example,Deux\n");
+        sftp.put("/in/b.csv", "fichier,expediteur,objet\nabsent.pdf,a@b.example,Trois\n");
+
+        connector.poll(instance(config("CSV")), delivered::add);
+
+        assertThat(delivered).hasSize(2);
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/p1.pdf", "/done/p2.pdf", "/done/a.csv", "/in/b.csv");
+    }
+
+    /** Un index CSV trop gros (jamais téléchargé), trop long ou illisible va dans « refusés » ; à la taille limite, il est lu. */
+    @Test
+    void aCsvIndexTooLargeTooLongOrUnreadableGoesToRejected() {
+        String header = "fichier,expediteur,objet\n";
+        sftp.put("/in/a-limite.csv", header);
+        sftp.sizes.put("/in/a-limite.csv", SftpPdfInboundConnector.MAX_CSV_BYTES);
+        sftp.put("/in/b-gros.csv", header);
+        sftp.sizes.put("/in/b-gros.csv", SftpPdfInboundConnector.MAX_CSV_BYTES + 1);
+        sftp.put("/in/c-long.csv", header + "absent.pdf,a@b.example,Objet\n".repeat(SftpPdfInboundConnector.MAX_CSV_ROWS + 1));
+        sftp.put("/in/d-illisible.csv", "fichier,\"objet\nabsent.pdf,Objet\n");
+
+        connector.poll(instance(config("CSV")), delivered::add);
+
+        assertThat(delivered).isEmpty();
+        assertThat(sftp.downloads).doesNotContain("/in/b-gros.csv");
+        assertThat(sftp.files.keySet()).containsExactlyInAnyOrder("/done/a-limite.csv", "/ko/b-gros.csv", "/ko/c-long.csv",
+                "/ko/d-illisible.csv");
+    }
+
+    private SftpPdfInboundConnector cappedAt(int maxMessagesPerPoll) {
+        return new SftpPdfInboundConnector(sftp, new SimpleJsonPathMapper(), JsonMapper.builder().build(),
+                new InboundConnectorProperties(maxMessagesPerPoll, 26214400, 20000, 10485760, 30, 1048576));
+    }
+
     private static ConnectorInstanceData instance(Map<String, Object> config) {
         return new ConnectorInstanceData(UUID.randomUUID(), "tenant_dev", "Scans", "sftp-pdf-inbound", true, config);
     }
@@ -237,7 +409,18 @@ class SftpPdfInboundConnectorTest {
         return config;
     }
 
-    /** Serveur SFTP en mémoire : liste par motif glob, téléchargement borné, déplacement dans un dossier. */
+    /** Sans mapping ni valeur par défaut : le courrier ne dépend que du PDF. */
+    private static Map<String, Object> unmapped(String indexFormat) {
+        Map<String, Object> config = config(indexFormat);
+        config.remove("mapping");
+        config.remove("defaultFields");
+        return config;
+    }
+
+    /**
+     * Serveur SFTP en mémoire : liste par motif glob (sans ordre garanti : ici, à rebours), téléchargement borné, déplacement dans un
+     * dossier.
+     */
     private static final class FakeSftp implements SftpClientPort {
 
         private final Map<String, byte[]> files = new TreeMap<>();
@@ -254,17 +437,18 @@ class SftpPdfInboundConnectorTest {
 
         @Override
         public List<RemoteFile> listFiles(SftpConnectionConfig config, String remoteDirectory, String filenamePattern) {
+            Objects.requireNonNull(config, "config");
             var matcher = FileSystems.getDefault().getPathMatcher("glob:" + filenamePattern);
             List<RemoteFile> found = new ArrayList<>();
             files.forEach((path, content) -> {
                 // Chemin distant toujours en « / » : Path.of(path).getParent() donnerait « \in » sous Windows.
                 String name = SftpPdfInboundConnector.fileName(path);
                 String parent = path.substring(0, path.length() - name.length() - 1);
-                if (parent.equals(remoteDirectory) && matcher.matches(Path.of(name))) {
+                if ((parent.isEmpty() ? "/" : parent).equals(remoteDirectory) && matcher.matches(Path.of(name))) {
                     found.add(new RemoteFile(path, sizes.getOrDefault(path, (long) content.length)));
                 }
             });
-            return found;
+            return found.reversed();
         }
 
         @Override

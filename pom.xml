@@ -37,7 +37,7 @@
         <!-- Décision n° 27 — versions de stack -->
         <flowable.version>8.0.0</flowable.version>
         <flying-saucer.version>10.7.0</flying-saucer.version>
-        <jsoup.version>1.23.2</jsoup.version>
+        <jsoup.version>1.24.1</jsoup.version>
         <archunit.version>1.5.1</archunit.version>
         <aws.sdk.version>2.57.8</aws.sdk.version>
         <!-- connecteurs-cible (lot B1) — batch-import : client SFTP + parseur Excel -->

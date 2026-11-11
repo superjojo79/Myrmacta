@@ -540,6 +540,22 @@ APP_ENVIRONMENT=local SPRING_PROFILES_ACTIVE=local,embedded-db java -jar target/
   définir à `local` ou `staging`). Le serveur écoute 127.0.0.1 mais en authentification `trust` :
   réserver à une machine ou un conteneur non partagé.
 
+### Démo complète (profil `demo`, TODO §127)
+
+La démo de Myrmacta pour les présentations et les captures du site. Elle se compose de **paquets**, installés au premier
+démarrage sur une base embarquée vide, par les vrais cas d'usage :
+
+```bash
+scripts/demo.sh build      # jar embedded-db (une fois)
+scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OIDC du §3
+```
+
+- **Paquets livrés :** la mail room (voir ci-dessous). Les paquets onboarding collaborateur et
+  « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP) suivent (issue #55).
+- **Démarrages suivants :** un paquet déjà installé n'est pas touché ; un paquet ajouté depuis s'installe.
+- **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.
+- Comme `demo-mailroom`, le profil n'existe que dans le build `embedded-db`.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :
@@ -561,7 +577,8 @@ scripts/demo-mailroom.sh start      # depuis la racine du dépôt, avec les vari
 - **Démarrages suivants :** rien n'est réinstallé.
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo-mailroom.sh reset` et `start`.
 - **Où :** `APP_DEMO_MAILROOM_DIR` désigne un autre répertoire d'exemple. Le profil n'existe que dans le build
-  `embedded-db` ; `scripts/check-no-embedded-db-in-jar.sh` vérifie qu'il n'est pas dans le jar de production.
+  `embedded-db` ; `scripts/check-no-embedded-db-in-jar.sh` vérifie qu'aucun code de démo n'est dans le jar de production.
+- C'est le paquet « mail room » de la démo complète, installé seul.
 
 ## 19. CI sur un runner auto-hébergé (optionnel)
 

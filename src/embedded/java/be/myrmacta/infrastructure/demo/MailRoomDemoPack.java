@@ -37,9 +37,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -48,19 +46,23 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * TODO §113 (lot 7 de #217, démo reproductible) — profil {@code demo-mailroom}, présent seulement dans le build
- * {@code embedded-db} (jamais dans le jar de production). Au premier démarrage sur une base vide, installe l'exemple
+ * TODO §113 (lot 7 de #217, démo reproductible) et §127 (D-DEMO-PACKS) — paquet « mail room » de la démo, installé par
+ * {@link DemoSeeder} avec le profil {@code demo} ou, seul, avec le profil {@code demo-mailroom}. Présent seulement dans le
+ * build {@code embedded-db} (jamais dans le jar de production). Sur une base où il est absent, installe l'exemple
  * {@code exemples/digital-mail-room} par les cas d'usage réels (comme l'API), puis fait arriver trois courriers par le vrai
  * pipeline des connecteurs : une facture par e-mail (routée vers la comptabilité, dossier « facture » lié), une amende par
  * l'écran « Déposer » (PDF, file de tri), un e-mail non reconnu (file de tri). Une base déjà installée n'est pas touchée :
- * {@code scripts/demo-mailroom.sh reset} la vide pour rejouer la démo.
+ * {@code scripts/demo.sh reset} (ou {@code scripts/demo-mailroom.sh reset}) la vide pour rejouer la démo.
  */
 @Component
-@Profile("demo-mailroom")
-public class MailRoomDemoSeeder {
+@Profile({"demo", "demo-mailroom"})
+public class MailRoomDemoPack implements DemoPack {
+
+    /** Premier paquet installé. */
+    static final int ORDER = 10;
 
     static final String DEMO_ACTOR = "demo-mailroom";
-    private static final Logger log = LoggerFactory.getLogger(MailRoomDemoSeeder.class);
+    private static final Logger log = LoggerFactory.getLogger(MailRoomDemoPack.class);
     private static final AccessContext.User ADMIN = AccessContext.user(DEMO_ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
 
     private final Path example;
@@ -81,7 +83,7 @@ public class MailRoomDemoSeeder {
     private final DepositMailUseCase deposits;
     private final TransactionTemplate transaction;
 
-    public MailRoomDemoSeeder(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String exampleDir, ObjectMapper json,
+    public MailRoomDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String exampleDir, ObjectMapper json,
             TenantProperties tenant, DossierTypeRepository types, UserGroupsUseCase groups, CreateDossierTypeUseCase createType,
             SaveWorkflowTypeConfigUseCase saveConfig, DeployDecisionTableUseCase deployDmn, DeployBpmnProcessUseCase deployBpmn,
             ManageReplyWorkflowUseCase replyWorkflows, ManageDeadlineUseCase deadlines, ManageConnectorInstanceUseCase connectors,
@@ -106,23 +108,34 @@ public class MailRoomDemoSeeder {
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void seed() {
-        if (types.findByCode(tenant.id(), "COURRIER").isPresent()) {
-            log.info("demo-mailroom: example already installed, nothing done (scripts/demo-mailroom.sh reset to replay)");
-            return;
-        }
+    @Override
+    public String code() {
+        return "mailroom";
+    }
+
+    @Override
+    public int order() {
+        return ORDER;
+    }
+
+    @Override
+    public boolean installed() {
+        return types.findByCode(tenant.id(), "COURRIER").isPresent();
+    }
+
+    @Override
+    public void install() {
         if (!Files.isDirectory(example)) {
             throw new IllegalStateException("demo-mailroom: example directory not found: " + example.toAbsolutePath()
                     + " (start from the repository root, or set APP_DEMO_MAILROOM_DIR)");
         }
-        install();
+        installExample();
         arrive();
         log.info("demo-mailroom: example installed; 3 mail items arrived (invoice by e-mail, fine by deposit, unknown mail)");
     }
 
     /** Même ordre que le README de l'exemple : groupes, types, configurations, table, process, réglages, points d'entrée. */
-    private void install() {
+    private void installExample() {
         for (JsonNode group : read("config/groupes.json")) {
             groups.create(group.get("code").asString(), group.get("label").asString(), null);
         }

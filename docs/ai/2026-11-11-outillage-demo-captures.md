@@ -103,10 +103,10 @@ Chaque lot se livre seul, en une PR (registre §31).
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | livré | #60 |
-| 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | en revue | #61 |
+| 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | livré | #61 |
 | 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | en revue | #62 |
-| 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | en cours | |
-| 3 | Cadre de capture Playwright, 14 screenshots FR/EN, guide de capture | en cours | |
+| 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | en revue | #63 |
+| 3 | Cadre de capture Playwright, 14 screenshots FR/EN, guide de capture | en revue | #65 |
 
 Prochaine action : fusionner #62, #63 et la PR du lot 3 (pour une PR empilée, la recibler sur `main` **avant** de
 supprimer la branche dont elle dépend : supprimer sa base la ferme), puis revue indépendante de clôture (étape 4 du

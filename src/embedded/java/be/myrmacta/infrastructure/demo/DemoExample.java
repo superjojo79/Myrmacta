@@ -55,7 +55,11 @@ final class DemoExample {
         return json.readTree(read(english && Files.isRegularFile(translated) ? translated : dir.resolve(file)));
     }
 
-    /** Un BPMN ou un DMN, ses noms, libellés et descriptions traduits. */
+    /**
+     * Un BPMN ou un DMN, ses noms, libellés et descriptions traduits. Le {@code name} d'un élément qui le lit comme un code
+     * (message, signal, sortie ou donnée d'entrée DMN, élément {@code flowable:…}) n'est jamais traduit : le renommer
+     * casserait le routage. La traduction est un texte brut, échappé pour le XML.
+     */
     String xml(String file) {
         String xml = read(dir.resolve(file));
         if (!english) {
@@ -63,23 +67,54 @@ final class DemoExample {
         }
         // Une seule passe : un texte déjà traduit n'est jamais retraduit.
         Map<String, String> table = names();
-        Matcher matcher = TRANSLATABLE.matcher(xml);
+        Matcher matcher = DESCRIPTION_OR_TAG.matcher(xml);
         StringBuilder out = new StringBuilder(xml.length());
         while (matcher.find()) {
-            String text = matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
-            String translated = table.getOrDefault(text, text);
-            String replacement = matcher.group(2) != null
-                    ? " " + matcher.group(1) + "=\"" + translated + "\""
-                    : "<description>" + translated + "</description>";
+            String replacement = matcher.group(1) != null
+                    ? "<description>" + translate(matcher.group(1), table) + "</description>"
+                    : "<" + matcher.group(2) + attributes(matcher.group(2), matcher.group(3), table);
             matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(out);
         return out.toString();
     }
 
-    /** {@code name="…"} ou {@code label="…"} (groupes 1 et 2), ou {@code <description>…</description>} (groupe 3). */
-    private static final Pattern TRANSLATABLE =
-            Pattern.compile("\\s(name|label)=\"([^\"]*)\"|<description>([^<]*)</description>");
+    /** {@code <description>…</description>} (groupe 1), ou le début d'une balise ouvrante : nom (2), attributs (3). */
+    private static final Pattern DESCRIPTION_OR_TAG = Pattern.compile(
+            "<description>([^<]*)</description>|<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)");
+
+    private static final Pattern ATTRIBUTE = Pattern.compile("(\\s)(name|label)(\\s*=\\s*)\"([^\"]*)\"");
+
+    /** Éléments dont le {@code name} est un code lu par le moteur (nom local, sans préfixe d'espace de noms). */
+    static final Set<String> CODE_NAMED = Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");
+
+    static boolean nameIsCode(String element) {
+        int colon = element.indexOf(':');
+        return element.startsWith("flowable:") || CODE_NAMED.contains(colon < 0 ? element : element.substring(colon + 1));
+    }
+
+    private static String attributes(String element, String attributes, Map<String, String> table) {
+        boolean codeName = nameIsCode(element);
+        Matcher matcher = ATTRIBUTE.matcher(attributes);
+        StringBuilder out = new StringBuilder(attributes.length());
+        while (matcher.find()) {
+            String text = matcher.group(4);
+            String value = "name".equals(matcher.group(2)) && codeName ? text : translate(text, table);
+            matcher.appendReplacement(out, Matcher.quoteReplacement(
+                    matcher.group(1) + matcher.group(2) + matcher.group(3) + "\"" + value + "\""));
+        }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    private static String translate(String text, Map<String, String> table) {
+        String translated = table.get(text);
+        return translated == null ? text : escape(translated);
+    }
+
+    private static String escape(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
 
     byte[] bytes(String file) {
         return xml(file).getBytes(StandardCharsets.UTF_8);

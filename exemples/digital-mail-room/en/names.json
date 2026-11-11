@@ -50,12 +50,5 @@
   "Tri du courrier entrant": "Incoming mail sorting",
   "Trier le courrier": "Sort the mail",
   "Type de dossier": "Case type",
-  "courrierRecu": "courrierRecu",
-  "decisionTableReferenceKey": "decisionTableReferenceKey",
-  "routageAction": "routageAction",
-  "routageDelaiJours": "routageDelaiJours",
-  "routageProcessus": "routageProcessus",
-  "routageService": "routageService",
-  "routageTypeDossier": "routageTypeDossier",
   "Échéance dépassée": "Due date passed"
 }

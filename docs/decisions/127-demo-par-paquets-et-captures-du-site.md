@@ -46,7 +46,9 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
     `DemoTranslationsTest` à chaque `verify` ;
   - BPMN et DMN : pas de copie (un processus généré de 45 Ko dériverait). `en/names.json` traduit, texte français exact
     vers texte anglais, les attributs `name` et `label` et les éléments `description` ; le test exige une entrée pour
-    chacun ;
+    chacun. Le `name` d'un élément qui le lit comme un code (message, signal, sortie ou donnée d'entrée DMN, élément
+    `flowable:…`) n'est jamais traduit et n'a pas d'entrée : le renommer casserait le routage en anglais seulement
+    (revue de clôture) ;
   - les textes écrits dans les paquets (objets des courriers, fonctions des arrivées, libellés) ont leurs deux langues
     dans le code du paquet ;
   - `scripts/demo.sh` passe aussi `APP_I18N_DEFAULT_LOCALE` à la langue de la démo.

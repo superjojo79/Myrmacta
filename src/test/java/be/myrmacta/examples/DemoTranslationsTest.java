@@ -24,13 +24,17 @@ import tools.jackson.databind.json.JsonMapper;
  * TODO §127 (D-DEMO-LOCALE-FILES, lot 2 de #55) — la variante anglaise des exemples de la démo ne dérive pas du français :
  * chaque copie JSON de {@code en/} a la structure et les codes de son original (seuls les textes visibles changent, et les
  * expressions {@code ${…}} restent les mêmes ; {@code name} n'est un texte que pour un connecteur, ailleurs c'est un code) ; {@code en/names.json} traduit chaque nom, libellé et description des BPMN et
- * DMN de l'exemple, et rien d'autre.
+ * DMN de l'exemple, et rien d'autre : pas les codes (nom d'un message, d'une sortie DMN, champ {@code flowable:…}).
  */
 class DemoTranslationsTest {
 
     private static final ObjectMapper JSON = JsonMapper.builder().build();
     private static final Set<String> TEXT_KEYS = Set.of("label", "helpText", "group", "subject", "textBody", "htmlBody");
-    private static final Pattern ATTRIBUTE = Pattern.compile("\\s(?:name|label)=\"([^\"]*)\"");
+    private static final Pattern TAG = Pattern.compile("<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*\"[^\"]*\")*)");
+    private static final Pattern ATTRIBUTE = Pattern.compile("\\s(name|label)\\s*=\\s*\"([^\"]*)\"");
+    /** Comme {@code DemoExample} : le {@code name} de ces éléments est un code, jamais traduit. */
+    private static final Set<String> CODE_NAMED =
+            Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");
     private static final Pattern DESCRIPTION = Pattern.compile("<description>([^<]*)</description>");
     private static final Pattern EXPRESSION = Pattern.compile("\\$\\{[^}]*}");
 
@@ -74,13 +78,28 @@ class DemoTranslationsTest {
         try (Stream<Path> files = Files.list(example)) {
             for (Path file : files.filter(p -> p.toString().endsWith(".bpmn20.xml") || p.toString().endsWith(".dmn")).toList()) {
                 String xml = Files.readString(file);
-                collect(ATTRIBUTE.matcher(xml), texts);
+                Matcher tag = TAG.matcher(xml);
+                while (tag.find()) {
+                    boolean codeName = nameIsCode(tag.group(1));
+                    Matcher attribute = ATTRIBUTE.matcher(tag.group(2));
+                    while (attribute.find()) {
+                        if (!(codeName && attribute.group(1).equals("name")) && !attribute.group(2).isBlank()) {
+                            texts.add(attribute.group(2));
+                        }
+                    }
+                }
                 collect(DESCRIPTION.matcher(xml), texts);
             }
         }
         assertThat(texts).as("textes sans traduction").isSubsetOf(names.keySet());
-        assertThat(names.keySet()).as("traductions de textes absents des BPMN et DMN").isSubsetOf(texts);
+        // Un code (nom de message, de variable, champ flowable) n'a rien à faire dans la table : le traduire casserait le routage.
+        assertThat(names.keySet()).as("traductions de textes absents des BPMN et DMN, ou de codes").isSubsetOf(texts);
         assertThat(names.values()).as("traductions vides").noneMatch(String::isBlank);
+    }
+
+    private static boolean nameIsCode(String element) {
+        int colon = element.indexOf(':');
+        return element.startsWith("flowable:") || CODE_NAMED.contains(colon < 0 ? element : element.substring(colon + 1));
     }
 
     private static void collect(Matcher matcher, Set<String> into) {

@@ -1,0 +1,7 @@
+{
+  "templateKey": "accuse-reception-courrier",
+  "label": "Mail acknowledgement of receipt",
+  "subject": "Acknowledgement of receipt: [[${variables.accuseObjet}]]",
+  "textBody": "Hello,\n\nWe have received your mail \"[[${variables.accuseObjet}]]\" on [[${variables.dateReception}]].\n\nIt is registered under reference [[${dossier.reference}]] and will be handled by our departments.\n\nThis is an automatic message.\nThe mail room",
+  "htmlBody": "<p>Hello,</p>\n<p>We have received your mail \"<i th:text=\"${variables.accuseObjet}\">subject</i>\" on <span th:text=\"${variables.dateReception}\">date</span>.</p>\n<p>It is registered under reference <b th:text=\"${dossier.reference}\">reference</b> and will be handled by our departments.</p>\n<p><small>This is an automatic message.<br/>The mail room</small></p>"
+}

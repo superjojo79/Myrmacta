@@ -19,8 +19,6 @@ import be.myrmacta.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveTaskQuestionSchemaUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
 import be.myrmacta.infrastructure.config.TenantProperties;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,7 +71,7 @@ public class OnboardingDemoPack implements DemoPack {
     private static final Duration STEP_TIMEOUT = Duration.ofSeconds(60);
     private static final Logger log = LoggerFactory.getLogger(OnboardingDemoPack.class);
 
-    private final Path example;
+    private final DemoExample example;
     private final ObjectMapper json;
     private final TenantProperties tenant;
     private final DossierTypeRepository types;
@@ -93,13 +91,13 @@ public class OnboardingDemoPack implements DemoPack {
     private final TransactionTemplate transaction;
 
     public OnboardingDemoPack(@Value("${app.demo.onboarding.dir:exemples/onboarding-collaborateur}") String exampleDir,
-            ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, CreateDossierTypeUseCase createType,
+            @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, CreateDossierTypeUseCase createType,
             SaveTaskQuestionSchemaUseCase saveQuestions, SaveWorkflowTypeConfigUseCase saveConfig,
             ManageConnectorInstanceUseCase connectors, DeployBpmnProcessUseCase deployBpmn, CreateDossierUseCase createDossier,
             UpdateDossierStatusUseCase updateStatus, ManualStartOrchestrator starter, CompleteTaskUseCase completeTask,
             DemoFakeApis apis, TaskService tasks, RuntimeService runtime, ManagementService management,
             PlatformTransactionManager transactionManager) {
-        this.example = Path.of(exampleDir);
+        this.example = new DemoExample(Path.of(exampleDir), locale, json);
         this.json = json;
         this.tenant = tenant;
         this.types = types;
@@ -136,8 +134,8 @@ public class OnboardingDemoPack implements DemoPack {
 
     @Override
     public void install() {
-        if (!Files.isDirectory(example)) {
-            throw new IllegalStateException("demo: onboarding example directory not found: " + example.toAbsolutePath()
+        if (!Files.isDirectory(example.dir())) {
+            throw new IllegalStateException("demo: onboarding example directory not found: " + example.dir().toAbsolutePath()
                     + " (start from the repository root, or set APP_DEMO_ONBOARDING_DIR)");
         }
         installExample();
@@ -168,7 +166,7 @@ public class OnboardingDemoPack implements DemoPack {
 
         // Connecteurs « service seul » de l'exemple, sur les faux services (en-tête statique pour les trois, comme le test de
         // l'exemple) ; le BPMN reçoit leurs identifiants à la place des marqueurs de config/connecteurs.json.
-        String bpmn = string("onboarding-collaborateur.bpmn20.xml");
+        String bpmn = example.xml("onboarding-collaborateur.bpmn20.xml");
         for (JsonNode connector : read("config/connecteurs.json")) {
             String name = connector.get("name").asString();
             Map<String, Object> connectorConfig = new LinkedHashMap<>();
@@ -176,24 +174,25 @@ public class OnboardingDemoPack implements DemoPack {
             connectorConfig.put("baseUrl", apis.baseUrl() + "/" + name.toLowerCase(java.util.Locale.ROOT));
             connectorConfig.put("authHeaderValue", "Bearer demo-" + name.toLowerCase(java.util.Locale.ROOT));
             ConnectorInstanceData created = connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                    name + " (démo)", connector.get("connectorType").asString(), true, connectorConfig), ADMIN);
+                    name + example.text(" (démo)", " (demo)"), connector.get("connectorType").asString(), true, connectorConfig), ADMIN);
             bpmn = bpmn.replace(connector.get("_placeholder").asString(), created.id().toString());
         }
         deployBpmn.deploy("onboarding-collaborateur.bpmn20.xml", bpmn.getBytes(StandardCharsets.UTF_8));
     }
 
     private void seedArrivals() {
-        String provisioned = arrive("Élise", "Van den Broeck", "elise.vdb@example.org", "Développeuse Java", "IT",
-                "DEVELOPPEUR");
+        String provisioned = arrive("Élise", "Van den Broeck", "elise.vdb@example.org",
+                example.text("Développeuse Java", "Java developer"), "IT", "DEVELOPPEUR");
         complete(provisioned, "validationManager", Map.of("decisionManager", "APPROUVER"));
         advanceTo(provisioned, "validationAcces");
         complete(provisioned, "validationAcces", Map.of("niveauAcces", "DEVELOPPEURS"));
         advanceToEnd(provisioned);
 
-        arrive("Thomas", "Peeters", "thomas.peeters@example.org", "Gestionnaire de dossiers", "OPERATIONS", "STANDARD");
+        arrive("Thomas", "Peeters", "thomas.peeters@example.org", example.text("Gestionnaire de dossiers", "Case officer"),
+                "OPERATIONS", "STANDARD");
 
-        String awaitingIt = arrive("Sarah", "Dubois", "sarah.dubois@example.org", "Directrice financière", "FINANCE",
-                "DIRECTION");
+        String awaitingIt = arrive("Sarah", "Dubois", "sarah.dubois@example.org",
+                example.text("Directrice financière", "Chief financial officer"), "FINANCE", "DIRECTION");
         complete(awaitingIt, "validationManager", Map.of("decisionManager", "APPROUVER"));
         advanceTo(awaitingIt, "validationAcces");
     }
@@ -203,7 +202,8 @@ public class OnboardingDemoPack implements DemoPack {
      * ({@link DemoFakeApis#OUTAGE_DOMAIN}). Ses relances épuisées, l'appel devient un incident rejouable.
      */
     void seedIncident() {
-        String instance = arrive("Nadia", "Claes", "nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN, "Comptable",
+        String instance = arrive("Nadia", "Claes", "nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN,
+                example.text("Comptable", "Accountant"),
                 "FINANCE", "STANDARD");
         complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
         advance(instance, () -> management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0,
@@ -220,7 +220,7 @@ public class OnboardingDemoPack implements DemoPack {
         fields.put("fonction", function);
         fields.put("departement", department);
         fields.put("profilPoste", profile);
-        String label = "Arrivée — " + firstName + " " + lastName + " — " + fields.get("dateArrivee");
+        String label = example.text("Arrivée — ", "New hire — ") + firstName + " " + lastName + " — " + fields.get("dateArrivee");
         Dossier dossier = transaction.execute(status -> createDossier.create(
                 new CreateDossierUseCase.CreateDossierCommand(tenant.id(), TYPE, label, fields, ACTOR), ADMIN));
         transaction.executeWithoutResult(status -> updateStatus.update(
@@ -294,14 +294,6 @@ public class OnboardingDemoPack implements DemoPack {
     }
 
     private JsonNode read(String file) {
-        return json.readTree(string(file));
-    }
-
-    private String string(String file) {
-        try {
-            return Files.readString(example.resolve(file));
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+        return example.json(file);
     }
 }

@@ -39,6 +39,17 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
 - **D-DEMO-BACKDATE** — le SLA se mesure depuis `createdAt`, posé à la création. Pour montrer des SLA dépassés et un
   historique de rapports, le paquet « états » antidate les dossiers qu'il a lui-même créés (`createdAt`, `closedAt`), par
   le port `DossierRepository`. C'est le seul écart aux cas d'usage, limité à la démo.
+- **D-DEMO-LOCALE-FILES** — forme de la variante anglaise (lot 2) :
+  - fichiers JSON : une copie traduite à côté, au même chemin sous `en/` (`exemples/<ex>/en/config/…`). Seules les
+    valeurs des clés de texte visible changent (`label`, `helpText`, `group`, `subject`, `textBody`, `htmlBody`,
+    les commentaires `_…`, et `name` pour un connecteur seulement : ailleurs c'est un code) ; codes, clés et structure restent identiques, ce que vérifie
+    `DemoTranslationsTest` à chaque `verify` ;
+  - BPMN et DMN : pas de copie (un processus généré de 45 Ko dériverait). `en/names.json` traduit, texte français exact
+    vers texte anglais, les attributs `name` et `label` et les éléments `description` ; le test exige une entrée pour
+    chacun ;
+  - les textes écrits dans les paquets (objets des courriers, fonctions des arrivées, libellés) ont leurs deux langues
+    dans le code du paquet ;
+  - `scripts/demo.sh` passe aussi `APP_I18N_DEFAULT_LOCALE` à la langue de la démo.
 - **D-DEMO-CAPTURE-OUT** — la sortie des captures (`frontend/capture/out/`) n'est pas versionnée ; le site
   la reprend.
 

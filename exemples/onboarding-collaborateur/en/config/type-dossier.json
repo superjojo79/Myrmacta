@@ -1,0 +1,160 @@
+{
+  "code": "ONBOARDING_COLLABORATEUR",
+  "label": "New hire",
+  "workflowKey": "onboardingCollaborateur",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "prenom",
+      "label": "First name",
+      "type": "STRING",
+      "required": true,
+      "group": "Employee",
+      "width": "HALF"
+    },
+    {
+      "name": "nom",
+      "label": "Last name",
+      "type": "STRING",
+      "required": true,
+      "group": "Employee",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "emailPersonnel",
+      "label": "Personal e-mail",
+      "type": "STRING",
+      "required": true,
+      "group": "Employee",
+      "width": "HALF",
+      "helpText": "Address before the start date; sent to the HRIS."
+    },
+    {
+      "name": "dateArrivee",
+      "label": "Start date",
+      "type": "DATE",
+      "required": true,
+      "group": "Employee",
+      "width": "HALF"
+    },
+    {
+      "name": "fonction",
+      "label": "Job title",
+      "type": "STRING",
+      "required": true,
+      "group": "Position",
+      "width": "HALF"
+    },
+    {
+      "name": "departement",
+      "label": "Department",
+      "type": "SELECT",
+      "required": true,
+      "group": "Position",
+      "width": "HALF",
+      "options": [
+        "FINANCE",
+        "IT",
+        "RH",
+        "VENTES",
+        "OPERATIONS"
+      ]
+    },
+    {
+      "name": "managerLogin",
+      "label": "Manager login",
+      "type": "STRING",
+      "required": true,
+      "group": "Position",
+      "width": "HALF",
+      "helpText": "IAM login of the manager who approves the hire and receives the equipment."
+    },
+    {
+      "name": "profilPoste",
+      "label": "Position profile",
+      "type": "SELECT",
+      "required": true,
+      "group": "Position",
+      "width": "HALF",
+      "defaultValue": "STANDARD",
+      "options": [
+        "STANDARD",
+        "DEVELOPPEUR",
+        "DIRECTION"
+      ],
+      "helpText": "DEVELOPPEUR and DIRECTION require IT to approve the access before the equipment ticket."
+    },
+    {
+      "name": "matriculeSirh",
+      "label": "HRIS employee number",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "width": "HALF",
+      "searchable": true,
+      "managedByWorkflow": true,
+      "helpText": "Written by the workflow (HRIS response); cannot be edited by hand."
+    },
+    {
+      "name": "identifiantIam",
+      "label": "IAM identifier",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "width": "HALF",
+      "managedByWorkflow": true,
+      "helpText": "Written by the workflow (IAM response); cannot be edited by hand."
+    },
+    {
+      "name": "loginIam",
+      "label": "Login",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "width": "HALF",
+      "searchable": true,
+      "managedByWorkflow": true,
+      "helpText": "Written by the workflow (IAM response); cannot be edited by hand."
+    },
+    {
+      "name": "accesEtendus",
+      "label": "Extended access granted",
+      "type": "BOOLEAN",
+      "required": false,
+      "group": "Provisioning",
+      "width": "HALF",
+      "managedByWorkflow": true,
+      "helpText": "True when IT approved extended access and the group was added in the IAM."
+    },
+    {
+      "name": "ticketMateriel",
+      "label": "Equipment ticket",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "width": "HALF",
+      "managedByWorkflow": true,
+      "helpText": "Written by the workflow (ITSM response); cannot be edited by hand."
+    },
+    {
+      "name": "dernierIncident",
+      "label": "Last technical incident",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "managedByWorkflow": true,
+      "helpText": "Step, HTTP status and start of the response of the last failed call."
+    },
+    {
+      "name": "journalCompensation",
+      "label": "Compensation",
+      "type": "STRING",
+      "required": false,
+      "group": "Provisioning",
+      "managedByWorkflow": true,
+      "helpText": "Deletions made in the applications when provisioning is abandoned."
+    }
+  ]
+}

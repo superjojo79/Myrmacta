@@ -12,9 +12,6 @@ import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.workflow.model.Provenance;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.infrastructure.config.TenantProperties;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
@@ -29,6 +26,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * TODO §127 (D-DEMO-BACKDATE, lot 1d de #55) — paquet « états » de la démo, installé après la mail room et l'onboarding,
@@ -71,7 +69,7 @@ public class StatesDemoPack implements DemoPack {
             new Invoice("compta@fournisseur.example", "Facture 2026-106", 4, null),
             new Invoice("billing@cloud.example", "Invoice CL-78590", 1, null));
 
-    private final Path mailRoomExample;
+    private final DemoExample mailRoomExample;
     private final TenantProperties tenant;
     private final DossierTypeRepository types;
     private final UpdateDossierTypeUseCase updateType;
@@ -84,10 +82,10 @@ public class StatesDemoPack implements DemoPack {
     private final Clock clock;
 
     public StatesDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String mailRoomDir,
-            TenantProperties tenant, DossierTypeRepository types, UpdateDossierTypeUseCase updateType,
+            @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, UpdateDossierTypeUseCase updateType,
             CreateDossierUseCase createDossier, UpdateDossierStatusUseCase updateStatus, DossierRepository dossiers,
             ProposeDraftUseCase drafts, OnboardingDemoPack onboarding, PlatformTransactionManager transactionManager) {
-        this.mailRoomExample = Path.of(mailRoomDir);
+        this.mailRoomExample = new DemoExample(Path.of(mailRoomDir), locale, json);
         this.tenant = tenant;
         this.types = types;
         this.updateType = updateType;
@@ -140,9 +138,10 @@ public class StatesDemoPack implements DemoPack {
 
     /** Créée et menée par les cas d'usage, puis antidatée (D-DEMO-BACKDATE). */
     private void invoice(Invoice invoice, Instant now) {
+        String subject = mailRoomExample.text(invoice.subject(), invoice.subject().replace("Facture", "Invoice"));
         Dossier created = transaction.execute(status -> createDossier.create(new CreateDossierUseCase.CreateDossierCommand(
-                tenant.id(), "FACTURE", invoice.subject() + " — " + invoice.supplier(),
-                Map.of("expediteur", invoice.supplier(), "objet", invoice.subject()), ACTOR), ADMIN));
+                tenant.id(), "FACTURE", subject + " — " + invoice.supplier(),
+                Map.of("expediteur", invoice.supplier(), "objet", subject), ACTOR), ADMIN));
         status(created, DossierStatus.OUVERT);
         status(created, invoice.handledInHours() == null ? DossierStatus.EN_COURS : DossierStatus.CLOTURE);
 
@@ -166,19 +165,17 @@ public class StatesDemoPack implements DemoPack {
     private void proposeRoutingDraft() {
         String xml = routingWithPrinterRule();
         transaction.executeWithoutResult(status -> drafts.proposeDmn(ADMIN, Provenance.MCP, ROUTING, xml,
-                "Factures de l'imprimerie : comptabilité, 30 jours", false));
+                mailRoomExample.text("Factures de l'imprimerie : comptabilité, 30 jours",
+                        "Printer invoices: accounting, 30 days"), false));
     }
 
     String routingWithPrinterRule() {
-        String xml;
-        try {
-            xml = Files.readString(mailRoomExample.resolve("routage-courrier.dmn"));
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+        String xml = mailRoomExample.xml("routage-courrier.dmn");
+        String description = mailRoomExample.text("Facture de l'imprimerie : la comptabilité, 30 jours.",
+                "Invoice from the printer: accounting, 30 days.");
         String rule = """
                       <rule id="regleFactureImprimerie">
-                        <description>Facture de l'imprimerie : la comptabilité, 30 jours.</description>
+                        <description>%s</description>
                         <inputEntry id="regleFactureImprimerieCanal"><text>"EMAIL"</text></inputEntry>
                         <inputEntry id="regleFactureImprimerieDomaine"><text>"imprimerie.example"</text></inputEntry>
                         <outputEntry id="regleFactureImprimerieAction"><text>"OUVRIR"</text></outputEntry>
@@ -187,7 +184,7 @@ public class StatesDemoPack implements DemoPack {
                         <outputEntry id="regleFactureImprimerieProcessus"><text>"traiterFacture"</text></outputEntry>
                         <outputEntry id="regleFactureImprimerieDelai"><text>30</text></outputEntry>
                       </rule>
-                """;
+                """.formatted(description);
         int end = xml.indexOf("</decisionTable>");
         if (end < 0) {
             throw new IllegalStateException("demo: routage-courrier.dmn has no decision table");

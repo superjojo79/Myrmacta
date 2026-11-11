@@ -9,6 +9,9 @@
 #                                  factures antidatées, incident, brouillon MCP). Un paquet déjà installé n'est pas touché.
 #   scripts/demo.sh reset [--yes]  vide la base embarquée (application ARRÊTÉE) : le prochain `start` rejoue la démo
 #
+# Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; elle fixe aussi la langue par défaut de l'interface. Entre deux langues,
+# remettre la base à zéro (reset) : un paquet déjà installé n'est pas réinstallé.
+#
 # Connexion : comme tout démarrage local (docs/guides/GETTING-STARTED.md §3, Keycloak et variables OIDC dans .env).
 # Répertoire de la base : APP_EMBEDDED_DB_DATA_DIR (voir scripts/embedded-db.sh). Démo de la seule mail room :
 # scripts/demo-mailroom.sh.
@@ -26,6 +29,8 @@ case "${1:-}" in
       SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local,embedded-db,demo}" \
       APP_DEMO_MAILROOM_DIR="${APP_DEMO_MAILROOM_DIR:-exemples/digital-mail-room}" \
       APP_DEMO_ONBOARDING_DIR="${APP_DEMO_ONBOARDING_DIR:-exemples/onboarding-collaborateur}" \
+      APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \
+      APP_I18N_DEFAULT_LOCALE="${APP_I18N_DEFAULT_LOCALE:-${APP_DEMO_LOCALE:-fr}}" \
       java -jar "$jar"
     ;;
   reset)
@@ -33,7 +38,7 @@ case "${1:-}" in
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,14p' "$0"
+    sed -n '2,17p' "$0"
     exit 2
     ;;
 esac

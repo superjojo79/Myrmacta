@@ -105,7 +105,7 @@ Chaque lot se livre seul, en une PR (registre §31).
 | 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | livré | #60 |
 | 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | en revue | #61 |
 | 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | en revue | #62 |
-| 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | à faire | |
+| 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | en cours | |
 | 3 | Cadre de capture Playwright, 14 screenshots FR/EN, guide de capture | à faire | |
 
 Prochaine action : fusion de #61 puis de la PR du lot 1d (recibler la PR du lot 1d sur `main` **avant** de supprimer la
@@ -129,6 +129,11 @@ branche de #61 : supprimer la base d'une PR empilée la ferme) ; ensuite lot 2 (
 | 2026-11-11 | lot 1d : les 6 classes de tests de démo (`DemoSeederTest` … `StatesDemoPackIT`) | 13 tests, 0 échec |
 | 2026-11-11 | lot 1d : `./mvnw clean verify` puis `scripts/check-no-embedded-db-in-jar.sh` | BUILD SUCCESS, 4 894 tests, 0 échec ; jar OK |
 | 2026-11-11 | lot 1d : `scripts/check-docs.sh` | vert |
+| 2026-11-11 | lot 2 : `DemoTranslationsTest` et `DemoExampleTest` avant les traductions et le code | rouge : traductions et `DemoExample` absents |
+| 2026-11-11 | lot 2 : `DemoTranslationsTest` | 4 tests, 0 échec |
+| 2026-11-11 | lot 2 : les 8 classes de tests de démo, dont `DemoLocaleIT` (démo complète en anglais) | 19 tests, 0 échec |
+| 2026-11-11 | lot 2 : `./mvnw clean verify` puis `scripts/check-no-embedded-db-in-jar.sh` | BUILD SUCCESS, 4 898 tests, 0 échec ; jar OK |
+| 2026-11-11 | lot 2 : `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

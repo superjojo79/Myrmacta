@@ -559,6 +559,9 @@ scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OID
   - les « états » : objectifs SLA et onze factures sur quatre semaines (dont des SLA dépassés) pour la supervision
     et les rapports, un incident rejouable (l'arrivée de Nadia Claes, dont l'appel au SIRH échoue) et un brouillon de
     la table de routage proposé par MCP, à publier depuis Admin → Brouillons.
+- **En anglais :** `APP_DEMO_LOCALE=en scripts/demo.sh start` sur une base vide (`scripts/demo.sh reset` d'abord si
+  la démo française est installée). Types, statuts, questionnaires, noms des étapes et données semées sont en anglais,
+  et l'interface s'ouvre en anglais. Les traductions des exemples vivent dans `exemples/<exemple>/en/`.
 - **Démarrages suivants :** un paquet déjà installé n'est pas touché ; un paquet ajouté depuis s'installe.
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.
 - Comme `demo-mailroom`, le profil n'existe que dans le build `embedded-db`.

@@ -24,8 +24,6 @@ import be.myrmacta.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import be.myrmacta.domain.workflow.port.in.DeployDecisionTableUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
 import be.myrmacta.infrastructure.config.TenantProperties;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,7 +63,7 @@ public class MailRoomDemoPack implements DemoPack {
     private static final Logger log = LoggerFactory.getLogger(MailRoomDemoPack.class);
     private static final AccessContext.User ADMIN = AccessContext.user(DEMO_ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
 
-    private final Path example;
+    private final DemoExample example;
     private final ObjectMapper json;
     private final TenantProperties tenant;
     private final DossierTypeRepository types;
@@ -83,13 +81,14 @@ public class MailRoomDemoPack implements DemoPack {
     private final DepositMailUseCase deposits;
     private final TransactionTemplate transaction;
 
-    public MailRoomDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String exampleDir, ObjectMapper json,
+    public MailRoomDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String exampleDir,
+            @Value("${app.demo.locale:fr}") String locale, ObjectMapper json,
             TenantProperties tenant, DossierTypeRepository types, UserGroupsUseCase groups, CreateDossierTypeUseCase createType,
             SaveWorkflowTypeConfigUseCase saveConfig, DeployDecisionTableUseCase deployDmn, DeployBpmnProcessUseCase deployBpmn,
             ManageReplyWorkflowUseCase replyWorkflows, ManageDeadlineUseCase deadlines, ManageConnectorInstanceUseCase connectors,
             CreateNotificationTemplateUseCase createNotificationTemplate, ActivateNotificationTemplateUseCase activateNotificationTemplate,
             ConnectorTriggerRuntime runtime, DepositMailUseCase deposits, PlatformTransactionManager transactionManager) {
-        this.example = Path.of(exampleDir);
+        this.example = new DemoExample(Path.of(exampleDir), locale, json);
         this.json = json;
         this.tenant = tenant;
         this.types = types;
@@ -125,8 +124,8 @@ public class MailRoomDemoPack implements DemoPack {
 
     @Override
     public void install() {
-        if (!Files.isDirectory(example)) {
-            throw new IllegalStateException("demo-mailroom: example directory not found: " + example.toAbsolutePath()
+        if (!Files.isDirectory(example.dir())) {
+            throw new IllegalStateException("demo-mailroom: example directory not found: " + example.dir().toAbsolutePath()
                     + " (start from the repository root, or set APP_DEMO_MAILROOM_DIR)");
         }
         installExample();
@@ -184,15 +183,19 @@ public class MailRoomDemoPack implements DemoPack {
         // La boîte e-mail de la démo : pas de serveur de messagerie, l'e-mail est remis comme l'IMAP le ferait. Instance
         // désactivée, jamais interrogée ; le type « dépôt » ne se déclenche jamais seul.
         ConnectorInstanceData mailbox = connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                "Boîte courrier (démo, e-mail simulé)", depositExample.get("connectorType").asString(), false,
+                example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)"), depositExample.get("connectorType").asString(), false,
                 Map.of("processKey", "triCourrier", "dossierTypeCode", "COURRIER")), ADMIN);
 
-        email(mailbox, "<demo-f117@fournisseur.example>", "compta@fournisseur.example", "Facture 2026-117",
-                List.of(new InboundAttachment("facture-2026-117.pdf", "application/pdf", pdf("Facture 2026-117"))));
+        String invoice = example.text("Facture 2026-117", "Invoice 2026-117");
+        email(mailbox, "<demo-f117@fournisseur.example>", "compta@fournisseur.example", invoice,
+                List.of(new InboundAttachment(example.text("facture-2026-117.pdf", "invoice-2026-117.pdf"), "application/pdf",
+                        pdf(invoice))));
+        String fine = example.text("Amende de stationnement 2026-0042", "Parking fine 2026-0042");
         transaction.executeWithoutResult(status -> deposits.deposit(depositPoint.id(),
-                new DepositFile("amende-2026-0042.pdf", pdf("Amende de stationnement 2026-0042")), "pv@police.example",
-                "Amende de stationnement 2026-0042", ADMIN));
-        email(mailbox, "<demo-q1@ailleurs.example>", "quelquun@ailleurs.example", "Question diverse", List.of());
+                new DepositFile(example.text("amende-2026-0042.pdf", "fine-2026-0042.pdf"), pdf(fine)), "pv@police.example",
+                fine, ADMIN));
+        email(mailbox, "<demo-q1@ailleurs.example>", "quelquun@ailleurs.example",
+                example.text("Question diverse", "General question"), List.of());
     }
 
     private void email(ConnectorInstanceData mailbox, String messageId, String from, String subject, List<InboundAttachment> files) {
@@ -204,19 +207,11 @@ public class MailRoomDemoPack implements DemoPack {
     }
 
     private JsonNode read(String file) {
-        try {
-            return json.readTree(Files.readString(example.resolve(file)));
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+        return example.json(file);
     }
 
     private byte[] bytes(String file) {
-        try {
-            return Files.readAllBytes(example.resolve(file));
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+        return example.bytes(file);
     }
 
     /** Un PDF minimal mais bien formé (une page, un texte), pour la démo. */

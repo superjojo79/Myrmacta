@@ -1,0 +1,83 @@
+[
+  {
+    "schemaKey": "validation-manager-onboarding",
+    "label": "Manager approval",
+    "fields": [
+      {
+        "name": "decisionManager",
+        "label": "Decision",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "APPROUVER",
+          "CORRIGER",
+          "REFUSER"
+        ],
+        "group": "Decision",
+        "width": "HALF",
+        "helpText": "APPROUVER starts the creation in the HRIS, the IAM and the ITSM. CORRIGER sends the record back to HR. REFUSER closes the request without creating anything."
+      },
+      {
+        "name": "commentaireManager",
+        "label": "Comment",
+        "type": "STRING",
+        "required": false,
+        "group": "Decision",
+        "helpText": "What needs correcting, or the reason for refusal."
+      }
+    ]
+  },
+  {
+    "schemaKey": "validation-acces-onboarding",
+    "label": "Access approval",
+    "fields": [
+      {
+        "name": "niveauAcces",
+        "label": "Access granted",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "STANDARD",
+          "DEVELOPPEURS",
+          "DIRECTION"
+        ],
+        "group": "Access",
+        "width": "HALF",
+        "helpText": "STANDARD leaves the account in the default groups; DEVELOPPEURS or DIRECTION adds it to that group in the IAM. This choice, not the profile on the record, decides the group."
+      },
+      {
+        "name": "justificationAcces",
+        "label": "Justification",
+        "type": "STRING",
+        "required": false,
+        "group": "Access"
+      }
+    ]
+  },
+  {
+    "schemaKey": "incident-technique-onboarding",
+    "label": "Technical incident during provisioning",
+    "fields": [
+      {
+        "name": "actionIncident",
+        "label": "Action",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "REESSAYER",
+          "ABANDONNER"
+        ],
+        "group": "Incident",
+        "width": "HALF",
+        "helpText": "REESSAYER replays the failed call (\"Last technical incident\" field of the record). ABANDONNER deletes what was already created in the IAM and the HRIS, then closes the request."
+      },
+      {
+        "name": "noteIncident",
+        "label": "Note",
+        "type": "STRING",
+        "required": false,
+        "group": "Incident"
+      }
+    ]
+  }
+]

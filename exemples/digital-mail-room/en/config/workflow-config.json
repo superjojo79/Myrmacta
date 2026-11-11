@@ -1,0 +1,49 @@
+{
+  "processDefinitionKey": "triCourrier",
+  "label": "Incoming mail sorting",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "DRAFT",
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "RECU",
+      "label": "Received",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "A_TRIER",
+      "label": "To sort",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "ROUTE",
+      "label": "Routed to a department",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "RATTACHE",
+      "label": "Attached to a case",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "TRAITE",
+      "label": "Handled",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "CLASSE",
+      "label": "Filed, no action",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ]
+}

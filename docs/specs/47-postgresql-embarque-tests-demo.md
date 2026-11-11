@@ -37,11 +37,17 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
     délai, en retard, ouvertes dans le délai et au SLA dépassé ; une arrivée « Nadia Claes » dont l'appel au SIRH tombe
     sur une coupure (adresse en `.invalid`) et finit en incident rejouable ; un brouillon MCP de la table
     `routageCourrier` (une règle « imprimerie » de plus), en attente de publication.
+- **Langue** (D-DEMO-LOCALE, D-DEMO-LOCALE-FILES) : `app.demo.locale` (`APP_DEMO_LOCALE`), `fr` ou `en`, une langue
+  par démarrage. `DemoExample` lit un exemple dans cette langue : en anglais, la copie JSON traduite `en/<chemin>` si
+  elle existe, et les BPMN et DMN dont les attributs `name` et `label` et les éléments `description` passent par
+  `en/names.json` ; les textes écrits dans les paquets ont leurs deux langues. `DemoTranslationsTest` (suite normale)
+  garde les copies alignées sur le français : mêmes clés, mêmes codes, mêmes expressions `${…}`, et une traduction
+  pour chaque nom des BPMN et DMN.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »).
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais).
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

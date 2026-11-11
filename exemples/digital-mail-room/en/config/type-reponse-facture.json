@@ -1,0 +1,17 @@
+{
+  "code": "REPONSE_FACTURE",
+  "label": "Reply to an invoice",
+  "workflowKey": "traiterReponse",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "suite",
+      "label": "Follow-up",
+      "type": "STRING",
+      "required": false,
+      "group": "Reply",
+      "width": "FULL"
+    }
+  ]
+}

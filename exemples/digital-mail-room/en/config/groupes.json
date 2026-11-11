@@ -1,0 +1,27 @@
+[
+  {
+    "code": "COURRIER",
+    "label": "Mail room (sorting queue)",
+    "idpGroup": null
+  },
+  {
+    "code": "COMPTABILITE",
+    "label": "Accounting",
+    "idpGroup": null
+  },
+  {
+    "code": "RH",
+    "label": "Human resources",
+    "idpGroup": null
+  },
+  {
+    "code": "JURIDIQUE",
+    "label": "Legal department",
+    "idpGroup": null
+  },
+  {
+    "code": "DIRECTION_FINANCIERE",
+    "label": "Finance management (escalation)",
+    "idpGroup": null
+  }
+]

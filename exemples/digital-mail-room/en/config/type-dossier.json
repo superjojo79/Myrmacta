@@ -1,0 +1,69 @@
+{
+  "code": "COURRIER",
+  "label": "Incoming mail",
+  "workflowKey": "triCourrier",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "canal",
+      "label": "Channel",
+      "type": "SELECT",
+      "required": true,
+      "defaultValue": "EMAIL",
+      "options": [
+        "EMAIL",
+        "PAPIER",
+        "EBOX"
+      ],
+      "group": "Receipt",
+      "width": "HALF",
+      "searchable": true,
+      "helpText": "Channel through which the mail arrived. The e-mail connector keeps the default value."
+    },
+    {
+      "name": "expediteur",
+      "label": "Sender",
+      "type": "STRING",
+      "required": true,
+      "group": "Receipt",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "objet",
+      "label": "Subject",
+      "type": "STRING",
+      "required": true,
+      "group": "Receipt",
+      "width": "FULL",
+      "searchable": true
+    },
+    {
+      "name": "texte",
+      "label": "Message text",
+      "type": "STRING",
+      "required": false,
+      "group": "Content",
+      "width": "FULL"
+    },
+    {
+      "name": "service",
+      "label": "Recipient department",
+      "type": "STRING",
+      "required": false,
+      "group": "Routing",
+      "width": "HALF",
+      "searchable": true,
+      "helpText": "Set by the routing or by the sorting operator."
+    },
+    {
+      "name": "echeance",
+      "label": "Due date",
+      "type": "DATE",
+      "required": false,
+      "group": "Routing",
+      "width": "HALF"
+    }
+  ]
+}

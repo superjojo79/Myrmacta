@@ -43,11 +43,17 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   `en/names.json` ; les textes écrits dans les paquets ont leurs deux langues. `DemoTranslationsTest` (suite normale)
   garde les copies alignées sur le français : mêmes clés, mêmes codes, mêmes expressions `${…}`, et une traduction
   pour chaque nom des BPMN et DMN.
+- **Compte de démo** (D-DEMO-MEMBERS) : `DemoGroupMembership` ajoute, à sa connexion, le compte `demo` à tous les
+  groupes (après l'avoir inscrit dans l'annuaire), pour que ses tâches de groupe s'affichent.
+- **Captures du site** (D-DEMO-CAPTURE) : `frontend/playwright.capture.config.ts` et `frontend/capture/`
+  (`npm run capture`, `CAPTURE_LANG=fr|en`) pilotent une démo démarrée par `scripts/demo.sh` : connexion Keycloak
+  mémorisée, puis 14 screenshots (S1 à S15 sans S13) dans `frontend/capture/out/<langue>/`, non versionnés. Procédure :
+  [GETTING-STARTED](../guides/GETTING-STARTED.md), « Captures du site ».
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais).
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais), `DemoGroupMembershipTest`.
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

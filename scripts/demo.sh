@@ -25,8 +25,11 @@ case "${1:-}" in
   start)
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/demo.sh build »" >&2; exit 2; }
-    exec env APP_ENVIRONMENT="${APP_ENVIRONMENT:-local}" \
-      SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local,embedded-db,demo}" \
+    # Profils fixés et variables DB_* écartées : un .env de développement (SPRING_PROFILES_ACTIVE=local,
+    # DB_URL vers le PostgreSQL en conteneur) désactiverait sinon la base embarquée.
+    exec env -u DB_URL -u DB_USERNAME -u DB_PASSWORD -u DB_NAME -u DB_PORT \
+      APP_ENVIRONMENT="${APP_ENVIRONMENT:-local}" \
+      SPRING_PROFILES_ACTIVE="local,embedded-db,demo" \
       APP_DEMO_MAILROOM_DIR="${APP_DEMO_MAILROOM_DIR:-exemples/digital-mail-room}" \
       APP_DEMO_ONBOARDING_DIR="${APP_DEMO_ONBOARDING_DIR:-exemples/onboarding-collaborateur}" \
       APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \

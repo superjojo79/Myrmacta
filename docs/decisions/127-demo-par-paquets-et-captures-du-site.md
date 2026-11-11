@@ -50,6 +50,18 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
   - les textes écrits dans les paquets (objets des courriers, fonctions des arrivées, libellés) ont leurs deux langues
     dans le code du paquet ;
   - `scripts/demo.sh` passe aussi `APP_I18N_DEFAULT_LOCALE` à la langue de la démo.
+- **D-DEMO-MEMBERS** (lot 3) — à sa connexion, le compte de démo (`app.demo.group-members`, `demo` par défaut) rejoint
+  tous les groupes de la démo, pour que sa page « Tâches » montre les files des groupes. Un membre est identifié par son
+  sujet OIDC, que Keycloak génère : la démo ne peut pas l'ajouter à l'installation. L'événement d'authentification
+  précède l'inscription dans l'annuaire (D-ASSIGN-DIR) ; l'écouteur inscrit donc d'abord le compte, par le même cas
+  d'usage et après le même contrôle de tenant. Écarté : des groupes Keycloak et un mapping `idpGroup`, que la plateforme
+  enregistre sans s'en servir pour l'appartenance.
+- **Jobs asynchrones des paquets** (lot 3) — avec l'exécuteur asynchrone actif (démo réelle), un paquet attend seulement
+  que le processus atteigne l'étape voulue : exécuter aussi les jobs lui-même les fait se bloquer sur les verrous du
+  dossier. Il ne les exécute que si l'exécuteur est coupé (les tests).
+- **Brouillon DMN en 1.3** (lot 3) — l'éditeur intégré (dmn-js) n'ouvre que le DMN 1.3, alors que la table de routage
+  de l'exemple est en DMN 1.1. Le brouillon MCP du paquet « états » passe la table en DMN 1.3, que le moteur accepte
+  aussi. Le défaut de l'exemple et de la grille intégrée relève d'une issue à part.
 - **D-DEMO-CAPTURE-OUT** — la sortie des captures (`frontend/capture/out/`) n'est pas versionnée ; le site
   la reprend.
 

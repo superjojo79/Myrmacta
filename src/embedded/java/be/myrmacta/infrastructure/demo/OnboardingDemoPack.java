@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.engine.ManagementService;
+import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.task.api.Task;
@@ -68,7 +69,8 @@ public class OnboardingDemoPack implements DemoPack {
     static final String PROCESS = "onboardingCollaborateur";
     private static final String ACTOR = "demo-onboarding";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
-    private static final Duration STEP_TIMEOUT = Duration.ofSeconds(60);
+    /** Large : avec l'exécuteur actif, un appel en échec n'est relancé qu'après le délai de Flowable (10 s, trois fois). */
+    private static final Duration STEP_TIMEOUT = Duration.ofSeconds(120);
     private static final Logger log = LoggerFactory.getLogger(OnboardingDemoPack.class);
 
     private final DemoExample example;
@@ -88,6 +90,7 @@ public class OnboardingDemoPack implements DemoPack {
     private final TaskService tasks;
     private final RuntimeService runtime;
     private final ManagementService management;
+    private final ProcessEngine engine;
     private final TransactionTemplate transaction;
 
     public OnboardingDemoPack(@Value("${app.demo.onboarding.dir:exemples/onboarding-collaborateur}") String exampleDir,
@@ -95,7 +98,7 @@ public class OnboardingDemoPack implements DemoPack {
             SaveTaskQuestionSchemaUseCase saveQuestions, SaveWorkflowTypeConfigUseCase saveConfig,
             ManageConnectorInstanceUseCase connectors, DeployBpmnProcessUseCase deployBpmn, CreateDossierUseCase createDossier,
             UpdateDossierStatusUseCase updateStatus, ManualStartOrchestrator starter, CompleteTaskUseCase completeTask,
-            DemoFakeApis apis, TaskService tasks, RuntimeService runtime, ManagementService management,
+            DemoFakeApis apis, TaskService tasks, RuntimeService runtime, ManagementService management, ProcessEngine engine,
             PlatformTransactionManager transactionManager) {
         this.example = new DemoExample(Path.of(exampleDir), locale, json);
         this.json = json;
@@ -114,6 +117,7 @@ public class OnboardingDemoPack implements DemoPack {
         this.tasks = tasks;
         this.runtime = runtime;
         this.management = management;
+        this.engine = engine;
         this.transaction = new TransactionTemplate(transactionManager);
     }
 
@@ -251,9 +255,10 @@ public class OnboardingDemoPack implements DemoPack {
     }
 
     /**
-     * Exécute les jobs du processus (appels de connecteurs et leurs contrôles, asynchrones) jusqu'à la condition. Un job en
-     * attente de relance après un échec est relancé tout de suite. Un job déjà pris par l'exécuteur asynchrone, s'il est
-     * actif, est laissé à celui-ci.
+     * Fait avancer le processus jusqu'à la condition. Exécuteur asynchrone actif (la démo réelle) : il exécute lui-même les
+     * jobs, le paquet attend seulement ; les exécuter aussi d'ici les fait se bloquer mutuellement sur les verrous du
+     * dossier. Exécuteur coupé (les tests) : le paquet exécute les jobs (appels de connecteurs et leurs contrôles), et
+     * relance tout de suite un job en attente de relance après un échec.
      */
     private void advance(String instance, java.util.function.BooleanSupplier reached, String target) {
         Instant deadline = Instant.now().plus(STEP_TIMEOUT);
@@ -261,6 +266,10 @@ public class OnboardingDemoPack implements DemoPack {
         while (Instant.now().isBefore(deadline)) {
             if (reached.getAsBoolean()) {
                 return;
+            }
+            if (asyncExecutorActive()) {
+                sleep();
+                continue;
             }
             for (var retry : management.createTimerJobQuery().processInstanceId(instance).list()) {
                 try {
@@ -282,6 +291,11 @@ public class OnboardingDemoPack implements DemoPack {
             }
         }
         throw new IllegalStateException("demo: onboarding process " + instance + " did not reach " + target, last);
+    }
+
+    private boolean asyncExecutorActive() {
+        var executor = engine.getProcessEngineConfiguration().getAsyncExecutor();
+        return executor != null && executor.isActive();
     }
 
     private static void sleep() {

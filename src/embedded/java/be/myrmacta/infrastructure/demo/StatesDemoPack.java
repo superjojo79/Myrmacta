@@ -51,6 +51,8 @@ public class StatesDemoPack implements DemoPack {
     private static final String ACTOR = "demo-etats";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
     private static final String ROUTING = "routageCourrier";
+    static final String DMN_11 = "http://www.omg.org/spec/DMN/20151101";
+    static final String DMN_13 = "https://www.omg.org/spec/DMN/20191111/MODEL/";
     private static final Logger log = LoggerFactory.getLogger(StatesDemoPack.class);
 
     /** Une facture de l'historique : il y a {@code daysAgo} jours, traitée en {@code handledInHours} (null : ouverte). */
@@ -190,6 +192,8 @@ public class StatesDemoPack implements DemoPack {
             throw new IllegalStateException("demo: routage-courrier.dmn has no decision table");
         }
         int lineStart = xml.lastIndexOf('\n', end) + 1;
-        return xml.substring(0, lineStart) + rule + xml.substring(lineStart);
+        // L'exemple est en DMN 1.1, que l'éditeur intégré (dmn-js, DMN 1.3) ne sait pas ouvrir : le brouillon passe la
+        // table en DMN 1.3, que le moteur accepte aussi. Sans cela, l'écran « Brouillons » ne pourrait pas l'afficher.
+        return (xml.substring(0, lineStart) + rule + xml.substring(lineStart)).replace(DMN_11, DMN_13);
     }
 }

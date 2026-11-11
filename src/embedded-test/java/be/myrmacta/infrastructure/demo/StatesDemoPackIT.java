@@ -58,6 +58,9 @@ class StatesDemoPackIT {
 
             assertThat(count(jdbc, "select count(*) from dmn_draft where decision_key = 'routageCourrier'"))
                     .as("un brouillon MCP de la table de routage").isEqualTo(1);
+            assertThat(jdbc.queryForObject("select xml from dmn_draft where decision_key = 'routageCourrier'", String.class))
+                    .as("en DMN 1.3, pour que l'éditeur l'ouvre ; avec la règle « imprimerie »")
+                    .contains(StatesDemoPack.DMN_13).doesNotContain(StatesDemoPack.DMN_11).contains("regleFactureImprimerie");
         }
     }
 

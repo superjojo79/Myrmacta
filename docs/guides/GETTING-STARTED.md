@@ -566,6 +566,32 @@ scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OID
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.
 - Comme `demo-mailroom`, le profil n'existe que dans le build `embedded-db`.
 
+### Captures du site (screenshots, TODO §127)
+
+Les screenshots du site sont produits par des scripts Playwright à part (`frontend/capture/`), contre une vraie démo
+(D-DEMO-CAPTURE). Ils ne font pas partie de `test:all` ni de la CI.
+
+1. **Keycloak** du realm de développement (§4) : `docker compose up -d keycloak` (ou `podman compose`).
+2. **Variables** : celles du §3 (OIDC vers `http://localhost:8081/realms/myrmacta`) et la clé de chiffrement des secrets
+   de connecteurs `APP_CONNECTOR_MASTER_KEY` (32 octets en base64), que la démo exige puisqu'elle crée des connecteurs.
+   `scripts/demo.sh` fixe lui-même ses profils et ignore les variables `DB_*` d'un `.env` de développement.
+3. **Démo** dans la langue voulue, sur une base vide : `scripts/demo.sh reset --yes`, puis
+   `APP_DEMO_LOCALE=fr scripts/demo.sh start`. À la connexion, le compte `demo` rejoint les groupes de la démo
+   (D-DEMO-MEMBERS) : sa page « Tâches » montre la file de tri.
+4. **Captures**, une fois les trois paquets installés (journal : `demo: pack 'etats' installed`) :
+
+   ```bash
+   cd frontend && CAPTURE_LANG=fr npm run capture
+   ```
+
+   Sortie : `frontend/capture/out/fr/` (non versionnée), en 1440×900 avec une densité de 2, S15 en vue mobile. Le script
+   se connecte avec `demo` / `demo` (`CAPTURE_USER`, `CAPTURE_PASSWORD`) ; `CAPTURE_BASE_URL` vise une autre instance.
+5. **En anglais** : arrêter la démo, `scripts/demo.sh reset --yes`, `APP_DEMO_LOCALE=en scripts/demo.sh start`, puis
+   `CAPTURE_LANG=en npm run capture`.
+
+Arrêter la démo par Ctrl+C : un arrêt forcé du processus Java laisse tourner le PostgreSQL embarqué, qui garde alors son
+port (15432) et son répertoire.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :

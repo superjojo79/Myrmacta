@@ -98,14 +98,15 @@ Chaque lot se livre seul, en une PR (registre §31).
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | en cours | |
+| 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | en revue | #60 |
 | 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | à faire | |
 | 1c | Paquet autorisation riverain (portail et pré-vérification si configurés) | à faire | |
 | 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | à faire | |
 | 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | à faire | |
 | 3 | Cadre de capture Playwright, 15 screenshots FR/EN, guide de capture | à faire | |
 
-Prochaine action : lot 1a, en TDD (`DemoSeederIT` d'abord).
+Prochaine action : fusion de la PR #60, puis lot 1b (paquet onboarding et `DemoFakeApis`), en TDD, sur une branche
+partie de `main` après fusion.
 
 ## Preuves
 

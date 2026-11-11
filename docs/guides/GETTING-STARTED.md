@@ -550,8 +550,13 @@ scripts/demo.sh build      # jar embedded-db (une fois)
 scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OIDC du §3
 ```
 
-- **Paquets livrés :** la mail room (voir ci-dessous). Les paquets onboarding collaborateur et
-  « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP) suivent (issue #55).
+- **Paquets livrés :**
+  - la mail room (voir ci-dessous) ;
+  - l'onboarding collaborateur ([exemple](../../exemples/onboarding-collaborateur/README.md)) : ses connecteurs
+    pointent sur de faux SIRH, IAM et ITSM embarqués (`http://localhost:18090`, `APP_DEMO_FAKE_APIS_PORT` pour un
+    autre port). Trois arrivées sont semées par le vrai processus : une provisionnée, une qui attend la validation du
+    manager, une qui attend la validation des accès par l'IT.
+- **À venir :** le paquet « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP), issue #55.
 - **Démarrages suivants :** un paquet déjà installé n'est pas touché ; un paquet ajouté depuis s'installe.
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.
 - Comme `demo-mailroom`, le profil n'existe que dans le build `embedded-db`.

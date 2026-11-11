@@ -57,7 +57,7 @@ jobs:
       - name: Embedded database profile tests (demo/QA)
         run: >
           ./mvnw -B test -Pembedded-db -Dskip.frontend=true -Djacoco.skip=true
-          -Dtest='ZonkyEmbeddedDbLauncherTest,EmbeddedDbProfileRestartIT,MailRoomDemoSeederIT,DemoSeederTest,DemoSeederIT'
+          -Dtest='ZonkyEmbeddedDbLauncherTest,EmbeddedDbProfileRestartIT,MailRoomDemoSeederIT,DemoSeederTest,DemoSeederIT,DemoFakeApisTest,OnboardingDemoPackIT'
           -Dsurefire.failIfNoSpecifiedTests=false
 
       # TODO §72 : parcours réel de bout en bout (navigateur + Spring Boot sur PostgreSQL embarqué, sans API simulée).

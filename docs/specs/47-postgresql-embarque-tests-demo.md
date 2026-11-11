@@ -25,12 +25,18 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
 - **Paquets** (`DemoPack`) : chacun installe un exemple, ou un jeu d'états, par les vrais cas d'usage. `DemoSeeder`
   les installe dans l'ordre (`order()`, unique), au démarrage de l'application, et passe ceux que `installed()` dit
   présents. Un paquet en échec arrête la démo.
-- **Paquets livrés :** mail room (`MailRoomDemoPack`, ordre 10). Le profil `demo-mailroom` n'active que lui (§113).
+- **Paquets livrés :**
+  - mail room (`MailRoomDemoPack`, ordre 10) ; le profil `demo-mailroom` n'active que lui (§113) ;
+  - onboarding collaborateur (`OnboardingDemoPack`, ordre 20) : connecteurs sur les faux SIRH, IAM et ITSM de
+    `DemoFakeApis` (D-DEMO-FAKE-APIS, serveur HTTP du JDK sur la boucle locale, port `app.demo.fake-apis.port`, 18090
+    par défaut, fixe pour que les connecteurs installés restent valables au redémarrage) ; trois arrivées semées par le
+    vrai processus (provisionnée, en attente du manager, en attente de l'IT). Le paquet exécute lui-même les jobs
+    asynchrones de ses processus jusqu'à la tâche attendue.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room).
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding).
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

@@ -556,7 +556,9 @@ scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OID
     pointent sur de faux SIRH, IAM et ITSM embarqués (`http://localhost:18090`, `APP_DEMO_FAKE_APIS_PORT` pour un
     autre port). Trois arrivées sont semées par le vrai processus : une provisionnée, une qui attend la validation du
     manager, une qui attend la validation des accès par l'IT.
-- **À venir :** le paquet « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP), issue #55.
+  - les « états » : objectifs SLA et onze factures sur quatre semaines (dont des SLA dépassés) pour la supervision
+    et les rapports, un incident rejouable (l'arrivée de Nadia Claes, dont l'appel au SIRH échoue) et un brouillon de
+    la table de routage proposé par MCP, à publier depuis Admin → Brouillons.
 - **Démarrages suivants :** un paquet déjà installé n'est pas touché ; un paquet ajouté depuis s'installe.
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.
 - Comme `demo-mailroom`, le profil n'existe que dans le build `embedded-db`.

@@ -37,6 +37,16 @@ class DemoFakeApisTest {
     }
 
     @Test
+    void theSirhDropsTheConnection_forAnAddressInTheOutageDomain() {
+        assertThat(apis.respond("POST /sirh/employees",
+                "{\"personalEmail\":\"nadia.claes@example.invalid\"}".getBytes(StandardCharsets.UTF_8)))
+                .isSameAs(DemoFakeApis.Response.DROP);
+        assertThat(apis.respond("POST /sirh/employees",
+                "{\"personalEmail\":\"elise.vdb@example.org\"}".getBytes(StandardCharsets.UTF_8)).status())
+                .isEqualTo(201);
+    }
+
+    @Test
     void groupsAndCompensationsSucceed_unknownRoutesDoNot() {
         assertThat(apis.respond("PUT /iam/users/u-1/groups/developpeurs", new byte[0]).status()).isEqualTo(204);
         assertThat(apis.respond("DELETE /iam/users/u-1", new byte[0]).status()).isEqualTo(204);

@@ -20,8 +20,9 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
   source ; un paquet lit, en anglais, une variante traduite placée à côté. On remet la base à zéro entre deux langues.
   Écarté : deux tenants FR et EN (provisioning et comptes Keycloak de plus).
 - **D-DEMO-FAKE-APIS** — les faux SIRH, IAM et ITSM de l'onboarding sont embarqués dans le profil de démo : serveur HTTP du
-  JDK sur la boucle locale, comme `OnboardingOrchestrationExampleIT`, sans nouvelle dépendance. Ils répondent avec succès ;
-  les réponses en erreur viendront avec la capsule « robustesse » (#57). Écarté : WireMock en conteneur.
+  JDK sur la boucle locale, comme `OnboardingOrchestrationExampleIT`, sans nouvelle dépendance. Ils répondent avec succès,
+  sauf le SIRH, qui coupe la connexion pour une adresse personnelle en `.invalid` (domaine réservé) : c'est l'incident
+  rejouable du paquet « états ». Les réponses en erreur viendront avec la capsule « robustesse » (#57). Écarté : WireMock en conteneur.
 - **D-DEMO-CAPTURE** — les captures sont des scripts Playwright à part (`frontend/capture/`,
   `playwright.capture.config.ts`, `npm run capture`) qui pilotent une vraie instance de démo, avec la connexion Keycloak
   locale `demo` / `demo`. Hors `test:all` et hors CI. Écartés : les placer dans `frontend/e2e` ; un projet Node à la racine.

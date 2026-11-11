@@ -39,8 +39,9 @@ class OnboardingDemoPackIT {
     void theOnboardingPackSeedsThreeArrivals_throughTheRealProcess(@TempDir Path baseDir) {
         try (ConfigurableApplicationContext context = run(baseDir)) {
             JdbcTemplate jdbc = context.getBean(JdbcTemplate.class);
-            assertThat(count(jdbc, "select count(*) from dossier where dossier_type_code = 'ONBOARDING_COLLABORATEUR'"))
-                    .isEqualTo(3);
+            // Le paquet « états » ajoute une quatrième arrivée, en panne (adresse en .invalid) : pas celles de ce paquet.
+            assertThat(count(jdbc, "select count(*) from dossier where dossier_type_code = 'ONBOARDING_COLLABORATEUR' "
+                    + "and fields ->> 'emailPersonnel' not like '%.invalid'")).isEqualTo(3);
 
             List<Map<String, Object>> provisioned = jdbc.queryForList("select fields ->> 'matriculeSirh' as sirh, "
                     + "fields ->> 'identifiantIam' as iam, fields ->> 'ticketMateriel' as ticket from dossier "

@@ -102,13 +102,14 @@ Chaque lot se livre seul, en une PR (registre §31).
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | en revue | #60 |
+| 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | livré | #60 |
 | 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | en revue | #61 |
-| 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | à faire | |
+| 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | en cours | |
 | 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | à faire | |
 | 3 | Cadre de capture Playwright, 14 screenshots FR/EN, guide de capture | à faire | |
 
-Prochaine action : fusion de #60 puis de la PR du lot 1b ; ensuite lot 1d (paquet « états »).
+Prochaine action : fusion de #61 puis de la PR du lot 1d (recibler la PR du lot 1d sur `main` **avant** de supprimer la
+branche de #61 : supprimer la base d'une PR empilée la ferme) ; ensuite lot 2 (données en anglais).
 
 ## Preuves
 
@@ -124,6 +125,10 @@ Prochaine action : fusion de #60 puis de la PR du lot 1b ; ensuite lot 1d (paque
 | 2026-11-11 | lot 1b : `./mvnw test -Pembedded-db -Dtest='DemoSeederTest,DemoSeederIT,MailRoomDemoSeederIT,DemoFakeApisTest,OnboardingDemoPackIT'` | 11 tests, 0 échec |
 | 2026-11-11 | lot 1b : `./mvnw clean verify` puis `scripts/check-no-embedded-db-in-jar.sh` | BUILD SUCCESS, 4 894 tests, 0 échec ; jar OK |
 | 2026-11-11 | lot 1b : `scripts/check-docs.sh` | vert |
+| 2026-11-11 | lot 1d : `./mvnw test -Pembedded-db -Dtest='StatesDemoPackIT'` avant le code | rouge : objectif SLA de la facture absent |
+| 2026-11-11 | lot 1d : les 6 classes de tests de démo (`DemoSeederTest` … `StatesDemoPackIT`) | 13 tests, 0 échec |
+| 2026-11-11 | lot 1d : `./mvnw clean verify` puis `scripts/check-no-embedded-db-in-jar.sh` | BUILD SUCCESS, 4 894 tests, 0 échec ; jar OK |
+| 2026-11-11 | lot 1d : `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

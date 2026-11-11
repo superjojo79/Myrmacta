@@ -31,12 +31,17 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
     `DemoFakeApis` (D-DEMO-FAKE-APIS, serveur HTTP du JDK sur la boucle locale, port `app.demo.fake-apis.port`, 18090
     par défaut, fixe pour que les connecteurs installés restent valables au redémarrage) ; trois arrivées semées par le
     vrai processus (provisionnée, en attente du manager, en attente de l'IT). Le paquet exécute lui-même les jobs
-    asynchrones de ses processus jusqu'à la tâche attendue.
+    asynchrones de ses processus jusqu'à la tâche attendue, en relançant aussitôt un job en attente de relance ;
+  - « états » (`StatesDemoPack`, ordre 40) : objectifs SLA (FACTURE 72 h, COURRIER 24 h) ; onze factures sur quatre
+    semaines, menées par les cas d'usage puis antidatées par `DossierRepository` (D-DEMO-BACKDATE) : traitées dans le
+    délai, en retard, ouvertes dans le délai et au SLA dépassé ; une arrivée « Nadia Claes » dont l'appel au SIRH tombe
+    sur une coupure (adresse en `.invalid`) et finit en incident rejouable ; un brouillon MCP de la table
+    `routageCourrier` (une règle « imprimerie » de plus), en attente de publication.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding).
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »).
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

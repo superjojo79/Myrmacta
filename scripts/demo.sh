@@ -5,8 +5,8 @@
 #
 #   scripts/demo.sh build          construit le jar de démo (./mvnw -Pembedded-db package)
 #   scripts/demo.sh start          démarre ; sur une base vide, installe chaque paquet : la mail room (3 courriers),
-#                                  l'onboarding (3 arrivées, faux SIRH/IAM/ITSM sur le port 18090). Un paquet déjà
-#                                  installé n'est pas touché.
+#                                  l'onboarding (3 arrivées, faux SIRH/IAM/ITSM sur le port 18090), les états (SLA,
+#                                  factures antidatées, incident, brouillon MCP). Un paquet déjà installé n'est pas touché.
 #   scripts/demo.sh reset [--yes]  vide la base embarquée (application ARRÊTÉE) : le prochain `start` rejoue la démo
 #
 # Connexion : comme tout démarrage local (docs/guides/GETTING-STARTED.md §3, Keycloak et variables OIDC dans .env).

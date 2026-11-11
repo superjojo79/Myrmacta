@@ -198,6 +198,18 @@ public class OnboardingDemoPack implements DemoPack {
         advanceTo(awaitingIt, "validationAcces");
     }
 
+    /**
+     * Pour le paquet « états » : une arrivée approuvée dont la création dans le SIRH tombe sur une coupure réseau
+     * ({@link DemoFakeApis#OUTAGE_DOMAIN}). Ses relances épuisées, l'appel devient un incident rejouable.
+     */
+    void seedIncident() {
+        String instance = arrive("Nadia", "Claes", "nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN, "Comptable",
+                "FINANCE", "STANDARD");
+        complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
+        advance(instance, () -> management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0,
+                "an incident");
+    }
+
     /** Crée et ouvre un dossier d'arrivée, puis démarre le processus : il attend la validation du manager. */
     private String arrive(String firstName, String lastName, String email, String function, String department, String profile) {
         JsonNode sample = read("config/exemple-dossier.json");
@@ -239,21 +251,29 @@ public class OnboardingDemoPack implements DemoPack {
     }
 
     /**
-     * Exécute les jobs du processus (appels de connecteurs et leurs contrôles, asynchrones) jusqu'à la condition. Un job déjà
-     * pris par l'exécuteur asynchrone, s'il est actif, est laissé à celui-ci.
+     * Exécute les jobs du processus (appels de connecteurs et leurs contrôles, asynchrones) jusqu'à la condition. Un job en
+     * attente de relance après un échec est relancé tout de suite. Un job déjà pris par l'exécuteur asynchrone, s'il est
+     * actif, est laissé à celui-ci.
      */
     private void advance(String instance, java.util.function.BooleanSupplier reached, String target) {
         Instant deadline = Instant.now().plus(STEP_TIMEOUT);
-        FlowableException last = null;
+        RuntimeException last = null;
         while (Instant.now().isBefore(deadline)) {
             if (reached.getAsBoolean()) {
                 return;
+            }
+            for (var retry : management.createTimerJobQuery().processInstanceId(instance).list()) {
+                try {
+                    management.moveTimerToExecutableJob(retry.getId());
+                } catch (FlowableException ex) {
+                    last = ex;
+                }
             }
             var jobs = management.createJobQuery().processInstanceId(instance).list();
             for (var job : jobs) {
                 try {
                     management.executeJob(job.getId());
-                } catch (FlowableException ex) {
+                } catch (RuntimeException ex) {
                     last = ex;
                 }
             }

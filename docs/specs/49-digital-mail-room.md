@@ -139,7 +139,8 @@ Test : `MailRoomExampleIT` (aller-retour de l'exemple).
 
 ## 10. Démo reproductible
 
-Profil `demo-mailroom` (build `embedded-db` seulement), avec `scripts/demo-mailroom.sh build | start | reset` :
+Profil `demo-mailroom` (build `embedded-db` seulement), avec `scripts/demo-mailroom.sh build | start | reset`. C'est aussi le
+paquet « mail room » (`MailRoomDemoPack`) de la démo complète `demo` ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md)) :
 
 - l'exemple est installé ;
 - une facture arrive par e-mail et est routée vers la COMPTABILITE ;

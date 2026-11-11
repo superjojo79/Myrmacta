@@ -17,6 +17,21 @@
 | Changelogs | Plus aucune branche `dbms: h2` ; checksums PostgreSQL inchangés, gardés par `ChangelogChecksumStabilityIT`. |
 | Démo/QA | Profil Spring `embedded-db` + profil Maven `embedded-db` : base **persistante** (`APP_EMBEDDED_DB_DATA_DIR`), absente du jar de production, interdite avec un profil `prod`/`production` ou `APP_ENVIRONMENT=production` (défaut). |
 
+## Démo par paquets (profil `demo`, TODO §127)
+
+Sur la base embarquée, le profil Spring `demo` installe une démo complète, pour les présentations et les captures du
+site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #55) :
+
+- **Paquets** (`DemoPack`) : chacun installe un exemple, ou un jeu d'états, par les vrais cas d'usage. `DemoSeeder`
+  les installe dans l'ordre (`order()`, unique), au démarrage de l'application, et passe ceux que `installed()` dit
+  présents. Un paquet en échec arrête la démo.
+- **Paquets livrés :** mail room (`MailRoomDemoPack`, ordre 10). Le profil `demo-mailroom` n'active que lui (§113).
+- **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
+  refuse `infrastructure/demo/`).
+- **Commandes :** `scripts/demo.sh build | start | reset`.
+- **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room).
+
 ## Pourquoi pas Supabase / un PostgreSQL managé
 
 Supabase est PostgreSQL + services (Auth, PostgREST, Realtime, Storage) ; seule la base serait utile et

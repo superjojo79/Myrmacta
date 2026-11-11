@@ -11,7 +11,7 @@ Points du registre : à créer en conception (§127 pressenti)
 - **Périmètre :**
   - un profil Spring `demo`, composé de **paquets** (un seeder par exemple), dans le build `embedded-db` seulement :
     mail room (le `MailRoomDemoSeeder` actuel devient un paquet ; `demo-mailroom` reste utilisable seul), onboarding
-    collaborateur, autorisation riverain, et un paquet « états » (dossiers à différents stades, SLA dépassés, un
+    collaborateur, et un paquet « états » (dossiers à différents stades, SLA dépassés, un
     incident rejouable, un brouillon MCP) ;
   - des **faux SIRH, IAM et ITSM** embarqués dans le profil de démo, qui répondent avec succès, pour qu'un onboarding
     traverse le vrai processus et remplisse ses champs « Provisioning » ;
@@ -19,20 +19,23 @@ Points du registre : à créer en conception (§127 pressenti)
     traduite des fichiers d'exemple ; les fichiers français restent la source ;
   - un **cadre de capture Playwright** à part (`frontend/capture/`, `playwright.capture.config.ts`,
     `npm run capture`), qui pilote une vraie instance de démo, connexion Keycloak locale `demo` / `demo` ;
-  - les **15 screenshots S1 à S15** de #58, en FR et en EN ;
+  - les **14 screenshots** de #58 (S1 à S15 sauf S13, portail usager), en FR et en EN ;
   - la documentation : un guide de démo et de capture, la spec 47, la configuration de l'IA locale validée
     (Ollama, `gemma4:12b`, `reasoning-effort=none`).
 - **Hors périmètre :**
+  - l'exemple autorisation riverain, retiré par l'utilisateur le 2026-11-11 : pas de paquet riverain, donc pas de
+    screenshot S13 (portail usager) ; les capsules C5 (portail) et C6 (pré-vérification IA) de #58 n'ont plus de
+    données dans la démo ;
   - les scripts et montages des capsules vidéo (#56, #57, #58) et du teaser (#59) ;
   - les réponses en erreur des faux services, pour la partie « robustesse » de L2 (#57) ;
   - toute modification de l'assistant de conception (câblé sur Anthropic) ;
   - toute exécution en CI : les captures se lancent à la main, contre une instance locale.
 - **Critères de succès (vérifiables) :**
-  1. sur une base vide, `scripts/demo.sh start` installe les trois exemples et les états, en FR par défaut ;
+  1. sur une base vide, `scripts/demo.sh start` installe les deux exemples (mail room, onboarding) et les états, en FR par défaut ;
   2. avec `APP_DEMO_LOCALE=en`, les mêmes données apparaissent en anglais (libellés de types et de champs, statuts,
      questionnaires, gabarits, modèles de documents, sorties de la table DMN visibles à l'écran) ;
   3. l'onboarding semé atteint « Provisionné » par le vrai processus, champs « Provisioning » remplis ;
-  4. `npm run capture -- --lang=fr` (puis `en`) produit les 15 screenshots, en 1440×900, `deviceScaleFactor: 2` ;
+  4. `npm run capture -- --lang=fr` (puis `en`) produit les 14 screenshots, en 1440×900, `deviceScaleFactor: 2` ;
   5. `./mvnw verify`, `npm run lint && npm run test:all` et `scripts/check-docs.sh` restent verts ; aucun code de démo
      dans le jar de production.
 - **Contraintes :**
@@ -54,6 +57,7 @@ Points du registre : à créer en conception (§127 pressenti)
 | Données en anglais | une langue par démarrage / deux tenants / reporter | une langue par démarrage | tranchée par l'utilisateur (2026-11-11) |
 | Emplacement des captures | config Playwright à part / `frontend/e2e` / projet racine | config à part | tranchée par l'utilisateur (2026-11-11) |
 | Périmètre de #55 | socle + pilote / socle + 15 screenshots / socle seul | socle + pilote | tranchée par l'utilisateur : **socle + 15 screenshots** |
+| Paquet autorisation riverain | garder / retirer | — | tranchée par l'utilisateur : **retiré** (2026-11-11) |
 | Onboarding « Provisionné » pour S9 | faux services dans #55 / reporter à #57 / WireMock en conteneur | faux services dans #55 | tranchée par l'utilisateur (2026-11-11) |
 | Sortie des captures | versionnée dans le dépôt / ignorée par git | ignorée (`frontend/capture/out/`) : le site les reprend | hypothèse |
 | SLA dépassés et dossiers « anciens » | dates semées dans le passé / horloge de démo | à vérifier en conception (champs de date pilotés par l'horloge du domaine) | ouverte, sans effet sur le cadrage |
@@ -100,10 +104,9 @@ Chaque lot se livre seul, en une PR (registre §31).
 |---|---|---|---|
 | 1a | Socle `DemoPack` / `DemoSeeder`, paquet mail room, profil `demo`, `scripts/demo.sh`, guide | en revue | #60 |
 | 1b | Paquet onboarding et faux SIRH, IAM, ITSM (`DemoFakeApis`) | à faire | |
-| 1c | Paquet autorisation riverain (portail et pré-vérification si configurés) | à faire | |
 | 1d | Paquet « états » : dossiers antidatés, SLA dépassés, incident rejouable, brouillon MCP | à faire | |
 | 2 | Données en anglais : `APP_DEMO_LOCALE`, variantes `en` des fichiers d'exemple | à faire | |
-| 3 | Cadre de capture Playwright, 15 screenshots FR/EN, guide de capture | à faire | |
+| 3 | Cadre de capture Playwright, 14 screenshots FR/EN, guide de capture | à faire | |
 
 Prochaine action : fusion de la PR #60, puis lot 1b (paquet onboarding et `DemoFakeApis`), en TDD, sur une branche
 partie de `main` après fusion.

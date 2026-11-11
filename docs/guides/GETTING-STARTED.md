@@ -550,7 +550,7 @@ scripts/demo.sh build      # jar embedded-db (une fois)
 scripts/demo.sh start      # depuis la racine du dépôt, avec les variables OIDC du §3
 ```
 
-- **Paquets livrés :** la mail room (voir ci-dessous). Les paquets onboarding collaborateur, autorisation riverain et
+- **Paquets livrés :** la mail room (voir ci-dessous). Les paquets onboarding collaborateur et
   « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP) suivent (issue #55).
 - **Démarrages suivants :** un paquet déjà installé n'est pas touché ; un paquet ajouté depuis s'installe.
 - **Rejouer la démo :** arrêter l'application, puis lancer `scripts/demo.sh reset` et `start`.

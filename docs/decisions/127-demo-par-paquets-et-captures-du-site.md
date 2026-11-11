@@ -11,10 +11,10 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
 
 **Décisions tranchées par l'utilisateur (2026-11-11).**
 
-- **D-DEMO-PACKS** — un profil Spring `demo` composé de **paquets**, un par exemple (mail room, onboarding collaborateur,
-  autorisation riverain) plus un paquet « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP).
+- **D-DEMO-PACKS** — un profil Spring `demo` composé de **paquets**, un par exemple (mail room, onboarding collaborateur)
+  plus un paquet « états » (dossiers à différents stades, SLA dépassés, incident, brouillon MCP).
   Un orchestrateur installe, dans un ordre fixe, chaque paquet pas encore installé. `demo-mailroom` reste utilisable seul :
-  il n'active que le paquet mail room. Écartés : étendre `MailRoomDemoSeeder` (un seeder qui mélange trois exemples) ;
+  il n'active que le paquet mail room. Écartés : étendre `MailRoomDemoSeeder` (un seeder qui mélange plusieurs exemples) ;
   un script externe par l'API (jeton M2M, et certains états ne s'obtiennent pas par l'API).
 - **D-DEMO-LOCALE** — une langue par démarrage (`APP_DEMO_LOCALE=fr|en`). Les fichiers d'exemple français restent la
   source ; un paquet lit, en anglais, une variante traduite placée à côté. On remet la base à zéro entre deux langues.
@@ -25,7 +25,9 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
 - **D-DEMO-CAPTURE** — les captures sont des scripts Playwright à part (`frontend/capture/`,
   `playwright.capture.config.ts`, `npm run capture`) qui pilotent une vraie instance de démo, avec la connexion Keycloak
   locale `demo` / `demo`. Hors `test:all` et hors CI. Écartés : les placer dans `frontend/e2e` ; un projet Node à la racine.
-- **Périmètre de #55** : le socle et les 15 screenshots de #58, en FR et en EN. Les scripts des capsules vidéo restent dans
+- **Périmètre de #55** : le socle et 14 des 15 screenshots de #58, en FR et en EN. L'exemple autorisation riverain
+  est retiré (utilisateur, 2026-11-11) : pas de paquet riverain, donc pas de screenshot S13 (portail usager), et les
+  capsules C5 et C6 de #58 n'ont pas de données dans la démo. Les scripts des capsules vidéo restent dans
   #56 à #58.
 
 **Décisions de conception (2026-11-11).**

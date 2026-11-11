@@ -25,6 +25,7 @@ class DemoSeederIT {
                 "--test.embedded-postgres.enabled=false",
                 "--app.embedded-db.data-dir=" + baseDir,
                 "--app.embedded-db.port=0",
+                "--app.demo.fake-apis.port=0",
                 // Même coupure que MailRoomDemoSeederIT (précédent « course avec le relais de l'outbox »).
                 "--flowable.async-executor-activate=false",
                 "--server.port=0");

@@ -53,7 +53,7 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   [GETTING-STARTED](../guides/GETTING-STARTED.md), « Captures du site ».
 - **Capsule vidéo « Digital Mail Room »** (§128, D-VIDEO-MAIL, D-VIDEO-DEADLINE) : profil `demo-video-mailroom`. La
   mail room s'installe sans ses trois courriers d'exemple ; `VideoMailRoomDemoPack` (ordre 30) crée la boîte IMAP de
-  l'exemple pointée sur le GreenMail local (`localhost:3143`, sans chiffrement : D-IMAP-LOCAL-LOOPBACK), inscrit l'agent
+  l'exemple pointée sur le GreenMail local (`localhost:3143`, sans chiffrement : D-IMAP-LOCAL-LOOPBACK, seulement si `APP_ENVIRONMENT=local`, TODO §132), inscrit l'agent
   IA de la capsule (`app.demo.video.agent-subject`, défaut `agent-ia-tri`) dans l'annuaire et la file de tri (COURRIER),
   et fait arriver deux factures du fournisseur connu dont l'échéance tombe dans 3 jours et avant-hier : le vrai job des
   échéances envoie le rappel et escalade la seconde vers DIRECTION_FINANCIERE. Les e-mails du tournage partent en SMTP

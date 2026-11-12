@@ -15,8 +15,6 @@ import be.myrmacta.domain.notification.usecase.NotificationInboxUseCaseImpl;
 import be.myrmacta.domain.notification.usecase.ResolveEmailAttachmentUseCaseImpl;
 import be.myrmacta.domain.notification.usecase.SendNotificationUseCaseImpl;
 import be.myrmacta.infrastructure.notification.OutboundUrlGuard;
-import java.util.Arrays;
-import java.util.Locale;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,10 +26,9 @@ public class NotificationConfig {
 
     @Bean
     OutboundUrlGuard outboundUrlGuard(Environment environment) {
-        // A13: test/local may use http://localhost only (not public http).
-        boolean allowLocalHttp = Arrays.stream(environment.getActiveProfiles())
-                .map(profile -> profile.toLowerCase(Locale.ROOT))
-                .anyMatch(profile -> profile.equals("test") || profile.equals("local"));
+        // TODO §132 (D-LOOPBACK-LOCAL-ENV) : http://localhost seulement en environnement local, pas dès le profil test.
+        boolean allowLocalHttp = OutboundUrlGuard.allowsLocalLoopback(
+                environment.getProperty("app.environment", "production"), environment.getActiveProfiles());
         return new OutboundUrlGuard(allowLocalHttp);
     }
 

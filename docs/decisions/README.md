@@ -150,6 +150,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 129 | [Libellé lisible d'un dossier créé par un déclencheur](129-libelle-dossier-cree-par-trigger.md) | clos | — |
 | 130 | [Éditeur DMN : conversion 1.1 → 1.3 à l'ouverture](130-editeur-dmn-conversion-1-1-vers-1-3.md) | clos | — |
 | 131 | [Historique d'exécution : étapes significatives seulement](131-historique-etapes-significatives.md) | clos | — |
+| 132 | [Boucle locale réservée à l'environnement local](132-boucle-locale-reservee-a-l-environnement-local.md) | clos | — |
 
 ## Sections de l'ancien registre
 

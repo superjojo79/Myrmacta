@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.notification;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -11,9 +12,10 @@ import org.springframework.util.StringUtils;
 /**
  * SSRF guard for outbound notification webhook URLs.
  *
- * <p>A13: profiles {@code test}/{@code local} may allow {@code http} only to loopback
- * ({@code localhost}, {@code 127.0.0.1}, {@code ::1}). Public {@code http} hosts remain
- * rejected. HTTPS to private/loopback/metadata hosts is always rejected.
+ * <p>A13, resserré par TODO §132 (D-LOOPBACK-LOCAL-ENV) : {@code http} vers la boucle locale
+ * ({@code localhost}, {@code 127.0.0.1}, {@code ::1}) seulement si {@link #allowsLocalLoopback}
+ * est vrai. Un {@code http} public reste refusé. Le HTTPS vers un hôte privé, de boucle locale
+ * ou de métadonnées est toujours refusé.
  *
  * <p>Literal hosts (dotted/decimal IPv4, IPv6, IPv4-mapped) are checked directly. A DNS
  * name is additionally <b>resolved</b> and every returned address is checked against the
@@ -42,6 +44,23 @@ public class OutboundUrlGuard {
     public OutboundUrlGuard(boolean allowLocalHttp, HostResolver resolver) {
         this.allowLocalHttp = allowLocalHttp;
         this.resolver = Objects.requireNonNull(resolver, "resolver");
+    }
+
+    /**
+     * TODO §132 (D-LOOPBACK-LOCAL-ENV) — vrai seulement si {@code app.environment} vaut {@code local}
+     * (absent = {@code production}, espaces et casse ignorés, comme {@code DevModeEnvironmentPostProcessor})
+     * et qu'un profil actif est {@code test} ou {@code local}. Le profil {@code test} avec {@code staging}
+     * ne suffit pas : la suite démarre dans ce cas, sans ouvrir la boucle locale.
+     */
+    public static boolean allowsLocalLoopback(String appEnvironment, String... activeProfiles) {
+        String normalized = appEnvironment == null ? "production" : appEnvironment.strip().toLowerCase(Locale.ROOT);
+        if (!"local".equals(normalized) || activeProfiles == null) {
+            return false;
+        }
+        return Arrays.stream(activeProfiles)
+                .filter(Objects::nonNull)
+                .map(profile -> profile.toLowerCase(Locale.ROOT))
+                .anyMatch(profile -> profile.equals("test") || profile.equals("local"));
     }
 
     public record PinnedEndpoint(URI original, InetAddress address) {
@@ -86,10 +105,10 @@ public class OutboundUrlGuard {
     }
 
     /**
-     * TODO §128 (D-IMAP-LOCAL-LOOPBACK) — vrai seulement en profil {@code local} ou {@code test} et pour un hôte écrit
-     * comme une boucle locale ({@code localhost}, {@code 127.x}, {@code ::1} ; le connecteur IMAP n'accepte pas d'adresse
-     * IPv6 comme hôte) : la même règle que le {@code http} local
-     * (A13). Un nom qui se <em>résout</em> en boucle locale n'en est pas une. Pour les protocoles hors HTTP (IMAP).
+     * TODO §128 (D-IMAP-LOCAL-LOOPBACK), resserré par TODO §132 (D-LOOPBACK-LOCAL-ENV) — vrai seulement quand
+     * {@link #allowsLocalLoopback} a ouvert le drapeau, et pour un hôte écrit comme une boucle locale
+     * ({@code localhost}, {@code 127.x}, {@code ::1} ; le connecteur IMAP n'accepte pas d'adresse IPv6 comme hôte).
+     * Un nom qui se <em>résout</em> en boucle locale n'en est pas une. Pour les protocoles hors HTTP (IMAP).
      */
     public boolean isLocalLoopback(String host) {
         if (!allowLocalHttp || !StringUtils.hasText(host)) {
@@ -136,7 +155,7 @@ public class OutboundUrlGuard {
             if (!allowLocalHttp || !loopback) {
                 throw new IllegalArgumentException(
                         allowLocalHttp
-                                ? "Webhook http URL is only allowed for localhost in test/local profiles"
+                                ? "Webhook http URL is only allowed for localhost when APP_ENVIRONMENT=local"
                                 : "Webhook URL must use https");
             }
             return new PinnedEndpoint(uri, loopbackAddress(normalizedHost));

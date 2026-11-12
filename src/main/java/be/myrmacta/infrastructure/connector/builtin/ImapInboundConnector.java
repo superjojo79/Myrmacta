@@ -39,7 +39,7 @@ import tools.jackson.databind.ObjectMapper;
 public class ImapInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
 
     static final String PASSWORD_MODE = "PASSWORD";
-    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK) — sans chiffrement : seulement vers la boucle locale en profil local ou test. */
+    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK), TODO §132 — sans chiffrement : boucle locale seulement si {@code APP_ENVIRONMENT=local}. */
     static final String PLAIN = "PLAIN";
     private static final Logger log = LoggerFactory.getLogger(ImapInboundConnector.class);
 
@@ -96,11 +96,11 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         List<ConfigField> fields = new ArrayList<>(List.of(
                 new ConfigField("host", "IMAP host", ConfigFieldType.STRING, true, null, List.of(),
                         "e.g. imap.example.com or outlook.office365.com. Must resolve to a public address "
-                                + "(localhost is accepted in the local and test profiles only)."),
+                                + "(localhost is accepted only when APP_ENVIRONMENT=local)."),
                 new ConfigField("port", "IMAP port", ConfigFieldType.INTEGER, false, "993", List.of(), null),
                 new ConfigField("security", "Transport security", ConfigFieldType.SELECT, true, "SSL", securityOptions(),
                         "SSL = IMAPS (993). STARTTLS is required, never optional. The server certificate is always verified. "
-                                + "PLAIN (no encryption) is only accepted for a localhost mailbox in the local and test profiles."),
+                                + "PLAIN (no encryption) is only accepted for a localhost mailbox when APP_ENVIRONMENT=local."),
                 new ConfigField("username", "Mailbox user", ConfigFieldType.STRING, true, null, List.of(), null),
                 new ConfigField(OAuth2ConfigSupport.AUTH_MODE, "Authentication", ConfigFieldType.SELECT, false, PASSWORD_MODE,
                         List.of(PASSWORD_MODE, OAuth2TokenProvider.MODE),
@@ -118,7 +118,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         return fields;
     }
 
-    /** {@code PLAIN} n'est proposé que là où il peut être accepté (profil local ou test). */
+    /** {@code PLAIN} n'est proposé que là où il peut être accepté ({@code APP_ENVIRONMENT=local}). */
     private List<String> securityOptions() {
         return outboundUrlGuard.isLocalLoopback("localhost") ? List.of("SSL", "STARTTLS", PLAIN) : List.of("SSL", "STARTTLS");
     }
@@ -146,7 +146,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         }
         String security = OAuth2ConfigSupport.text(config, "security");
         if (PLAIN.equals(security) && !localLoopback) {
-            throw new ConnectorValidationException("security PLAIN is only accepted for a localhost mailbox in the local and test profiles");
+            throw new ConnectorValidationException("security PLAIN is only accepted for a localhost mailbox when APP_ENVIRONMENT=local");
         }
         if (!"SSL".equals(security) && !"STARTTLS".equals(security) && !PLAIN.equals(security)) {
             throw new ConnectorValidationException("Unsupported security: " + security);
@@ -192,7 +192,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         }
         boolean plain = PLAIN.equals(config.get("security"));
         if (plain && !localLoopback) {
-            throw new IllegalStateException("security PLAIN is only accepted for a localhost mailbox in the local and test profiles");
+            throw new IllegalStateException("security PLAIN is only accepted for a localhost mailbox when APP_ENVIRONMENT=local");
         }
         if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
                 || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {

@@ -55,7 +55,7 @@ class OutboundUrlGuardTest {
         }
     }
 
-    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK) — boucle locale pour un protocole hors HTTP : profil local ou test et hôte écrit en boucle. */
+    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK), TODO §132 — boucle locale hors HTTP : drapeau ouvert et hôte écrit en boucle. */
     @Test
     void isLocalLoopback_onlyInALocalProfile_andOnlyForAHostWrittenAsLoopback() {
         assertThat(allowLocalHttp.isLocalLoopback("localhost")).isTrue();

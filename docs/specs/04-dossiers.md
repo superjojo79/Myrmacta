@@ -1123,7 +1123,7 @@ D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-rev
   - **Sources ICS par URL** (JSON, D-CAL-ICS-URL, D-CAL-URL-PURGE) : mêmes chemins avec un corps `{name, url, expectedSha256}` ; sur
     `.../sources/{id}/preview` et `.../reload` le corps peut être vide ou sans `url` : le serveur relit l'URL conservée.
     L'API ne renvoie que `maskedUrl` (`schéma://hôte[:port]/…`). Une URL illisible est effacée sous verrou. `HttpsIcsFetcher`
-    passe par `OutboundUrlGuard` (https hors profils `test` et `local`, jamais une adresse interne) et
+    passe par `OutboundUrlGuard` (https hors environnement local — profil `test` ou `local` et `APP_ENVIRONMENT=local`, TODO §132 —, jamais une adresse interne) et
     `PinnedHttpClient.get` (adresse figée, aucune redirection, 1 Mio, 10 s au total, en-têtes bornés — D-CAL-HTTP-HEADERS) ;
     l'URL est chiffrée (`url_ciphertext`, `ConnectorSecretCipher`).
   - Un rechargement par URL en échec garde les jours, retient l'erreur dans `lastError` (sans l'URL) et répond 400.

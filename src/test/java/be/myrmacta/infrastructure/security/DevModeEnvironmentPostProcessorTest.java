@@ -53,6 +53,7 @@ class DevModeEnvironmentPostProcessorTest {
         }
     }
 
+    /** Le profil {@code test} en {@code staging} démarre (suite) ; la boucle locale, elle, reste fermée (TODO §132). */
     @Test
     void testProfile_isRefusedInProduction_butAllowedInLocalAndStaging() {
         assertThatCode(() -> run(environment("local", "test"))).doesNotThrowAnyException();

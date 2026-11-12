@@ -125,7 +125,7 @@ class ImapInboundConnectorTest {
         assertThatThrownBy(() -> c.validate(config())).hasMessageContaining("public");
     }
 
-    // ---- boucle locale en profil local/test (TODO §128, D-IMAP-LOCAL-LOOPBACK) ----
+    // ---- boucle locale si APP_ENVIRONMENT=local (TODO §128, TODO §132, D-IMAP-LOCAL-LOOPBACK) ----
 
     private ImapInboundConnector connectorWith(boolean localProfile, String resolvesTo) {
         OutboundUrlGuard guard = new OutboundUrlGuard(localProfile, host -> new InetAddress[] {InetAddress.getByName(resolvesTo)});
@@ -157,6 +157,25 @@ class ImapInboundConnectorTest {
             assertThat(s.host()).as("adresse littérale, jamais le nom").isEqualTo("127.0.0.1");
             assertThat(s.port()).isEqualTo(3143);
         });
+    }
+
+    @Test
+    void testProfileWithStaging_refusesALocalhostMailboxOnAnyPort() {
+        boolean allow = OutboundUrlGuard.allowsLocalLoopback("staging", "test");
+        ImapInboundConnector staging = connectorWith(allow, "127.0.0.1");
+
+        for (String host : List.of("localhost", "127.0.0.1")) {
+            for (int port : new int[] {1, 3143, 65535}) {
+                Map<String, Object> mailbox = loopback(host, "PLAIN");
+                mailbox.put("port", port);
+                assertThatThrownBy(() -> staging.validate(mailbox)).as(host + ":" + port)
+                        .isInstanceOf(ConnectorValidationException.class);
+                assertThatThrownBy(() -> staging.poll(instance(mailbox), event -> { })).as(host + ":" + port)
+                        .isInstanceOf(IllegalStateException.class);
+            }
+        }
+        assertThat(securityOptions(staging)).containsExactly("SSL", "STARTTLS");
+        assertThat(seen).isEmpty();
     }
 
     @Test

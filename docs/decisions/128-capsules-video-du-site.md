@@ -34,6 +34,8 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
   n'est pas un nom d'hôte IMAP accepté), avec la sécurité `PLAIN` (sans chiffrement) permise pour ce seul cas : même règle que le `http` vers la boucle
   locale déjà permis aux webhooks (A13). Hors de ces profils, rien ne change : hôte public et SSL ou STARTTLS exigés.
   Ce changement nuance D-DEMO-SCOPE (« garde SSRF inchangée ») pour l'IMAP seulement.
+  [§132](132-boucle-locale-reservee-a-l-environnement-local.md) resserre la règle : le profil ne suffit plus,
+  `app.environment` doit aussi valoir `local` (D-LOOPBACK-LOCAL-ENV).
 
 **Hypothèse confirmée au tournage.**
 

@@ -32,7 +32,7 @@ class JsonataExpressionEngineTest {
 
     // ---- fonctionnel -------------------------------------------------------------------------------------------
 
-    /** TODO §133 (D-EXPR-ASCII) — login : accents retirés, minuscules, hors `[a-z0-9.-]` supprimé. */
+    /** TODO §134 (D-EXPR-ASCII) — login : accents retirés, minuscules, hors `[a-z0-9.-]` supprimé. */
     @Test
     void asciiStripsAccentsAndKeepsOnlyLoginCharacters() {
         assertThat(engine.evaluate("$ascii($substring(\"Élise\", 0, 1) & \"Van den Broeck\")", Map.of()).value())

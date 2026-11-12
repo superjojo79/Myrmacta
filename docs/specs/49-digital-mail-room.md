@@ -92,7 +92,7 @@ Les trois modes se combinent :
    - `SUR_DOSSIER` : démarre sur le dossier du fil, seulement si aucun process n'y tourne ;
    - `DOSSIER_ENFANT` : démarre dans un dossier enfant `PARENT_CHILD` créé pour la réponse. Son libellé est
      « Réponse {référence du courrier} », ou « Reply {référence} » quand la langue par défaut du tenant est l'anglais
-     (D-I18N-DOSSIER-TEXT, §132).
+     (D-I18N-DOSSIER-TEXT, §133).
 
 ## 6. Groupes d'utilisateurs (§114)
 

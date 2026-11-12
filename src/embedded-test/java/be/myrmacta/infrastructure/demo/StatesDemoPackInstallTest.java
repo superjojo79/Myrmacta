@@ -33,7 +33,7 @@ import org.springframework.transaction.TransactionStatus;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * TODO §134 (D-DEMO-INSTALL) — un paquet « états » interrompu au brouillon (dernier effet) n'est pas tenu pour installé,
+ * TODO §135 (D-DEMO-INSTALL) — un paquet « états » interrompu au brouillon (dernier effet) n'est pas tenu pour installé,
  * même si l'objectif SLA de FACTURE (premier effet) est déjà écrit.
  */
 class StatesDemoPackInstallTest {

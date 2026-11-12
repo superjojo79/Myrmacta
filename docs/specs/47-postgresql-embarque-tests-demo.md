@@ -24,7 +24,7 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
 
 - **Paquets** (`DemoPack`) : chacun installe un exemple, ou un jeu d'états, par les vrais cas d'usage. `DemoSeeder`
   les installe dans l'ordre (`order()`, unique), au démarrage de l'application, et passe ceux que `installed()` dit
-  présents. `installed()` ne regarde que le **dernier** effet du paquet (D-DEMO-INSTALL, §134) : le brouillon
+  présents. `installed()` ne regarde que le **dernier** effet du paquet (D-DEMO-INSTALL, §135) : le brouillon
   `routageCourrier` pour les états, la tâche `validationAcces` pour l'onboarding. Un paquet interrompu avant est
   rejoué, sans dupliquer les factures, l'incident ou les arrivées déjà créés. Un paquet en échec arrête la démo.
 - **Paquets livrés :**

@@ -1076,7 +1076,7 @@ D-DEADLINE-ESCALATE).
     - les tâches ouvertes du process actif passent au groupe d'escalade (`reassignTaskToGroup`, groupe du lien) ;
     - les participants d'avant et les membres effectifs du groupe (`UserGroupsUseCase.membersOf`) sont prévenus ;
     - une note `DEADLINE_ESCALATED` est versée au dossier au nom de `system`, dans la langue par défaut du tenant
-      (`app.i18n.default-locale`, D-I18N-DOSSIER-TEXT, §132) : français, ou anglais si la langue est `en`. Les
+      (`app.i18n.default-locale`, D-I18N-DOSSIER-TEXT, §133) : français, ou anglais si la langue est `en`. Les
       notifications de rappel et d'escalade du même job suivent la même langue. Un texte déjà écrit n'est pas repris ;
     - un groupe supprimé depuis le réglage réduit l'escalade à la note ;
   - **une seule fois** : chaque palier est inséré dans `dossier_deadline_alert` (clé tenant, dossier, palier, date) avant

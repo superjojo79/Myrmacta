@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * TODO §132 (D-I18N-DOSSIER-TEXT) — textes posés sur un dossier par le serveur, rédigés à l'écriture dans la langue
+ * TODO §133 (D-I18N-DOSSIER-TEXT) — textes posés sur un dossier par le serveur, rédigés à l'écriture dans la langue
  * par défaut du tenant. Anglais si la langue est {@code en} ; français sinon (seules ces deux langues démarrent,
  * D-I18N-LANGS). Un texte déjà persisté n'est pas repris.
  */

@@ -344,7 +344,7 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
     }
 
     /**
-     * TODO §133 (D-EXPR-ASCII) — {@code $ascii} : NFD, marques combinatoires retirées, minuscules, seuls
+     * TODO §134 (D-EXPR-ASCII) — {@code $ascii} : NFD, marques combinatoires retirées, minuscules, seuls
      * {@code [a-z0-9.-]}. Le résultat est au plus aussi long que l'entrée, déjà bornée. Pas de regex.
      */
     private String ascii(List<?> args) {

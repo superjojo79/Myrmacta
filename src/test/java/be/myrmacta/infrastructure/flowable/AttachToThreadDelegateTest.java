@@ -204,7 +204,7 @@ class AttachToThreadDelegateTest {
         verifyNoInteractions(orchestrator, childConfirmer);
     }
 
-    /** TODO §132 (D-I18N-DOSSIER-TEXT) — en anglais, le dossier enfant d'une réponse fournisseur n'est pas libellé en français. */
+    /** TODO §133 (D-I18N-DOSSIER-TEXT) — en anglais, le dossier enfant d'une réponse fournisseur n'est pas libellé en français. */
     @Test
     void anEnglishTenantNamesTheSupplierReplyDossierInEnglish() {
         delegate = new AttachToThreadDelegate(index, dossiers, relations, createRelation, elements, storage, attachFiles, links,

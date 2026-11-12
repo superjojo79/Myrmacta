@@ -1,4 +1,4 @@
-# §133 — Normalisation ASCII d'un login calculé
+# §134 — Normalisation ASCII d'un login calculé
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 

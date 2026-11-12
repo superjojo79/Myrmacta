@@ -1,4 +1,4 @@
-# §132 — Langue des textes serveur posés sur un dossier
+# §133 — Langue des textes serveur posés sur un dossier
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 

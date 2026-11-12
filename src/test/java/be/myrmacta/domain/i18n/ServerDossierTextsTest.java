@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
-/** TODO §132 (D-I18N-DOSSIER-TEXT) — phrases françaises inchangées, anglais sur la langue {@code en} seulement. */
+/** TODO §133 (D-I18N-DOSSIER-TEXT) — phrases françaises inchangées, anglais sur la langue {@code en} seulement. */
 class ServerDossierTextsTest {
 
     private static final LocalDate DEADLINE = LocalDate.parse("2026-11-10");

@@ -162,7 +162,7 @@ class EvaluateDeadlinesUseCaseImplTest {
         verify(claims).claim(eq(TENANT), eq(dossierId), eq(DeadlineLevel.ESCALADE), eq(LocalDate.parse("2026-11-06")), any());
     }
 
-    /** TODO §132 (D-I18N-DOSSIER-TEXT) — en anglais, la note d'escalade et la notification ne restent pas en français. */
+    /** TODO §133 (D-I18N-DOSSIER-TEXT) — en anglais, la note d'escalade et la notification ne restent pas en français. */
     @Test
     void anEnglishTenantWritesTheEscalationNoteAndNotificationInEnglish() {
         useCase = new EvaluateDeadlinesUseCaseImpl(settings, calendars, candidates, claims, links, participants, notifications, groups,

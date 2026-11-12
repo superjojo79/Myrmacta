@@ -1,9 +1,13 @@
 # §127 — Démo par paquets et captures pour le site
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (issue [#55](https://github.com/superjojo79/Myrmacta/issues/55), vague `vague-vitrine`). Cadrage validé par
-l'utilisateur le 2026-11-11.
+[x] clos (2026-11-12, issue [#55](https://github.com/superjojo79/Myrmacta/issues/55), vague `vague-vitrine`). Cadrage
+validé par l'utilisateur le 2026-11-11. Livré en cinq lots (PR #60, #61, #62, #63, #65) : profil `demo` par paquets,
+faux SIRH, IAM et ITSM, paquet « états », démo en anglais, 14 captures en français et en anglais. Comportement :
+[spec 47](../specs/47-postgresql-embarque-tests-demo.md) § « Démo par paquets » ; procédure :
+[GETTING-STARTED](../guides/GETTING-STARTED.md) § « Captures du site ». Défauts produit relevés par la démo : #66 à #70 ;
+constats bas de la revue de clôture : #71. Capsules vidéo : #56 à #59.
 
 **Constat.** Le site myrmacta.be a besoin de screenshots et de capsules vidéo (#56 à #59), à régénérer à chaque release
 qui change l'UI. La seule démo reproductible, `demo-mailroom` ([§113](113-digital-mail-room-courrier-dossier-et-fils.md)),
@@ -67,4 +71,4 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
 - **D-DEMO-CAPTURE-OUT** — la sortie des captures (`frontend/capture/out/`) n'est pas versionnée ; le site
   la reprend.
 
-Document de travail : `docs/ai/2026-11-11-outillage-demo-captures.md` (supprimé à la clôture).
+Document de travail `docs/ai/2026-11-11-outillage-demo-captures.md` : supprimé à la clôture.

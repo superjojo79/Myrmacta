@@ -104,6 +104,20 @@ class ImapInboundConnectorTest {
     }
 
     @Test
+    void thePortMustBeBetween1And65535() {
+        for (int port : new int[] {1, 65535}) {
+            Map<String, Object> c = config();
+            c.put("port", port);
+            connector.validate(c);
+        }
+        for (int port : new int[] {0, 65536}) {
+            Map<String, Object> c = config();
+            c.put("port", port);
+            assertThatThrownBy(() -> connector.validate(c)).as(String.valueOf(port)).hasMessageContaining("port");
+        }
+    }
+
+    @Test
     void aHostThatResolvesToAPrivateAddressIsRefused() throws Exception {
         OutboundUrlGuard strict = new OutboundUrlGuard(false, host -> new InetAddress[] {InetAddress.getByName("10.0.0.5")});
         var c = new ImapInboundConnector(new SimpleJsonPathMapper(), strict, JsonMapper.builder().build(),

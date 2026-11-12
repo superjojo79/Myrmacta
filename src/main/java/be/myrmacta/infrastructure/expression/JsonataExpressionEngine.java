@@ -10,6 +10,7 @@ import be.myrmacta.domain.expression.model.ExpressionResult;
 import be.myrmacta.domain.expression.model.InvalidExpressionException;
 import be.myrmacta.domain.expression.port.out.ExpressionEnginePort;
 import java.lang.management.ManagementFactory;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.IdentityHashMap;
@@ -31,7 +32,8 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li><b>liste blanche de fonctions</b> ({@link #ALLOWED_FUNCTIONS}) : toute fonction native non listée — y compris une
  *       fonction ajoutée par une montée de version — est refusée ; {@code $pad}, {@code $replace}, {@code $toMillis} et
- *       {@code $fromMillis} sont remplacées par des versions bornées (texte littéral, sans format utilisateur) ;</li>
+ *       {@code $fromMillis} sont remplacées par des versions bornées (texte littéral, sans format utilisateur) ;
+ *       {@code $ascii} est ajoutée (D-EXPR-ASCII) : elle ne fait que rétrécir le texte, sans regex ;</li>
  *   <li><b>noms réservés</b> : toute variable nommée {@code __*}, référencée ou liée, est refusée — c'est sous ces noms
  *       que la bibliothèque lit ses callbacks, qu'une affectation {@code $__evaluate_entry := nope} masquait ;</li>
  *   <li><b>statique</b> : longueur, taille et profondeur de l'arbre, littéraux regex (le retour arrière Java n'est pas
@@ -337,6 +339,44 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
         bindings.bind("replace", Jsonata.function("replace", (Jsonata.FnVarArgs<String>) this::replace, "<s-ssn?:s>"));
         bindings.bind("toMillis", Jsonata.function("toMillis", (Jsonata.FnVarArgs<Long>) this::toMillis, "<s-:n>"));
         bindings.bind("fromMillis", Jsonata.function("fromMillis", (Jsonata.FnVarArgs<String>) this::fromMillis, "<n-:s>"));
+        // j : pas de coercition en texte (un nombre ne doit pas devenir un login).
+        bindings.bind("ascii", Jsonata.function("ascii", (Jsonata.FnVarArgs<String>) this::ascii, "<j-:s>"));
+    }
+
+    /**
+     * TODO §133 (D-EXPR-ASCII) — {@code $ascii} : NFD, marques combinatoires retirées, minuscules, seuls
+     * {@code [a-z0-9.-]}. Le résultat est au plus aussi long que l'entrée, déjà bornée. Pas de regex.
+     */
+    private String ascii(List<?> args) {
+        if (args.isEmpty() || args.get(0) == null) {
+            return null;
+        }
+        if (!(args.get(0) instanceof String text)) {
+            throw new ExpressionEvaluationException("$ascii expects text");
+        }
+        if (text.length() > limits.maxResultBytes()) {
+            throw new ExpressionEvaluationException("$ascii input exceeds " + limits.maxResultBytes() + " characters");
+        }
+        String decomposed = Normalizer.normalize(text, Normalizer.Form.NFD);
+        StringBuilder out = new StringBuilder(text.length());
+        for (int i = 0; i < decomposed.length(); ) {
+            int codePoint = decomposed.codePointAt(i);
+            i += Character.charCount(codePoint);
+            int type = Character.getType(codePoint);
+            if (type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK) {
+                continue;
+            }
+            int lower = Character.toLowerCase(codePoint);
+            if (lower < 128 && isLoginCharacter(lower)) {
+                out.append((char) lower);
+            }
+        }
+        return out.toString();
+    }
+
+    private static boolean isLoginCharacter(int codePoint) {
+        return (codePoint >= 'a' && codePoint <= 'z') || (codePoint >= '0' && codePoint <= '9')
+                || codePoint == '.' || codePoint == '-';
     }
 
     /**

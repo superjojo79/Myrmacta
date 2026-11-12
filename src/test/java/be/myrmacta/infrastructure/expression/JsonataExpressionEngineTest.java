@@ -32,6 +32,19 @@ class JsonataExpressionEngineTest {
 
     // ---- fonctionnel -------------------------------------------------------------------------------------------
 
+    /** TODO §133 (D-EXPR-ASCII) — login : accents retirés, minuscules, hors `[a-z0-9.-]` supprimé. */
+    @Test
+    void asciiStripsAccentsAndKeepsOnlyLoginCharacters() {
+        assertThat(engine.evaluate("$ascii($substring(\"Élise\", 0, 1) & \"Van den Broeck\")", Map.of()).value())
+                .isEqualTo("evandenbroeck");
+        assertThat(engine.evaluate("$ascii(\"Jean-Pierre.2\")", Map.of()).value()).isEqualTo("jean-pierre.2");
+        assertThat(engine.evaluate("$ascii(\"O'Neil\")", Map.of()).value()).isEqualTo("oneil");
+        assertThatThrownBy(() -> engine.evaluate("$ascii(1)", Map.of("secret", "TOPSECRET")))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("expects text")
+                .hasMessageNotContaining("TOPSECRET");
+    }
+
     @Test
     void conditionOverDossierFieldsIsABoolean() {
         ExpressionResult r = engine.evaluate(

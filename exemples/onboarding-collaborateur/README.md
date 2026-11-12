@@ -64,7 +64,7 @@ passe d'une application à l'autre, sans variable de process technique.
 | Étape | Requête produite par `connectorRequest` | Réponse recopiée |
 |---|---|---|
 | SIRH | `POST /employees`, corps : identité, fonction, département, date d'arrivée, manager, référence du dossier | `matriculeSirh = json.id` |
-| IAM | `POST /users`, corps : login calculé, nom, `employeeNumber = dossier.fields.matriculeSirh`, compte désactivé | `identifiantIam = json.id`, `loginIam = json.username` |
+| IAM | `POST /users`, corps : login `$ascii` (initiale et nom, minuscules, `[a-z0-9.-]`), nom, `employeeNumber = dossier.fields.matriculeSirh`, compte désactivé | `identifiantIam = json.id`, `loginIam = json.username` |
 | Groupe | `PUT /users/{id}/groups/{groupe}`, `id = dossier.fields.identifiantIam`, groupe choisi par l'IT (`variables.niveauAcces`) | `accesEtendus = true` |
 | ITSM | `POST /tickets`, corps : profil, titre, échéance, `requestedFor = dossier.fields.loginIam`, référence du dossier | `ticketMateriel = json.number` |
 | Compensation | `DELETE /users/{id}` puis `DELETE /employees/{id}`, seulement si le champ géré correspondant existe | `journalCompensation` |

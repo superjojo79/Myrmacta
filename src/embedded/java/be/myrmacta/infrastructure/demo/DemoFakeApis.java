@@ -41,6 +41,12 @@ public class DemoFakeApis implements SmartLifecycle {
      */
     static final String OUTAGE_DOMAIN = ".invalid";
 
+    /** Corps lu au plus : un client qui envoie sans fin ne remplit pas le tas. */
+    static final int MAX_BODY_BYTES = 64 * 1024;
+
+    /** Journal des requêtes reçues : les plus anciennes sortent quand le plafond est atteint. */
+    static final int MAX_RECEIVED = 256;
+
     private final int port;
     private final ObjectMapper json;
     private final List<String> received = Collections.synchronizedList(new ArrayList<>());
@@ -89,16 +95,32 @@ public class DemoFakeApis implements SmartLifecycle {
         return "http://localhost:" + current.getAddress().getPort();
     }
 
+    /** Adresse d'écoute : toujours la boucle locale (D-DEMO-FAKE-BOUNDS). */
+    InetSocketAddress listenAddress() {
+        HttpServer current = server;
+        if (current == null) {
+            throw new IllegalStateException("demo: fake APIs not started");
+        }
+        return current.getAddress();
+    }
+
     /** Les requêtes reçues, « MÉTHODE /chemin », dans l'ordre. */
     public List<String> received() {
-        return List.copyOf(received);
+        synchronized (received) {
+            return List.copyOf(received);
+        }
     }
 
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             String line = exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawPath();
-            byte[] body = exchange.getRequestBody().readAllBytes();
-            received.add(line);
+            byte[] body = exchange.getRequestBody().readNBytes(MAX_BODY_BYTES);
+            synchronized (received) {
+                received.add(line);
+                while (received.size() > MAX_RECEIVED) {
+                    received.remove(0);
+                }
+            }
             Response response = respond(line, body);
             if (response == Response.DROP) {
                 return; // fermé sans réponse : l'appelant voit une coupure réseau

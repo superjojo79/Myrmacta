@@ -24,11 +24,14 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
 
 - **Paquets** (`DemoPack`) : chacun installe un exemple, ou un jeu d'états, par les vrais cas d'usage. `DemoSeeder`
   les installe dans l'ordre (`order()`, unique), au démarrage de l'application, et passe ceux que `installed()` dit
-  présents. Un paquet en échec arrête la démo.
+  présents. `installed()` ne regarde que le **dernier** effet du paquet (D-DEMO-INSTALL, §134) : le brouillon
+  `routageCourrier` pour les états, la tâche `validationAcces` pour l'onboarding. Un paquet interrompu avant est
+  rejoué, sans dupliquer les factures, l'incident ou les arrivées déjà créés. Un paquet en échec arrête la démo.
 - **Paquets livrés :**
   - mail room (`MailRoomDemoPack`, ordre 10) ; le profil `demo-mailroom` n'active que lui (§113) ;
   - onboarding collaborateur (`OnboardingDemoPack`, ordre 20) : connecteurs sur les faux SIRH, IAM et ITSM de
-    `DemoFakeApis` (D-DEMO-FAKE-APIS, serveur HTTP du JDK sur la boucle locale, port `app.demo.fake-apis.port`, 18090
+    `DemoFakeApis` (D-DEMO-FAKE-APIS, serveur HTTP du JDK sur la boucle locale, corps borné à 64 Kio et journal des
+    requêtes plafonné à 256, D-DEMO-FAKE-BOUNDS ; port `app.demo.fake-apis.port`, 18090
     par défaut, fixe pour que les connecteurs installés restent valables au redémarrage) ; trois arrivées semées par le
     vrai processus (provisionnée, en attente du manager, en attente de l'IT). Le paquet attend que ses processus
     atteignent la tâche attendue (délai de 120 s) : en démo réelle, l'exécuteur asynchrone de Flowable mène les jobs ;

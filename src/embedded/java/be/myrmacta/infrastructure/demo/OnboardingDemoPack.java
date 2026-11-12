@@ -10,6 +10,7 @@ import be.myrmacta.domain.dossier.model.FieldDefinition;
 import be.myrmacta.domain.dossier.port.in.CreateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.CreateDossierUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierStatusUseCase;
+import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.workflow.model.TaskQuestionSchema;
 import be.myrmacta.domain.workflow.model.WorkflowStatusDefinition;
@@ -18,6 +19,8 @@ import be.myrmacta.domain.workflow.port.in.CompleteTaskUseCase;
 import be.myrmacta.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveTaskQuestionSchemaUseCase;
 import be.myrmacta.domain.workflow.port.in.SaveWorkflowTypeConfigUseCase;
+import be.myrmacta.domain.workflow.port.out.TaskQuestionSchemaRepository;
+import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.flowable.common.engine.api.FlowableException;
@@ -67,6 +71,8 @@ public class OnboardingDemoPack implements DemoPack {
     static final int ORDER = 20;
     static final String TYPE = "ONBOARDING_COLLABORATEUR";
     static final String PROCESS = "onboardingCollaborateur";
+    /** Dernière arrivée du paquet : c'est elle, et non Élise qui passe aussi par cette tâche, qui marque la fin. */
+    private static final String LAST_ARRIVAL_EMAIL = "sarah.dubois@example.org";
     private static final String ACTOR = "demo-onboarding";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
     /** Large : avec l'exécuteur actif, un appel en échec n'est relancé qu'après le délai de Flowable (10 s, trois fois). */
@@ -77,9 +83,12 @@ public class OnboardingDemoPack implements DemoPack {
     private final ObjectMapper json;
     private final TenantProperties tenant;
     private final DossierTypeRepository types;
+    private final DossierRepository dossiers;
     private final CreateDossierTypeUseCase createType;
     private final SaveTaskQuestionSchemaUseCase saveQuestions;
+    private final TaskQuestionSchemaRepository questionSchemas;
     private final SaveWorkflowTypeConfigUseCase saveConfig;
+    private final WorkflowTypeConfigRepository workflowConfigs;
     private final ManageConnectorInstanceUseCase connectors;
     private final DeployBpmnProcessUseCase deployBpmn;
     private final CreateDossierUseCase createDossier;
@@ -94,8 +103,10 @@ public class OnboardingDemoPack implements DemoPack {
     private final TransactionTemplate transaction;
 
     public OnboardingDemoPack(@Value("${app.demo.onboarding.dir:exemples/onboarding-collaborateur}") String exampleDir,
-            @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, CreateDossierTypeUseCase createType,
-            SaveTaskQuestionSchemaUseCase saveQuestions, SaveWorkflowTypeConfigUseCase saveConfig,
+            @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types,
+            DossierRepository dossiers, CreateDossierTypeUseCase createType, SaveTaskQuestionSchemaUseCase saveQuestions,
+            TaskQuestionSchemaRepository questionSchemas, SaveWorkflowTypeConfigUseCase saveConfig,
+            WorkflowTypeConfigRepository workflowConfigs,
             ManageConnectorInstanceUseCase connectors, DeployBpmnProcessUseCase deployBpmn, CreateDossierUseCase createDossier,
             UpdateDossierStatusUseCase updateStatus, ManualStartOrchestrator starter, CompleteTaskUseCase completeTask,
             DemoFakeApis apis, TaskService tasks, RuntimeService runtime, ManagementService management, ProcessEngine engine,
@@ -104,9 +115,12 @@ public class OnboardingDemoPack implements DemoPack {
         this.json = json;
         this.tenant = tenant;
         this.types = types;
+        this.dossiers = dossiers;
         this.createType = createType;
         this.saveQuestions = saveQuestions;
+        this.questionSchemas = questionSchemas;
         this.saveConfig = saveConfig;
+        this.workflowConfigs = workflowConfigs;
         this.connectors = connectors;
         this.deployBpmn = deployBpmn;
         this.createDossier = createDossier;
@@ -131,9 +145,28 @@ public class OnboardingDemoPack implements DemoPack {
         return ORDER;
     }
 
+    /**
+     * Installé quand Sarah attend la validation IT. Élise passe par la même tâche plus tôt : elle ne compte pas. Le type,
+     * posé en premier, ne suffit pas (D-DEMO-INSTALL).
+     */
     @Override
     public boolean installed() {
-        return types.findByCode(tenant.id(), TYPE).isPresent();
+        for (Task task : tasks.createTaskQuery().taskTenantId(tenant.id()).processDefinitionKey(PROCESS)
+                .taskDefinitionKey("validationAcces").list()) {
+            Object dossierId = runtime.getVariable(task.getProcessInstanceId(), "dossierId");
+            if (dossierId == null) {
+                continue;
+            }
+            try {
+                if (dossiers.findById(UUID.fromString(dossierId.toString()))
+                        .filter(dossier -> LAST_ARRIVAL_EMAIL.equals(dossier.fields().get("emailPersonnel"))).isPresent()) {
+                    return true;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Identifiant illisible : ce n'est pas l'arrivée qui clôt le paquet.
+            }
+        }
+        return false;
     }
 
     @Override
@@ -142,7 +175,9 @@ public class OnboardingDemoPack implements DemoPack {
             throw new IllegalStateException("demo: onboarding example directory not found: " + example.dir().toAbsolutePath()
                     + " (start from the repository root, or set APP_DEMO_ONBOARDING_DIR)");
         }
-        installExample();
+        if (!processDeployed()) {
+            installExample();
+        }
         seedArrivals();
         log.info("demo: onboarding example installed; 3 arrivals (provisioned, awaiting the manager, awaiting IT)");
     }
@@ -151,22 +186,29 @@ public class OnboardingDemoPack implements DemoPack {
     private void installExample() {
         JsonNode type = read("config/type-dossier.json");
         List<FieldDefinition> fields = json.convertValue(type.get("fieldDefinitions"), new TypeReference<List<FieldDefinition>>() {});
-        createType.create(new CreateDossierTypeUseCase.CreateDossierTypeCommand(tenant.id(), type.get("code").asString(),
-                type.get("label").asString(), type.get("workflowKey").asString(), true, false, fields, null, false, null,
-                List.of()), ADMIN);
+        if (types.findByCode(tenant.id(), type.get("code").asString()).isEmpty()) {
+            createType.create(new CreateDossierTypeUseCase.CreateDossierTypeCommand(tenant.id(), type.get("code").asString(),
+                    type.get("label").asString(), type.get("workflowKey").asString(), true, false, fields, null, false, null,
+                    List.of()), ADMIN);
+        }
         for (JsonNode schema : read("config/questions.json")) {
+            if (questionSchemas.findByKey(tenant.id(), schema.get("schemaKey").asString()).isPresent()) {
+                continue;
+            }
             saveQuestions.save(new TaskQuestionSchema(UUID.randomUUID(), tenant.id(), schema.get("schemaKey").asString(),
                     schema.get("label").asString(),
                     json.convertValue(schema.get("fields"), new TypeReference<List<FieldDefinition>>() {}), ACTOR, ACTOR),
                     ADMIN);
         }
         JsonNode config = read("config/workflow-config.json");
-        saveConfig.create(new WorkflowTypeConfig(UUID.randomUUID(), tenant.id(), config.get("processDefinitionKey").asString(),
+        if (workflowConfigs.findByWorkflowKey(tenant.id(), config.get("processDefinitionKey").asString()).isEmpty()) {
+            saveConfig.create(new WorkflowTypeConfig(UUID.randomUUID(), tenant.id(), config.get("processDefinitionKey").asString(),
                 config.get("label").asString(),
                 json.convertValue(config.get("statusDefinitions"), new TypeReference<List<WorkflowStatusDefinition>>() {}),
                 json.convertValue(config.get("allowedDossierStatuses"), new TypeReference<List<DossierStatus>>() {}),
                 config.hasNonNull("onStartDossierStatus") ? DossierStatus.valueOf(config.get("onStartDossierStatus").asString()) : null,
                 List.of(), ACTOR, ACTOR), ADMIN);
+        }
 
         // Connecteurs « service seul » de l'exemple, sur les faux services (en-tête statique pour les trois, comme le test de
         // l'exemple) ; le BPMN reçoit leurs identifiants à la place des marqueurs de config/connecteurs.json.
@@ -185,19 +227,35 @@ public class OnboardingDemoPack implements DemoPack {
     }
 
     private void seedArrivals() {
-        String provisioned = arrive("Élise", "Van den Broeck", "elise.vdb@example.org",
-                example.text("Développeuse Java", "Java developer"), "IT", "DEVELOPPEUR");
-        complete(provisioned, "validationManager", Map.of("decisionManager", "APPROUVER"));
-        advanceTo(provisioned, "validationAcces");
-        complete(provisioned, "validationAcces", Map.of("niveauAcces", "DEVELOPPEURS"));
-        advanceToEnd(provisioned);
+        if (byEmail("elise.vdb@example.org").isEmpty()) {
+            String provisioned = arrive("Élise", "Van den Broeck", "elise.vdb@example.org",
+                    example.text("Développeuse Java", "Java developer"), "IT", "DEVELOPPEUR");
+            complete(provisioned, "validationManager", Map.of("decisionManager", "APPROUVER"));
+            advanceTo(provisioned, "validationAcces");
+            complete(provisioned, "validationAcces", Map.of("niveauAcces", "DEVELOPPEURS"));
+            advanceToEnd(provisioned);
+        }
 
-        arrive("Thomas", "Peeters", "thomas.peeters@example.org", example.text("Gestionnaire de dossiers", "Case officer"),
-                "OPERATIONS", "STANDARD");
+        if (byEmail("thomas.peeters@example.org").isEmpty()) {
+            arrive("Thomas", "Peeters", "thomas.peeters@example.org", example.text("Gestionnaire de dossiers", "Case officer"),
+                    "OPERATIONS", "STANDARD");
+        }
 
-        String awaitingIt = arrive("Sarah", "Dubois", "sarah.dubois@example.org",
-                example.text("Directrice financière", "Chief financial officer"), "FINANCE", "DIRECTION");
-        complete(awaitingIt, "validationManager", Map.of("decisionManager", "APPROUVER"));
+        Optional<Dossier> sarah = byEmail(LAST_ARRIVAL_EMAIL);
+        String awaitingIt;
+        if (sarah.isEmpty()) {
+            awaitingIt = arrive("Sarah", "Dubois", LAST_ARRIVAL_EMAIL,
+                    example.text("Directrice financière", "Chief financial officer"), "FINANCE", "DIRECTION");
+        } else {
+            awaitingIt = processOf(sarah.get());
+            if (awaitingIt == null
+                    || tasks.createTaskQuery().processInstanceId(awaitingIt).taskDefinitionKey("validationAcces").count() > 0) {
+                return;
+            }
+        }
+        if (tasks.createTaskQuery().processInstanceId(awaitingIt).taskDefinitionKey("validationManager").count() > 0) {
+            complete(awaitingIt, "validationManager", Map.of("decisionManager", "APPROUVER"));
+        }
         advanceTo(awaitingIt, "validationAcces");
     }
 
@@ -206,12 +264,38 @@ public class OnboardingDemoPack implements DemoPack {
      * ({@link DemoFakeApis#OUTAGE_DOMAIN}). Ses relances épuisées, l'appel devient un incident rejouable.
      */
     void seedIncident() {
-        String instance = arrive("Nadia", "Claes", "nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN,
-                example.text("Comptable", "Accountant"),
-                "FINANCE", "STANDARD");
-        complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
-        advance(instance, () -> management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0,
-                "an incident");
+        String email = "nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN;
+        Optional<Dossier> existing = byEmail(email);
+        String instance;
+        if (existing.isEmpty()) {
+            instance = arrive("Nadia", "Claes", email, example.text("Comptable", "Accountant"), "FINANCE", "STANDARD");
+        } else {
+            instance = processOf(existing.get());
+            if (instance == null || management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0) {
+                return;
+            }
+        }
+        if (tasks.createTaskQuery().processInstanceId(instance).taskDefinitionKey("validationManager").count() > 0) {
+            complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
+        }
+        advance(instance, () -> management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0, "an incident");
+    }
+
+    private boolean processDeployed() {
+        return engine.getRepositoryService().createProcessDefinitionQuery().processDefinitionKey(PROCESS)
+                .processDefinitionTenantId(tenant.id()).count() > 0;
+    }
+
+    private Optional<Dossier> byEmail(String email) {
+        return dossiers.findByDossierTypeCode(tenant.id(), TYPE).stream()
+                .filter(dossier -> email.equals(dossier.fields().get("emailPersonnel")))
+                .findFirst();
+    }
+
+    private String processOf(Dossier dossier) {
+        var found = runtime.createProcessInstanceQuery().processInstanceTenantId(tenant.id())
+                .variableValueEquals("dossierId", dossier.id().toString()).list();
+        return found.isEmpty() ? null : found.get(0).getId();
     }
 
     /** Crée et ouvre un dossier d'arrivée, puis démarre le processus : il attend la validation du manager. */

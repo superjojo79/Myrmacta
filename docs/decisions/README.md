@@ -152,6 +152,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 131 | [Historique d'exécution : étapes significatives seulement](131-historique-etapes-significatives.md) | clos | — |
 | 132 | [Langue des textes serveur posés sur un dossier](132-langue-des-textes-serveur-du-dossier.md) | clos | — |
 | 133 | [Normalisation ASCII d'un login calculé](133-normalisation-ascii-du-login-iam.md) | clos | — |
+| 134 | [Reprise d'un paquet de démo interrompu, faux services bornés](134-reprise-d-un-paquet-de-demo-interrompu.md) | clos | — |
 
 ## Sections de l'ancien registre
 

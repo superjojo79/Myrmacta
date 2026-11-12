@@ -2,7 +2,12 @@ package be.myrmacta.infrastructure.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -44,6 +49,42 @@ class DemoFakeApisTest {
         assertThat(apis.respond("POST /sirh/employees",
                 "{\"personalEmail\":\"elise.vdb@example.org\"}".getBytes(StandardCharsets.UTF_8)).status())
                 .isEqualTo(201);
+    }
+
+    @Test
+    void startListensOnlyOnTheLoopbackAddress() {
+        apis.start();
+        try {
+            assertThat(apis.listenAddress().getAddress().isLoopbackAddress()).isTrue();
+        } finally {
+            apis.stop();
+        }
+    }
+
+    @Test
+    void aBodyBeyondTheLimitIsNotRead_andTheReceivedListDoesNotGrowWithoutBound() throws Exception {
+        apis.start();
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            String head = "{\"username\":\"";
+            String tail = "kept\"}";
+            byte[] overflow = new byte[DemoFakeApis.MAX_BODY_BYTES + tail.length()];
+            Arrays.fill(overflow, (byte) 'x');
+            System.arraycopy(head.getBytes(StandardCharsets.UTF_8), 0, overflow, 0, head.length());
+            System.arraycopy(tail.getBytes(StandardCharsets.UTF_8), 0, overflow, DemoFakeApis.MAX_BODY_BYTES, tail.length());
+            HttpResponse<String> response = client.send(HttpRequest.newBuilder(URI.create(apis.baseUrl() + "/iam/users"))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(overflow)).build(), HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(201);
+            assertThat(response.body()).doesNotContain("kept");
+
+            for (int i = 0; i < DemoFakeApis.MAX_RECEIVED + 20; i++) {
+                client.send(HttpRequest.newBuilder(URI.create(apis.baseUrl() + "/nope")).GET().build(),
+                        HttpResponse.BodyHandlers.discarding());
+            }
+            assertThat(apis.received()).hasSize(DemoFakeApis.MAX_RECEIVED);
+        } finally {
+            apis.stop();
+        }
     }
 
     @Test

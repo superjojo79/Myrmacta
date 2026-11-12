@@ -11,6 +11,7 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.workflow.model.Provenance;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
+import be.myrmacta.domain.workflow.port.out.DmnDraftRepository;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -80,6 +81,7 @@ public class StatesDemoPack implements DemoPack {
     private final UpdateDossierStatusUseCase updateStatus;
     private final DossierRepository dossiers;
     private final ProposeDraftUseCase drafts;
+    private final DmnDraftRepository draftRepository;
     private final OnboardingDemoPack onboarding;
     private final TransactionTemplate transaction;
     private final Clock clock;
@@ -87,7 +89,8 @@ public class StatesDemoPack implements DemoPack {
     public StatesDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String mailRoomDir,
             @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, UpdateDossierTypeUseCase updateType,
             CreateDossierUseCase createDossier, UpdateDossierStatusUseCase updateStatus, DossierRepository dossiers,
-            ProposeDraftUseCase drafts, OnboardingDemoPack onboarding, PlatformTransactionManager transactionManager) {
+            ProposeDraftUseCase drafts, DmnDraftRepository draftRepository, OnboardingDemoPack onboarding,
+            PlatformTransactionManager transactionManager) {
         this.mailRoomExample = new DemoExample(Path.of(mailRoomDir), locale, json);
         this.tenant = tenant;
         this.types = types;
@@ -96,6 +99,7 @@ public class StatesDemoPack implements DemoPack {
         this.updateStatus = updateStatus;
         this.dossiers = dossiers;
         this.drafts = drafts;
+        this.draftRepository = draftRepository;
         this.onboarding = onboarding;
         this.transaction = new TransactionTemplate(transactionManager);
         this.clock = Clock.systemUTC();
@@ -111,10 +115,13 @@ public class StatesDemoPack implements DemoPack {
         return ORDER;
     }
 
-    /** Installé dès que la facture porte son objectif SLA : c'est la première chose que fait le paquet. */
+    /**
+     * Installé seulement quand le dernier effet est là : le brouillon de routage. L'objectif SLA, posé en premier, ne
+     * suffit pas — un échec plus loin (incident, brouillon) doit pouvoir être rejoué (D-DEMO-INSTALL).
+     */
     @Override
     public boolean installed() {
-        return types.findByCode(tenant.id(), "FACTURE").map(type -> type.slaTargetHours() != null).orElse(false);
+        return draftRepository.findByTenantIdAndDecisionKey(tenant.id(), ROUTING).isPresent();
     }
 
     @Override
@@ -126,6 +133,9 @@ public class StatesDemoPack implements DemoPack {
             invoice(invoice, now);
         }
         onboarding.seedIncident();
+        if (!onboarding.incidentReady()) {
+            throw new IllegalStateException("demo: SIRH incident missing, routing draft not proposed");
+        }
         proposeRoutingDraft();
         log.info("demo: states installed ({} invoices over four weeks, 1 incident, 1 MCP draft)", HISTORY.size());
     }
@@ -142,8 +152,12 @@ public class StatesDemoPack implements DemoPack {
     /** Créée et menée par les cas d'usage, puis antidatée (D-DEMO-BACKDATE). */
     private void invoice(Invoice invoice, Instant now) {
         String subject = mailRoomExample.text(invoice.subject(), invoice.subject().replace("Facture", "Invoice"));
+        String label = subject + " — " + invoice.supplier();
+        if (dossiers.findByDossierTypeCode(tenant.id(), "FACTURE").stream().anyMatch(existing -> label.equals(existing.label()))) {
+            return;
+        }
         Dossier created = transaction.execute(status -> createDossier.create(new CreateDossierUseCase.CreateDossierCommand(
-                tenant.id(), "FACTURE", subject + " — " + invoice.supplier(),
+                tenant.id(), "FACTURE", label,
                 Map.of("expediteur", invoice.supplier(), "objet", subject), ACTOR), ADMIN));
         status(created, DossierStatus.OUVERT);
         status(created, invoice.handledInHours() == null ? DossierStatus.EN_COURS : DossierStatus.CLOTURE);

@@ -150,7 +150,7 @@ class OnboardingOrchestrationExampleIT {
         JsonNode iamBody = JSON.readTree(APIS.received().get(1).body());
         assertThat(APIS.received().get(1).authorization()).isEqualTo("Bearer iam-token");
         assertThat(iamBody.get("employeeNumber").asString()).isEqualTo("E-1001");
-        assertThat(iamBody.get("username").asString()).isEqualTo("évandenbroeck");
+        assertThat(iamBody.get("username").asString()).isEqualTo("evandenbroeck");
         JsonNode ticket = JSON.readTree(APIS.received().get(3).body());
         assertThat(ticket.get("requestedFor").asString()).isEqualTo("evdbroeck");
         assertThat(ticket.get("profile").asString()).isEqualTo("DIRECTION");

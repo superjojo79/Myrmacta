@@ -4,6 +4,7 @@ import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.DuplicateDossierRelationException;
@@ -18,13 +19,16 @@ import be.myrmacta.domain.notification.model.NotificationEvent;
 import be.myrmacta.domain.notification.port.in.SendNotificationUseCase;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
+import be.myrmacta.infrastructure.config.I18nProperties;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -49,11 +53,21 @@ public class MailThreadAttacher {
     private final WorkflowParticipantPort participants;
     private final SendNotificationUseCase notifications;
     private final WorkflowEnginePort engine;
+    private final Locale locale;
+
+    /** Langue de l'avertissement : langue par défaut du tenant (D-I18N-DOSSIER-TEXT). */
+    @Autowired
+    public MailThreadAttacher(DossierRelationRepository relations, CreateDossierRelationUseCase createRelation,
+            DossierElementRepository elements, DocumentStoragePort storage, AttachInboundFilesUseCase attachFiles,
+            DossierWorkflowLinkRepository links, WorkflowParticipantPort participants, SendNotificationUseCase notifications,
+            WorkflowEnginePort engine, I18nProperties i18n) {
+        this(relations, createRelation, elements, storage, attachFiles, links, participants, notifications, engine, i18n.locale());
+    }
 
     public MailThreadAttacher(DossierRelationRepository relations, CreateDossierRelationUseCase createRelation,
             DossierElementRepository elements, DocumentStoragePort storage, AttachInboundFilesUseCase attachFiles,
             DossierWorkflowLinkRepository links, WorkflowParticipantPort participants, SendNotificationUseCase notifications,
-            WorkflowEnginePort engine) {
+            WorkflowEnginePort engine, Locale locale) {
         this.relations = Objects.requireNonNull(relations, "relations");
         this.createRelation = Objects.requireNonNull(createRelation, "createRelation");
         this.elements = Objects.requireNonNull(elements, "elements");
@@ -63,6 +77,7 @@ public class MailThreadAttacher {
         this.participants = Objects.requireNonNull(participants, "participants");
         this.notifications = Objects.requireNonNull(notifications, "notifications");
         this.engine = Objects.requireNonNull(engine, "engine");
+        this.locale = Objects.requireNonNull(locale, "locale");
     }
 
     /**
@@ -129,8 +144,8 @@ public class MailThreadAttacher {
         for (String userId : recipients) {
             notifications.send(new NotificationEvent(List.of(NotificationChannel.BROWSER), null, null, null, userId, null,
                     Map.of("type", "MAIL_THREAD_REPLY",
-                            "title", "Nouveau courrier",
-                            "body", "Un courrier (" + mail.reference() + ") répond au fil du dossier " + target.reference() + ".",
+                            "title", ServerDossierTexts.mailThreadReplyTitle(locale),
+                            "body", ServerDossierTexts.mailThreadReplyBody(locale, mail.reference(), target.reference()),
                             "dossierId", target.id().toString(),
                             "courrierId", mail.id().toString())), tenantId);
         }

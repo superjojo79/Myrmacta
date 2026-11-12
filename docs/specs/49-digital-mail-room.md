@@ -90,7 +90,9 @@ Les trois modes se combinent :
    intermédiaire ou en bordure ; `WorkflowEnginePort.correlateMessageToAllWaiting`).
 3. **Workflow « réponse » du type** (`/api/dossier-types/{code}/reply-workflow`) :
    - `SUR_DOSSIER` : démarre sur le dossier du fil, seulement si aucun process n'y tourne ;
-   - `DOSSIER_ENFANT` : démarre dans un dossier enfant `PARENT_CHILD` créé pour la réponse.
+   - `DOSSIER_ENFANT` : démarre dans un dossier enfant `PARENT_CHILD` créé pour la réponse. Son libellé est
+     « Réponse {référence du courrier} », ou « Reply {référence} » quand la langue par défaut du tenant est l'anglais
+     (D-I18N-DOSSIER-TEXT, §133).
 
 ## 6. Groupes d'utilisateurs (§114)
 

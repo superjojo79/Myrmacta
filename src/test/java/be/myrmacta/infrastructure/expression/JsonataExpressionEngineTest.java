@@ -32,6 +32,32 @@ class JsonataExpressionEngineTest {
 
     // ---- fonctionnel -------------------------------------------------------------------------------------------
 
+    /** TODO §134 (D-EXPR-ASCII) — login : accents retirés, minuscules, hors `[a-z0-9.-]` supprimé. */
+    @Test
+    void asciiStripsAccentsAndKeepsOnlyLoginCharacters() {
+        assertThat(engine.evaluate("$ascii($substring(\"Élise\", 0, 1) & \"Van den Broeck\")", Map.of()).value())
+                .isEqualTo("evandenbroeck");
+        assertThat(engine.evaluate("$ascii(\"Jean-Pierre.2\")", Map.of()).value()).isEqualTo("jean-pierre.2");
+        assertThat(engine.evaluate("$ascii(\"O'Neil\")", Map.of()).value()).isEqualTo("oneil");
+        assertThat(engine.evaluate("$ascii(\"ß\")", Map.of()).value()).isEqualTo("ss");
+        assertThat(engine.evaluate("$ascii(\"Ø\")", Map.of()).value()).isEqualTo("o");
+        assertThat(engine.evaluate("$ascii(\"Ł\")", Map.of()).value()).isEqualTo("l");
+        assertThat(engine.evaluate("$ascii(\"œ\")", Map.of()).value()).isEqualTo("oe");
+        assertThat(engine.evaluate("$ascii(\"æ\")", Map.of()).value()).isEqualTo("ae");
+        assertThat(engine.evaluate("$ascii(\"e\u0301\")", Map.of()).value()).isEqualTo("e");
+        assertThat(engine.evaluate("$ascii(null)", Map.of()).defined()).isFalse();
+        assertThatThrownBy(() -> engine.evaluate("$ascii(\"\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("no login characters");
+        assertThatThrownBy(() -> engine.evaluate("$ascii(\"!!!\")", Map.of()))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("no login characters");
+        assertThatThrownBy(() -> engine.evaluate("$ascii(1)", Map.of("secret", "TOPSECRET")))
+                .isInstanceOf(ExpressionEvaluationException.class)
+                .hasMessageContaining("expects text")
+                .hasMessageNotContaining("TOPSECRET");
+    }
+
     @Test
     void conditionOverDossierFieldsIsABoolean() {
         ExpressionResult r = engine.evaluate(
@@ -475,7 +501,11 @@ class JsonataExpressionEngineTest {
     @Test
     void lowEveryBuiltinOutsideTheAllowlistIsRefusedAndEveryAllowedOneIsKnownToTheLibrary() {
         java.util.Set<String> builtins = AstInspector.builtinFunctionNames();
-        assertThat(builtins).containsAll(JsonataExpressionEngine.ALLOWED_FUNCTIONS); // dérive de la bibliothèque
+        // {@code $ascii} est ajoutée par le moteur : elle n'est pas une fonction de la bibliothèque.
+        assertThat(JsonataExpressionEngine.ALLOWED_FUNCTIONS).contains("ascii");
+        assertThat(builtins).containsAll(JsonataExpressionEngine.ALLOWED_FUNCTIONS.stream()
+                .filter(name -> !"ascii".equals(name)).toList());
+        engine.validate("$ascii");
         for (String name : builtins) {
             if (JsonataExpressionEngine.ALLOWED_FUNCTIONS.contains(name)) {
                 engine.validate("$" + name); // référence seule : syntaxe valide

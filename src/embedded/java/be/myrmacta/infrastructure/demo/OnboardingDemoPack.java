@@ -44,6 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -63,10 +65,16 @@ import tools.jackson.databind.ObjectMapper;
  * </ul>
  * Les appels asynchrones sont exécutés ici, job par job, jusqu'à la tâche attendue : le paquet ne dépend pas de l'exécuteur
  * asynchrone. Build {@code embedded-db} seulement.
+ * <p>
+ * TODO §136 (D-VIDEO-OFFSCREEN-PREP, issue #57) — profil {@value #VIDEO_PROFILE} (scène de la capsule L2) : l'exemple seul,
+ * sans arrivée. Le tournage encode lui-même ses arrivées et commande les pannes des faux services.
  */
 @Component
-@Profile("demo")
+@Profile({"demo", OnboardingDemoPack.VIDEO_PROFILE})
 public class OnboardingDemoPack implements DemoPack {
+
+    /** Scène de la capsule vidéo L2 : l'exemple onboarding sans arrivée, faux SIRH, IAM et ITSM pilotables. */
+    public static final String VIDEO_PROFILE = "demo-video-onboarding";
 
     static final int ORDER = 20;
     static final String TYPE = "ONBOARDING_COLLABORATEUR";
@@ -101,6 +109,7 @@ public class OnboardingDemoPack implements DemoPack {
     private final ManagementService management;
     private final ProcessEngine engine;
     private final TransactionTemplate transaction;
+    private final boolean arrivals;
 
     public OnboardingDemoPack(@Value("${app.demo.onboarding.dir:exemples/onboarding-collaborateur}") String exampleDir,
             @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types,
@@ -110,7 +119,8 @@ public class OnboardingDemoPack implements DemoPack {
             ManageConnectorInstanceUseCase connectors, DeployBpmnProcessUseCase deployBpmn, CreateDossierUseCase createDossier,
             UpdateDossierStatusUseCase updateStatus, ManualStartOrchestrator starter, CompleteTaskUseCase completeTask,
             DemoFakeApis apis, TaskService tasks, RuntimeService runtime, ManagementService management, ProcessEngine engine,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager, Environment environment) {
+        this.arrivals = !environment.acceptsProfiles(Profiles.of(VIDEO_PROFILE));
         this.example = new DemoExample(Path.of(exampleDir), locale, json);
         this.json = json;
         this.tenant = tenant;
@@ -151,6 +161,9 @@ public class OnboardingDemoPack implements DemoPack {
      */
     @Override
     public boolean installed() {
+        if (!arrivals) {
+            return processDeployed();
+        }
         for (Task task : tasks.createTaskQuery().taskTenantId(tenant.id()).processDefinitionKey(PROCESS)
                 .taskDefinitionKey("validationAcces").list()) {
             Object dossierId = runtime.getVariable(task.getProcessInstanceId(), "dossierId");
@@ -177,6 +190,10 @@ public class OnboardingDemoPack implements DemoPack {
         }
         if (!processDeployed()) {
             installExample();
+        }
+        if (!arrivals) {
+            log.info("demo: onboarding example installed; no arrival (video profile: the shoot enters them)");
+            return;
         }
         seedArrivals();
         log.info("demo: onboarding example installed; 3 arrivals (provisioned, awaiting the manager, awaiting IT)");
@@ -332,7 +349,7 @@ public class OnboardingDemoPack implements DemoPack {
     }
 
     /** Crée et ouvre un dossier d'arrivée, puis démarre le processus : il attend la validation du manager. */
-    private String arrive(String firstName, String lastName, String email, String function, String department, String profile) {
+    String arrive(String firstName, String lastName, String email, String function, String department, String profile) {
         JsonNode sample = read("config/exemple-dossier.json");
         Map<String, Object> fields = new HashMap<>(json.convertValue(sample.get("fields"), new TypeReference<Map<String, Object>>() {}));
         fields.put("prenom", firstName);
@@ -353,7 +370,7 @@ public class OnboardingDemoPack implements DemoPack {
         return instance;
     }
 
-    private void complete(String instance, String taskKey, Map<String, Object> variables) {
+    void complete(String instance, String taskKey, Map<String, Object> variables) {
         Task task = tasks.createTaskQuery().processInstanceId(instance).taskDefinitionKey(taskKey).singleResult();
         if (task == null) {
             throw new IllegalStateException("demo: onboarding task " + taskKey + " not found on " + instance);
@@ -362,12 +379,12 @@ public class OnboardingDemoPack implements DemoPack {
         transaction.executeWithoutResult(status -> completeTask.complete(task.getId(), dossierId, variables, ADMIN));
     }
 
-    private void advanceTo(String instance, String taskKey) {
+    void advanceTo(String instance, String taskKey) {
         advance(instance, () -> tasks.createTaskQuery().processInstanceId(instance).taskDefinitionKey(taskKey).count() > 0,
                 "task " + taskKey);
     }
 
-    private void advanceToEnd(String instance) {
+    void advanceToEnd(String instance) {
         advance(instance, () -> runtime.createProcessInstanceQuery().processInstanceId(instance).count() == 0, "the end");
     }
 

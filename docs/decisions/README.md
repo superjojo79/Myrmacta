@@ -154,6 +154,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 133 | [Langue des textes serveur posés sur un dossier](133-langue-des-textes-serveur-du-dossier.md) | clos | — |
 | 134 | [Normalisation ASCII d'un login calculé](134-normalisation-ascii-du-login-iam.md) | clos | — |
 | 135 | [Reprise d'un paquet de démo interrompu, faux services bornés](135-reprise-d-un-paquet-de-demo-interrompu.md) | clos | — |
+| 136 | [Capsule vidéo L2 « onboarding » : pannes commandées, vignette du processus](136-capsule-video-onboarding.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

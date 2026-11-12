@@ -55,10 +55,16 @@ public final class DmnXmlVersions {
         return to13(new String(xml, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8);
     }
 
+    private static final String COMMENT_OPEN = "<!--";
+    private static final String COMMENT_CLOSE = "-->";
+    private static final String XML_DECL_OPEN = "<?xml";
+    private static final String XML_DECL_CLOSE = "?>";
+
     /**
      * Removes {@code <!-- … -->} that appear only before the first element (after an optional
      * {@code <?xml …?>}). Linear in the length of {@code xml}: an unclosed comment stops the scan
-     * and leaves the remainder intact.
+     * and leaves the remainder intact. Relies on {@link String#startsWith(String, int)} (no separate
+     * length guard — that check is redundant and only produced equivalent PIT mutants).
      */
     static String stripCommentsBeforeRoot(String xml) {
         StringBuilder out = new StringBuilder(xml.length());
@@ -69,23 +75,27 @@ public final class DmnXmlVersions {
                 out.append(xml.charAt(i));
                 i++;
             }
-            if (i + 4 <= n && xml.startsWith("<!--", i)) {
-                int end = xml.indexOf("-->", i + 4);
-                if (end < 0) {
+            if (xml.startsWith(COMMENT_OPEN, i)) {
+                int searchFrom = i + COMMENT_OPEN.length();
+                int end = xml.indexOf(COMMENT_CLOSE, searchFrom);
+                // end must fall at/after searchFrom; -1 and any earlier hit are treated as unclosed.
+                if (end < searchFrom) {
                     out.append(xml, i, n);
                     return out.toString();
                 }
-                i = end + 3;
+                i = end + COMMENT_CLOSE.length();
                 continue;
             }
-            if (i + 5 <= n && xml.startsWith("<?xml", i)) {
-                int end = xml.indexOf("?>", i + 5);
-                if (end < 0) {
+            if (xml.startsWith(XML_DECL_OPEN, i)) {
+                int searchFrom = i + XML_DECL_OPEN.length();
+                int end = xml.indexOf(XML_DECL_CLOSE, searchFrom);
+                if (end < searchFrom) {
                     out.append(xml, i, n);
                     return out.toString();
                 }
-                out.append(xml, i, end + 2);
-                i = end + 2;
+                int next = end + XML_DECL_CLOSE.length();
+                out.append(xml, i, next);
+                i = next;
                 continue;
             }
             out.append(xml, i, n);

@@ -43,6 +43,15 @@ class ChatWithAssistantUseCaseTest {
     private static final AccessContext.User ALICE = AccessContext.user("alice", java.util.Set.of("TENANT_ADMIN"));
     private static final AccessContext.User BOB = AccessContext.user("bob", java.util.Set.of("TENANT_ADMIN"));
 
+    @Test
+    void systemPrompt_requiresDmn13NamespaceAndForbidsDmn11() {
+        // TODO §130 (D-DMN-GENERATE-13) — le modèle doit émettre le xmlns 1.3, jamais le 1.1.
+        assertThat(ChatWithAssistantUseCaseImpl.SYSTEM_PROMPT)
+                .contains("https://www.omg.org/spec/DMN/20191111/MODEL/")
+                .contains("http://www.omg.org/spec/DMN/20151101")
+                .containsIgnoringCase("DMN 1.3");
+    }
+
     private final Queue<Reply> script = new LinkedList<>();
     private final List<ModelExchange.Request> requests = new ArrayList<>();
     private final List<String> invoked = new ArrayList<>();

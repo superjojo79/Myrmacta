@@ -120,6 +120,21 @@ class DeployDecisionTableToolTest {
     }
 
     @Test
+    void xmlExactlyAtMaxSizeIsAccepted() {
+        // length > max refuse ; length == max doit passer (mutant boundary `>=`).
+        when(dmnParserPort.extractDecisionKey(any())).thenReturn(KEY);
+        when(propose.proposeDmn(any(), any(), eq(KEY), eq(XML), any(), anyBoolean()))
+                .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.DMN, KEY, STAMP, false));
+
+        long exact = XML.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        Map<String, Object> result =
+                asAgent(() -> deployTool(DataSize.ofBytes(exact)).deployDecisionTable(KEY, XML, false, null));
+
+        assertThat(result).containsEntry("status", "DRAFT_PENDING_PUBLICATION");
+        verify(propose).proposeDmn(any(), any(), eq(KEY), eq(XML), any(), anyBoolean());
+    }
+
+    @Test
     void redeployLoadsTheVersionIntoADraftAndRequiresAVersion() {
         when(propose.proposeDmnFromVersion(any(), any(), eq("eligibilite"), eq(1), eq(false)))
                 .thenReturn(new ProposeDraftUseCase.Proposal(DraftArtifactType.DMN, "eligibilite", STAMP, false));

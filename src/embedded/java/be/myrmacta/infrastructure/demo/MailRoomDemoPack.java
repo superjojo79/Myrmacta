@@ -36,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -53,7 +55,7 @@ import tools.jackson.databind.ObjectMapper;
  * {@code scripts/demo.sh reset} (ou {@code scripts/demo-mailroom.sh reset}) la vide pour rejouer la démo.
  */
 @Component
-@Profile({"demo", "demo-mailroom"})
+@Profile({"demo", "demo-mailroom", VideoMailRoomDemoPack.PROFILE})
 public class MailRoomDemoPack implements DemoPack {
 
     /** Premier paquet installé. */
@@ -80,6 +82,7 @@ public class MailRoomDemoPack implements DemoPack {
     private final ConnectorTriggerRuntime runtime;
     private final DepositMailUseCase deposits;
     private final TransactionTemplate transaction;
+    private final boolean sampleMail;
 
     public MailRoomDemoPack(@Value("${app.demo.mailroom.dir:exemples/digital-mail-room}") String exampleDir,
             @Value("${app.demo.locale:fr}") String locale, ObjectMapper json,
@@ -87,7 +90,8 @@ public class MailRoomDemoPack implements DemoPack {
             SaveWorkflowTypeConfigUseCase saveConfig, DeployDecisionTableUseCase deployDmn, DeployBpmnProcessUseCase deployBpmn,
             ManageReplyWorkflowUseCase replyWorkflows, ManageDeadlineUseCase deadlines, ManageConnectorInstanceUseCase connectors,
             CreateNotificationTemplateUseCase createNotificationTemplate, ActivateNotificationTemplateUseCase activateNotificationTemplate,
-            ConnectorTriggerRuntime runtime, DepositMailUseCase deposits, PlatformTransactionManager transactionManager) {
+            ConnectorTriggerRuntime runtime, DepositMailUseCase deposits, PlatformTransactionManager transactionManager,
+            Environment environment) {
         this.example = new DemoExample(Path.of(exampleDir), locale, json);
         this.json = json;
         this.tenant = tenant;
@@ -105,6 +109,8 @@ public class MailRoomDemoPack implements DemoPack {
         this.runtime = runtime;
         this.deposits = deposits;
         this.transaction = new TransactionTemplate(transactionManager);
+        // TODO §128 (D-VIDEO-MAIL) — pour la capsule vidéo, les courriers arrivent en direct pendant le tournage.
+        this.sampleMail = !environment.acceptsProfiles(Profiles.of(VideoMailRoomDemoPack.PROFILE));
     }
 
     @Override
@@ -129,6 +135,10 @@ public class MailRoomDemoPack implements DemoPack {
                     + " (start from the repository root, or set APP_DEMO_MAILROOM_DIR)");
         }
         installExample();
+        if (!sampleMail) {
+            log.info("demo-mailroom: example installed; no sample mail (video profile: mail arrives live)");
+            return;
+        }
         arrive();
         log.info("demo-mailroom: example installed; 3 mail items arrived (invoice by e-mail, fine by deposit, unknown mail)");
     }
@@ -180,11 +190,7 @@ public class MailRoomDemoPack implements DemoPack {
         Map<String, Object> depositConfig = json.convertValue(depositExample.get("config"), Map.class);
         ConnectorInstanceData depositPoint = connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
                 depositExample.get("name").asString(), depositExample.get("connectorType").asString(), true, depositConfig), ADMIN);
-        // La boîte e-mail de la démo : pas de serveur de messagerie, l'e-mail est remis comme l'IMAP le ferait. Instance
-        // désactivée, jamais interrogée ; le type « dépôt » ne se déclenche jamais seul.
-        ConnectorInstanceData mailbox = connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)"), depositExample.get("connectorType").asString(), false,
-                Map.of("processKey", "triCourrier", "dossierTypeCode", "COURRIER")), ADMIN);
+        ConnectorInstanceData mailbox = simulatedMailbox();
 
         String invoice = example.text("Facture 2026-117", "Invoice 2026-117");
         email(mailbox, "<demo-f117@fournisseur.example>", "compta@fournisseur.example", invoice,
@@ -198,7 +204,22 @@ public class MailRoomDemoPack implements DemoPack {
                 example.text("Question diverse", "General question"), List.of());
     }
 
-    private void email(ConnectorInstanceData mailbox, String messageId, String from, String subject, List<InboundAttachment> files) {
+    /**
+     * La boîte e-mail de la démo : pas de serveur de messagerie, l'e-mail est remis comme l'IMAP le ferait. Instance
+     * désactivée, jamais interrogée ; le type « dépôt » ne se déclenche jamais seul.
+     */
+    ConnectorInstanceData simulatedMailbox() {
+        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
+                example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)"),
+                read("config/connecteur-depot.exemple.json").get("connectorType").asString(), false,
+                Map.of("processKey", "triCourrier", "dossierTypeCode", "COURRIER")), ADMIN);
+    }
+
+    DemoExample example() {
+        return example;
+    }
+
+    void email(ConnectorInstanceData mailbox, String messageId, String from, String subject, List<InboundAttachment> files) {
         Map<String, Object> variables = Map.of("mailMessageId", messageId, "mailFrom", from, "mailSubject", subject,
                 "mailSenderAuthenticated", true);
         WorkflowTriggerEvent event = new WorkflowTriggerEvent("triCourrier", "COURRIER", Map.of("expediteur", from, "objet", subject),

@@ -33,6 +33,7 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
 
 - **D-VIDEO-DEADLINE** — le rappel J-5 et l'escalade de l'échéance ne se filment pas en direct (l'horloge ne s'avance
   qu'en test) : la démo de la capsule sème des factures dont l'échéance est proche ou passée, que le vrai job des
-  échéances traite ; un carton « 25 jours plus tard » fait la transition.
+  échéances traite ; un carton « 25 jours plus tard » fait la transition. Le mécanisme est vérifié par `VideoMailRoomDemoPackIT` (un
+  rappel, une escalade avec la tâche réaffectée) ; reste à confirmer le rendu au tournage.
 
 Document de travail : `docs/ai/2026-11-12-capsule-mailroom.md` (supprimé à la clôture).

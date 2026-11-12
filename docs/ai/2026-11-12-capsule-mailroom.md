@@ -78,12 +78,12 @@ registre : §127 (démo et captures, clos), §128 à créer (capsules vidéo)
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Produit : IMAP vers la boucle locale en profil local/test (D-IMAP-LOCAL-LOOPBACK), tests, revue sécurité | en revue | (cette PR) |
-| 2 | Scène : GreenMail en compose, profil `demo-video-mailroom`, envoi SMTP scripté, arrivée réelle vérifiée | à faire | |
+| 1 | Produit : IMAP vers la boucle locale en profil local/test (D-IMAP-LOCAL-LOOPBACK), tests, revue sécurité | en revue | #74 |
+| 2 | Scène : GreenMail en compose, profil `demo-video-mailroom`, envoi SMTP scripté, arrivée réelle vérifiée | en revue | (cette PR) |
 | 3 | Agent IA : client Python Ollama ↔ MCP, panneau terminal | à faire | |
 | 4 | Tournage, voix, sous-titres, montage FR et EN ; guide | à faire | |
 
-Prochaine action : lot 2 (scène : GreenMail, profil `demo-video-mailroom`, envoi SMTP).
+Prochaine action : lot 3 (agent IA : `scripts/video/agent.py`, panneau `frontend/capture/panel/agent-panel.html`).
 
 ## Preuves
 
@@ -92,6 +92,10 @@ Prochaine action : lot 2 (scène : GreenMail, profil `demo-video-mailroom`, envo
 | 2026-11-12 | lot 1 : `./mvnw clean verify` | 4 908 tests, 0 échec |
 | 2026-11-12 | lot 1 : `ImapInboundConnectorTest`, `OutboundUrlGuardTest`, `ImapLocalLoopbackTest` (GreenMail réel) | 138 tests, 0 échec |
 | 2026-11-12 | lot 1 : `scripts/check-docs.sh` | tous les contrôles ok |
+| 2026-11-12 | lot 2 : `./mvnw clean verify` | 4 908 tests, 0 échec |
+| 2026-11-12 | lot 2 : tests embedded de la CI (dont `VideoMailRoomDemoPackIT`) | 32 tests, 0 échec |
+| 2026-11-12 | lot 2 : jar de production sans démo, `scripts/check-docs.sh` | ok |
+| 2026-11-12 | lot 2 : scène réelle (`scripts/video.sh mail-servers`, `start`, `mail facture`) | facture envoyée en SMTP, relevée par IMAP, accusé dans Mailpit 27 s plus tard |
 
 ## Revue de clôture
 

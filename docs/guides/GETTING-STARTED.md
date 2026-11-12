@@ -592,6 +592,24 @@ Les screenshots du site sont produits par des scripts Playwright à part (`front
 Arrêter la démo par Ctrl+C : un arrêt forcé du processus Java laisse tourner le PostgreSQL embarqué, qui garde alors son
 port (15432) et son répertoire.
 
+### Capsule vidéo « Digital Mail Room » : la scène (TODO §128)
+
+La capsule se tourne contre une démo où les e-mails arrivent en direct, par un vrai serveur de messagerie local. Outillage
+de développement : jamais en production ni en CI.
+
+1. **Keycloak et variables** : comme pour les captures ci-dessus. `scripts/video.sh start` lit le `.env` s'il existe.
+2. **Jar de démo** (une fois) : `scripts/video.sh build`.
+3. **Serveurs de messagerie** : `scripts/video.sh mail-servers` démarre GreenMail (boîte `courrier@demo.example`, SMTP
+   `3025`, IMAP `3143`, sur la boucle locale) et Mailpit (e-mails envoyés par Myrmacta : <http://localhost:8025>).
+4. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start`
+   (journal : `demo: pack 'video-mailroom' installed`). La mail room n'a aucun courrier ; deux factures attendent leur
+   échéance (rappel et escalade dans les 30 s qui suivent le démarrage).
+5. **E-mails du tournage** : `scripts/video.sh mail facture`, puis `inconnu` et `reponse` (`uv` requis). Le connecteur
+   relève la boîte toutes les 30 s ; l'accusé de réception de la facture apparaît dans Mailpit.
+
+Arrêter la scène par Ctrl+C (même remarque que pour la démo complète), puis
+`podman compose --profile video stop greenmail mailpit`.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :

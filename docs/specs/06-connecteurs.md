@@ -532,3 +532,17 @@ public class WorkflowTriggerEvent {
                                                     // le relais outbox réserve ensuite le lien.
 }
 ```
+
+## Implémentation — libellé à la création par trigger (TODO §129, issue #66)
+
+Quand `ConnectorTriggerRuntime` crée un dossier, le **libellé** n'est plus `trigger:<uuid>` (réservé à
+`createdBy`, audit). `TriggerDossierLabel` dérive un texte lisible (D-TRIGGER-LABEL) :
+
+1. premier champ non vide parmi `objet`, `subject`, `expediteur`, `from` dans `dossierFields` ;
+2. sinon `{dossierTypeCode} — {yyyy-MM-dd}` (UTC, horloge du runtime) ;
+3. tronqué à 200 caractères (même borne que le routage courrier vers un dossier métier).
+
+Les connecteurs mail / dépôt renseignent déjà `objet` (et souvent `expediteur`) : les listes et la
+supervision montrent l'objet du courrier. Pas de reprise des dossiers déjà créés avec l'ancien libellé.
+Tests : `TriggerDossierLabelTest`, `ConnectorTriggerRuntimeImplTest` (libellé depuis `objet`,
+`createdBy` inchangé).

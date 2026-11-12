@@ -1,9 +1,15 @@
 # §128 — Capsules vidéo du site : tournage, voix et montage automatisés
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (issue [#56](https://github.com/superjojo79/Myrmacta/issues/56), vague `vague-vitrine`). Cadrage validé par
-l'utilisateur le 2026-11-12. Les capsules #57 à #59 réutiliseront cet outillage.
+[x] clos (2026-11-12, issue [#56](https://github.com/superjojo79/Myrmacta/issues/56), vague `vague-vitrine`). Cadrage
+validé par l'utilisateur le 2026-11-12. Livré en quatre lots (PR #74, #75, #76, #78) : IMAP vers la boucle locale en
+profil local, scène de tournage (GreenMail, profil `demo-video-mailroom`), agent IA (gemma4 local et serveur MCP),
+voix, tournage et montage. `scripts/video.sh capsule` produit la capsule L1 en français et en anglais (2 min 50, sept
+chapitres, sous-titres) : plus courte que les 4 à 5 min visées, ce que l'utilisateur a accepté tant qu'elle est
+complète. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
+[GETTING-STARTED](../guides/GETTING-STARTED.md) § « Capsule vidéo ». Suites : défauts visibles dans les vidéos #66,
+#69, #79 ; constat de sécurité sur le profil `test` #73. Les capsules #57 à #59 réutiliseront cet outillage.
 
 **Constat.** La page « Cas d'usage » de myrmacta.be attend une capsule de 4 à 5 min sur la Digital Mail Room, en français
 et en anglais, à régénérer quand l'interface change. La démo et les captures de [§127](127-demo-par-paquets-et-captures-du-site.md)
@@ -29,7 +35,7 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
   locale déjà permis aux webhooks (A13). Hors de ces profils, rien ne change : hôte public et SSL ou STARTTLS exigés.
   Ce changement nuance D-DEMO-SCOPE (« garde SSRF inchangée ») pour l'IMAP seulement.
 
-**Hypothèse (à confirmer au tournage).**
+**Hypothèse confirmée au tournage.**
 
 - **D-VIDEO-DEADLINE** — le rappel J-5 et l'escalade de l'échéance ne se filment pas en direct (l'horloge ne s'avance
   qu'en test) : la démo de la capsule sème des factures dont l'échéance est proche ou passée, que le vrai job des
@@ -38,4 +44,4 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
   pas au compte de démo) ne se montre pas : le chapitre montre l'échéance proche, puis la note d'escalade et la tâche
   passée à la direction financière.
 
-Document de travail : `docs/ai/2026-11-12-capsule-mailroom.md` (supprimé à la clôture).
+Document de travail `docs/ai/2026-11-12-capsule-mailroom.md` : supprimé à la clôture.

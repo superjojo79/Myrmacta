@@ -146,7 +146,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 125 | [Recette sur environnement réel (ClamAV, Keycloak)](125-recette-sur-environnement-reel.md) | clos | — |
 | 126 | [Champs de dossier gérés par le workflow (`managedByWorkflow`)](126-champs-managed-by-workflow.md) | clos | — |
 | 127 | [Démo par paquets et captures pour le site](127-demo-par-paquets-et-captures-du-site.md) | clos | — |
-| 128 | [Capsules vidéo du site : tournage, voix et montage automatisés](128-capsules-video-du-site.md) | ouvert | — |
+| 128 | [Capsules vidéo du site : tournage, voix et montage automatisés](128-capsules-video-du-site.md) | clos | — |
 
 ## Sections de l'ancien registre
 

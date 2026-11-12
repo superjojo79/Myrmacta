@@ -58,6 +58,11 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   et fait arriver deux factures du fournisseur connu dont l'échéance tombe dans 3 jours et avant-hier : le vrai job des
   échéances envoie le rappel et escalade la seconde vers DIRECTION_FINANCIERE. Les e-mails du tournage partent en SMTP
   vers GreenMail (`scripts/video/send_mail.py`) et suivent le vrai chemin ; ceux que Myrmacta envoie vont à Mailpit.
+  L'agent IA (D-VIDEO-AGENT, `scripts/video/agent.py`) relie un modèle local (Ollama, `gemma4:12b`) au serveur MCP M2M
+  avec un jeton de développement (HS256, `M2M_JWT_SECRET` ; sujet de l'agent, rôle `API_SERVICE`, tenant) et cinq outils
+  seulement (`list_my_tasks`, `get_mail_thread`, `search_dossiers`, `attach_mail_to_dossier`, `complete_task`) ; un même
+  appel rejoué plus de deux fois n'est pas refait. Son journal (lignes JSON) s'affiche dans
+  `frontend/capture/panel/agent-panel.html`.
   Commandes : `scripts/video.sh build | mail-servers | start | mail <scénario> | reset`.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).

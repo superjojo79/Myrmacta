@@ -607,6 +607,19 @@ de développement : jamais en production ni en CI.
 5. **E-mails du tournage** : `scripts/video.sh mail facture`, puis `inconnu` et `reponse` (`uv` requis). Le connecteur
    relève la boîte toutes les 30 s ; l'accusé de réception de la facture apparaît dans Mailpit.
 
+6. **Agent IA** (chapitre 3, D-VIDEO-AGENT) : Ollama avec `gemma4:12b` (`ollama pull gemma4:12b`), et
+   `M2M_JWT_SECRET` (au moins 32 caractères) dans `.env`, lu par la démo et par l'agent. Après `mail facture` puis
+   `mail inconnu` :
+
+   ```bash
+   set -a; . ./.env; set +a; uv run scripts/video/agent.py --lang fr
+   ```
+
+   L'agent lit sa file de tri par MCP, trouve la facture 2026-117, rattache le bon de commande à blanc puis pour de vrai,
+   et termine la tâche. Chaque étape sort en une ligne JSON, que le tournage affiche dans
+   `frontend/capture/panel/agent-panel.html`. Tests de l'outillage :
+   `uv run --with pytest --with pyjwt --with "mcp>=1.9,<2" --with "openai>=1.80,<3" pytest scripts/video -q`.
+
 Arrêter la scène par Ctrl+C (même remarque que pour la démo complète), puis
 `podman compose --profile video stop greenmail mailpit`.
 

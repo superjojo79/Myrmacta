@@ -19,10 +19,25 @@ class StubPublicDnsLoopbackTest {
     @Test
     void testProfile_withStaging_refusesLoopback() {
         assertThat(guard("staging", "test").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("staging", "test").isLocalLoopback("[::1]")).isFalse();
     }
 
     @Test
-    void testProfile_withLocalEnvironment_allowsLoopback() {
-        assertThat(guard("local", "test").isLocalLoopback("localhost")).isTrue();
+    void testProfile_withLocalEnvironment_allowsLoopbackIncludingIpv6() {
+        OutboundUrlGuard guard = guard("local", "test");
+        assertThat(guard.isLocalLoopback("localhost")).isTrue();
+        assertThat(guard.isLocalLoopback("::1")).isTrue();
+        assertThat(guard.isLocalLoopback("[::1]")).isTrue();
+    }
+
+    @Test
+    void emptyEnvironment_paddedProfile_andNonLocalValues_followTheSameRule() {
+        assertThat(guard("", "test").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("   ", "test").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("production", "test").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("ci", "test").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("local", "prod").isLocalLoopback("localhost")).isFalse();
+        assertThat(guard("local", " test ").isLocalLoopback("localhost")).isTrue();
+        assertThat(guard("local", " LOCAL ").isLocalLoopback("[::1]")).isTrue();
     }
 }

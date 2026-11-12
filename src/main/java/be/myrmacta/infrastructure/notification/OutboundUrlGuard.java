@@ -29,6 +29,12 @@ public class OutboundUrlGuard {
 
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
 
+    /**
+     * TODO §132 (D-LOOPBACK-LOCAL-ENV) — libellé unique de la condition, repris par les messages webhook et IMAP.
+     */
+    public static final String LOCAL_LOOPBACK_CONDITION =
+            "APP_ENVIRONMENT=local and the test or local profile is active";
+
     @FunctionalInterface
     public interface HostResolver {
         InetAddress[] resolve(String host) throws UnknownHostException;
@@ -48,8 +54,8 @@ public class OutboundUrlGuard {
 
     /**
      * TODO §132 (D-LOOPBACK-LOCAL-ENV) — vrai seulement si {@code app.environment} vaut {@code local}
-     * (absent = {@code production}, espaces et casse ignorés, comme {@code DevModeEnvironmentPostProcessor})
-     * et qu'un profil actif est {@code test} ou {@code local}. Le profil {@code test} avec {@code staging}
+     * (absent ou vide = pas {@code local}, espaces et casse ignorés, comme {@code DevModeEnvironmentPostProcessor})
+     * et qu'un profil actif, espaces et casse ignorés, est {@code test} ou {@code local}. Le profil {@code test} avec {@code staging}
      * ne suffit pas : la suite démarre dans ce cas, sans ouvrir la boucle locale.
      */
     public static boolean allowsLocalLoopback(String appEnvironment, String... activeProfiles) {
@@ -59,7 +65,7 @@ public class OutboundUrlGuard {
         }
         return Arrays.stream(activeProfiles)
                 .filter(Objects::nonNull)
-                .map(profile -> profile.toLowerCase(Locale.ROOT))
+                .map(profile -> profile.strip().toLowerCase(Locale.ROOT))
                 .anyMatch(profile -> profile.equals("test") || profile.equals("local"));
     }
 
@@ -155,7 +161,7 @@ public class OutboundUrlGuard {
             if (!allowLocalHttp || !loopback) {
                 throw new IllegalArgumentException(
                         allowLocalHttp
-                                ? "Webhook http URL is only allowed for localhost when APP_ENVIRONMENT=local"
+                                ? "Webhook http URL is only allowed for localhost when " + LOCAL_LOOPBACK_CONDITION
                                 : "Webhook URL must use https");
             }
             return new PinnedEndpoint(uri, loopbackAddress(normalizedHost));

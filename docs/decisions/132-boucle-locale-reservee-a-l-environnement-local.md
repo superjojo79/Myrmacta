@@ -21,7 +21,7 @@ répétés à chaque relève (D-IMAP-LOCAL-LOOPBACK, [§128](128-capsules-video-
 
 1. `app.environment` (`APP_ENVIRONMENT`), espaces retirés et casse ignorée, vaut `local` (absent =
    `production`, comme le post-processeur et la gouvernance MCP) ;
-2. un profil actif est `test` ou `local` (casse ignorée).
+2. un profil actif est `test` ou `local` (casse et espaces ignorés).
 
 Hors de là, rien ne change : `https` vers un hôte public, IMAP en SSL ou STARTTLS. Pas d'élargissement :
 `APP_ENVIRONMENT=local` sans profil `test` ni `local` n'ouvre pas la boucle. Il n'existe pas de valeur

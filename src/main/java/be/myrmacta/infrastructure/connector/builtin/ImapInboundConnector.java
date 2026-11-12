@@ -96,11 +96,12 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         List<ConfigField> fields = new ArrayList<>(List.of(
                 new ConfigField("host", "IMAP host", ConfigFieldType.STRING, true, null, List.of(),
                         "e.g. imap.example.com or outlook.office365.com. Must resolve to a public address "
-                                + "(localhost is accepted only when APP_ENVIRONMENT=local)."),
+                                + "(localhost is accepted only when " + OutboundUrlGuard.LOCAL_LOOPBACK_CONDITION + ")."),
                 new ConfigField("port", "IMAP port", ConfigFieldType.INTEGER, false, "993", List.of(), null),
                 new ConfigField("security", "Transport security", ConfigFieldType.SELECT, true, "SSL", securityOptions(),
                         "SSL = IMAPS (993). STARTTLS is required, never optional. The server certificate is always verified. "
-                                + "PLAIN (no encryption) is only accepted for a localhost mailbox when APP_ENVIRONMENT=local."),
+                                + "PLAIN (no encryption) is only accepted for a localhost mailbox when "
+                                + OutboundUrlGuard.LOCAL_LOOPBACK_CONDITION + "."),
                 new ConfigField("username", "Mailbox user", ConfigFieldType.STRING, true, null, List.of(), null),
                 new ConfigField(OAuth2ConfigSupport.AUTH_MODE, "Authentication", ConfigFieldType.SELECT, false, PASSWORD_MODE,
                         List.of(PASSWORD_MODE, OAuth2TokenProvider.MODE),
@@ -118,7 +119,7 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         return fields;
     }
 
-    /** {@code PLAIN} n'est proposé que là où il peut être accepté ({@code APP_ENVIRONMENT=local}). */
+    /** {@code PLAIN} n'est proposé que là où il peut être accepté ({@link OutboundUrlGuard#LOCAL_LOOPBACK_CONDITION}). */
     private List<String> securityOptions() {
         return outboundUrlGuard.isLocalLoopback("localhost") ? List.of("SSL", "STARTTLS", PLAIN) : List.of("SSL", "STARTTLS");
     }
@@ -146,7 +147,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         }
         String security = OAuth2ConfigSupport.text(config, "security");
         if (PLAIN.equals(security) && !localLoopback) {
-            throw new ConnectorValidationException("security PLAIN is only accepted for a localhost mailbox when APP_ENVIRONMENT=local");
+            throw new ConnectorValidationException(
+                    "security PLAIN is only accepted for a localhost mailbox when " + OutboundUrlGuard.LOCAL_LOOPBACK_CONDITION);
         }
         if (!"SSL".equals(security) && !"STARTTLS".equals(security) && !PLAIN.equals(security)) {
             throw new ConnectorValidationException("Unsupported security: " + security);
@@ -192,7 +194,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         }
         boolean plain = PLAIN.equals(config.get("security"));
         if (plain && !localLoopback) {
-            throw new IllegalStateException("security PLAIN is only accepted for a localhost mailbox when APP_ENVIRONMENT=local");
+            throw new IllegalStateException(
+                    "security PLAIN is only accepted for a localhost mailbox when " + OutboundUrlGuard.LOCAL_LOOPBACK_CONDITION);
         }
         if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
                 || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {

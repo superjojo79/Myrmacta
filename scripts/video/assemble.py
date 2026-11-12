@@ -38,6 +38,19 @@ def probe_duration(path: Path) -> float:
     return float(out)
 
 
+def check_frame(width: int, height: int) -> None:
+    """Le tournage doit filmer en 16:9 à la taille de son écran : sinon l'image n'occupe pas tout le cadre."""
+    if width * 9 != height * 16:
+        raise SystemExit(f"vidéo de tournage en {width}x{height}, pas en 16:9 (taille de la vidéo = taille de l'écran filmé)")
+
+
+def probe_size(path: Path) -> tuple[int, int]:
+    out = subprocess.run([tool("ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                          "-of", "csv=p=0", str(path)], check=True, capture_output=True, text=True).stdout.strip()
+    width, height = out.split(",")[:2]
+    return int(width), int(height)
+
+
 def segments(spans: list[dict], length: float) -> list[tuple[float, float, float]]:
     """Les morceaux gardés de la vidéo : (début, fin, vitesse). Une coupe disparaît ; un passage rapide est accéléré."""
     for span in spans:
@@ -64,7 +77,7 @@ def video_filter(parts: list[tuple[float, float, float]], pad: float) -> str:
     chains, labels = [], []
     for i, (start, end, speed) in enumerate(parts):
         chains.append(f"[0:v]trim=start={start:.3f}:end={end:.3f},setpts=(PTS-STARTPTS)/{speed},"
-                      f"fps={FPS},scale={SIZE},setsar=1[v{i}]")
+                      f"fps={FPS},scale={SIZE}:flags=lanczos,setsar=1[v{i}]")
         labels.append(f"[v{i}]")
     chains.append("".join(labels) + f"concat=n={len(labels)}:v=1:a=0,tpad=stop_mode=clone:stop_duration={pad:.3f}[v]")
     return ";".join(chains)
@@ -72,6 +85,7 @@ def video_filter(parts: list[tuple[float, float, float]], pad: float) -> str:
 
 def chapter_clip(video: Path, spans: list[dict], voice: Path, target: Path) -> float:
     """Un chapitre monté (MP4) ; rend sa durée."""
+    check_frame(*probe_size(video))
     parts = segments(spans, probe_duration(video))
     shown = screen_length(parts)
     spoken = probe_duration(voice)

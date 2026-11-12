@@ -32,6 +32,7 @@ import be.myrmacta.domain.promotion.model.doc.ConfigDocs.WorkflowConfigDoc;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.out.ArtifactCodec;
 import be.myrmacta.domain.promotion.port.out.ConfigImportLogRepository;
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.model.Provenance;
 import be.myrmacta.domain.workflow.model.ProposedWorkflowConfig;
 import be.myrmacta.domain.workflow.model.TaskQuestionSchema;
@@ -450,7 +451,8 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
         if (deployed.isEmpty()) {
             return new PlanEntry(entry.type(), entry.key(), PlanAction.CREATE, "saved as a draft to publish");
         }
-        return sameXml(deployed.get(), entry.content())
+        // TODO §130 : comparer après normalisation 1.1→1.3 — le déploiement stocke déjà du 1.3.
+        return sameDmn(deployed.get(), entry.content())
                 ? new PlanEntry(entry.type(), entry.key(), PlanAction.UNCHANGED, "")
                 : new PlanEntry(entry.type(), entry.key(), PlanAction.UPDATE, "saved as a draft to publish");
     }
@@ -776,6 +778,11 @@ public final class ImportConfigurationUseCaseImpl implements ImportConfiguration
 
     private static boolean sameXml(byte[] a, byte[] b) {
         return normalize(a).equals(normalize(b));
+    }
+
+    /** Same as {@link #sameXml} after rewriting a DMN 1.1 model namespace to 1.3 (TODO §130). */
+    private static boolean sameDmn(byte[] a, byte[] b) {
+        return normalize(DmnXmlVersions.to13(a)).equals(normalize(DmnXmlVersions.to13(b)));
     }
 
     private static String normalize(byte[] xml) {

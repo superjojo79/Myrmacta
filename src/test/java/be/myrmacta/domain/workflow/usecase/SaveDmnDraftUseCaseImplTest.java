@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.model.DmnDraft;
 import be.myrmacta.domain.workflow.model.InvalidDmnException;
 import be.myrmacta.domain.workflow.port.out.DmnDraftRepository;
@@ -15,6 +16,7 @@ import be.myrmacta.domain.workflow.port.out.DmnParserPort;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class SaveDmnDraftUseCaseImplTest {
 
@@ -75,5 +77,24 @@ class SaveDmnDraftUseCaseImplTest {
 
         verify(dmnParserPort, never()).extractDecisionKey(any());
         verify(draftRepository, never()).save(any());
+    }
+
+    @Test
+    void save_dmn11Xml_normalizesTo13BeforeParseAndPersist() {
+        String dmn11 = """
+                <definitions xmlns="%s" id="def">
+                  <decision id="testDecision" name="T"/>
+                </definitions>
+                """.formatted(DmnXmlVersions.DMN_11_NAMESPACE);
+        String expected13 = DmnXmlVersions.to13(dmn11);
+        when(dmnParserPort.extractDecisionKey(expected13.getBytes(StandardCharsets.UTF_8))).thenReturn("testDecision");
+        when(draftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        DmnDraft result = useCase.save("testDecision", dmn11, "alice");
+
+        ArgumentCaptor<DmnDraft> captor = ArgumentCaptor.forClass(DmnDraft.class);
+        verify(draftRepository).save(captor.capture());
+        assertThat(captor.getValue().xml()).contains(DmnXmlVersions.DMN_13_NAMESPACE).doesNotContain(DmnXmlVersions.DMN_11_NAMESPACE);
+        assertThat(result.xml()).isEqualTo(captor.getValue().xml());
     }
 }

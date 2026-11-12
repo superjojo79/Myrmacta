@@ -1284,6 +1284,18 @@ TODO §58).
 | La règle change plus souvent que le processus lui-même, ou doit être lisible/validée par un non-développeur | Table de décision DMN — édition dans son propre éditeur (`/admin/dmn-editor`), déploiement indépendant du process qui l'invoque |
 | Une seule sortie booléenne dérivée d'une seule variable | Passerelle exclusive — une table DMN à une ligne n'apporte rien |
 
+**Version à générer — DMN 1.3 (TODO §130).** L'éditeur intégré (`dmn-js`) n'ouvre que le DMN 1.3.
+Toute table produite à la main, via MCP (`deploy_decision_table`) ou via l'assistant doit porter :
+
+```xml
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" …>
+```
+
+Ne pas utiliser le namespace DMN 1.1 (`http://www.omg.org/spec/DMN/20151101`). Pas de commentaire
+XML avant `<definitions>` (le schéma Flowable le refuse en 1.3). Un fichier 1.1 importé ou déjà
+déployé est converti automatiquement à l'ouverture et à l'écriture ; pour un nouveau document,
+écrire directement en 1.3.
+
 **Sécurité — ne jamais oublier en concevant une table :** Flowable évalue les cellules d'une table
 de décision en **JUEL**, pas en FEEL malgré ce que le standard DMN laisse penser (voir
 [05-workflow-engine.md](../specs/05-workflow-engine.md) §« Tables de décision — DMN »). Une

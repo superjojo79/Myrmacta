@@ -345,6 +345,40 @@ class ConfigurationPromotionUseCaseTest {
         verify(propose, never()).proposeBpmn(any(), any(), any(), any(), any(), anyBoolean());
     }
 
+    /** TODO §130 — un DMN 1.1 du bundle est inchangé si le déployé 1.3 est le même après normalisation. */
+    @Test
+    void aDmn11MatchingTheDeployed13IsUnchanged() {
+        String dmn11 = """
+                <definitions xmlns="%s" id="defs" name="n" namespace="n" exporter="t" exporterVersion="1">
+                  <decision id="grid" name="Grid"><decisionTable id="dt"><output id="o" name="x" typeRef="string"/>
+                  <rule id="r"><outputEntry id="oe"><text>"a"</text></outputEntry></rule></decisionTable></decision>
+                </definitions>
+                """.formatted(be.myrmacta.domain.workflow.DmnXmlVersions.DMN_11_NAMESPACE);
+        byte[] deployed13 = be.myrmacta.domain.workflow.DmnXmlVersions.to13(dmn11.getBytes(StandardCharsets.UTF_8));
+        when(dmnDeployment.findDeployedXml(TENANT, "grid")).thenReturn(Optional.of(deployed13));
+
+        var plan = useCase.plan(ADMIN, bundle(new BundleEntry(ArtifactType.DMN, "grid", dmn11.getBytes(StandardCharsets.UTF_8))), Map.of());
+
+        assertThat(plan.find(ArtifactType.DMN, "grid").orElseThrow().action()).isEqualTo(PlanAction.UNCHANGED);
+    }
+
+    /** TODO §130 — sameDmn ne doit pas toujours renvoyer true (mutant PIT). */
+    @Test
+    void aDmnThatDiffersFromTheDeployedOneIsAnUpdate() {
+        String deployed = """
+                <definitions xmlns="%s" id="defs" name="n" namespace="n" exporter="t" exporterVersion="1">
+                  <decision id="grid" name="Grid"><decisionTable id="dt"><output id="o" name="x" typeRef="string"/>
+                  <rule id="r"><outputEntry id="oe"><text>"a"</text></outputEntry></rule></decisionTable></decision>
+                </definitions>
+                """.formatted(be.myrmacta.domain.workflow.DmnXmlVersions.DMN_13_NAMESPACE);
+        String incoming = deployed.replace("\"a\"", "\"b\"");
+        when(dmnDeployment.findDeployedXml(TENANT, "grid")).thenReturn(Optional.of(deployed.getBytes(StandardCharsets.UTF_8)));
+
+        var plan = useCase.plan(ADMIN, bundle(new BundleEntry(ArtifactType.DMN, "grid", incoming.getBytes(StandardCharsets.UTF_8))), Map.of());
+
+        assertThat(plan.find(ArtifactType.DMN, "grid").orElseThrow().action()).isEqualTo(PlanAction.UPDATE);
+    }
+
     @Test
     void aFailureOnOneArtifactDoesNotStopTheOthersAndIsReported() {
         when(createType.create(any(), any())).thenThrow(new IllegalStateException("workflowKey unknown"));

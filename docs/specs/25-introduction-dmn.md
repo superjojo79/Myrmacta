@@ -330,3 +330,14 @@ seulement des tests unitaires sur le parseur.
    qu'il transite par le même mécanisme de masquage des valeurs sensibles
    (`SendNotificationUseCaseImpl`, TODO §23) avant toute écriture outbox, pour ne pas rouvrir un
    canal de fuite déjà fermé pour les autres sources de variables de process.
+
+## Implémentation — version DMN à l'ouverture (issue #68, TODO §130)
+
+L'éditeur intégré (`dmn-js`) n'ouvre que le DMN 1.3. Un document dont le namespace modèle est encore
+celui du DMN 1.1 (`http://www.omg.org/spec/DMN/20151101`) est converti à l'ouverture
+(`DmnEditorCanvas` / `toDmn13`) et à l'écriture (brouillon UI, proposition MCP, déploiement) via
+`DmnXmlVersions` vers `https://www.omg.org/spec/DMN/20191111/MODEL/`. Les commentaires XML sont
+retirés lors de cette réécriture : le validateur XSD de Flowable refuse un document 1.3 qui a encore
+un commentaire avant `<definitions>`. Les outils MCP et l'assistant doivent générer du 1.3 ; un XML
+1.1 reçu est accepté et normalisé. Preuves : `DmnXmlVersionsTest`, `FlowableDmnParserAdapterNormalizeTest`,
+`DmnEditorCanvas.spec.ts`, `E2E-EDIT-DMN-3`.

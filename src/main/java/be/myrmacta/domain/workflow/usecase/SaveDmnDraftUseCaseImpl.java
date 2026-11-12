@@ -1,5 +1,6 @@
 package be.myrmacta.domain.workflow.usecase;
 
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.model.DmnDraft;
 import be.myrmacta.domain.workflow.model.InvalidDmnException;
 import be.myrmacta.domain.workflow.port.in.SaveDmnDraftUseCase;
@@ -26,14 +27,16 @@ public final class SaveDmnDraftUseCaseImpl implements SaveDmnDraftUseCase {
         if (xml == null || xml.isBlank()) {
             throw new InvalidDmnException("xml is required");
         }
-        String extractedKey = dmnParserPort.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8));
+        // TODO §130 (D-DMN-OPEN-CONVERT) : dmn-js n'ouvre que le 1.3 — normaliser avant validation et stock.
+        String normalized = DmnXmlVersions.to13(xml);
+        String extractedKey = dmnParserPort.extractDecisionKey(normalized.getBytes(StandardCharsets.UTF_8));
         if (!extractedKey.equals(decisionKey)) {
             throw new InvalidDmnException("decisionKey in path ('" + decisionKey
                     + "') does not match the decision id defined in the XML ('" + extractedKey + "')");
         }
         // TODO §82 (D6) : reprise humaine d'un brouillon automatisé → provenance UI, note conservée.
         DmnDraft previous = draftRepository.findByTenantIdAndDecisionKey(tenantId, decisionKey).orElse(null);
-        DmnDraft draft = new DmnDraft(tenantId, decisionKey, xml, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
+        DmnDraft draft = new DmnDraft(tenantId, decisionKey, normalized, Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS),
                 updatedBy, be.myrmacta.domain.workflow.model.Provenance.UI,
                 previous == null ? null : previous.note(), previous == null ? null : previous.pilotUserId());
         return draftRepository.save(draft);

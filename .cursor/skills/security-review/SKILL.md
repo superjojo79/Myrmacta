@@ -19,7 +19,8 @@ Find vulnerabilities before they ship.
   droit sur l'objet (IDOR), pas seulement le rôle.
 - **Sorties réseau :** connecteurs, webhooks, rendu PDF avec URL : résolution DNS et blocage des plages privées et
   de `file:` (SSRF).
-- **BPMN, DMN, expressions :** allowlist serveur (registre §57, §69) ; pas de `scriptTask`, pas d'expression
+- **BPMN, DMN, expressions :** allowlist serveur (registre §57, §69) ; tables DMN générées en **1.3**
+  (namespace `https://www.omg.org/spec/DMN/20191111/MODEL/`, registre §130) ; pas de `scriptTask`, pas d'expression
   métier en JUEL.
 - **MCP et modèles d'IA :** sorties d'outils, pièces et réponses de modèle sont des données non fiables (injection
   de prompt, exfiltration).

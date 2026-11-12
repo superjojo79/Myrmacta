@@ -18,7 +18,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 | Persistence | PostgreSQL + **JPA seulement** (jamais `JdbcTemplate`, `NamedParameterJdbcTemplate` ni `JdbcClient` : registre §122) + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `MYRMACTA_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |
 | Auth | OAuth2/OIDC BFF (Keycloak par défaut) — pas de JWT dans le browser |
-| Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` |
+| Frontend | Vue 3 + TypeScript + Vite + OpenVue + Pinia, embarqué dans `src/main/resources/static/` ; viewers `bpmn-js` / `dmn-js` (DMN **1.3** — namespace `https://www.omg.org/spec/DMN/20191111/MODEL/`, registre §130) |
 | Tests FE | Vitest + Playwright · ESLint/Prettier |
 | Stockage fichiers | Port abstrait S3 / filesystem (pas MinIO couplé en dur) |
 | Package root | `be.myrmacta` |
@@ -70,7 +70,10 @@ Référence : `docs/specs/02-multi-tenant.md`.
 
 - SPA **même origine** servie depuis `static/` (décision n° 27) — pas de CORS applicatif en prod.
 - TypeScript obligatoire pour le nouveau code FE.
-- State : Pinia. UI : OpenVue (fork MIT de PrimeVue). Viewer BPMN : `bpmn-js`.
+- State : Pinia. UI : OpenVue (fork MIT de PrimeVue). Viewer BPMN : `bpmn-js`. Viewer / éditeur DMN :
+  `dmn-js` — **générer et enregistrer du DMN 1.3** (`xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"`),
+  sans commentaire XML avant `<definitions>`. Un XML 1.1 est converti à l'ouverture et à l'écriture
+  (registre §130) ; ne pas produire le namespace 1.1 dans un skill, un outil MCP ou un exemple.
 - Respecter l’UI OpenVue / patterns existants du dépôt.
 
 Référence : `docs/specs/11-frontend.md`.

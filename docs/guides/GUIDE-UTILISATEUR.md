@@ -617,8 +617,9 @@ Un message reçu dans une boîte crée un **dossier** (ou alimente un dossier ex
 toutes les `pollSeconds` secondes (30 au minimum).
 
 - **Connexion** : `host`, `port` (993), `security` — `SSL` (IMAPS) ou `STARTTLS` (jamais facultatif) ; le certificat du serveur est toujours vérifié.
-  Le serveur doit répondre sur une adresse publique. Seule exception, en développement (profils `local` et `test`) : une boîte
-  sur `localhost`, éventuellement sans chiffrement (`security = PLAIN`), comme le GreenMail de la démo vidéo (§128). **Authentification** : mot de passe, ou **OAuth2** (`authMode = OAUTH2_CLIENT_CREDENTIALS`, application
+  Le serveur doit répondre sur une adresse publique. Seule exception, en développement (`APP_ENVIRONMENT=local`, profil `local` ou `test`) : une boîte
+  sur `localhost`, éventuellement sans chiffrement (`security = PLAIN`), comme le GreenMail de la démo vidéo (§128, resserré par §132).
+  Un staging lancé avec le profil `test` n'ouvre pas cette exception. **Authentification** : mot de passe, ou **OAuth2** (`authMode = OAUTH2_CLIENT_CREDENTIALS`, application
   Microsoft Entra ID, `oauthScope = https://outlook.office365.com/.default`) — Exchange Online n'accepte plus le mot de passe seul.
 - **Rangement** : un message pris en charge est déplacé dans `processedFolder` (`Myrmacta-processed`), un message refusé dans `rejectedFolder`
   (`Myrmacta-rejected`) ; **rien n'est jamais supprimé**. Sont refusés : les réponses automatiques (absence, accusés), les listes de diffusion, les messages sans expéditeur,

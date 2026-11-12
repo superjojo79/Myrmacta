@@ -101,7 +101,9 @@ secrets de démo et le HMAC M2M. Hors `local`/`test`, le boot refuse `DB_PASSWOR
 (`myrmacta`, `postgres`, `admin`, `password`, vide) et tout `M2M_JWT_SECRET` non vide.
 `APP_ENVIRONMENT` est le seul interrupteur « mode dev » (TODO §95) : le profil `local` exige
 `APP_ENVIRONMENT=local` et le profil `test` est refusé quand `APP_ENVIRONMENT=production` (valeur par
-défaut) — un `.env` de dev recopié tel quel sur un serveur ne démarre donc pas.
+défaut) — un `.env` de dev recopié tel quel sur un serveur ne démarre donc pas. Webhooks `http` vers
+`localhost` et boîte IMAP locale (`PLAIN` compris) exigent en plus `APP_ENVIRONMENT=local` (TODO §132) :
+le profil `test` sur un `staging` ne les autorise pas.
 
 `docker compose` lit `.env` automatiquement. Le backend Spring Boot, lui, tourne sur l'hôte (pas
 en conteneur) et ne lit **pas** `.env` nativement : avant `./mvnw spring-boot:run`, charger les

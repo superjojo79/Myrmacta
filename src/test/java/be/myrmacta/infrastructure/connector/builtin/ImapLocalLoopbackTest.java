@@ -27,16 +27,18 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * TODO §128 (D-IMAP-LOCAL-LOOPBACK) — en profil local, le vrai connecteur IMAP relève une boîte sur la boucle locale, sans
- * chiffrement (le GreenMail de la démo vidéo) ; hors profil local, la même boîte est refusée avant toute connexion.
+ * TODO §128 (D-IMAP-LOCAL-LOOPBACK), TODO §132 — en environnement local, le vrai connecteur IMAP relève une boîte sur la
+ * boucle locale, sans chiffrement (le GreenMail de la démo vidéo). Le profil {@code test} avec {@code staging} refuse
+ * la même boîte avant toute connexion.
  */
 class ImapLocalLoopbackTest {
 
     @RegisterExtension
     static final GreenMailExtension GREEN = new GreenMailExtension(ServerSetupTest.SMTP_IMAP);
 
-    private static ImapInboundConnector connector(boolean localProfile) {
-        return new ImapInboundConnector(new SimpleJsonPathMapper(), new OutboundUrlGuard(localProfile), JsonMapper.builder().build(),
+    private static ImapInboundConnector connector(String appEnvironment, String... profiles) {
+        boolean allow = OutboundUrlGuard.allowsLocalLoopback(appEnvironment, profiles);
+        return new ImapInboundConnector(new SimpleJsonPathMapper(), new OutboundUrlGuard(allow), JsonMapper.builder().build(),
                 new ConnectorProperties(null, null, null, null, null, null), InboundConnectorProperties.defaults(),
                 new AngusImapMailbox());
     }
@@ -69,7 +71,7 @@ class ImapLocalLoopbackTest {
     @Test
     void inALocalProfile_theConnectorReadsALoopbackMailboxWithoutEncryption() throws Exception {
         deliverInvoice();
-        ImapInboundConnector local = connector(true);
+        ImapInboundConnector local = connector("local", "local");
         local.validate(mailbox().config());
         List<WorkflowTriggerEvent> events = new ArrayList<>();
 
@@ -86,7 +88,9 @@ class ImapLocalLoopbackTest {
         deliverInvoice();
         List<WorkflowTriggerEvent> events = new ArrayList<>();
 
-        assertThatThrownBy(() -> connector(false).poll(mailbox(), events::add)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> connector("staging", "test").poll(mailbox(), events::add))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("public");
 
         assertThat(events).isEmpty();
         assertThat(GREEN.getReceivedMessages()).hasSize(1);

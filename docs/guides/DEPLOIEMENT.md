@@ -90,7 +90,10 @@ sont pas renseignés. [`.env.local.example`](../../.env.local.example) est calib
 `APP_ENVIRONMENT` est le **seul interrupteur « mode dev »** (TODO §95) : le profil `local` est refusé
 au démarrage si `APP_ENVIRONMENT` n'est pas `local`, et le profil `test` est refusé quand
 `APP_ENVIRONMENT=production` (valeur par défaut). Un `.env` de dev recopié sur un serveur ne peut
-donc plus relâcher les contrôles en silence.
+donc plus relâcher les contrôles en silence. La boucle locale (webhook `http://localhost`, boîte IMAP
+sur `localhost`, y compris `PLAIN`) n'est permise que si `APP_ENVIRONMENT=local` **et** que le profil
+est `local` ou `test` (TODO §132). Le profil `test` avec `APP_ENVIRONMENT=staging` démarre encore
+(la suite de tests l'utilise) mais n'ouvre pas cette boucle.
 
 Hors profils `local`/`test`, le boot **refuse de démarrer** (fail-fast, décision
 D-43, [§43](../decisions/043-secrets-par-defaut-et-hmac-m2m-hors.md) point 43) si :
@@ -102,7 +105,7 @@ Checklist des variables à revoir pour un environnement réel :
 
 | Variable | Dev local | Environnement réel |
 |---|---|---|
-| `APP_ENVIRONMENT` | `local` | `production` (défaut) ou `staging` — refuse le profil `local`, et le profil `test` en production (TODO §95) |
+| `APP_ENVIRONMENT` | `local` | `production` (défaut) ou `staging` — refuse le profil `local`, et le profil `test` en production (TODO §95). La boucle locale (webhook, IMAP) n'est ouverte qu'en `local` (TODO §132) |
 | `SPRING_PROFILES_ACTIVE` | `local` | un profil dédié (≠ `local`/`test`, ex. `prod`) pour activer les garde-fous D-43 |
 | `APP_DOSSIER_ATTACHMENT_SCAN_TYPE` | `noop` | `clamav` (§8). `noop` est refusé au démarrage en `production`, sauf `APP_DOSSIER_ATTACHMENT_SCAN_NOOP_ACKNOWLEDGED=true` (pièces jointes acceptées sans analyse, risque assumé) ; en `staging`, il est signalé au démarrage (TODO §95) |
 | `DB_PASSWORD` | `myrmacta` | mot de passe fort, hors denylist |

@@ -22,7 +22,7 @@ capture (scanners, OCR, chez des partenaires) et le métier : il ouvre un vrai d
 
 | Canal | Mécanisme | Décision |
 |---|---|---|
-| E-mail (IMAP, Microsoft Graph) | connecteurs `imap-inbound`, `graph-mail-inbound` ; en-têtes de fil (`In-Reply-To`, `References`, `conversationId`) en variables `mail*`, réservées à la plateforme | §87, D-MAILROOM-THREAD |
+| E-mail (IMAP, Microsoft Graph) | connecteurs `imap-inbound`, `graph-mail-inbound` ; en-têtes de fil (`In-Reply-To`, `References`, `conversationId`) en variables `mail*`, réservées à la plateforme. `localhost` et `PLAIN` seulement si `APP_ENVIRONMENT=local` et profil `local` ou `test` (D-LOOPBACK-LOCAL-ENV, TODO §132) : le profil `test` sur un staging ne suffit pas | §87, D-MAILROOM-THREAD |
 | PDF par SFTP | connecteur `sftp-pdf-inbound` : un courrier par PDF, remis avant rangement (traités / refusés), index du partenaire en JSON compagnon ou CSV par lot ; un PDF écarté par les contrôles (antivirus…) ne crée pas de courrier et part dans « refusés » (#277) | D-MAILROOM-PDF-SFTP |
 | PDF déposé à la main | écran « Déposer un courrier », point de dépôt = connecteur `mail-deposit` ; une transaction par fichier ; un PDF écarté par l'antivirus est refusé | D-MAILROOM-DEPOSIT |
 

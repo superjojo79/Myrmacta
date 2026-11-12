@@ -17,7 +17,8 @@ import org.springframework.core.env.ConfigurableEnvironment;
  * <ul>
  *   <li>profil {@code local} : refusé si {@code app.environment} n'est pas {@code local} ;</li>
  *   <li>profil {@code test} : refusé si {@code app.environment} vaut {@code production} (la suite de tests
- *       exerce aussi {@code staging}) ;</li>
+ *       exerce aussi {@code staging}). Ce profil ne suffit pas à ouvrir la boucle locale : cela exige
+ *       {@code app.environment=local} (TODO §132, D-LOOPBACK-LOCAL-ENV) ;</li>
  *   <li>antivirus {@code noop} : refusé en {@code production} sans acquittement explicite
  *       ({@code app.dossier.attachment.scan.noop-acknowledged=true}), signalé en {@code staging}.</li>
  * </ul>

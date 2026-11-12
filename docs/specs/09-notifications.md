@@ -57,7 +57,8 @@ du `pom.xml` (jamais utilisée, cf. décision n° 33).
 
 Chaque webhook est configurable par tenant : URL cible, secret HMAC (chiffré au repos), format du
 payload JSON. Toute URL cible passe par `OutboundUrlGuard` (résolution DNS + blocage des plages
-privées/loopback/link-local/métadonnées cloud) **avant** l'envoi. **D-44 :** `resolveSafe`
+privées/loopback/link-local/métadonnées cloud) **avant** l'envoi. Le `http` vers la boucle locale
+n'est admis que dans un environnement réellement local (D-LOOPBACK-LOCAL-ENV, TODO §132). **D-44 :** `resolveSafe`
 effectue **un** lookup et retourne un `PinnedEndpoint` (IP validée + hostname d'origine).
 `WebhookRestAdapter` POST sur l'URI IP, envoie `Host` = hostname d'origine, vérifie le certificat
 TLS contre ce hostname (pas l'IP), et refuse les redirects (`NEVER`). L'admin webhook appelle
@@ -270,3 +271,18 @@ public interface BrowserPushPort {
     `pilotage-gabarits-notification.spec.ts` (Playwright), `ConfigurationPromotionView.spec.ts`.
   - Exemples : `MailRoomExampleIT` (accusé de réception : e-mail attesté, courrier papier, expéditeur non attesté, réponse
     rattachée), `RiverainInformationRequestExampleIT` et `RiverainInformationRequestExampleTest`.
+
+---
+
+## Implémentation — boucle locale (issue #73, TODO §132)
+
+- **Règle (D-LOOPBACK-LOCAL-ENV).** `NotificationConfig` construit `OutboundUrlGuard` avec la boucle
+  locale ouverte seulement si `app.environment` vaut `local` (absent = `production`, casse et espaces
+  ignorés) **et** qu'un profil actif est `test` ou `local`. Même calcul pour le garde de test à DNS
+  figé (`StubPublicDnsTestConfiguration`), pour que les deux ne divergent pas.
+- **Ce que ça couvre.** Webhook `http://localhost`, `127.x` ou `::1`, et `isLocalLoopback` du connecteur
+  IMAP (`PLAIN` compris). Un `https` public reste accepté. `APP_ENVIRONMENT=local` sans ces profils
+  n'ouvre rien.
+- **Ce qui ne change pas.** Le profil `test` avec `APP_ENVIRONMENT=staging` démarre toujours
+  (D-REMED-DEVMODE, `McpDirectPublicationIntegrationTest`). Il n'ouvre plus la boucle locale.
+- **Tests de référence :** `LocalLoopbackEnvironmentTest`.

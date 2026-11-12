@@ -86,6 +86,18 @@ public class OutboundUrlGuard {
     }
 
     /**
+     * TODO §128 (D-IMAP-LOCAL-LOOPBACK) — vrai seulement en profil {@code local} ou {@code test} et pour un hôte écrit
+     * comme une boucle locale ({@code localhost}, {@code 127.x}, {@code ::1}) : la même règle que le {@code http} local
+     * (A13). Un nom qui se <em>résout</em> en boucle locale n'en est pas une. Pour les protocoles hors HTTP (IMAP).
+     */
+    public boolean isLocalLoopback(String host) {
+        if (!allowLocalHttp || !StringUtils.hasText(host)) {
+            return false;
+        }
+        return isLoopbackHost(stripIpv6Brackets(host.strip()).toLowerCase(Locale.ROOT));
+    }
+
+    /**
      * Validates the URL then returns the IP chosen for the connection (D-44 pin).
      */
     public PinnedEndpoint resolveSafe(String url) {

@@ -111,6 +111,107 @@ class ImapInboundConnectorTest {
         assertThatThrownBy(() -> c.validate(config())).hasMessageContaining("public");
     }
 
+    // ---- boucle locale en profil local/test (TODO §128, D-IMAP-LOCAL-LOOPBACK) ----
+
+    private ImapInboundConnector connectorWith(boolean localProfile, String resolvesTo) {
+        OutboundUrlGuard guard = new OutboundUrlGuard(localProfile, host -> new InetAddress[] {InetAddress.getByName(resolvesTo)});
+        return new ImapInboundConnector(new SimpleJsonPathMapper(), guard, JsonMapper.builder().build(),
+                new ConnectorProperties(null, null, null, null, null, null), InboundConnectorProperties.defaults(),
+                (settings, max, limits, handler) -> seen.add(settings));
+    }
+
+    private static Map<String, Object> loopback(String host, String security) {
+        Map<String, Object> c = config();
+        c.put("host", host);
+        c.put("port", 3143);
+        c.put("security", security);
+        return c;
+    }
+
+    @Test
+    void inALocalProfile_aLoopbackMailbox_evenWithoutEncryption_isAccepted_andPolledInPlain() {
+        ImapInboundConnector local = connectorWith(true, "127.0.0.1");
+        for (String host : List.of("localhost", "127.0.0.1", "LOCALHOST")) {
+            local.validate(loopback(host, "PLAIN"));
+            local.validate(loopback(host, "SSL"));
+        }
+
+        local.poll(instance(loopback("localhost", "PLAIN")), e -> { });
+
+        assertThat(seen).singleElement().satisfies(s -> {
+            assertThat(s.security()).isEqualTo(ImapMailbox.Security.PLAIN_FOR_TESTS);
+            assertThat(s.host()).as("adresse littérale, jamais le nom").isEqualTo("127.0.0.1");
+            assertThat(s.port()).isEqualTo(3143);
+        });
+    }
+
+    @Test
+    void plainIsOfferedOnlyWhereItCanBeAccepted() {
+        assertThat(securityOptions(connectorWith(true, "127.0.0.1"))).containsExactly("SSL", "STARTTLS", "PLAIN");
+        assertThat(securityOptions(connectorWith(false, "93.184.216.34"))).containsExactly("SSL", "STARTTLS");
+    }
+
+    private static List<String> securityOptions(ImapInboundConnector c) {
+        return c.getConfigSchema().stream().filter(f -> f.name().equals("security")).findFirst().orElseThrow().options();
+    }
+
+    @Test
+    void outsideALocalProfile_loopbackSpellingsAreAllRefused() {
+        ImapInboundConnector production = connectorWith(false, "127.0.0.1");
+        for (String host : List.of("2130706433", "127.0.0.2", "localhost.", "127.1")) {
+            for (String security : List.of("SSL", "PLAIN")) {
+                assertThatThrownBy(() -> production.validate(loopback(host, security))).as(host + " " + security)
+                        .isInstanceOf(ConnectorValidationException.class);
+                assertThatThrownBy(() -> production.poll(instance(loopback(host, security)), e -> { })).as(host + " " + security)
+                        .isInstanceOf(IllegalStateException.class);
+            }
+        }
+        assertThat(seen).isEmpty();
+    }
+
+    @Test
+    void inALocalProfile_aTrailingDotIsNotLoopback_andAMissingSecurityPollsInSsl() {
+        ImapInboundConnector local = connectorWith(true, "93.184.216.34");
+        assertThatThrownBy(() -> local.validate(loopback("localhost.", "PLAIN"))).isInstanceOf(ConnectorValidationException.class);
+
+        Map<String, Object> noSecurity = loopback("localhost", "SSL");
+        noSecurity.remove("security");
+        local.poll(instance(noSecurity), e -> { });
+
+        assertThat(seen).singleElement().satisfies(s -> assertThat(s.security()).isEqualTo(ImapMailbox.Security.SSL));
+    }
+
+    @Test
+    void outsideALocalProfile_aLoopbackMailboxIsStillRefused_atValidationAndAtPoll() {
+        ImapInboundConnector production = connectorWith(false, "127.0.0.1");
+
+        assertThatThrownBy(() -> production.validate(loopback("localhost", "SSL"))).hasMessageContaining("public");
+        assertThatThrownBy(() -> production.validate(loopback("localhost", "PLAIN"))).isInstanceOf(ConnectorValidationException.class);
+        assertThatThrownBy(() -> production.poll(instance(loopback("localhost", "PLAIN")), e -> { }))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(seen).isEmpty();
+    }
+
+    @Test
+    void plainIsNeverAcceptedForAPublicHost_evenInALocalProfile() {
+        ImapInboundConnector local = connectorWith(true, "93.184.216.34");
+
+        assertThatThrownBy(() -> local.validate(loopback("imap.example.com", "PLAIN")))
+                .isInstanceOf(ConnectorValidationException.class).hasMessageContaining("PLAIN");
+        assertThatThrownBy(() -> local.poll(instance(loopback("imap.example.com", "PLAIN")), e -> { }))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(seen).isEmpty();
+    }
+
+    @Test
+    void inALocalProfile_aNameThatResolvesToLoopbackIsNotALoopbackMailbox_itIsRefused() {
+        ImapInboundConnector local = connectorWith(true, "127.0.0.1");
+
+        assertThatThrownBy(() -> local.validate(loopback("imap.example.com", "SSL"))).hasMessageContaining("public");
+        assertThatThrownBy(() -> local.validate(loopback("localhost.example.com", "PLAIN")))
+                .isInstanceOf(ConnectorValidationException.class);
+    }
+
     @Test
     void oauthModeRequiresItsSettings_andNeverNeedsAPassword() {
         Map<String, Object> c = config();

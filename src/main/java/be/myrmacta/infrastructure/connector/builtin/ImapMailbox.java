@@ -38,7 +38,7 @@ interface ImapMailbox {
     enum Security {
         SSL,
         STARTTLS,
-        /** Sans chiffrement : réservé aux tests (serveur en mémoire) ; jamais produit par le connecteur, qui refuse toute autre valeur. */
+        /** Sans chiffrement : tests (serveur en mémoire) et, en profil local ou test seulement, boîte sur la boucle locale (TODO §128, D-IMAP-LOCAL-LOOPBACK). */
         PLAIN_FOR_TESTS
     }
 

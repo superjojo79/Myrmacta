@@ -54,6 +54,21 @@ class OutboundUrlGuardTest {
         }
     }
 
+    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK) — boucle locale pour un protocole hors HTTP : profil local ou test et hôte écrit en boucle. */
+    @Test
+    void isLocalLoopback_onlyInALocalProfile_andOnlyForAHostWrittenAsLoopback() {
+        assertThat(allowLocalHttp.isLocalLoopback("localhost")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback(" LocalHost ")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("127.0.0.1")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("[::1]")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("hooks.example.com")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback("10.0.0.5")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback("")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback(null)).isFalse();
+        assertThat(strict.isLocalLoopback("localhost")).isFalse();
+        assertThat(strict.isLocalLoopback("127.0.0.1")).isFalse();
+    }
+
     @Test
     void httpsPublicHost_isAccepted() {
         assertThatCode(() -> strict.assertSafe("https://hooks.example.com/notify"))

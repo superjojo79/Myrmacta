@@ -1,0 +1,153 @@
+{
+  "_commentaire": "Capsule L1 « Digital Mail Room » (TODO §128, issue #56). Source unique du texte : voix off (une phrase par entrée, lue par edge-tts), sous-titres, titres des chapitres et bandeaux « Sous le capot ». Le tournage (frontend/capture/film/l1-mailroom.film.ts) joue les actions de chaque chapitre par son identifiant.",
+  "id": "l1-mailroom",
+  "title": { "fr": "La Digital Mail Room de bout en bout", "en": "The Digital Mail Room, end to end" },
+  "voices": { "fr": "fr-BE-CharlineNeural", "en": "en-GB-SoniaNeural" },
+  "chapters": [
+    {
+      "id": "intro",
+      "title": { "fr": "Introduction", "en": "Introduction" },
+      "narration": {
+        "fr": [
+          "Chaque jour, des factures, des courriers et des questions arrivent par e-mail ou sur papier.",
+          "Avec Myrmacta, chacun trouve son dossier, son service et son délai, sans ressaisie."
+        ],
+        "en": [
+          "Every day, invoices, letters and questions arrive by e-mail or on paper.",
+          "With Myrmacta, each one finds its case, its department and its deadline, with no re-keying."
+        ]
+      }
+    },
+    {
+      "id": "facture",
+      "title": { "fr": "Une facture arrive par e-mail", "en": "An invoice arrives by e-mail" },
+      "underTheHood": {
+        "fr": "Sous le capot : connecteur IMAP → processus de tri → table DMN « routageCourrier »",
+        "en": "Under the hood: IMAP connector → sorting process → DMN table \"routageCourrier\""
+      },
+      "narration": {
+        "fr": [
+          "Un fournisseur envoie sa facture à l'adresse du courrier.",
+          "Quelques secondes plus tard, il reçoit un accusé de réception, avec la référence de son courrier.",
+          "Dans Myrmacta, le courrier apparaît dans le registre.",
+          "Une table de décision, que le métier lit et modifie lui-même, l'a routé : c'est une facture d'un fournisseur connu.",
+          "Un dossier « facture » est ouvert pour la comptabilité, lié au courrier, avec son échéance à trente jours."
+        ],
+        "en": [
+          "A supplier e-mails an invoice to the mail address.",
+          "A few seconds later, they receive an acknowledgement with the reference of their mail.",
+          "In Myrmacta, the mail shows up in the register.",
+          "A decision table, which the business reads and edits itself, has routed it: an invoice from a known supplier.",
+          "An invoice case is opened for accounting, linked to the mail, with its thirty-day due date."
+        ]
+      }
+    },
+    {
+      "id": "amende",
+      "title": { "fr": "Une amende papier est déposée", "en": "A paper fine is dropped off" },
+      "underTheHood": {
+        "fr": "Sous le capot : point de dépôt « mail-deposit » → même processus de tri que l'e-mail",
+        "en": "Under the hood: \"mail-deposit\" entry point → same sorting process as e-mail"
+      },
+      "narration": {
+        "fr": [
+          "À l'accueil, une amende arrive sur papier.",
+          "L'agent la numérise et la dépose dans Myrmacta, avec l'expéditeur et l'objet.",
+          "Elle suit le même tri que l'e-mail. Aucune règle ne la reconnaît : elle part à la file de tri.",
+          "Un agent du courrier l'ouvre et la confie au service juridique, en un clic."
+        ],
+        "en": [
+          "At the front desk, a fine arrives on paper.",
+          "The clerk scans it and drops it into Myrmacta, with the sender and the subject.",
+          "It goes through the same sorting as e-mail. No rule recognises it, so it lands in the sorting queue.",
+          "A mail clerk opens it and hands it over to the legal department, in one click."
+        ]
+      }
+    },
+    {
+      "id": "agent",
+      "title": { "fr": "Un agent IA trie un courrier inconnu", "en": "An AI agent sorts an unknown mail" },
+      "underTheHood": {
+        "fr": "Sous le capot : serveur MCP de Myrmacta · modèle local gemma4 (Ollama) · passages accélérés",
+        "en": "Under the hood: Myrmacta MCP server · local model gemma4 (Ollama) · sped-up passages"
+      },
+      "narration": {
+        "fr": [
+          "Un client envoie un bon de commande. Son adresse est inconnue : le courrier part à la file de tri.",
+          "Cette fois, c'est un agent IA qui s'en charge, avec un modèle qui tourne sur ce poste.",
+          "Il lit sa file, puis le fil du courrier, et cherche la facture citée.",
+          "Il rattache d'abord le courrier à blanc, pour vérifier, puis pour de vrai, et termine la tâche.",
+          "L'agent n'a que les droits d'un agent du courrier, et chacun de ses gestes est tracé dans le dossier."
+        ],
+        "en": [
+          "A customer sends a purchase order. Their address is unknown, so the mail goes to the sorting queue.",
+          "This time, an AI agent takes care of it, with a model running on this machine.",
+          "It reads its queue, then the mail thread, and looks for the invoice it mentions.",
+          "It first attaches the mail as a dry run, to check, then for real, and completes the task.",
+          "The agent only has the rights of a mail clerk, and every step it takes is recorded in the case."
+        ]
+      }
+    },
+    {
+      "id": "reponse",
+      "title": { "fr": "La réponse du fournisseur rejoint le fil", "en": "The supplier's reply joins the thread" },
+      "underTheHood": {
+        "fr": "Sous le capot : en-têtes de fil (In-Reply-To) · expéditeur attesté · dossier enfant",
+        "en": "Under the hood: thread headers (In-Reply-To) · authenticated sender · child case"
+      },
+      "narration": {
+        "fr": [
+          "Le fournisseur répond, avec une note de crédit.",
+          "Myrmacta reconnaît la réponse au fil de la facture : l'expéditeur est attesté.",
+          "Les pièces sont copiées dans le dossier « facture », et un dossier « réponse à la facture » est ouvert."
+        ],
+        "en": [
+          "The supplier replies, with a credit note.",
+          "Myrmacta recognises the reply as part of the invoice thread: the sender is authenticated.",
+          "The attachments are copied into the invoice case, and an invoice reply case is opened."
+        ]
+      }
+    },
+    {
+      "id": "echeance",
+      "title": { "fr": "L'échéance", "en": "The due date" },
+      "card": { "fr": "25 jours plus tard", "en": "25 days later" },
+      "underTheHood": {
+        "fr": "Sous le capot : échéance du type « facture » · rappel J-5 · escalade le lendemain du terme",
+        "en": "Under the hood: invoice type due date · reminder five days before · escalation the day after"
+      },
+      "narration": {
+        "fr": [
+          "Vingt-cinq jours plus tard.",
+          "Cinq jours avant le terme, les personnes qui ont la facture en main reçoivent un rappel.",
+          "Le lendemain du terme, une facture encore ouverte est escaladée : sa tâche passe à la direction financière, et le dossier en garde la trace."
+        ],
+        "en": [
+          "Twenty-five days later.",
+          "Five days before the due date, the people handling the invoice get a reminder.",
+          "The day after the due date, an invoice still open is escalated: its task moves to the finance department, and the case keeps a record of it."
+        ]
+      }
+    },
+    {
+      "id": "conclusion",
+      "title": { "fr": "Conclusion", "en": "Wrap-up" },
+      "underTheHood": {
+        "fr": "Sous le capot : registre du courrier · éditeur DMN · brouillon puis publication",
+        "en": "Under the hood: mail register · DMN editor · draft then publication"
+      },
+      "narration": {
+        "fr": [
+          "Le registre du courrier donne, à tout moment, l'état de chaque courrier : canal, expéditeur, service, échéance.",
+          "Et quand une nouvelle règle de tri s'impose, le métier l'ajoute à la table de routage, sans code.",
+          "Myrmacta. Le courrier entrant, du premier e-mail à l'échéance."
+        ],
+        "en": [
+          "The mail register shows, at any time, where each mail stands: channel, sender, department, due date.",
+          "And when a new sorting rule is needed, the business adds it to the routing table, with no code.",
+          "Myrmacta. Incoming mail, from the first e-mail to the due date."
+        ]
+      }
+    }
+  ]
+}

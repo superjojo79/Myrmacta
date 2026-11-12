@@ -135,11 +135,12 @@ public class MailRoomDemoPack implements DemoPack {
                     + " (start from the repository root, or set APP_DEMO_MAILROOM_DIR)");
         }
         installExample();
+        ConnectorInstanceData depositPoint = depositPoint();
         if (!sampleMail) {
             log.info("demo-mailroom: example installed; no sample mail (video profile: mail arrives live)");
             return;
         }
-        arrive();
+        arrive(depositPoint);
         log.info("demo-mailroom: example installed; 3 mail items arrived (invoice by e-mail, fine by deposit, unknown mail)");
     }
 
@@ -184,12 +185,16 @@ public class MailRoomDemoPack implements DemoPack {
                 deadline.get("escalationGroup").asString());
     }
 
-    private void arrive() {
+    /** Le point de dépôt de l'écran « Déposer un courrier » (aussi dans la capsule vidéo, qui y dépose l'amende). */
+    private ConnectorInstanceData depositPoint() {
         JsonNode depositExample = read("config/connecteur-depot.exemple.json");
         @SuppressWarnings("unchecked")
         Map<String, Object> depositConfig = json.convertValue(depositExample.get("config"), Map.class);
-        ConnectorInstanceData depositPoint = connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
+        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
                 depositExample.get("name").asString(), depositExample.get("connectorType").asString(), true, depositConfig), ADMIN);
+    }
+
+    private void arrive(ConnectorInstanceData depositPoint) {
         ConnectorInstanceData mailbox = simulatedMailbox();
 
         String invoice = example.text("Facture 2026-117", "Invoice 2026-117");
@@ -209,10 +214,13 @@ public class MailRoomDemoPack implements DemoPack {
      * désactivée, jamais interrogée ; le type « dépôt » ne se déclenche jamais seul.
      */
     ConnectorInstanceData simulatedMailbox() {
-        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)"),
+        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(), simulatedMailboxName(),
                 read("config/connecteur-depot.exemple.json").get("connectorType").asString(), false,
                 Map.of("processKey", "triCourrier", "dossierTypeCode", "COURRIER")), ADMIN);
+    }
+
+    String simulatedMailboxName() {
+        return example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)");
     }
 
     DemoExample example() {

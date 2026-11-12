@@ -24,8 +24,8 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
   conteneur, relevé par le connecteur IMAP de Myrmacta ; le tournage envoie la facture puis la réponse du fournisseur
   en SMTP. Les e-mails que Myrmacta envoie (accusé de réception, rappel) partent vers Mailpit, filmable.
 - **D-IMAP-LOCAL-LOOPBACK** — le connecteur IMAP refusait tout hôte de boucle locale ou privé, dans tous les profils.
-  En profils `local` et `test` seulement, il accepte désormais un hôte de boucle locale (`localhost`, `127.0.0.1`,
-  `::1`), avec la sécurité `PLAIN` (sans chiffrement) permise pour ce seul cas : même règle que le `http` vers la boucle
+  En profils `local` et `test` seulement, il accepte désormais un hôte de boucle locale (`localhost` ou `127.x` ; une adresse IPv6
+  n'est pas un nom d'hôte IMAP accepté), avec la sécurité `PLAIN` (sans chiffrement) permise pour ce seul cas : même règle que le `http` vers la boucle
   locale déjà permis aux webhooks (A13). Hors de ces profils, rien ne change : hôte public et SSL ou STARTTLS exigés.
   Ce changement nuance D-DEMO-SCOPE (« garde SSRF inchangée ») pour l'IMAP seulement.
 
@@ -34,6 +34,8 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
 - **D-VIDEO-DEADLINE** — le rappel J-5 et l'escalade de l'échéance ne se filment pas en direct (l'horloge ne s'avance
   qu'en test) : la démo de la capsule sème des factures dont l'échéance est proche ou passée, que le vrai job des
   échéances traite ; un carton « 25 jours plus tard » fait la transition. Le mécanisme est vérifié par `VideoMailRoomDemoPackIT` (un
-  rappel, une escalade avec la tâche réaffectée) ; reste à confirmer le rendu au tournage.
+  rappel, une escalade avec la tâche réaffectée). Au tournage, le rappel (une notification aux participants du dossier,
+  pas au compte de démo) ne se montre pas : le chapitre montre l'échéance proche, puis la note d'escalade et la tâche
+  passée à la direction financière.
 
 Document de travail : `docs/ai/2026-11-12-capsule-mailroom.md` (supprimé à la clôture).

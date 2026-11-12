@@ -620,6 +620,23 @@ de développement : jamais en production ni en CI.
    `frontend/capture/panel/agent-panel.html`. Tests de l'outillage :
    `uv run --with pytest --with pyjwt --with "mcp>=1.9,<2" --with "openai>=1.80,<3" pytest scripts/video -q`.
 
+7. **La capsule complète** (D-VIDEO-PIPELINE), sur une scène fraîche (étapes 3 et 4, rien d'envoyé à la main),
+   avec `ffmpeg` dans le PATH (`winget install Gyan.FFmpeg`) :
+
+   ```bash
+   APP_DEMO_LOCALE=fr scripts/video.sh capsule
+   ```
+
+   Trois temps : la voix off (`scripts/video/voice.py`, edge-tts, voix `fr-BE` ou `en-GB` : le texte, public, part chez
+   Microsoft) ; le tournage, un test Playwright par chapitre (`frontend/capture/film/`, écran 1280×720 filmé en
+   1920×1080), qui envoie lui-même la facture, le courrier inconnu et la réponse, dépose l'amende et lance l'agent IA ;
+   le montage (`scripts/video/assemble.py`, ffmpeg), qui coupe les attentes de relève, accélère l'agent, cale chaque
+   chapitre sur sa voix et ajoute chapitres et sous-titres. Sortie (non versionnée) :
+   `frontend/capture/out/film/<langue>/l1-mailroom-<langue>.mp4`, `.vtt` et `.srt`. Le texte de la capsule (voix,
+   titres, bandeaux « Sous le capot ») est `scripts/video/capsules/l1-mailroom.json`.
+8. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, `podman restart` du conteneur GreenMail (il garde
+   les e-mails déjà relevés), puis `APP_DEMO_LOCALE=en scripts/video.sh start` et `APP_DEMO_LOCALE=en scripts/video.sh capsule`.
+
 Arrêter la scène par Ctrl+C (même remarque que pour la démo complète), puis
 `podman compose --profile video stop greenmail mailpit`.
 

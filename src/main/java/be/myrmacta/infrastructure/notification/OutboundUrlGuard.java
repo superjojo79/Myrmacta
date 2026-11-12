@@ -87,7 +87,8 @@ public class OutboundUrlGuard {
 
     /**
      * TODO §128 (D-IMAP-LOCAL-LOOPBACK) — vrai seulement en profil {@code local} ou {@code test} et pour un hôte écrit
-     * comme une boucle locale ({@code localhost}, {@code 127.x}, {@code ::1}) : la même règle que le {@code http} local
+     * comme une boucle locale ({@code localhost}, {@code 127.x}, {@code ::1} ; le connecteur IMAP n'accepte pas d'adresse
+     * IPv6 comme hôte) : la même règle que le {@code http} local
      * (A13). Un nom qui se <em>résout</em> en boucle locale n'en est pas une. Pour les protocoles hors HTTP (IMAP).
      */
     public boolean isLocalLoopback(String host) {

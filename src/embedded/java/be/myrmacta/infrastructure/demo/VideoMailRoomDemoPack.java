@@ -4,9 +4,12 @@ import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.port.in.ManageConnectorInstanceUseCase;
+import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
+import be.myrmacta.domain.workflow.model.Provenance;
+import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.time.Clock;
@@ -16,6 +19,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +69,7 @@ public class VideoMailRoomDemoPack implements DemoPack {
 
     private final MailRoomDemoPack mailRoom;
     private final ManageConnectorInstanceUseCase connectors;
+    private final ConnectorInstanceRepository instances;
     private final RecordUserLoginUseCase directory;
     private final UserGroupsUseCase groups;
     private final DossierRepository dossiers;
@@ -76,27 +81,32 @@ public class VideoMailRoomDemoPack implements DemoPack {
     private final int imapPort;
     private final String agentSubject;
     private final ProcessEngine engine;
+    private final ProposeDraftUseCase drafts;
     private final JdbcTemplate jdbc;
 
     @Autowired
-    public VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors, RecordUserLoginUseCase directory,
+    public VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors,
+            ConnectorInstanceRepository instances, RecordUserLoginUseCase directory,
             UserGroupsUseCase groups, DossierRepository dossiers, TenantProperties tenant, ObjectMapper json,
-            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc,
+            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, ProposeDraftUseCase drafts,
             @Value("${app.demo.video.imap-host:localhost}") String imapHost,
             @Value("${app.demo.video.imap-port:3143}") int imapPort,
             @Value("${app.demo.video.agent-subject:agent-ia-tri}") String agentSubject) {
-        this(mailRoom, connectors, directory, groups, dossiers, tenant, json, transactionManager, engine, jdbc, imapHost, imapPort,
-                agentSubject, Clock.systemDefaultZone());
+        this(mailRoom, connectors, instances, directory, groups, dossiers, tenant, json, transactionManager, engine, jdbc, drafts, imapHost,
+                imapPort, agentSubject, Clock.systemDefaultZone());
     }
 
-    VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors, RecordUserLoginUseCase directory,
+    VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors,
+            ConnectorInstanceRepository instances, RecordUserLoginUseCase directory,
             UserGroupsUseCase groups, DossierRepository dossiers, TenantProperties tenant, ObjectMapper json,
-            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, String imapHost, int imapPort,
-            String agentSubject, Clock clock) {
+            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, ProposeDraftUseCase drafts,
+            String imapHost, int imapPort, String agentSubject, Clock clock) {
+        this.drafts = drafts;
         this.engine = engine;
         this.jdbc = jdbc;
         this.mailRoom = mailRoom;
         this.connectors = connectors;
+        this.instances = instances;
         this.directory = directory;
         this.groups = groups;
         this.dossiers = dossiers;
@@ -119,31 +129,61 @@ public class VideoMailRoomDemoPack implements DemoPack {
         return ORDER;
     }
 
-    /** Le dernier effet du paquet : les factures de l'échéance. */
+    /** Le dernier effet du paquet : le brouillon de la table de routage. */
     @Override
     public boolean installed() {
-        Set<String> subjects = dossiers.findByDossierTypeCode(tenant.id(), "FACTURE").stream()
-                .map(d -> String.valueOf(d.fields().get("objet"))).collect(Collectors.toSet());
-        return DUE.stream().allMatch(invoice -> subjects.contains(subject(invoice)));
+        return routingDraftProposed();
     }
 
     @Override
+    /**
+     * Chaque étape est idempotente (revue de clôture de #56) : une installation interrompue (routage trop lent, par
+     * exemple) puis relancée reprend là où elle s'est arrêtée, sans seconde boîte IMAP qui relèverait la même boîte.
+     */
     public void install() {
-        mailbox();
-        agent();
         DemoExample example = mailRoom.example();
-        ConnectorInstanceData simulated = mailRoom.simulatedMailbox();
-        LocalDate today = LocalDate.now(clock);
-        for (DueInvoice invoice : DUE) {
-            dueInvoice(simulated, invoice, today.plusDays(invoice.dueInDays()), example);
+        if (instance("imap-inbound", mailboxName(example)).isEmpty()) {
+            mailbox(example);
         }
-        log.info("demo-video-mailroom: IMAP mailbox on {}:{}, agent {} in the sorting queue, {} invoices near their due date",
-                imapHost, imapPort, agentSubject, DUE.size());
+        agent();
+        ConnectorInstanceData simulated = instance("mail-deposit", mailRoom.simulatedMailboxName())
+                .orElseGet(mailRoom::simulatedMailbox);
+        LocalDate today = LocalDate.now(clock);
+        Set<String> present = dossiers.findByDossierTypeCode(tenant.id(), "FACTURE").stream()
+                .map(d -> String.valueOf(d.fields().get("objet"))).collect(Collectors.toSet());
+        for (DueInvoice invoice : DUE) {
+            if (!present.contains(subject(invoice))) {
+                dueInvoice(simulated, invoice, today.plusDays(invoice.dueInDays()), example);
+            }
+        }
+        // La conclusion : une règle de plus dans la table de routage, proposée en brouillon (DMN 1.3, que l'éditeur ouvre).
+        if (!routingDraftProposed()) {
+            String xml = StatesDemoPack.routingWithPrinterRule(example);
+            transaction.executeWithoutResult(status -> drafts.proposeDmn(ADMIN, Provenance.MCP, StatesDemoPack.ROUTING, xml,
+                    example.text("Factures de l'imprimerie : comptabilité, 30 jours", "Printer invoices: accounting, 30 days"),
+                    false));
+        }
+        log.info("demo-video-mailroom: IMAP mailbox on {}:{}, agent {} in the sorting queue, {} invoices near their due date, "
+                + "routing draft", imapHost, imapPort, agentSubject, DUE.size());
+    }
+
+    private boolean routingDraftProposed() {
+        Integer count = jdbc.queryForObject("select count(*) from dmn_draft where decision_key = ?", Integer.class,
+                StatesDemoPack.ROUTING);
+        return count != null && count > 0;
+    }
+
+    private Optional<ConnectorInstanceData> instance(String type, String name) {
+        return instances.listByTenantId(tenant.id()).stream()
+                .filter(i -> i.connectorType().equals(type) && i.name().equals(name)).findFirst();
+    }
+
+    private static String mailboxName(DemoExample example) {
+        return example.text("Boîte courrier (courrier@demo.example)", "Mailbox (courrier@demo.example)");
     }
 
     /** La boîte IMAP de l'exemple, pointée sur le GreenMail local (sans chiffrement : boucle locale, profil local). */
-    private void mailbox() {
-        DemoExample example = mailRoom.example();
+    private void mailbox(DemoExample example) {
         JsonNode imap = example.json("config/connecteur-imap.exemple.json");
         @SuppressWarnings("unchecked")
         Map<String, Object> config = new HashMap<>(json.convertValue(imap.get("config"), Map.class));
@@ -154,8 +194,7 @@ public class VideoMailRoomDemoPack implements DemoPack {
         config.put("password", "demo");
         config.put("pollSeconds", 30);
         config.put("trustedAuthservId", TRUSTED_AUTHSERV_ID);
-        connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                example.text("Boîte courrier (courrier@demo.example)", "Mailbox (courrier@demo.example)"),
+        connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(), mailboxName(example),
                 imap.get("connectorType").asString(), true, config), ADMIN);
     }
 
@@ -163,7 +202,11 @@ public class VideoMailRoomDemoPack implements DemoPack {
     private void agent() {
         directory.record(agentSubject, mailRoom.example().text("Agent IA (modèle local)", "AI agent (local model)"), null,
                 Set.of("API_SERVICE"));
-        groups.addMember("COURRIER", agentSubject);
+        boolean member = groups.list().stream()
+                .anyMatch(g -> g.code().equals("COURRIER") && g.memberIds().contains(agentSubject));
+        if (!member) {
+            groups.addMember("COURRIER", agentSubject);
+        }
     }
 
     /** Arrivée par le vrai pipeline (routage, dossier « facture »), puis échéance rapprochée (D-VIDEO-DEADLINE). */

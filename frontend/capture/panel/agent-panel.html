@@ -14,7 +14,7 @@
             --call: #7cc4ff; --ok: #8fd18f; --say: #f2c66d; --err: #ff8a80; }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column;
-           font: 15px/1.5 "Cascadia Mono", "JetBrains Mono", Consolas, monospace; }
+           font: 19px/1.5 "Cascadia Mono", "JetBrains Mono", Consolas, monospace; }
     header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--panel);
              border-bottom: 1px solid var(--line); }
     .dot { width: 12px; height: 12px; border-radius: 50%; }
@@ -56,7 +56,7 @@
     document.getElementById('badge').textContent = `${T.badge} · ${model}`;
     const log = document.getElementById('log');
     const cursor = document.getElementById('cursor');
-    const MAX_RESULT = 220;
+    const MAX_RESULT = 160;
 
     function row(text, cls) {
       const el = document.createElement('div');

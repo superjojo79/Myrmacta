@@ -3,7 +3,7 @@
 # ///
 """Envoie un e-mail du tournage de la capsule « Digital Mail Room » (TODO §128, D-VIDEO-MAIL, issue #56).
 
-L'e-mail part en SMTP vers le GreenMail local (`scripts/video.sh scene`), boîte courrier@demo.example, que le connecteur IMAP
+L'e-mail part en SMTP vers le GreenMail local (`scripts/video.sh mail-servers`), boîte courrier@demo.example, que le connecteur IMAP
 de la démo relève : il suit le vrai chemin (relève, routage, accusé de réception). L'en-tête Authentication-Results porte
 l'authserv-id de confiance du connecteur : l'expéditeur est attesté, comme derrière un vrai serveur de réception.
 

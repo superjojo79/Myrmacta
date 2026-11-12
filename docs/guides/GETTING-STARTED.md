@@ -653,7 +653,7 @@ conteneur en plus). Keycloak, `.env`, jar de démo et `ffmpeg` : comme pour la c
 2. **Pannes à la demande** (D-DEMO-FAKE-FAULTS) : le tournage les commande lui-même, mais on peut les essayer à la main :
 
    ```bash
-   curl -X POST localhost:18090/_demo/faults -d '{"step":"iam","status":503,"times":1}'
+   curl -X POST localhost:18090/_demo/faults -H 'Content-Type: application/json' -d '{"step":"iam","status":503,"times":1}'
    ```
 
    Étapes : `sirh`, `iam`, `groups`, `itsm` ; statut 400 à 599 ; 1 à 10 appels. `curl -X DELETE

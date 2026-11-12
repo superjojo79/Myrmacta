@@ -8,7 +8,9 @@ dans <nn>-<id>.spans.json, calée sur sa voix (voice/<id>.m4a) : le plus court d
 tenue, ou silence). Puis les chapitres bout à bout en un MP4 (H.264, AAC), avec ses chapitres et ses sous-titres (piste
 mov_text et fichiers .vtt et .srt à côté).
 
-    uv run scripts/video/assemble.py scripts/video/capsules/l1-mailroom.json --lang fr --out frontend/capture/out/film
+    uv run scripts/video/assemble.py scripts/video/capsules/l1-mailroom.json --lang fr
+
+<out> vaut par défaut frontend/capture/out/film/<id de la capsule> (TODO §136), le dossier que lit le tournage.
     → <out>/<lang>/<capsule>-<lang>.mp4, .vtt, .srt
 """
 
@@ -173,14 +175,21 @@ def run(capsule_path: Path, lang: str, out: Path) -> int:
     return 0
 
 
+def default_out(capsule_path: Path) -> Path:
+    """Dossier de sortie par défaut : un par capsule, celui que lit le tournage (TODO §136)."""
+    capsule_id = json.loads(capsule_path.read_text(encoding="utf-8"))["id"]
+    return Path("frontend/capture/out/film") / capsule_id
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("capsule", type=Path)
     parser.add_argument("--lang", choices=("fr", "en"), default="fr")
-    parser.add_argument("--out", type=Path, default=Path("frontend/capture/out/film"))
+    parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    return run(args.capsule, args.lang, args.out)
+    out = args.out or default_out(args.capsule)
+    return run(args.capsule, args.lang, out)
 
 
 if __name__ == "__main__":

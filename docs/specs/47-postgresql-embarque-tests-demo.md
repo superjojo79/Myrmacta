@@ -82,7 +82,8 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   sans arrivée (D-VIDEO-OFFSCREEN-PREP) ; le paquet est installé dès que le processus est déployé. Les faux SIRH, IAM et
   ITSM répondent en erreur sur commande (D-DEMO-FAKE-FAULTS) : `POST /_demo/faults` avec
   `{"step":"sirh|iam|groups|itsm","status":400-599,"times":1-10}` arme une panne, `DELETE /_demo/faults` les désarme ;
-  les compensations ne sont jamais en panne et la route n'entre pas dans le journal des requêtes.
+  les compensations ne sont jamais en panne et la route n'entre pas dans le journal des requêtes. Une requête avec un
+  en-tête `Origin` (page web) reçoit 403 ; un `POST` sans `Content-Type: application/json`, 415.
   Tournage (D-VIDEO-PIP) : `scripts/video.sh start l2-onboarding` puis `capsule l2-onboarding`. Texte :
   `scripts/video/capsules/l2-onboarding.json` (huit chapitres en deux parties, carton de partie) ; tournage :
   `frontend/capture/film/l2-onboarding.film.ts`. La partie 1 est jouée dans l'interface ; le metteur en scène pose le

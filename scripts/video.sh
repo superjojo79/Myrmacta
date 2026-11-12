@@ -84,7 +84,7 @@ case "${1:-}" in
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,25p' "$0"
+    sed -n '2,23p' "$0"
     exit 2
     ;;
 esac

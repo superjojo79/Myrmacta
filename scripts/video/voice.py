@@ -13,7 +13,9 @@ courte pause) et écrit ses repères de sous-titres :
 
 Le tournage lit voice.json pour tenir chaque chapitre au moins le temps de sa voix ; le montage y prend les sous-titres.
 
-    uv run scripts/video/voice.py scripts/video/capsules/l1-mailroom.json --lang fr --out frontend/capture/out/film
+    uv run scripts/video/voice.py scripts/video/capsules/l1-mailroom.json --lang fr
+
+<out> vaut par défaut frontend/capture/out/film/<id de la capsule> (TODO §136), le dossier que lit le tournage.
 """
 
 from __future__ import annotations
@@ -98,14 +100,21 @@ async def run(capsule_path: Path, lang: str, out: Path) -> int:
     return 0
 
 
+def default_out(capsule_path: Path) -> Path:
+    """Dossier de sortie par défaut : un par capsule, celui que lit le tournage (TODO §136)."""
+    capsule_id = json.loads(capsule_path.read_text(encoding="utf-8"))["id"]
+    return Path("frontend/capture/out/film") / capsule_id
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("capsule", type=Path)
     parser.add_argument("--lang", choices=("fr", "en"), default="fr")
-    parser.add_argument("--out", type=Path, default=Path("frontend/capture/out/film"))
+    parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    return asyncio.run(run(args.capsule, args.lang, args.out))
+    out = args.out or default_out(args.capsule)
+    return asyncio.run(run(args.capsule, args.lang, out))
 
 
 if __name__ == "__main__":

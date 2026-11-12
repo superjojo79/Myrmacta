@@ -1,12 +1,18 @@
 # §136 — Capsule vidéo L2 « onboarding » : pannes commandées, vignette du processus
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert, en cours (issue [#57](https://github.com/superjojo79/Myrmacta/issues/57), vague `vague-vitrine`). Cadrage validé
-par l'utilisateur le 2026-11-12. Prolonge [§127](127-demo-par-paquets-et-captures-du-site.md) (paquets de démo, faux
-services) et [§128](128-capsules-video-du-site.md) (outillage des capsules). Build `embedded-db` et outillage de
-développement seulement, jamais en production. Comportement :
-[spec 47](../specs/47-postgresql-embarque-tests-demo.md).
+[x] clos (2026-11-12, issue [#57](https://github.com/superjojo79/Myrmacta/issues/57), vague `vague-vitrine`). Cadrage
+validé par l'utilisateur le 2026-11-12. Livré en deux lots (PR #91 : pannes commandées et scène ; PR #92 : outillage
+multi-capsule, tournage, vidéos, clôture). `scripts/video.sh capsule l2-onboarding` produit la capsule L2 en français et
+en anglais (2 min 44, huit chapitres en deux parties, sous-titres) : plus courte que les 3 à 4 min visées, ce que
+l'utilisateur a accepté pour la capsule L1 tant qu'elle est complète. Prolonge
+[§127](127-demo-par-paquets-et-captures-du-site.md) (paquets de démo, faux services) et
+[§128](128-capsules-video-du-site.md) (outillage des capsules). Build `embedded-db` et outillage de développement
+seulement, jamais en production. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
+[GETTING-STARTED](../guides/GETTING-STARTED.md) § « Capsule vidéo L2 ». Revue de clôture : aucun constat critique, haut
+ou moyen ; les constats bas sont corrigés (requêtes de navigateur refusées, en-tête `Allow`, dossier de sortie par
+défaut des scripts Python, aide de `video.sh`, texte nuancé sur les connecteurs).
 
 **Constat.** La capsule L2 filme l'exemple `exemples/onboarding-collaborateur` en deux parties. La partie 1 suit le
 parcours nominal (scénario de recette O1). La partie 2 montre la robustesse (O2) : l'IAM en erreur puis
@@ -21,8 +27,11 @@ onboarding semait trois arrivées, qui encombreraient le tournage.
 - Route de pilotage, sur la même écoute de la boucle locale : `POST /_demo/faults` arme une panne
   (`{"step":"iam","status":503,"times":1}`), `DELETE /_demo/faults` les désarme toutes. Une commande hors bornes
   reçoit 400.
-- Un connecteur n'atteint pas cette route : ses chemins restent sous `/sirh`, `/iam` ou `/itsm`, et les segments `..`
-  sont refusés.
+- Les connecteurs de l'exemple n'atteignent pas cette route : leurs chemins restent sous `/sirh`, `/iam` ou `/itsm`, et
+  les segments `..` sont refusés. Un administrateur de la scène (profil `local`, boucle locale autorisée) pourrait créer
+  un connecteur qui la vise : c'est un outil de démo sur le poste, jamais dans le jar de production.
+- Une page web ouverte sur le poste ne la commande pas : une requête qui porte un en-tête `Origin` reçoit 403, et un
+  `POST` doit déclarer `application/json` (415 sinon), ce qu'un navigateur ne fait pas sans pré-vérification CORS.
 - Les compensations (`DELETE`) ne sont jamais en panne.
 - La route n'est pas enregistrée dans le journal des requêtes.
 
@@ -49,8 +58,9 @@ en scène au tournage, à côté des champs « Provisioning » qui se remplissen
 produit. Écartés : le défilement entre champs et diagramme, moins parlant ; deux prises superposées par ffmpeg, avec
 un risque de décalage.
 
-**Hypothèse (outillage) :** chaque capsule a son dossier de sortie, `frontend/capture/out/film/<capsule>/<langue>/`.
-Deux capsules tournées dans la même langue ne mélangent ainsi ni leurs voix ni leurs vidéos.
+**Outillage :** chaque capsule a son dossier de sortie, `frontend/capture/out/film/<capsule>/<langue>/`.
+Deux capsules tournées dans la même langue ne mélangent ainsi ni leurs voix ni leurs vidéos. `voice.py` et `assemble.py` y écrivent par défaut
+(`frontend/capture/out/film/<id de la capsule>`), comme le tournage y lit.
 
 **Impacte :** `DemoFakeApis`, `OnboardingDemoPack`, `DemoSeeder`, `scripts/video.sh`, `frontend/capture/film/`,
 spec 47, GETTING-STARTED.

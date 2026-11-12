@@ -116,3 +116,11 @@ def test_the_filmed_frame_must_be_16_by_9():
     assemble.check_frame(1920, 1080)
     with pytest.raises(SystemExit):
         assemble.check_frame(1280, 800)
+
+
+def test_without_out_each_capsule_writes_to_its_own_folder():
+    # TODO §136 : même dossier que le tournage (FILM_OUT par défaut) ; deux capsules ne mélangent pas leurs sorties.
+    capsules = Path(__file__).parent / "capsules"
+    for module in (voice, assemble):
+        assert module.default_out(capsules / "l2-onboarding.json") == Path("frontend/capture/out/film/l2-onboarding")
+        assert module.default_out(capsules / "l1-mailroom.json") == Path("frontend/capture/out/film/l1-mailroom")

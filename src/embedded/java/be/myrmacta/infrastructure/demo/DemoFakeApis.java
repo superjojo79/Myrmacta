@@ -34,8 +34,10 @@ import tools.jackson.databind.ObjectMapper;
  * TODO §136 (D-DEMO-FAKE-FAULTS, issue #57) — une panne se commande sur une étape ({@link #FAULT_STEPS}), avec un statut
  * HTTP en erreur, pour un nombre d'appels borné ; l'étape répond ensuite de nouveau en succès. Route de pilotage, sur la
  * même écoute de la boucle locale : {@code POST /_demo/faults} (corps {@code {"step":"iam","status":503,"times":1}}) arme,
- * {@code DELETE /_demo/faults} désarme tout. Un connecteur ne l'atteint pas : ses chemins restent sous {@code /sirh},
- * {@code /iam} ou {@code /itsm}. Les compensations ({@code DELETE}) ne sont jamais en panne.
+ * {@code DELETE /_demo/faults} désarme tout. Les connecteurs de l'exemple ne l'atteignent pas (leurs chemins restent sous
+ * {@code /sirh}, {@code /iam} ou {@code /itsm}) ; un administrateur de la scène, en profil {@code local}, pourrait en créer
+ * un qui la vise : c'est un outil de démo sur le poste. Une page web ne la commande pas ({@code Origin} refusé, JSON
+ * exigé). Les compensations ({@code DELETE}) ne sont jamais en panne.
  * Le port est fixe par défaut ({@code app.demo.fake-apis.port}, 18090) : les connecteurs installés gardent leur adresse
  * d'un démarrage à l'autre. Build {@code embedded-db} seulement.
  */
@@ -165,7 +167,8 @@ public class DemoFakeApis implements SmartLifecycle {
             String line = exchange.getRequestMethod() + " " + path;
             byte[] body = readBody(exchange.getRequestBody());
             if (path.equals(FAULTS_PATH)) {
-                send(exchange, control(exchange.getRequestMethod(), body));
+                send(exchange, control(exchange.getRequestMethod(), exchange.getRequestHeaders().getFirst("Origin"),
+                        exchange.getRequestHeaders().getFirst("Content-Type"), body));
                 return;
             }
             synchronized (received) {
@@ -185,20 +188,33 @@ public class DemoFakeApis implements SmartLifecycle {
     private static void send(HttpExchange exchange, Response response) throws IOException {
         byte[] bytes = response.body().getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
+        if (response.allow() != null) {
+            exchange.getResponseHeaders().add("Allow", response.allow());
+        }
         exchange.sendResponseHeaders(response.status(), bytes.length == 0 ? -1 : bytes.length);
         if (bytes.length > 0) {
             exchange.getResponseBody().write(bytes);
         }
     }
 
-    /** Route de pilotage : {@code POST} arme une panne, {@code DELETE} les désarme toutes. */
-    private Response control(String method, byte[] body) {
+    /**
+     * Route de pilotage : {@code POST} arme une panne, {@code DELETE} les désarme toutes. Une page web ouverte sur le poste
+     * ne la commande pas : une requête qui porte un en-tête {@code Origin} est refusée (403), et un {@code POST} doit
+     * déclarer du JSON (415), ce qu'un navigateur ne fait pas sans pré-vérification CORS.
+     */
+    private Response control(String method, String origin, String contentType, byte[] body) {
+        if (origin != null) {
+            return new Response(403, "{\"error\":\"browser requests are refused\"}");
+        }
         if (method.equals("DELETE")) {
             clearFaults();
             return new Response(204, "");
         }
         if (!method.equals("POST")) {
-            return new Response(405, "{\"error\":\"use POST or DELETE\"}");
+            return new Response(405, "{\"error\":\"use POST or DELETE\"}", "POST, DELETE");
+        }
+        if (contentType == null || !contentType.toLowerCase(java.util.Locale.ROOT).startsWith("application/json")) {
+            return new Response(415, "{\"error\":\"expected application/json\"}");
         }
         JsonNode command;
         try {
@@ -312,7 +328,12 @@ public class DemoFakeApis implements SmartLifecycle {
     private record Fault(int status, int remaining) {
     }
 
-    record Response(int status, String body) {
+    record Response(int status, String body, String allow) {
+
+        Response(int status, String body) {
+            this(status, body, null);
+        }
+
         /** Connexion fermée sans réponse. */
         static final Response DROP = new Response(-1, "");
     }

@@ -209,7 +209,7 @@ class DemoFakeApisTest {
         try {
             HttpClient client = HttpClient.newHttpClient();
             URI faults = URI.create(apis.baseUrl() + "/_demo/faults");
-            HttpResponse<String> armed = client.send(HttpRequest.newBuilder(faults)
+            HttpResponse<String> armed = client.send(HttpRequest.newBuilder(faults).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"step\":\"iam\",\"status\":503,\"times\":1}")).build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(armed.statusCode()).isEqualTo(204);
@@ -217,15 +217,15 @@ class DemoFakeApisTest {
                     .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString())
                     .statusCode()).isEqualTo(503);
 
-            HttpResponse<String> refused = client.send(HttpRequest.newBuilder(faults)
+            HttpResponse<String> refused = client.send(HttpRequest.newBuilder(faults).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"step\":\"iam\",\"status\":200,\"times\":1}")).build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(refused.statusCode()).isEqualTo(400);
-            assertThat(client.send(HttpRequest.newBuilder(faults)
+            assertThat(client.send(HttpRequest.newBuilder(faults).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("pas du json")).build(), HttpResponse.BodyHandlers.ofString())
                     .statusCode()).isEqualTo(400);
 
-            client.send(HttpRequest.newBuilder(faults)
+            client.send(HttpRequest.newBuilder(faults).header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"step\":\"itsm\",\"status\":500,\"times\":3}")).build(),
                     HttpResponse.BodyHandlers.discarding());
             assertThat(client.send(HttpRequest.newBuilder(faults).DELETE().build(), HttpResponse.BodyHandlers.discarding())
@@ -233,10 +233,39 @@ class DemoFakeApisTest {
             assertThat(client.send(HttpRequest.newBuilder(URI.create(apis.baseUrl() + "/itsm/tickets"))
                     .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString())
                     .statusCode()).isEqualTo(201);
-            assertThat(client.send(HttpRequest.newBuilder(faults).GET().build(), HttpResponse.BodyHandlers.discarding())
-                    .statusCode()).isEqualTo(405);
+            HttpResponse<Void> get = client.send(HttpRequest.newBuilder(faults).GET().build(),
+                    HttpResponse.BodyHandlers.discarding());
+            assertThat(get.statusCode()).isEqualTo(405);
+            assertThat(get.headers().firstValue("Allow")).hasValue("POST, DELETE");
 
             assertThat(apis.received()).containsExactly("POST /iam/users", "POST /itsm/tickets");
+        } finally {
+            apis.stop();
+        }
+    }
+
+    @Test
+    void theControlRoute_refusesBrowserPagesAndNonJsonBodies() throws Exception {
+        apis.start();
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            URI faults = URI.create(apis.baseUrl() + "/_demo/faults");
+            String command = "{\"step\":\"iam\",\"status\":503,\"times\":1}";
+
+            // Une page web ouverte sur le poste : requête « simple » en text/plain, sans pré-vérification CORS.
+            assertThat(client.send(HttpRequest.newBuilder(faults).header("Content-Type", "text/plain")
+                    .POST(HttpRequest.BodyPublishers.ofString(command)).build(), HttpResponse.BodyHandlers.discarding())
+                    .statusCode()).isEqualTo(415);
+            // Une page web qui enverrait du JSON porte toujours son origine.
+            assertThat(client.send(HttpRequest.newBuilder(faults).header("Content-Type", "application/json")
+                    .header("Origin", "https://evil.example").POST(HttpRequest.BodyPublishers.ofString(command)).build(),
+                    HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(403);
+            assertThat(client.send(HttpRequest.newBuilder(faults).header("Origin", "https://evil.example").DELETE().build(),
+                    HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(403);
+
+            assertThat(client.send(HttpRequest.newBuilder(URI.create(apis.baseUrl() + "/iam/users"))
+                    .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.discarding())
+                    .statusCode()).as("aucune panne armée").isEqualTo(201);
         } finally {
             apis.stop();
         }

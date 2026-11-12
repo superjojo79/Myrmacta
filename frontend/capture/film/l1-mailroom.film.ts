@@ -217,6 +217,8 @@ test('conclusion', async ({ page }) => {
   await d.beat(5)
   await d.banner(null)
   await page.goto(card('Myrmacta', en ? 'Incoming mail, from the first e-mail to the due date' : 'Le courrier entrant, du premier e-mail à l’échéance', 'myrmacta.be', true))
+  // Le carton de fin reste au moins 3 s, même si la voix s'est tue avant qu'il paraisse.
+  await d.beat(3)
   await d.holdForVoice(2.5)
   await d.wrap(order('conclusion'))
 })

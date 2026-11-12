@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.model.DecisionTableDeploymentResult;
 import be.myrmacta.domain.workflow.model.InvalidDmnException;
 import be.myrmacta.domain.workflow.port.out.DmnDeploymentPort;
@@ -15,6 +16,7 @@ import be.myrmacta.domain.workflow.port.out.DmnDraftRepository;
 import be.myrmacta.domain.workflow.port.out.DmnParserPort;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class DeployDecisionTableUseCaseImplTest {
 
@@ -65,5 +67,29 @@ class DeployDecisionTableUseCaseImplTest {
         assertThatThrownBy(() -> useCase.deploy("eligibilite.dmn", DMN_BYTES)).isInstanceOf(InvalidDmnException.class);
 
         verify(draftRepository, never()).deleteByTenantIdAndDecisionKey(any(), any());
+    }
+
+    @Test
+    void deploy_dmn11_normalizesTo13BeforeParseAndDeploy() {
+        byte[] dmn11 =
+                """
+                <definitions xmlns="%s" id="def">
+                  <decision id="eligibilite" name="E"/>
+                </definitions>
+                """
+                        .formatted(DmnXmlVersions.DMN_11_NAMESPACE)
+                        .getBytes(StandardCharsets.UTF_8);
+        byte[] expected13 = DmnXmlVersions.to13(dmn11);
+        when(dmnParserPort.extractDecisionKey(expected13)).thenReturn("eligibilite");
+        when(deploymentPort.deploy(any(), any(), any()))
+                .thenReturn(new DecisionTableDeploymentResult("eligibilite", 1, "dep-1"));
+
+        useCase.deploy("eligibilite.dmn", dmn11);
+
+        ArgumentCaptor<byte[]> xmlCaptor = ArgumentCaptor.forClass(byte[].class);
+        verify(deploymentPort).deploy(org.mockito.ArgumentMatchers.eq(TENANT), org.mockito.ArgumentMatchers.eq("eligibilite.dmn"), xmlCaptor.capture());
+        assertThat(new String(xmlCaptor.getValue(), StandardCharsets.UTF_8))
+                .contains(DmnXmlVersions.DMN_13_NAMESPACE)
+                .doesNotContain(DmnXmlVersions.DMN_11_NAMESPACE);
     }
 }

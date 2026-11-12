@@ -825,7 +825,9 @@ class MailRoomExampleIT {
 
         JsonNode same = promotion("plan", bundle, admin);
         for (JsonNode e : same.get("entries")) {
-            assertThat(e.get("action").asString()).as(e.get("type").asString() + " " + e.get("key").asString()).isEqualTo("UNCHANGED");
+            assertThat(e.get("action").asString())
+                    .as(e.get("type").asString() + " " + e.get("key").asString() + " reason=" + e.path("reason").asText())
+                    .isEqualTo("UNCHANGED");
             if (List.of("DMN", "BPMN").contains(e.get("type").asString())) {
                 assertThat(e.get("reason").asString()).as("no orphan group in the example").doesNotContain("WARNING");
             }

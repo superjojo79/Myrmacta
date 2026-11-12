@@ -21,6 +21,8 @@ import org.springframework.util.unit.DataSize;
 /**
  * {@code deploy_decision_table} : validates a DMN 1.3 table (schema, JUEL allowlist) then (TODO §82, D6) saves it as a
  * <b>draft</b> that a human publishes; direct publication only when the instance allows it (never in production).
+ * TODO §130 (D-DMN-GENERATE-13) : generate with the DMN 1.3 model namespace; a DMN 1.1 document is accepted and
+ * rewritten to 1.3 before persistence so {@code dmn-js} can open it.
  */
 @Component
 public class DeployDecisionTableTool {
@@ -49,7 +51,11 @@ public class DeployDecisionTableTool {
 
     @McpTool(
             name = "deploy_decision_table",
-            description = "Propose a DMN 1.3 decision table (UTF-8 XML text, not base64). decisionKey must match the decision "
+            description = "Propose a DMN 1.3 decision table (UTF-8 XML text, not base64). The root <definitions> element "
+                    + "MUST use xmlns=\"https://www.omg.org/spec/DMN/20191111/MODEL/\" (DMN 1.3). Do not put an XML comment "
+                    + "before <definitions> (Flowable schema validation rejects it). Do not emit the DMN 1.1 namespace "
+                    + "http://www.omg.org/spec/DMN/20151101 — the integrated editor (dmn-js) only opens 1.3; a 1.1 "
+                    + "document is accepted and rewritten to 1.3 automatically. decisionKey must match the decision "
                     + "id. Input/output cell expressions are validated against a JUEL allowlist (literals and simple "
                     + "comparisons only, never a bare identifier). By default the table is saved as a DRAFT that a human "
                     + "publishes from the 'Brouillons à publier' screen; the instance may allow direct publication (never in "
@@ -58,7 +64,11 @@ public class DeployDecisionTableTool {
     public Map<String, Object> deployDecisionTable(
             @McpToolParam(required = true, description = "Decision key — must match the DMN decision id")
                     String decisionKey,
-            @McpToolParam(required = true, description = "DMN 1.3 XML document, UTF-8 text (not base64)") String xml,
+            @McpToolParam(
+                            required = true,
+                            description = "DMN 1.3 XML (UTF-8 text, not base64). Root xmlns must be "
+                                    + "https://www.omg.org/spec/DMN/20191111/MODEL/ ; DMN 1.1 is accepted and converted")
+                    String xml,
             @McpToolParam(required = false, description = "Validate without writing anything; default false")
                     Boolean dryRun,
             @McpToolParam(required = false, description = "Overwrite a draft written by another author; default false")

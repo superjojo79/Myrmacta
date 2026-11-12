@@ -377,6 +377,25 @@ class DraftUseCasesTest {
     }
 
     @Test
+    void proposeDmn_normalizesDmn11To13BeforePersist() {
+        String dmn11 =
+                """
+                <definitions xmlns="%s" id="def">
+                  <decision id="table" name="T"/>
+                </definitions>
+                """
+                        .formatted(be.myrmacta.domain.workflow.DmnXmlVersions.DMN_11_NAMESPACE);
+        String expected13 = be.myrmacta.domain.workflow.DmnXmlVersions.to13(dmn11);
+        when(dmnParser.extractDecisionKey(expected13.getBytes(StandardCharsets.UTF_8))).thenReturn("table");
+
+        propose.proposeDmn(AGENT, Provenance.MCP, "table", dmn11, "from 1.1", false);
+
+        assertThat(dmnStore.get("table").xml())
+                .contains(be.myrmacta.domain.workflow.DmnXmlVersions.DMN_13_NAMESPACE)
+                .doesNotContain(be.myrmacta.domain.workflow.DmnXmlVersions.DMN_11_NAMESPACE);
+    }
+
+    @Test
     void publishingOrDiscardingAMissingDraftIs404Material() {
         assertThatThrownBy(() -> manage.publish(HUMAN, DraftArtifactType.BPMN, KEY, Instant.now(), PublicationMode.MANUAL))
                 .isInstanceOf(DraftNotFoundException.class);

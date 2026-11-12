@@ -2,6 +2,7 @@ package be.myrmacta.domain.workflow.usecase;
 
 import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.model.DecisionTableDeploymentResult;
 import be.myrmacta.domain.workflow.model.DecisionTableVersionInfo;
 import be.myrmacta.domain.workflow.model.DecisionVersionAlreadyCurrentException;
@@ -48,12 +49,14 @@ public final class RedeployDecisionTableUseCaseImpl implements RedeployDecisionT
                 .findDeployedXml(tenantId, key, version)
                 .orElseThrow(() -> new UnknownDecisionVersionException(
                         "No deployed version " + version + " for decision key: " + key));
-        String extracted = dmnParserPort.extractDecisionKey(xml);
+        // TODO §130 (D-DMN-OPEN-CONVERT) : une ancienne version 1.1 devient 1.3 à la republication.
+        byte[] normalized = DmnXmlVersions.to13(xml);
+        String extracted = dmnParserPort.extractDecisionKey(normalized);
         if (!extracted.equals(key)) {
             throw new IllegalArgumentException(
                     "decisionKey (" + key + ") does not match the DMN decision id (" + extracted + ")");
         }
-        return deploymentPort.deploy(tenantId, key + ".dmn", xml);
+        return deploymentPort.deploy(tenantId, key + ".dmn", normalized);
     }
 
     private ListSnapshot load(String decisionKey) {

@@ -2,6 +2,7 @@ package be.myrmacta.domain.workflow.usecase;
 
 import be.myrmacta.domain.dossier.TenantAdminGuard;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.workflow.DmnXmlVersions;
 import be.myrmacta.domain.workflow.draft.ProposedConfigs;
 import be.myrmacta.domain.workflow.model.BpmnDraft;
 import be.myrmacta.domain.workflow.model.DecisionTableVersionInfo;
@@ -125,8 +126,10 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
             boolean replaceExisting) {
         guard.requireTenantOrWorkflowAdminOrApiService(actor);
         requireAutomated(provenance);
-        validateDmn(actor, decisionKey, xml);
-        return saveDmnDraft(actor, provenance, decisionKey, xml, note, replaceExisting);
+        // TODO §130 (D-DMN-GENERATE-13) : un agent peut encore envoyer du 1.1 — normaliser avant stock.
+        String normalized = DmnXmlVersions.to13(xml);
+        validateDmn(actor, decisionKey, normalized);
+        return saveDmnDraft(actor, provenance, decisionKey, normalized, note, replaceExisting);
     }
 
     @Override
@@ -136,7 +139,9 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
             throw new InvalidDmnException("xml is required");
         }
         // extractDecisionKey valide aussi le document (schéma DMN 1.3, liste blanche JUEL des cellules).
-        String extracted = dmnParser.extractDecisionKey(xml.getBytes(StandardCharsets.UTF_8));
+        // TODO §130 : accepter un XML 1.1 en le normalisant (dry-run MCP inclus).
+        String normalized = DmnXmlVersions.to13(xml);
+        String extracted = dmnParser.extractDecisionKey(normalized.getBytes(StandardCharsets.UTF_8));
         if (!extracted.equals(decisionKey)) {
             throw new IllegalArgumentException(
                     "decisionKey (" + decisionKey + ") does not match the DMN decision id (" + extracted + ")");
@@ -164,7 +169,7 @@ public final class ProposeDraftUseCaseImpl implements ProposeDraftUseCase {
                 .findDeployedXml(tenantId, decisionKey, version)
                 .orElseThrow(() -> new UnknownDecisionVersionException(
                         "No deployed version " + version + " for decision key: " + decisionKey));
-        String text = new String(xml, StandardCharsets.UTF_8);
+        String text = DmnXmlVersions.to13(new String(xml, StandardCharsets.UTF_8));
         validateDmn(actor, decisionKey, text);
         return saveDmnDraft(actor, provenance, decisionKey, text, "Remise en ligne de la version " + version, replaceExisting);
     }

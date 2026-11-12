@@ -309,6 +309,38 @@ test('E2E-EDIT-BPMN-5 serviceTask decisionTableReferenceKey field round-trips th
   )
 })
 
+test('E2E-EDIT-DMN-3 import a DMN 1.1 file: editor opens the table after conversion to 1.3', async ({
+  page,
+}) => {
+  await mockSession(page)
+  await openApp(page)
+  await openDmnEditor(page)
+
+  const dmn11 = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="def" name="DRD" namespace="http://myrmacta/test">
+  <decision id="routageLegacy" name="Routage legacy 1.1">
+    <decisionTable id="t1" hitPolicy="FIRST">
+      <input id="in1"><inputExpression id="in1e" typeRef="string"><text>canal</text></inputExpression></input>
+      <output id="out1" name="action" typeRef="string"/>
+      <rule id="r1">
+        <inputEntry id="r1i"><text>"EMAIL"</text></inputEntry>
+        <outputEntry id="r1o"><text>"OUVRIR"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>`
+
+  await page.locator('.dmn-editor input[type="file"]').setInputFiles({
+    name: 'routage-legacy.dmn',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(dmn11, 'utf-8'),
+  })
+
+  // Without conversion, dmn-js leaves an empty canvas and this name never appears.
+  // dmn-js uses a contenteditable labelled "Decision name", not a native input — assert text.
+  await expect(page.getByRole('textbox', { name: 'Decision name' })).toHaveText('Routage legacy 1.1')
+})
+
 test('E2E-EDIT-DMN-1 blank decision table (no draft, not yet deployed): save creates the draft', async ({
   page,
 }) => {

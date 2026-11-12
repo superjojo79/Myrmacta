@@ -402,7 +402,9 @@ principe que l'éditeur BPMN, avec l'éditeur `dmn-js` :
    de la barre d'outils (clé de décision saisie à la main, puis bouton **Charger**) est le point
    d'entrée pour ce 3ᵉ cas.
 2. L'éditeur `dmn-js` gère la table (colonnes d'entrée/sortie, règles, hit policy) — pas de
-   panel de propriétés custom Myrmacta ici, le `.dmn` est du DMN 1.3 standard.
+   panel de propriétés custom Myrmacta ici, le `.dmn` est du DMN 1.3 standard. Un fichier ou une
+   table déjà déployée encore en DMN 1.1 est convertie à l'ouverture (TODO §130) ; l'enregistrement
+   et le déploiement stockent du 1.3.
 3. Bouton **Enregistrer le brouillon** — même mécanique qu'en BPMN (un brouillon par clé de
    décision, pas d'historique, pas d'autosave).
 4. Bouton **Déployer** — revalidation côté serveur (schéma DMN + allowlist JUEL sur chaque

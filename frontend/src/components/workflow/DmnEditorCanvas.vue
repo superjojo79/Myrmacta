@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { DMN_13_NAMESPACE, toDmn13 } from '@/lib/dmnXmlVersions'
 
 const props = defineProps<{
   dmnXml: string
@@ -10,8 +11,9 @@ const emit = defineEmits<{ dirty: [] }>()
 // D2 (https://github.com/superjojo79/FlowForge/blob/e91aa7b0f1d781e02e8418a72da40cf6b027d9ce/docs/ai/design/2026-09-11-feature-introduction-dmn.md) : dmn-js Modeler seul, sans
 // provider de propriétés custom -- le .dmn est du DMN 1.3 standard, contrairement au BPMN
 // Myrmacta qui porte des extensions flowable:* (voir BpmnEditorCanvas.vue).
+// TODO §130 (D-DMN-OPEN-CONVERT) : toDmn13 avant importXML — dmn-js n'ouvre pas le namespace 1.1.
 const EMPTY_DMN_XML = `<?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" id="Definitions_1" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
+<definitions xmlns="${DMN_13_NAMESPACE}" id="Definitions_1" name="DRD" namespace="http://camunda.org/schema/1.0/dmn">
   <decision id="Decision_1" name="Decision 1">
     <decisionTable id="DecisionTable_1">
       <input id="Input_1">
@@ -56,7 +58,7 @@ function attachDirtyListener() {
 
 async function render() {
   if (!host.value) return
-  const xml = props.dmnXml || EMPTY_DMN_XML
+  const xml = toDmn13(props.dmnXml || EMPTY_DMN_XML)
 
   if (!modeler) {
     const { default: DmnModelerCtor } = await import('dmn-js/lib/Modeler')

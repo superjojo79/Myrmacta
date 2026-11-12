@@ -30,11 +30,27 @@ describe('DmnEditorCanvas', () => {
     expect(importXML).toHaveBeenCalledWith('<definitions/>')
   })
 
+  it('converts a DMN 1.1 namespace to DMN 1.3 before importXML (TODO §130)', async () => {
+    const dmn11 =
+      '<definitions xmlns="http://www.omg.org/spec/DMN/20151101" id="d"><decision id="x" name="Routage"/></definitions>'
+    mount(DmnEditorCanvas, { props: { dmnXml: dmn11 } })
+    await flushPromises()
+
+    expect(importXML).toHaveBeenCalledWith(
+      expect.stringContaining('https://www.omg.org/spec/DMN/20191111/MODEL/'),
+    )
+    expect(importXML).toHaveBeenCalledWith(expect.not.stringContaining('http://www.omg.org/spec/DMN/20151101'))
+    expect(importXML).toHaveBeenCalledWith(expect.stringContaining('name="Routage"'))
+  })
+
   it('falls back to a blank starter DMN template when dmnXml is empty', async () => {
     mount(DmnEditorCanvas, { props: { dmnXml: '' } })
     await flushPromises()
 
     expect(importXML).toHaveBeenCalledWith(expect.stringContaining('<decisionTable'))
+    expect(importXML).toHaveBeenCalledWith(
+      expect.stringContaining('https://www.omg.org/spec/DMN/20191111/MODEL/'),
+    )
   })
 
   it('emits dirty after a user command changes the commandStack on the active viewer', async () => {

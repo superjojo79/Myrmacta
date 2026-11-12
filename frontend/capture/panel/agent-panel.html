@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+  TODO §128 (D-VIDEO-AGENT, issue #56) — panneau « terminal » de l'agent IA, filmé à côté de Myrmacta. Page statique : le
+  tournage l'ouvre (file://…/agent-panel.html?lang=fr&model=gemma4:12b) et lui passe chaque ligne JSON de
+  scripts/video/agent.py par window.agentEvent(event). Aucun appel réseau.
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent IA</title>
+  <style>
+    :root { --bg: #0f1419; --panel: #151b23; --line: #263040; --text: #d6dde6; --muted: #7d8a99;
+            --call: #7cc4ff; --ok: #8fd18f; --say: #f2c66d; --err: #ff8a80; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column;
+           font: 15px/1.5 "Cascadia Mono", "JetBrains Mono", Consolas, monospace; }
+    header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--panel);
+             border-bottom: 1px solid var(--line); }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .title { font-weight: 600; margin-left: 6px; }
+    .badge { margin-left: auto; padding: 2px 10px; border: 1px solid var(--ok); border-radius: 999px; color: var(--ok);
+             font-size: 13px; }
+    main { flex: 1; overflow: hidden; padding: 14px 18px; display: flex; flex-direction: column; justify-content: flex-end; }
+    .row { white-space: pre-wrap; word-break: break-word; margin: 0 0 8px; animation: in .25s ease-out; }
+    .call { color: var(--call); }
+    .result { color: var(--muted); padding-left: 2ch; border-left: 2px solid var(--line); }
+    .ok { color: var(--ok); }
+    .say { color: var(--say); }
+    .err { color: var(--err); }
+    .cursor::after { content: "▍"; animation: blink 1s steps(1) infinite; color: var(--muted); }
+    @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span>
+    <span class="dot" style="background:#27c93f"></span>
+    <span class="title" id="title"></span>
+    <span class="badge" id="badge"></span>
+  </header>
+  <main id="log"><div class="row cursor" id="cursor"></div></main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const lang = params.get('lang') === 'en' ? 'en' : 'fr';
+    const model = params.get('model') || 'gemma4:12b';
+    const T = {
+      fr: { title: 'Agent IA · tri du courrier', badge: 'modèle local', tools: 'outils MCP', done: 'terminé',
+            start: 'connexion au serveur MCP de Myrmacta' },
+      en: { title: 'AI agent · mail sorting', badge: 'local model', tools: 'MCP tools', done: 'done',
+            start: 'connecting to the Myrmacta MCP server' },
+    }[lang];
+    document.documentElement.lang = lang;
+    document.getElementById('title').textContent = T.title;
+    document.getElementById('badge').textContent = `${T.badge} · ${model}`;
+    const log = document.getElementById('log');
+    const cursor = document.getElementById('cursor');
+    const MAX_RESULT = 220;
+
+    function row(text, cls) {
+      const el = document.createElement('div');
+      el.className = `row ${cls}`;
+      el.textContent = text;
+      log.insertBefore(el, cursor);
+      while (log.children.length > 40) log.removeChild(log.firstChild);
+    }
+
+    function short(text) {
+      const flat = String(text).replace(/\s+/g, ' ').trim();
+      return flat.length > MAX_RESULT ? flat.slice(0, MAX_RESULT) + ' …' : flat;
+    }
+
+    function args(value) {
+      const entries = Object.entries(value || {});
+      return entries.map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(', ');
+    }
+
+    // Une étape de scripts/video/agent.py (une ligne JSON).
+    window.agentEvent = (event) => {
+      switch (event.kind) {
+        case 'start': row(`$ ${T.start} (${event.subject})`, 'muted'); break;
+        case 'tools': row(`${T.tools} : ${event.names.join(', ')}`, 'result'); break;
+        case 'call': row(`▶ ${event.tool}(${args(event.arguments)})`, 'call'); break;
+        case 'result': row(short(event.text), 'result'); break;
+        case 'say': row(`💬 ${event.text}`, 'say'); break;
+        case 'done': row(`✓ ${T.done}`, 'ok'); cursor.classList.remove('cursor'); break;
+        case 'error': row(`✗ ${event.message}`, 'err'); break;
+      }
+    };
+  </script>
+</body>
+</html>

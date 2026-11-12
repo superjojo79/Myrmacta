@@ -95,3 +95,15 @@ def test_subtitles_and_chapters_are_well_formed():
     meta = assemble.ffmetadata("Capsule", [("Intro", 0, 12.5), ("Facture", 12.5, 40)])
     assert meta.startswith(";FFMETADATA1\ntitle=Capsule")
     assert "START=12500\nEND=40000\ntitle=Facture" in meta
+
+
+def test_a_fast_span_needs_a_positive_factor():
+    import pytest
+
+    with pytest.raises(ValueError):
+        assemble.segments([{"start": 1, "end": 2, "kind": "fast", "factor": 0}], 5)
+
+
+def test_ffmpeg_inputs_are_escaped():
+    assert assemble.metadata_value("A=B;C#D\\E\nF") == "A\\=B\\;C\\#D\\\\E\\\nF"
+    assert assemble.concat_line(Path("/tmp/l'atelier/x.mp4")).endswith("l'\\''atelier/x.mp4'\n")

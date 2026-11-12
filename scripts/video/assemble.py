@@ -40,6 +40,9 @@ def probe_duration(path: Path) -> float:
 
 def segments(spans: list[dict], length: float) -> list[tuple[float, float, float]]:
     """Les morceaux gardés de la vidéo : (début, fin, vitesse). Une coupe disparaît ; un passage rapide est accéléré."""
+    for span in spans:
+        if span["kind"] == "fast" and float(span.get("factor", 1)) <= 0:
+            raise ValueError(f"fast span with a non-positive factor: {span}")
     result, t = [], 0.0
     for span in sorted(spans, key=lambda s: s["start"]):
         start, end = max(span["start"], t), min(span["end"], length)
@@ -99,10 +102,23 @@ def subtitles(cues: list[dict]) -> tuple[str, str]:
     return "\n".join(vtt), "\n".join(srt)
 
 
+def metadata_value(text: str) -> str:
+    """Une valeur de métadonnées ffmpeg : « = ; # \\ » et le saut de ligne échappés."""
+    for char in "\\=;#\n":
+        text = text.replace(char, "\\" + char)
+    return text
+
+
+def concat_line(path: Path) -> str:
+    """Une ligne du démultiplexeur concat : chemin entre apostrophes, une apostrophe du chemin échappée."""
+    return "file '" + path.resolve().as_posix().replace("'", "'\\''") + "'\n"
+
+
 def ffmetadata(title: str, chapters: list[tuple[str, float, float]]) -> str:
-    lines = [";FFMETADATA1", f"title={title}", ""]
+    lines = [";FFMETADATA1", f"title={metadata_value(title)}", ""]
     for name, start, end in chapters:
-        lines += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}", f"title={name}", ""]
+        lines += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={round(start * 1000)}", f"END={round(end * 1000)}",
+                  f"title={metadata_value(name)}", ""]
     return "\n".join(lines)
 
 
@@ -126,7 +142,7 @@ def run(capsule_path: Path, lang: str, out: Path) -> int:
         t += length
 
     listing = work / "clips.txt"
-    listing.write_text("".join(f"file '{c.resolve().as_posix()}'\n" for c in clips), encoding="utf-8")
+    listing.write_text("".join(concat_line(c) for c in clips), encoding="utf-8")
     vtt, srt = subtitles(all_cues)
     base = folder / f"{capsule['id']}-{lang}"
     base.with_suffix(".vtt").write_text(vtt, encoding="utf-8")

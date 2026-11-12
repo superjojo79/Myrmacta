@@ -24,8 +24,8 @@ donnent des écrans figés ; il faut des actions filmées, une voix off, des sou
   conteneur, relevé par le connecteur IMAP de Myrmacta ; le tournage envoie la facture puis la réponse du fournisseur
   en SMTP. Les e-mails que Myrmacta envoie (accusé de réception, rappel) partent vers Mailpit, filmable.
 - **D-IMAP-LOCAL-LOOPBACK** — le connecteur IMAP refusait tout hôte de boucle locale ou privé, dans tous les profils.
-  En profils `local` et `test` seulement, il accepte désormais un hôte de boucle locale (`localhost`, `127.0.0.1`,
-  `::1`), avec la sécurité `PLAIN` (sans chiffrement) permise pour ce seul cas : même règle que le `http` vers la boucle
+  En profils `local` et `test` seulement, il accepte désormais un hôte de boucle locale (`localhost` ou `127.x` ; une adresse IPv6
+  n'est pas un nom d'hôte IMAP accepté), avec la sécurité `PLAIN` (sans chiffrement) permise pour ce seul cas : même règle que le `http` vers la boucle
   locale déjà permis aux webhooks (A13). Hors de ces profils, rien ne change : hôte public et SSL ou STARTTLS exigés.
   Ce changement nuance D-DEMO-SCOPE (« garde SSRF inchangée ») pour l'IMAP seulement.
 

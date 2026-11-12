@@ -214,10 +214,13 @@ public class MailRoomDemoPack implements DemoPack {
      * désactivée, jamais interrogée ; le type « dépôt » ne se déclenche jamais seul.
      */
     ConnectorInstanceData simulatedMailbox() {
-        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(),
-                example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)"),
+        return connectors.create(new ManageConnectorInstanceUseCase.CreateCommand(tenant.id(), simulatedMailboxName(),
                 read("config/connecteur-depot.exemple.json").get("connectorType").asString(), false,
                 Map.of("processKey", "triCourrier", "dossierTypeCode", "COURRIER")), ADMIN);
+    }
+
+    String simulatedMailboxName() {
+        return example.text("Boîte courrier (démo, e-mail simulé)", "Mailbox (demo, simulated e-mail)");
     }
 
     DemoExample example() {

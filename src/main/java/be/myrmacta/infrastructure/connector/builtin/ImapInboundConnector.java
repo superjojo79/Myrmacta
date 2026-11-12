@@ -95,7 +95,8 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
     public List<ConfigField> getConfigSchema() {
         List<ConfigField> fields = new ArrayList<>(List.of(
                 new ConfigField("host", "IMAP host", ConfigFieldType.STRING, true, null, List.of(),
-                        "e.g. imap.example.com or outlook.office365.com. Must resolve to a public address."),
+                        "e.g. imap.example.com or outlook.office365.com. Must resolve to a public address "
+                                + "(localhost is accepted in the local and test profiles only)."),
                 new ConfigField("port", "IMAP port", ConfigFieldType.INTEGER, false, "993", List.of(), null),
                 new ConfigField("security", "Transport security", ConfigFieldType.SELECT, true, "SSL", securityOptions(),
                         "SSL = IMAPS (993). STARTTLS is required, never optional. The server certificate is always verified. "

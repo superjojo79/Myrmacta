@@ -111,3 +111,10 @@ Prochaine action : revue de clôture (sous-agent), puis PR finale (document supp
 | Lot 1 (revue sécurité) : le profil `test` hors poste local ouvre la boucle locale (webhooks, IMAP) | bas | #73 |
 | Lot 1 : connexion IMAP par le nom `localhost` (résolveur du poste) | bas | corrigé : adresse littérale `127.0.0.1` |
 | Lot 1 : option `PLAIN` proposée dans tous les profils | bas | corrigé : proposée seulement en profil local ou test |
+| Clôture : une installation interrompue puis relancée dupliquait la boîte IMAP (deux relèves concurrentes) | moyen | corrigé : étapes idempotentes, `VideoMailRoomDemoPackIT` réinstalle le paquet |
+| Clôture : `::1` annoncé au registre mais refusé par le contrôle d'hôte IMAP | bas | corrigé : registre et javadoc alignés sur le code |
+| Clôture : sous-commande `video.sh scene` citée, inexistante | bas | corrigé : `mail-servers` |
+| Clôture : aide du champ `host` fausse en profil local | bas | corrigé |
+| Clôture : chemins et titres non échappés pour ffmpeg, facteur d'accélération nul | bas | corrigé, avec tests |
+| Clôture : document de travail et statut de §128 | bas | PR de clôture |
+| Tournage : textes produit restés en français dans la capsule anglaise (note d'escalade, libellé du dossier réponse) | bas | issue à ouvrir |

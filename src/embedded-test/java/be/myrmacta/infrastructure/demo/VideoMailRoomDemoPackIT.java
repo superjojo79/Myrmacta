@@ -82,6 +82,17 @@ class VideoMailRoomDemoPackIT {
                 assertThat(i.config()).containsEntry("host", "localhost").containsEntry("security", "PLAIN");
             });
 
+            // Revue de clôture : une installation interrompue puis relancée ne duplique rien (sinon deux boîtes IMAP actives
+            // relèveraient la même boîte en concurrence).
+            context.getBean(VideoMailRoomDemoPack.class).install();
+            assertThat(count(jdbc, "select count(*) from connector_instance where connector_type = 'imap-inbound'"))
+                    .as("une seule boîte IMAP").isEqualTo(1);
+            assertThat(count(jdbc, "select count(*) from connector_instance where connector_type = 'mail-deposit'"))
+                    .as("le point de dépôt et la boîte simulée, une fois chacun").isEqualTo(2);
+            assertThat(count(jdbc, "select count(*) from dossier where dossier_type_code = 'FACTURE'"))
+                    .as("les deux factures de l'échéance, une fois").isEqualTo(2);
+            assertThat(count(jdbc, "select count(*) from dmn_draft where decision_key = 'routageCourrier'")).isEqualTo(1);
+
             // D-VIDEO-DEADLINE : le vrai job des échéances rappelle la facture proche et escalade celle qui est échue.
             context.getBean(DeadlineAlertJob.class).process(Instant.now());
             assertThat(jdbc.queryForList("select level from dossier_deadline_alert", String.class))

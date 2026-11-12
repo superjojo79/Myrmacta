@@ -6,6 +6,7 @@ import be.myrmacta.domain.workflow.model.TaskGroupReassignment;
 import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.ActivityHistoryEntry;
+import be.myrmacta.domain.workflow.model.SignificantActivityFilter;
 import be.myrmacta.domain.workflow.model.WorkflowDiagramView;
 import be.myrmacta.domain.workflow.model.WorkflowIncident;
 import be.myrmacta.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
@@ -29,10 +30,14 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.task.api.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort {
+
+    private static final Logger log = LoggerFactory.getLogger(FlowableWorkflowVisualizationAdapter.class);
 
     private final RepositoryService repositoryService;
     private final RuntimeService runtimeService;
@@ -97,20 +102,33 @@ class FlowableWorkflowVisualizationAdapter implements WorkflowVisualizationPort 
     @Override
     public PageResult<ActivityHistoryEntry> getHistory(String processInstanceId, String tenantId, PageQuery query) {
         requireProcess(processInstanceId, tenantId);
-        long total = historyService.createHistoricActivityInstanceQuery()
-                .processInstanceId(processInstanceId)
-                .activityTenantId(tenantId)
-                .count();
-        var content = historyService.createHistoricActivityInstanceQuery()
+        // D-HISTORY-SIGNIFICANT (TODO §131) : filtrer avant pagination. Lecture Flowable bornée
+        // (RAW_SCAN_LIMIT + 1 pour détecter le dépassement) — pas de .list() non borné (§24).
+        int scanCap = SignificantActivityFilter.RAW_SCAN_LIMIT + 1;
+        var raw = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(processInstanceId)
                 .activityTenantId(tenantId)
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
-                .listPage(query.offset(), query.size())
-                .stream()
+                .listPage(0, scanCap);
+        boolean truncated = raw.size() > SignificantActivityFilter.RAW_SCAN_LIMIT;
+        if (truncated) {
+            // Pas de champ truncated sur l'enveloppe history (§131) — signal ops seulement.
+            log.warn(
+                    "event=workflow_history_raw_scan_truncated processInstanceId={} tenantId={} rawScanLimit={}",
+                    processInstanceId,
+                    tenantId,
+                    SignificantActivityFilter.RAW_SCAN_LIMIT);
+        }
+        var window = truncated
+                ? raw.subList(0, SignificantActivityFilter.RAW_SCAN_LIMIT)
+                : raw;
+        var significant = window.stream()
+                .filter(activity -> SignificantActivityFilter.isSignificant(
+                        activity.getActivityType(), activity.getActivityName()))
                 .map(FlowableWorkflowVisualizationAdapter::toHistoryEntry)
                 .toList();
-        return PageResult.of(content, query.page(), query.size(), total);
+        return PageResult.slice(significant, query);
     }
 
     @Override

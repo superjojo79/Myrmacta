@@ -6,6 +6,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -118,10 +119,14 @@ class WorkflowApiTest {
                 .andExpect(jsonPath("$.bpmnXml", containsString("<process id=\"smokeProcess\"")))
                 .andExpect(jsonPath("$.activeIds[0]").value("smokeTask"));
 
+        // D-HISTORY-SIGNIFICANT (TODO §131) : étapes nommées seulement — pas les sequenceFlow flow_…
         mockMvc.perform(get("/api/workflow-links/{id}/history", linkId)
                         .with(user("workflow-editor")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[*].activityId", hasItem("startEvent")));
+                .andExpect(jsonPath("$.content[*].activityId", hasItem("startEvent")))
+                .andExpect(jsonPath("$.content[*].activityId", hasItem("smokeTask")))
+                .andExpect(jsonPath("$.content[*].activityId", not(hasItem("flow_start_task"))))
+                .andExpect(jsonPath("$.content[*].activityId", not(hasItem("flow_task_update"))));
 
         mockMvc.perform(get("/api/workflow-links/{id}/tasks", linkId)
                         .with(user("workflow-editor")))

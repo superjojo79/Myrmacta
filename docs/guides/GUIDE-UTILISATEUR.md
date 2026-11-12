@@ -372,7 +372,9 @@ Toujours sur la fiche dossier :
     suivantes du même workflow iront aussi à ce groupe. Une **note** s'ajoute aux éléments du dossier : qui, quand, de quel
     groupe (et de quel assigné) vers lequel. C'est le geste de la file de tri de la mail room : renvoyer un courrier au
     service compétent.
-- **Historique** — frise chronologique des événements du dossier.
+- **Historique** — frise chronologique des étapes significatives de l'exécution (tâches, événements
+    nommés, changements de statut). Les transitions techniques du diagramme (`flow_…`, passerelles)
+    n'y figurent pas (TODO §131).
 - **Étapes en échec** (TODO §94) — bandeau rouge au-dessus du diagramme quand une étape automatique
   (e-mail, connecteur, génération…) a échoué ; l'étape est aussi marquée en erreur dans le diagramme.
   Deux états : **nouvelle tentative prévue** (le moteur réessaiera seul, n tentatives restantes) et

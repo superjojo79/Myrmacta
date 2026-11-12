@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.ActivityHistoryEntry;
+import be.myrmacta.domain.workflow.model.SignificantActivityFilter;
 import be.myrmacta.domain.workflow.model.WorkflowDiagramView;
 import be.myrmacta.domain.workflow.model.WorkflowProcessInstanceNotFoundException;
 import be.myrmacta.domain.workflow.model.WorkflowTaskNotFoundException;
@@ -128,29 +129,56 @@ class FlowableWorkflowVisualizationAdapterTest {
                 .isInstanceOf(WorkflowProcessInstanceNotFoundException.class);
     }
 
+    /** TODO §131 (D-HISTORY-SIGNIFICANT) — pagination sur le sous-ensemble filtré, lecture Flowable bornée. */
     @Test
-    void getHistory_usesNativeListPageAndCount_notFullList() {
+    void getHistory_filtersTechnicalStepsThenPaginates() {
         stubActiveProcess();
-        HistoricActivityInstanceQuery countQuery = mock(HistoricActivityInstanceQuery.class);
-        when(countQuery.processInstanceId(PI)).thenReturn(countQuery);
-        when(countQuery.activityTenantId(TENANT)).thenReturn(countQuery);
-        when(countQuery.count()).thenReturn(42L);
-
         HistoricActivityInstanceQuery listQuery = mock(HistoricActivityInstanceQuery.class);
         when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
         when(listQuery.activityTenantId(TENANT)).thenReturn(listQuery);
         when(listQuery.orderByHistoricActivityInstanceStartTime()).thenReturn(listQuery);
         when(listQuery.asc()).thenReturn(listQuery);
-        HistoricActivityInstance historicActivity = activity("start", null, new Date(), null);
-        when(listQuery.listPage(20, 20)).thenReturn(List.of(historicActivity));
+        var start = activity("startEvent", "startEvent", "Start", null, new Date(), null);
+        var flow = activity("flow_start_task", "sequenceFlow", null, null, new Date(), null);
+        var gateway = activity("gw", "exclusiveGateway", "Branche", null, new Date(), null);
+        var task = activity("smokeTask", "userTask", "Smoke Task", "alice", new Date(), null);
+        var unnamed = activity("unnamed", "serviceTask", "  ", null, new Date(), null);
+        when(listQuery.listPage(0, SignificantActivityFilter.RAW_SCAN_LIMIT + 1))
+                .thenReturn(List.of(start, flow, gateway, task, unnamed));
+        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(listQuery);
 
-        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(countQuery, listQuery);
+        PageResult<ActivityHistoryEntry> page0 = adapter.getHistory(PI, TENANT, PageQuery.of(0, 1));
+        PageResult<ActivityHistoryEntry> page1 = adapter.getHistory(PI, TENANT, PageQuery.of(1, 1));
 
-        PageResult<ActivityHistoryEntry> page = adapter.getHistory(PI, TENANT, PageQuery.of(1, 20));
+        assertThat(page0.totalElements()).isEqualTo(2);
+        assertThat(page0.content()).extracting(ActivityHistoryEntry::activityId).containsExactly("startEvent");
+        assertThat(page1.content()).extracting(ActivityHistoryEntry::activityId).containsExactly("smokeTask");
+        verify(listQuery, org.mockito.Mockito.atLeastOnce())
+                .listPage(0, SignificantActivityFilter.RAW_SCAN_LIMIT + 1);
+        verify(listQuery, never()).list();
+        verify(listQuery, never()).count();
+    }
 
-        assertThat(page.totalElements()).isEqualTo(42);
-        assertThat(page.content()).hasSize(1);
-        verify(countQuery, never()).listPage(any(Integer.class), any(Integer.class));
+    /** TODO §131 — la borne RAW_SCAN_LIMIT empêche un .list() non borné (§24). */
+    @Test
+    void getHistory_capsRawFlowableReadAtScanLimit() {
+        stubActiveProcess();
+        HistoricActivityInstanceQuery listQuery = mock(HistoricActivityInstanceQuery.class);
+        when(listQuery.processInstanceId(PI)).thenReturn(listQuery);
+        when(listQuery.activityTenantId(TENANT)).thenReturn(listQuery);
+        when(listQuery.orderByHistoricActivityInstanceStartTime()).thenReturn(listQuery);
+        when(listQuery.asc()).thenReturn(listQuery);
+        var overflow = new java.util.ArrayList<HistoricActivityInstance>();
+        for (int i = 0; i < SignificantActivityFilter.RAW_SCAN_LIMIT + 1; i++) {
+            overflow.add(activity("t" + i, "userTask", "Step " + i, null, new Date(), null));
+        }
+        when(listQuery.listPage(0, SignificantActivityFilter.RAW_SCAN_LIMIT + 1)).thenReturn(overflow);
+        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(listQuery);
+
+        PageResult<ActivityHistoryEntry> page = adapter.getHistory(PI, TENANT, PageQuery.of(0, 50));
+
+        assertThat(page.totalElements()).isEqualTo(SignificantActivityFilter.RAW_SCAN_LIMIT);
+        verify(listQuery, never()).list();
     }
 
     @Test
@@ -300,13 +328,19 @@ class FlowableWorkflowVisualizationAdapterTest {
 
     private static HistoricActivityInstance activity(
             String id, String assignee, Date endTime, String deleteReason) {
+        return activity(id, "userTask", id, assignee, endTime, deleteReason);
+    }
+
+    private static HistoricActivityInstance activity(
+            String id, String type, String name, String assignee, Date endTime, String deleteReason) {
         HistoricActivityInstance activity = mock(HistoricActivityInstance.class);
         when(activity.getActivityId()).thenReturn(id);
+        when(activity.getActivityType()).thenReturn(type);
+        when(activity.getActivityName()).thenReturn(name);
         when(activity.getAssignee()).thenReturn(assignee);
         when(activity.getEndTime()).thenReturn(endTime);
         when(activity.getDeleteReason()).thenReturn(deleteReason);
         when(activity.getStartTime()).thenReturn(new Date(0));
-        when(activity.getActivityName()).thenReturn(id);
         when(activity.getDurationInMillis()).thenReturn(1L);
         return activity;
     }

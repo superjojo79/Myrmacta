@@ -1,0 +1,24 @@
+{
+  "processDefinitionKey": "traiterFacture",
+  "label": "Handle a supplier invoice",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "A_TRAITER",
+      "label": "To handle",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "TRAITEE",
+      "label": "Handled",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ]
+}

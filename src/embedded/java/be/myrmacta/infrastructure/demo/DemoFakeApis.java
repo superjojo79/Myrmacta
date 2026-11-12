@@ -24,7 +24,8 @@ import tools.jackson.databind.ObjectMapper;
  * TODO §127 (D-DEMO-FAKE-APIS, lot 1b de #55) — faux SIRH, IAM et ITSM de la démo, sur la boucle locale (serveur HTTP du
  * JDK, comme {@code OnboardingOrchestrationExampleIT}). Les connecteurs du paquet onboarding y pointent
  * ({@code http://localhost:<port>/sirh}, {@code /iam}, {@code /itsm}) ; la garde SSRF l'accepte en profil {@code local}.
- * Chaque création rend un identifiant nouveau ; toute route connue répond avec succès (les erreurs viendront avec #57).
+ * Chaque création rend un identifiant nouveau ; toute route connue répond avec succès, sauf la panne du SIRH
+ * ({@link #OUTAGE_DOMAIN}) ; les réponses en erreur viendront avec #57.
  * Le port est fixe par défaut ({@code app.demo.fake-apis.port}, 18090) : les connecteurs installés gardent leur adresse
  * d'un démarrage à l'autre. Build {@code embedded-db} seulement.
  */
@@ -33,6 +34,12 @@ import tools.jackson.databind.ObjectMapper;
 public class DemoFakeApis implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(DemoFakeApis.class);
+
+    /**
+     * Le faux SIRH coupe la connexion quand l'adresse personnelle est dans ce domaine réservé (RFC 2606) : l'appel du
+     * connecteur échoue, et ses relances épuisées, le job devient un incident rejouable (paquet « états »).
+     */
+    static final String OUTAGE_DOMAIN = ".invalid";
 
     private final int port;
     private final ObjectMapper json;
@@ -93,6 +100,9 @@ public class DemoFakeApis implements SmartLifecycle {
             byte[] body = exchange.getRequestBody().readAllBytes();
             received.add(line);
             Response response = respond(line, body);
+            if (response == Response.DROP) {
+                return; // fermé sans réponse : l'appelant voit une coupure réseau
+            }
             byte[] bytes = response.body().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(response.status(), bytes.length == 0 ? -1 : bytes.length);
@@ -105,10 +115,16 @@ public class DemoFakeApis implements SmartLifecycle {
     Response respond(String line, byte[] body) {
         int n = sequence.incrementAndGet();
         if (line.equals("POST /sirh/employees")) {
+            String email = text(body, "personalEmail");
+            if (email != null && email.endsWith(OUTAGE_DOMAIN)) {
+                return Response.DROP;
+            }
             return new Response(201, "{\"id\":\"E-" + n + "\"}");
         }
         if (line.equals("POST /iam/users")) {
-            return new Response(201, json.createObjectNode().put("id", "u-" + n).put("username", username(body, n)).toString());
+            String username = text(body, "username");
+            return new Response(201, json.createObjectNode().put("id", "u-" + n)
+                    .put("username", username == null ? "user" + n : username).toString());
         }
         if (line.equals("POST /itsm/tickets")) {
             return new Response(201, "{\"number\":\"RITM00" + n + "\"}");
@@ -120,19 +136,22 @@ public class DemoFakeApis implements SmartLifecycle {
         return new Response(404, "{\"error\":\"unknown route\"}");
     }
 
-    /** Le login demandé par le processus, s'il est lisible ; sinon un login généré. */
-    private String username(byte[] body, int n) {
+    /** Un texte de premier niveau du corps JSON, ou {@code null} (absent, vide ou corps illisible). */
+    private String text(byte[] body, String name) {
         try {
             JsonNode request = json.readTree(body);
-            JsonNode username = request == null ? null : request.get("username");
-            if (username != null && username.isString() && !username.asString().isBlank()) {
-                return username.asString();
+            JsonNode value = request == null ? null : request.get(name);
+            if (value != null && value.isString() && !value.asString().isBlank()) {
+                return value.asString();
             }
         } catch (RuntimeException ignored) {
-            // Corps illisible : login généré.
+            // Corps illisible : pas de valeur.
         }
-        return "user" + n;
+        return null;
     }
 
-    record Response(int status, String body) {}
+    record Response(int status, String body) {
+        /** Connexion fermée sans réponse. */
+        static final Response DROP = new Response(-1, "");
+    }
 }

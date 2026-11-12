@@ -1,0 +1,49 @@
+{
+  "processDefinitionKey": "onboardingCollaborateur",
+  "label": "New hire",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "EN_VALIDATION",
+      "label": "Awaiting manager approval",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_PROVISIONING",
+      "label": "Creating the accounts",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_INCIDENT",
+      "label": "Technical incident to handle",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "PROVISIONNE",
+      "label": "Employee provisioned",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "REFUSE",
+      "label": "Refused by the manager",
+      "initial": false,
+      "outcome": "CANCELLED"
+    },
+    {
+      "code": "ANNULE",
+      "label": "Abandoned, creations undone",
+      "initial": false,
+      "outcome": "CANCELLED"
+    }
+  ],
+  "_xml": "onboarding-collaborateur.bpmn20.xml"
+}

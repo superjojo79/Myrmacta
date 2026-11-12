@@ -1,0 +1,15 @@
+{
+  "_commentaire": "Deposit point of the \"Deposit\" screen (§113 D-MAILROOM-DEPOSIT). Each PDF deposited by an agent becomes a mail item (PAPIER channel) that follows the same sorting as e-mail. The sender entered goes to the expediteur field, the subject to objet (otherwise the file name). Only agents with the EDIT ACL on the COURRIER type see this deposit point.",
+  "name": "Paper mail (front desk)",
+  "connectorType": "mail-deposit",
+  "enabled": true,
+  "config": {
+    "processKey": "triCourrier",
+    "dossierTypeCode": "COURRIER",
+    "senderField": "expediteur",
+    "subjectField": "objet",
+    "defaultFields": {
+      "canal": "PAPIER"
+    }
+  }
+}

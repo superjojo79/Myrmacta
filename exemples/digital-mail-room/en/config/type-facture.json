@@ -1,0 +1,42 @@
+{
+  "code": "FACTURE",
+  "label": "Supplier invoice",
+  "workflowKey": "traiterFacture",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "expediteur",
+      "label": "Supplier (address)",
+      "type": "STRING",
+      "required": true,
+      "group": "Invoice",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "objet",
+      "label": "Subject",
+      "type": "STRING",
+      "required": true,
+      "group": "Invoice",
+      "width": "FULL"
+    },
+    {
+      "name": "echeance",
+      "label": "Due date",
+      "type": "DATE",
+      "required": false,
+      "group": "Invoice",
+      "width": "HALF"
+    },
+    {
+      "name": "montant",
+      "label": "Amount",
+      "type": "MONEY",
+      "required": false,
+      "group": "Invoice",
+      "width": "HALF"
+    }
+  ]
+}

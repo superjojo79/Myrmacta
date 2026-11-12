@@ -20,8 +20,9 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
   source ; un paquet lit, en anglais, une variante traduite placée à côté. On remet la base à zéro entre deux langues.
   Écarté : deux tenants FR et EN (provisioning et comptes Keycloak de plus).
 - **D-DEMO-FAKE-APIS** — les faux SIRH, IAM et ITSM de l'onboarding sont embarqués dans le profil de démo : serveur HTTP du
-  JDK sur la boucle locale, comme `OnboardingOrchestrationExampleIT`, sans nouvelle dépendance. Ils répondent avec succès ;
-  les réponses en erreur viendront avec la capsule « robustesse » (#57). Écarté : WireMock en conteneur.
+  JDK sur la boucle locale, comme `OnboardingOrchestrationExampleIT`, sans nouvelle dépendance. Ils répondent avec succès,
+  sauf le SIRH, qui coupe la connexion pour une adresse personnelle en `.invalid` (domaine réservé) : c'est l'incident
+  rejouable du paquet « états ». Les réponses en erreur viendront avec la capsule « robustesse » (#57). Écarté : WireMock en conteneur.
 - **D-DEMO-CAPTURE** — les captures sont des scripts Playwright à part (`frontend/capture/`,
   `playwright.capture.config.ts`, `npm run capture`) qui pilotent une vraie instance de démo, avec la connexion Keycloak
   locale `demo` / `demo`. Hors `test:all` et hors CI. Écartés : les placer dans `frontend/e2e` ; un projet Node à la racine.
@@ -38,6 +39,31 @@ ne couvre qu'un exemple. Les tests e2e Playwright simulent le backend et ne peuv
 - **D-DEMO-BACKDATE** — le SLA se mesure depuis `createdAt`, posé à la création. Pour montrer des SLA dépassés et un
   historique de rapports, le paquet « états » antidate les dossiers qu'il a lui-même créés (`createdAt`, `closedAt`), par
   le port `DossierRepository`. C'est le seul écart aux cas d'usage, limité à la démo.
+- **D-DEMO-LOCALE-FILES** — forme de la variante anglaise (lot 2) :
+  - fichiers JSON : une copie traduite à côté, au même chemin sous `en/` (`exemples/<ex>/en/config/…`). Seules les
+    valeurs des clés de texte visible changent (`label`, `helpText`, `group`, `subject`, `textBody`, `htmlBody`,
+    les commentaires `_…`, et `name` pour un connecteur seulement : ailleurs c'est un code) ; codes, clés et structure restent identiques, ce que vérifie
+    `DemoTranslationsTest` à chaque `verify` ;
+  - BPMN et DMN : pas de copie (un processus généré de 45 Ko dériverait). `en/names.json` traduit, texte français exact
+    vers texte anglais, les attributs `name` et `label` et les éléments `description` ; le test exige une entrée pour
+    chacun. Le `name` d'un élément qui le lit comme un code (message, signal, sortie ou donnée d'entrée DMN, élément
+    `flowable:…`) n'est jamais traduit et n'a pas d'entrée : le renommer casserait le routage en anglais seulement
+    (revue de clôture) ;
+  - les textes écrits dans les paquets (objets des courriers, fonctions des arrivées, libellés) ont leurs deux langues
+    dans le code du paquet ;
+  - `scripts/demo.sh` passe aussi `APP_I18N_DEFAULT_LOCALE` à la langue de la démo.
+- **D-DEMO-MEMBERS** (lot 3) — à sa connexion, le compte de démo (`app.demo.group-members`, `demo` par défaut) rejoint
+  tous les groupes de la démo, pour que sa page « Tâches » montre les files des groupes. Un membre est identifié par son
+  sujet OIDC, que Keycloak génère : la démo ne peut pas l'ajouter à l'installation. L'événement d'authentification
+  précède l'inscription dans l'annuaire (D-ASSIGN-DIR) ; l'écouteur inscrit donc d'abord le compte, par le même cas
+  d'usage et après le même contrôle de tenant. Écarté : des groupes Keycloak et un mapping `idpGroup`, que la plateforme
+  enregistre sans s'en servir pour l'appartenance.
+- **Jobs asynchrones des paquets** (lot 3) — avec l'exécuteur asynchrone actif (démo réelle), un paquet attend seulement
+  que le processus atteigne l'étape voulue : exécuter aussi les jobs lui-même les fait se bloquer sur les verrous du
+  dossier. Il ne les exécute que si l'exécuteur est coupé (les tests).
+- **Brouillon DMN en 1.3** (lot 3) — l'éditeur intégré (dmn-js) n'ouvre que le DMN 1.3, alors que la table de routage
+  de l'exemple est en DMN 1.1. Le brouillon MCP du paquet « états » passe la table en DMN 1.3, que le moteur accepte
+  aussi. Le défaut de l'exemple et de la grille intégrée relève d'une issue à part.
 - **D-DEMO-CAPTURE-OUT** — la sortie des captures (`frontend/capture/out/`) n'est pas versionnée ; le site
   la reprend.
 

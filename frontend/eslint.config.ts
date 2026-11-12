@@ -8,7 +8,7 @@ export default defineConfigWithVueTs(
   },
   {
     name: 'app/files-to-ignore',
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'playwright-report/**', 'test-results/**', 'reports/**', '.stryker-tmp/**', 'eslint.config.ts'],
+    ignores: ['dist/**', 'coverage/**', 'node_modules/**', 'playwright-report/**', 'test-results/**', 'capture/out/**', 'reports/**', '.stryker-tmp/**', 'eslint.config.ts'],
   },
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

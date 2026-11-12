@@ -1,0 +1,30 @@
+{
+  "processDefinitionKey": "traiterReponse",
+  "label": "Handle a supplier's reply",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "A_TRAITER",
+      "label": "To handle",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "TRAITEE",
+      "label": "Handled",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "ECHUE",
+      "label": "Expired, not handled",
+      "initial": false,
+      "outcome": "FAILED"
+    }
+  ]
+}

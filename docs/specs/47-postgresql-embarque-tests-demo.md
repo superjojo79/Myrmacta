@@ -30,13 +30,32 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   - onboarding collaborateur (`OnboardingDemoPack`, ordre 20) : connecteurs sur les faux SIRH, IAM et ITSM de
     `DemoFakeApis` (D-DEMO-FAKE-APIS, serveur HTTP du JDK sur la boucle locale, port `app.demo.fake-apis.port`, 18090
     par défaut, fixe pour que les connecteurs installés restent valables au redémarrage) ; trois arrivées semées par le
-    vrai processus (provisionnée, en attente du manager, en attente de l'IT). Le paquet exécute lui-même les jobs
-    asynchrones de ses processus jusqu'à la tâche attendue.
+    vrai processus (provisionnée, en attente du manager, en attente de l'IT). Le paquet attend que ses processus
+    atteignent la tâche attendue (délai de 120 s) : en démo réelle, l'exécuteur asynchrone de Flowable mène les jobs ;
+    quand cet exécuteur est coupé (tests), le paquet les exécute lui-même et relance aussitôt un job en attente de relance ;
+  - « états » (`StatesDemoPack`, ordre 40) : objectifs SLA (FACTURE 72 h, COURRIER 24 h) ; onze factures sur quatre
+    semaines, menées par les cas d'usage puis antidatées par `DossierRepository` (D-DEMO-BACKDATE) : traitées dans le
+    délai, en retard, ouvertes dans le délai et au SLA dépassé ; une arrivée « Nadia Claes » dont l'appel au SIRH tombe
+    sur une coupure (adresse en `.invalid`) et finit en incident rejouable ; un brouillon MCP de la table
+    `routageCourrier` (une règle « imprimerie » de plus), en attente de publication.
+- **Langue** (D-DEMO-LOCALE, D-DEMO-LOCALE-FILES) : `app.demo.locale` (`APP_DEMO_LOCALE`), `fr` ou `en`, une langue
+  par démarrage. `DemoExample` lit un exemple dans cette langue : en anglais, la copie JSON traduite `en/<chemin>` si
+  elle existe, et les BPMN et DMN dont les attributs `name` et `label` et les éléments `description` passent par
+  `en/names.json` (texte brut, échappé pour le XML) ; le `name` d'un élément qui le lit comme un code (message, signal,
+  sortie ou donnée d'entrée DMN, élément `flowable:…`) n'est jamais traduit ; les textes écrits dans les paquets ont leurs deux langues. `DemoTranslationsTest` (suite normale)
+  garde les copies alignées sur le français : mêmes clés, mêmes codes, mêmes expressions `${…}`, et une traduction
+  pour chaque nom des BPMN et DMN, et aucune pour un code.
+- **Compte de démo** (D-DEMO-MEMBERS) : `DemoGroupMembership` ajoute, à sa connexion, le compte `demo` à tous les
+  groupes (après l'avoir inscrit dans l'annuaire), pour que ses tâches de groupe s'affichent.
+- **Captures du site** (D-DEMO-CAPTURE) : `frontend/playwright.capture.config.ts` et `frontend/capture/`
+  (`npm run capture`, `CAPTURE_LANG=fr|en`) pilotent une démo démarrée par `scripts/demo.sh` : connexion Keycloak
+  mémorisée, puis 14 screenshots (S1 à S15 sans S13) dans `frontend/capture/out/<langue>/`, non versionnés. Procédure :
+  [GETTING-STARTED](../guides/GETTING-STARTED.md), « Captures du site ».
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding).
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais), `DemoGroupMembershipTest`.
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

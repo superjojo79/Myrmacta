@@ -29,6 +29,8 @@ frontend/dist/
 frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
+# Captures du site (§127, D-DEMO-CAPTURE-OUT) : régénérées, jamais versionnées
+frontend/capture/out/
 frontend/reports/
 frontend/.stryker-tmp/
 

@@ -39,6 +39,8 @@ import tools.jackson.databind.ObjectMapper;
 public class ImapInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
 
     static final String PASSWORD_MODE = "PASSWORD";
+    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK) — sans chiffrement : seulement vers la boucle locale en profil local ou test. */
+    static final String PLAIN = "PLAIN";
     private static final Logger log = LoggerFactory.getLogger(ImapInboundConnector.class);
 
     private final InboundMailRouting routing;
@@ -95,8 +97,9 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
                 new ConfigField("host", "IMAP host", ConfigFieldType.STRING, true, null, List.of(),
                         "e.g. imap.example.com or outlook.office365.com. Must resolve to a public address."),
                 new ConfigField("port", "IMAP port", ConfigFieldType.INTEGER, false, "993", List.of(), null),
-                new ConfigField("security", "Transport security", ConfigFieldType.SELECT, true, "SSL", List.of("SSL", "STARTTLS"),
-                        "SSL = IMAPS (993). STARTTLS is required, never optional. The server certificate is always verified."),
+                new ConfigField("security", "Transport security", ConfigFieldType.SELECT, true, "SSL", securityOptions(),
+                        "SSL = IMAPS (993). STARTTLS is required, never optional. The server certificate is always verified. "
+                                + "PLAIN (no encryption) is only accepted for a localhost mailbox in the local and test profiles."),
                 new ConfigField("username", "Mailbox user", ConfigFieldType.STRING, true, null, List.of(), null),
                 new ConfigField(OAuth2ConfigSupport.AUTH_MODE, "Authentication", ConfigFieldType.SELECT, false, PASSWORD_MODE,
                         List.of(PASSWORD_MODE, OAuth2TokenProvider.MODE),
@@ -114,6 +117,11 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         return fields;
     }
 
+    /** {@code PLAIN} n'est proposé que là où il peut être accepté (profil local ou test). */
+    private List<String> securityOptions() {
+        return outboundUrlGuard.isLocalLoopback("localhost") ? List.of("SSL", "STARTTLS", PLAIN) : List.of("SSL", "STARTTLS");
+    }
+
     @Override
     public void validate(Map<String, Object> config) {
         if (config == null) {
@@ -123,17 +131,23 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         if (!host.matches("[A-Za-z0-9.-]{1,253}")) {
             throw new ConnectorValidationException("host must be a plain host name");
         }
-        try {
-            outboundUrlGuard.assertSafe("https://" + host);
-        } catch (IllegalArgumentException ex) {
-            throw new ConnectorValidationException("host is not an acceptable public address");
+        boolean localLoopback = outboundUrlGuard.isLocalLoopback(host);
+        if (!localLoopback) {
+            try {
+                outboundUrlGuard.assertSafe("https://" + host);
+            } catch (IllegalArgumentException ex) {
+                throw new ConnectorValidationException("host is not an acceptable public address");
+            }
         }
         int port = InboundMailRouting.intOr(config.get("port"), 993);
         if (port < 1 || port > 65535) {
             throw new ConnectorValidationException("port must be between 1 and 65535");
         }
         String security = OAuth2ConfigSupport.text(config, "security");
-        if (!"SSL".equals(security) && !"STARTTLS".equals(security)) {
+        if (PLAIN.equals(security) && !localLoopback) {
+            throw new ConnectorValidationException("security PLAIN is only accepted for a localhost mailbox in the local and test profiles");
+        }
+        if (!"SSL".equals(security) && !"STARTTLS".equals(security) && !PLAIN.equals(security)) {
             throw new ConnectorValidationException("Unsupported security: " + security);
         }
         OAuth2ConfigSupport.text(config, "username");
@@ -166,10 +180,18 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         Map<String, Object> config = instance.config();
         // L'hôte est re-vérifié à CHAQUE interrogation (pas seulement à la création) : un nom qui désigne ensuite une adresse
         // privée est refusé avant toute connexion (revue D3c/D3d, M1).
-        try {
-            outboundUrlGuard.assertSafe("https://" + OAuth2ConfigSupport.text(config, "host"));
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException("host is not an acceptable public address");
+        String host = OAuth2ConfigSupport.text(config, "host");
+        boolean localLoopback = outboundUrlGuard.isLocalLoopback(host);
+        if (!localLoopback) {
+            try {
+                outboundUrlGuard.assertSafe("https://" + host);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalStateException("host is not an acceptable public address");
+            }
+        }
+        boolean plain = PLAIN.equals(config.get("security"));
+        if (plain && !localLoopback) {
+            throw new IllegalStateException("security PLAIN is only accepted for a localhost mailbox in the local and test profiles");
         }
         if (sameFolder(InboundMailRouting.stringOr(config.get("processedFolder"), "Myrmacta-processed"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))
                 || sameFolder(InboundMailRouting.stringOr(config.get("rejectedFolder"), "Myrmacta-rejected"), InboundMailRouting.stringOr(config.get("folder"), "INBOX"))) {
@@ -178,9 +200,11 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         boolean oauth = OAuth2ConfigSupport.isOAuth(config);
         String secret = oauth ? tokenProvider.accessToken(instance) : OAuth2ConfigSupport.text(config, "password");
         ImapMailbox.Settings settings = new ImapMailbox.Settings(
-                OAuth2ConfigSupport.text(config, "host"),
+                // Boucle locale : connexion à l'adresse littérale, jamais au nom (que le résolveur du poste pourrait détourner).
+                localLoopback ? loopbackAddress(host) : host,
                 InboundMailRouting.intOr(config.get("port"), 993),
-                "STARTTLS".equals(config.get("security")) ? ImapMailbox.Security.STARTTLS : ImapMailbox.Security.SSL,
+                plain ? ImapMailbox.Security.PLAIN_FOR_TESTS
+                        : "STARTTLS".equals(config.get("security")) ? ImapMailbox.Security.STARTTLS : ImapMailbox.Security.SSL,
                 OAuth2ConfigSupport.text(config, "username"),
                 secret,
                 oauth,
@@ -191,6 +215,10 @@ public class ImapInboundConnector implements ConnectorDefinition, PollingTrigger
         ImapMailbox.Limits limits = new ImapMailbox.Limits(inbound.maxMessageBytes(), inbound.maxBodyChars(),
                 inbound.maxAttachmentBytes(), InboundMailRouting.intOr(config.get("maxAttachments"), 5));
         mailbox.process(settings, inbound.maxMessagesPerPoll(), limits, routing.handler(instance, delivery));
+    }
+
+    private static String loopbackAddress(String host) {
+        return host.strip().equalsIgnoreCase("localhost") ? "127.0.0.1" : host.strip();
     }
 
     private static boolean sameFolder(String a, String b) {

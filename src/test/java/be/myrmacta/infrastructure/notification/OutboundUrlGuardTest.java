@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,6 +53,84 @@ class OutboundUrlGuardTest {
         } catch (UnknownHostException ex) {
             throw new AssertionError(ex);
         }
+    }
+
+    /** TODO §128 (D-IMAP-LOCAL-LOOPBACK) — boucle locale pour un protocole hors HTTP : profil local ou test et hôte écrit en boucle. */
+    @Test
+    void isLocalLoopback_onlyInALocalProfile_andOnlyForAHostWrittenAsLoopback() {
+        assertThat(allowLocalHttp.isLocalLoopback("localhost")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback(" LocalHost ")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("127.0.0.1")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("[::1]")).isTrue();
+        assertThat(allowLocalHttp.isLocalLoopback("hooks.example.com")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback("10.0.0.5")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback("")).isFalse();
+        assertThat(allowLocalHttp.isLocalLoopback(null)).isFalse();
+        assertThat(strict.isLocalLoopback("localhost")).isFalse();
+        assertThat(strict.isLocalLoopback("127.0.0.1")).isFalse();
+    }
+
+    // ---- Graphies d'hôte, aux bornes (le contrôle de l'adresse résolue les double ; testées seules) ----
+
+    @Test
+    void blockedIpv4Literals_atTheEdgesOfEachRange() {
+        for (String blocked : List.of("100.64.0.0", "100.127.255.255", "172.16.0.0", "172.31.255.255", "0.1.2.3", "10.0.0.255",
+                "127.0.0.1", "169.254.0.1", "192.168.0.1")) {
+            assertThat(OutboundUrlGuard.isBlockedIpv4Literal(blocked)).as(blocked).isTrue();
+        }
+        for (String open : List.of("100.63.255.255", "100.128.0.0", "172.15.255.255", "172.32.0.0", "169.253.0.1", "169.255.0.1",
+                "192.167.0.1", "192.169.0.1", "8.8.8.8", "99.64.0.1")) {
+            assertThat(OutboundUrlGuard.isBlockedIpv4Literal(open)).as(open).isFalse();
+        }
+        for (String notALiteral : List.of("1.2.3", "1.2.3.4.5", "10.0.0.256", "10.0.0.-1", "10.a.0.1")) {
+            assertThat(OutboundUrlGuard.isBlockedIpv4Literal(notALiteral)).as(notALiteral).isFalse();
+        }
+    }
+
+    @Test
+    void ipv4SpellingsAreNormalisedToDottedQuads() {
+        assertThat(OutboundUrlGuard.extractIpv4("2130706433")).isEqualTo("127.0.0.1");
+        assertThat(OutboundUrlGuard.extractIpv4("3232235777")).isEqualTo("192.168.1.1");
+        assertThat(OutboundUrlGuard.extractIpv4("4294967295")).isEqualTo("255.255.255.255");
+        assertThat(OutboundUrlGuard.extractIpv4("0")).isEqualTo("0.0.0.0");
+        assertThat(OutboundUrlGuard.extractIpv4("4294967296")).isNull();
+        assertThat(OutboundUrlGuard.extractIpv4("::ffff:10.0.0.1")).isEqualTo("10.0.0.1");
+        assertThat(OutboundUrlGuard.extractIpv4("0:0:0:0:0:ffff:10.0.0.1")).isEqualTo("10.0.0.1");
+        assertThat(OutboundUrlGuard.extractIpv4("1.2.3.4")).isEqualTo("1.2.3.4");
+        assertThat(OutboundUrlGuard.extractIpv4("hooks.example.com")).isNull();
+    }
+
+    @Test
+    void hexDigitsAreZeroToNineAndAToF() {
+        for (char c : "09af".toCharArray()) {
+            assertThat(OutboundUrlGuard.isHex(c)).as(String.valueOf(c)).isTrue();
+        }
+        for (char c : "/:`g".toCharArray()) {
+            assertThat(OutboundUrlGuard.isHex(c)).as(String.valueOf(c)).isFalse();
+        }
+    }
+
+    @Test
+    void linkLocalAndUniqueLocalIpv6Spellings() {
+        for (String blocked : List.of("fe80::1", "fe80:0:0:0:0:0:0:1", "fc00::1", "fd12:3456::1", "fc:", "fd:", "fca1::")) {
+            assertThat(OutboundUrlGuard.isBlockedIpv6(blocked)).as(blocked).isTrue();
+        }
+        for (String open : List.of("2001:db8::1", "fcg::", "f::1", "hooks.example.com", "fe81::1")) {
+            assertThat(OutboundUrlGuard.isBlockedIpv6(open)).as(open).isFalse();
+        }
+    }
+
+    @Test
+    void theAuthorityHostIgnoresUserInfoPortPathQueryAndFragment() {
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://user:pw@host.example:443/p")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://@host.example/")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://a@b@host.example/")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://[::1]:8080/x")).isEqualTo("[::1]");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://host.example?x=1")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://host.example#f")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("https://:80/")).isEmpty();
+        assertThat(OutboundUrlGuard.extractAuthorityHost("://host.example")).isEqualTo("host.example");
+        assertThat(OutboundUrlGuard.extractAuthorityHost("host.example")).isNull();
     }
 
     @Test

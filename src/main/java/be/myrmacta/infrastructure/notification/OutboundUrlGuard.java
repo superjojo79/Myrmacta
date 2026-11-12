@@ -86,6 +86,18 @@ public class OutboundUrlGuard {
     }
 
     /**
+     * TODO §128 (D-IMAP-LOCAL-LOOPBACK) — vrai seulement en profil {@code local} ou {@code test} et pour un hôte écrit
+     * comme une boucle locale ({@code localhost}, {@code 127.x}, {@code ::1}) : la même règle que le {@code http} local
+     * (A13). Un nom qui se <em>résout</em> en boucle locale n'en est pas une. Pour les protocoles hors HTTP (IMAP).
+     */
+    public boolean isLocalLoopback(String host) {
+        if (!allowLocalHttp || !StringUtils.hasText(host)) {
+            return false;
+        }
+        return isLoopbackHost(stripIpv6Brackets(host.strip()).toLowerCase(Locale.ROOT));
+    }
+
+    /**
      * Validates the URL then returns the IP chosen for the connection (D-44 pin).
      */
     public PinnedEndpoint resolveSafe(String url) {
@@ -267,7 +279,8 @@ public class OutboundUrlGuard {
         }
     }
 
-    private static String extractAuthorityHost(String url) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static String extractAuthorityHost(String url) {
         int schemeIdx = url.indexOf("://");
         if (schemeIdx < 0) {
             return null;
@@ -318,7 +331,8 @@ public class OutboundUrlGuard {
         return ipv4 != null && isBlockedIpv4Literal(ipv4);
     }
 
-    private static boolean isBlockedIpv6(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isBlockedIpv6(String host) {
         if (!host.contains(":")) {
             return false;
         }
@@ -340,14 +354,16 @@ public class OutboundUrlGuard {
         return false;
     }
 
-    private static boolean isHex(char c) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isHex(char c) {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
     }
 
     /**
      * Returns dotted IPv4 if host is dotted quad, IPv4-mapped IPv6, or decimal IPv4.
      */
-    private static String extractIpv4(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static String extractIpv4(String host) {
         if (host.matches("\\d+")) {
             try {
                 long value = Long.parseLong(host);
@@ -393,7 +409,8 @@ public class OutboundUrlGuard {
         return host;
     }
 
-    private static boolean isBlockedIpv4Literal(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isBlockedIpv4Literal(String host) {
         String[] parts = host.split("\\.");
         if (parts.length != 4) {
             return false;

@@ -1155,3 +1155,10 @@ D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-rev
   `JpaTenantCalendarRepositoryAdapterIT` (courses entre deux administrateurs, annulation, autre tenant, secret supprimé) ; Vitest (`TenantCalendarPanel`,
   `CalendarEntryForm`, `CalendarEntryList`, `CalendarSourcesPanel`, `CalendarImportPreview`) et Playwright `E2E-CAL-1`
   à `11`.
+
+## Implémentation — libellé d'un dossier créé par trigger (TODO §129, issue #66)
+
+Un dossier créé manuellement porte le libellé saisi par l'utilisateur. Un dossier créé par un déclencheur
+(`ConnectorTriggerRuntime`) reçoit un libellé dérivé des champs (`objet` / `subject` / …) ou, à défaut,
+`{type} — {date}` UTC — jamais `trigger:<uuid>`, qui reste uniquement la valeur de `createdBy` (D-TRIGGER-LABEL,
+détail dans [06-connecteurs.md](06-connecteurs.md) § « Implémentation — libellé à la création par trigger »).

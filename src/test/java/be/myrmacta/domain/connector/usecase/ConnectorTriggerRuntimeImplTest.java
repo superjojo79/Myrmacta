@@ -25,12 +25,6 @@ import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
 import be.myrmacta.domain.mailroom.model.MailIndexEntry;
 import be.myrmacta.domain.mailroom.port.out.MailMessageIndex;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
-import be.myrmacta.domain.dossier.model.AccessContext;
-import be.myrmacta.domain.dossier.model.Dossier;
-import be.myrmacta.domain.dossier.model.DossierNotFoundException;
-import be.myrmacta.domain.dossier.model.DossierStatus;
-import be.myrmacta.domain.dossier.port.in.CreateDossierUseCase;
-import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
 import be.myrmacta.domain.workflow.model.TriggerOutboxPayload;
 import be.myrmacta.domain.workflow.port.out.OutboxRepository;
 import java.util.List;
@@ -87,12 +81,46 @@ class ConnectorTriggerRuntimeImplTest {
         verify(createDossier).create(cmd.capture(), any(AccessContext.class));
         assertThat(cmd.getValue().createdBy()).isEqualTo("trigger:" + instance.id());
         assertThat(cmd.getValue().dossierTypeCode()).isEqualTo("SINISTRE");
+        // TODO §129 (D-TRIGGER-LABEL) — sans objet/subject, type + date UTC (horloge système du runtime).
+        assertThat(cmd.getValue().label()).startsWith("SINISTRE — ");
+        assertThat(cmd.getValue().label()).doesNotContain("trigger:");
 
         ArgumentCaptor<TriggerOutboxPayload> payload = ArgumentCaptor.forClass(TriggerOutboxPayload.class);
         verify(outboxRepository).savePending(payload.capture());
         assertThat(payload.getValue().dossierId()).isEqualTo(dossierId);
         assertThat(payload.getValue().processKey()).isEqualTo("smokeProcess");
         assertThat(payload.getValue().connectorInstanceId()).isEqualTo(instance.id());
+    }
+
+    /** TODO §129 (D-TRIGGER-LABEL) — le libellé vient de l'objet du courrier, pas de trigger:<uuid>. */
+    @Test
+    void createdDossierLabelComesFromObjet_createdByStaysTriggerUuid() {
+        var fixed = new ConnectorTriggerRuntimeImpl(
+                catalog,
+                createDossier,
+                getDossier,
+                outboxRepository,
+                null,
+                null,
+                java.time.Clock.fixed(java.time.Instant.parse("2026-11-12T08:00:00Z"), java.time.ZoneOffset.UTC));
+        var instance = instance();
+        when(catalog.get("http-rest")).thenReturn(triggerDefinition);
+        when(triggerConnector.onEvent(eq(instance), any()))
+                .thenReturn(List.of(new WorkflowTriggerEvent(
+                        "triCourrier",
+                        "COURRIER",
+                        Map.of("objet", "Demande de renseignements", "expediteur", "client@example.org"),
+                        Map.of(),
+                        null)));
+        when(createDossier.create(any(), any())).thenReturn(dossier(UUID.randomUUID()));
+
+        fixed.onIncomingEvent(instance, Map.of());
+
+        ArgumentCaptor<CreateDossierUseCase.CreateDossierCommand> cmd =
+                ArgumentCaptor.forClass(CreateDossierUseCase.CreateDossierCommand.class);
+        verify(createDossier).create(cmd.capture(), any(AccessContext.class));
+        assertThat(cmd.getValue().label()).isEqualTo("Demande de renseignements");
+        assertThat(cmd.getValue().createdBy()).isEqualTo("trigger:" + instance.id());
     }
 
     /** TODO §113 (D-MAILROOM-DEPOSIT) — un événement déjà construit est remis tel quel ; le dossier créé est renvoyé. */

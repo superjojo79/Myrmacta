@@ -5,6 +5,7 @@ import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector;
 import be.myrmacta.domain.connector.model.TriggerConnector;
+import be.myrmacta.domain.connector.model.TriggerDossierLabel;
 import be.myrmacta.domain.connector.model.WorkflowTriggerEvent;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.connector.port.in.ConnectorTriggerRuntime;
@@ -176,12 +177,15 @@ public final class ConnectorTriggerRuntimeImpl implements ConnectorTriggerRuntim
             throw new ConnectorValidationException(
                     "dossierTypeCode is required when existingDossierReference is absent");
         }
+        Map<String, Object> fields = event.dossierFields() == null ? Map.of() : event.dossierFields();
+        // TODO §129 (D-TRIGGER-LABEL) — libellé lisible (objet / subject / …) ; createdBy reste trigger:<uuid>.
+        String label = TriggerDossierLabel.resolve(typeCode, fields, clock);
         Dossier created = createDossier.create(
                 new CreateDossierUseCase.CreateDossierCommand(
                         instance.tenantId(),
                         typeCode,
-                        "trigger:" + instance.id(),
-                        event.dossierFields() == null ? Map.of() : event.dossierFields(),
+                        label,
+                        fields,
                         "trigger:" + instance.id()),
                 system);
         return created.id();

@@ -21,6 +21,16 @@ class ServerDossierTextsTest {
                 .isEqualTo("Le dossier DOS-1 arrive à échéance le 2026-11-10.");
         assertThat(ServerDossierTexts.supplierReplyLabel(Locale.forLanguageTag("fr-BE"), "DOS-COURRIER-2026-000006"))
                 .isEqualTo("Réponse DOS-COURRIER-2026-000006");
+        assertThat(ServerDossierTexts.mailThreadReplyTitle(Locale.FRENCH)).isEqualTo("Nouveau courrier");
+        assertThat(ServerDossierTexts.mailThreadReplyBody(Locale.FRENCH, "DOS-C", "DOS-F"))
+                .isEqualTo("Un courrier (DOS-C) répond au fil du dossier DOS-F.");
+    }
+
+    @Test
+    void anUnsupportedLocaleFallsBackToFrench() {
+        assertThat(ServerDossierTexts.supplierReplyLabel(Locale.forLanguageTag("nl"), "DOS-1")).isEqualTo("Réponse DOS-1");
+        assertThat(ServerDossierTexts.deadlineReminderTitle(Locale.GERMAN, "DOS-1")).isEqualTo("Échéance proche — DOS-1");
+        assertThat(ServerDossierTexts.mailThreadReplyTitle(Locale.forLanguageTag("nl"))).isEqualTo("Nouveau courrier");
     }
 
     @Test
@@ -32,5 +42,8 @@ class ServerDossierTextsTest {
                 .isEqualTo("Deadline of 2026-11-10 passed: escalation group not found (DIRECTION)");
         assertThat(ServerDossierTexts.deadlineEscalationNote(Locale.ENGLISH, DEADLINE, "DIRECTION", "DIRECTION", List.of()))
                 .isEqualTo("Deadline of 2026-11-10 passed: group DIRECTION notified, no open task");
+        assertThat(ServerDossierTexts.mailThreadReplyTitle(Locale.ENGLISH)).isEqualTo("New mail");
+        assertThat(ServerDossierTexts.mailThreadReplyBody(Locale.ENGLISH, "DOS-C", "DOS-F"))
+                .isEqualTo("A mail item (DOS-C) replies on the thread of dossier DOS-F.");
     }
 }

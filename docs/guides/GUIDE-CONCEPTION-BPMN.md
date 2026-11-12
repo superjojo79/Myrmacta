@@ -549,8 +549,9 @@ JSON** dans la variable ; booléen, nombre et texte le sont tels quels.
   la valeur `now`), `$match` et les formats `$formatInteger`/`$parseInteger`, `$base64*` et `$encodeUrl*`/`$decodeUrl*`.
 - **Sémantique littérale.** `$replace(texte, motif, remplacement [, limite])` remplace le motif **tel quel** : ni regex, ni
   `$1` interprété, motif non vide, limite positive ; `$toMillis` et `$fromMillis` n'acceptent **pas** de format
-  (ISO 8601 uniquement) ; `$pad` est borné. `$ascii(texte)` retire les accents (décomposition Unicode), passe en
-  minuscules et ne garde que `[a-z0-9.-]` — pour un login, pas une translittération (`œ` disparaît). La division `a / b` est permise.
+  (ISO 8601 uniquement) ; `$pad` est borné. `$ascii(texte)` retire les accents (décomposition Unicode), translittère
+  `ß`→`ss`, `æ`→`ae`, `œ`→`oe`, `ø`→`o`, `ł`→`l`, passe en minuscules et ne garde que `[a-z0-9.-]`. `null` reste
+  absent ; un texte sans caractère de login est refusé (pas de chaîne vide). La division `a / b` est permise.
 - **Pas de littéral regex** (`/…/`) : le retour arrière d'une expression régulière Java n'est pas interruptible.
   Pas de `${…}` ni `#{…}` dans l'expression (ce n'est pas de l'UEL).
 - **Pas de variable nommée `__…`** (référencée ou affectée) : ces noms sont réservés au moteur.

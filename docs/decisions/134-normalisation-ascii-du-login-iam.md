@@ -14,13 +14,17 @@ pour chaque accent est incomplet.
 **D-EXPR-ASCII** — `$ascii(texte)` produit un login :
 
 1. décomposition NFD, marques combinatoires retirées (accents) ;
-2. minuscules ;
-3. seuls `[a-z0-9.-]` sont gardés (espaces, apostrophes et le reste disparaissent, ils ne sont pas remplacés) ;
-4. `null` reste `null` ; un argument qui n'est pas du texte est refusé, message neutre ;
-5. le résultat n'est jamais plus long que l'entrée, déjà bornée par `maxResultBytes` (pas de regex, déterministe).
+2. translittération des lettres latines qui ne se décomposent pas : `ß`→`ss`, `æ`→`ae`, `œ`→`oe`, `ø`→`o`, `ł`→`l`
+   (et leurs majuscules) — revue de #85 : les supprimer donnait un login vide (`Ø`, `Ł`) envoyé en silence ;
+3. minuscules ;
+4. seuls `[a-z0-9.-]` sont gardés (espaces, apostrophes et le reste disparaissent) ;
+5. `null` reste `null` ; un argument qui n'est pas du texte est refusé, message neutre ;
+6. un texte sans aucun caractère de login (`""`, `"!!!"`) est **refusé** (`$ascii produced no login characters`) :
+   l'expression échoue, le connecteur n'envoie pas `username: ""` ;
+7. pas de regex. La translittération peut allonger (`ß` → deux lettres) ; le résultat reste borné par `maxResultBytes`.
 
-Une ligature qui ne se décompose pas (`œ`, `ß`) est retirée : elle n'est pas dans le jeu. Écarté : l'étendre en
-`oe` / `ss` (hors de la règle « caractères hors jeu supprimés »).
+Écarté : une translittération générale (tables ICU, `ö`→`oe` déjà couvert par NFD→`o`). Seules les cinq lettres
+ci-dessus ne deviennent pas une lettre ASCII par NFD.
 
 L'exemple utilise `$ascii($substring(dossier.fields.prenom, 0, 1) & dossier.fields.nom)` : `evandenbroeck`.
 

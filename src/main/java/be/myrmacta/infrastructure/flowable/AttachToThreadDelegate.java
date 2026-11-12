@@ -196,7 +196,7 @@ class AttachToThreadDelegate implements JavaDelegate {
         this.updateStatus = Objects.requireNonNull(updateStatus, "updateStatus");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.attacher = new MailThreadAttacher(relations, createRelation, elements, storage, attachFiles, links, participants,
-                notifications, engine);
+                notifications, engine, locale);
     }
 
     @Override

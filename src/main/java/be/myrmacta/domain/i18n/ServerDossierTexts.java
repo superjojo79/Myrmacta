@@ -66,6 +66,17 @@ public final class ServerDossierTexts {
         return (english(locale) ? "Reply " : "Réponse ") + mailReference;
     }
 
+    /** Avertissement des participants quand un courrier rejoint un fil (D-I18N-DOSSIER-TEXT). */
+    public static String mailThreadReplyTitle(Locale locale) {
+        return english(locale) ? "New mail" : "Nouveau courrier";
+    }
+
+    public static String mailThreadReplyBody(Locale locale, String mailReference, String dossierReference) {
+        return english(locale)
+                ? "A mail item (" + mailReference + ") replies on the thread of dossier " + dossierReference + "."
+                : "Un courrier (" + mailReference + ") répond au fil du dossier " + dossierReference + ".";
+    }
+
     private static boolean english(Locale locale) {
         return "en".equals(Objects.requireNonNull(locale, "locale").getLanguage());
     }

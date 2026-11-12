@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import be.myrmacta.domain.dossier.model.Dossier;
@@ -77,6 +79,7 @@ class StatesDemoPackInstallTest {
         when(dossiers.findByDossierTypeCode(TENANT, "FACTURE")).thenAnswer(invocation -> List.copyOf(factures));
         when(dossiers.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(draftRepository.findByTenantIdAndDecisionKey(TENANT, StatesDemoPack.ROUTING)).thenReturn(Optional.empty());
+        when(onboarding.incidentReady()).thenReturn(true);
         pack = new StatesDemoPack("exemples/digital-mail-room", "fr", JsonMapper.builder().build(), new TenantProperties(TENANT),
                 types, updateType, createDossier, updateStatus, dossiers, drafts, draftRepository, onboarding, transactions);
     }
@@ -94,6 +97,16 @@ class StatesDemoPackInstallTest {
         int created = factures.size();
         assertThatThrownBy(pack::install).hasMessageContaining("draft failed");
         assertThat(factures).as("rejouer ne duplique pas les factures déjà créées").hasSize(created);
+    }
+
+    @Test
+    void theRoutingDraftIsNotProposedWhenTheSirhIncidentIsMissing() {
+        when(onboarding.incidentReady()).thenReturn(false);
+
+        assertThatThrownBy(pack::install).hasMessageContaining("incident");
+
+        verify(drafts, never()).proposeDmn(any(), any(), any(), any(), any(), anyBoolean());
+        assertThat(pack.installed()).isFalse();
     }
 
     @Test

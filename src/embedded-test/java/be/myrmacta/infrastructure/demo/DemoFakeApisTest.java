@@ -2,6 +2,9 @@ package be.myrmacta.infrastructure.demo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -85,6 +88,54 @@ class DemoFakeApisTest {
         } finally {
             apis.stop();
         }
+    }
+
+    @Test
+    void theRestOfAnOversizedBodyIsDrained_soTheNextKeepAliveRequestIsIntact() throws Exception {
+        apis.start();
+        try (Socket socket = new Socket(apis.listenAddress().getAddress(), apis.listenAddress().getPort())) {
+            OutputStream out = socket.getOutputStream();
+            InputStream in = socket.getInputStream();
+            byte[] overflow = new byte[DemoFakeApis.MAX_BODY_BYTES + 64];
+            Arrays.fill(overflow, (byte) 'x');
+            String head = "POST /iam/users HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + overflow.length
+                    + "\r\nConnection: keep-alive\r\n\r\n";
+            out.write(head.getBytes(StandardCharsets.UTF_8));
+            out.write(overflow);
+            out.flush();
+            readHttpResponse(in);
+
+            out.write("GET /sirh/ping HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            String second = readHttpResponse(in);
+
+            assertThat(second).startsWith("HTTP/1.1 404");
+            assertThat(apis.received()).contains("POST /iam/users", "GET /sirh/ping");
+        } finally {
+            apis.stop();
+        }
+    }
+
+    private static String readHttpResponse(InputStream in) throws Exception {
+        java.io.ByteArrayOutputStream raw = new java.io.ByteArrayOutputStream();
+        byte[] end = {'\r', '\n', '\r', '\n'};
+        int matched = 0;
+        int current;
+        while ((current = in.read()) >= 0) {
+            raw.write(current);
+            matched = current == end[matched] ? matched + 1 : (current == '\r' ? 1 : 0);
+            if (matched == end.length) {
+                break;
+            }
+        }
+        String headers = raw.toString(StandardCharsets.UTF_8);
+        int length = 0;
+        for (String line : headers.split("\r\n")) {
+            if (line.toLowerCase(java.util.Locale.ROOT).startsWith("content-length:")) {
+                length = Integer.parseInt(line.substring("content-length:".length()).trim());
+            }
+        }
+        return headers + new String(in.readNBytes(length), StandardCharsets.UTF_8);
     }
 
     @Test

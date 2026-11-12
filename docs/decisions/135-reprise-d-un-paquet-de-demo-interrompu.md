@@ -16,9 +16,11 @@ empilaient chaque requête sans plafond.
 
 1. « états » : le brouillon `routageCourrier`. Les factures déjà créées (même libellé) et l'incident Nadia déjà en
    dead letter ne sont pas refaits ;
-2. onboarding : une tâche `validationAcces` du processus (Sarah attend l'IT). Le type, les questionnaires, la
-   configuration et le processus déjà déployés ne sont pas recréés ; une arrivée dont le dossier existe n'est pas
-   recréée. Sarah et Nadia, si leur processus est encore sur la validation du manager, sont reprises.
+2. onboarding : une tâche `validationAcces` **de Sarah** (Élise passe par la même tâche plus tôt et ne compte pas).
+   Le type, les questionnaires, la configuration et le processus déjà déployés ne sont pas recréés ; une arrivée dont
+   le dossier existe n'est pas recréée. Si le dossier existe mais qu'aucun processus n'a démarré (échec après la
+   création, avant `start`), le processus est démarré sur ce dossier. Un processus déjà terminé (historique) ou déjà
+   en incident n'est pas relancé. Le brouillon `routageCourrier` n'est proposé que si l'incident Nadia existe.
 
 Élise ou Thomas laissés à mi-chemin ne sont pas repris étape par étape : leur dossier existe, on ne les duplique pas.
 Écarté : un marqueur dans une table nouvelle (schéma de production pour un outil de démo) ; se fier au premier effet.

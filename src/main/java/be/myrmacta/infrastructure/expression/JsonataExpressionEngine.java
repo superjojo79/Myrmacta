@@ -61,7 +61,7 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
             "abs", "ceil", "floor", "round", "sqrt", "power", "number", "formatNumber", "formatBase",
             "sum", "count", "max", "min", "average",
             "string", "substring", "substringBefore", "substringAfter", "lowercase", "uppercase", "length", "trim",
-            "contains", "split", "join", "pad", "replace",
+            "contains", "split", "join", "pad", "replace", "ascii",
             "boolean", "not", "exists", "type", "keys", "lookup", "append", "reverse", "sort", "distinct", "zip", "map",
             "filter", "reduce", "each", "sift", "single", "spread", "merge", "clone", "assert", "error",
             "toMillis", "fromMillis");
@@ -344,11 +344,13 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
     }
 
     /**
-     * TODO §134 (D-EXPR-ASCII) — {@code $ascii} : NFD, marques combinatoires retirées, minuscules, seuls
-     * {@code [a-z0-9.-]}. Le résultat est au plus aussi long que l'entrée, déjà bornée. Pas de regex.
+     * TODO §134 (D-EXPR-ASCII) — {@code $ascii} : NFD, marques combinatoires retirées, translittération des lettres
+     * latines qui ne se décomposent pas ({@code ß ss}, {@code æ ae}, {@code œ oe}, {@code ø o}, {@code ł l}), minuscules,
+     * seuls {@code [a-z0-9.-]}. {@code null} reste {@code null}. Un texte sans aucun caractère de login est refusé :
+     * un login vide ne part pas. Pas de regex. Le résultat reste borné ({@code maxResultBytes}).
      */
     private String ascii(List<?> args) {
-        if (args.isEmpty() || args.get(0) == null) {
+        if (args.isEmpty() || args.get(0) == null || args.get(0) == Jsonata.NULL_VALUE) {
             return null;
         }
         if (!(args.get(0) instanceof String text)) {
@@ -366,12 +368,35 @@ public final class JsonataExpressionEngine implements ExpressionEnginePort {
             if (type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK) {
                 continue;
             }
+            String mapped = latinLoginLetter(codePoint);
+            if (mapped != null) {
+                out.append(mapped);
+                continue;
+            }
             int lower = Character.toLowerCase(codePoint);
             if (lower < 128 && isLoginCharacter(lower)) {
                 out.append((char) lower);
             }
         }
+        if (out.isEmpty()) {
+            throw new ExpressionEvaluationException("$ascii produced no login characters");
+        }
+        if (out.length() > limits.maxResultBytes()) {
+            throw new ExpressionEvaluationException("$ascii result exceeds " + limits.maxResultBytes() + " characters");
+        }
         return out.toString();
+    }
+
+    /** Lettres latines hors décomposition NFD, vers le jeu {@code [a-z0-9.-]}. */
+    private static String latinLoginLetter(int codePoint) {
+        return switch (codePoint) {
+            case 'ß', 'ẞ' -> "ss";
+            case 'æ', 'Æ' -> "ae";
+            case 'œ', 'Œ' -> "oe";
+            case 'ø', 'Ø' -> "o";
+            case 'ł', 'Ł' -> "l";
+            default -> null;
+        };
     }
 
     private static boolean isLoginCharacter(int codePoint) {

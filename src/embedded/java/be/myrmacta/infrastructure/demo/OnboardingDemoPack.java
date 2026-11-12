@@ -242,16 +242,12 @@ public class OnboardingDemoPack implements DemoPack {
         }
 
         Optional<Dossier> sarah = byEmail(LAST_ARRIVAL_EMAIL);
-        String awaitingIt;
-        if (sarah.isEmpty()) {
-            awaitingIt = arrive("Sarah", "Dubois", LAST_ARRIVAL_EMAIL,
-                    example.text("Directrice financière", "Chief financial officer"), "FINANCE", "DIRECTION");
-        } else {
-            awaitingIt = processOf(sarah.get());
-            if (awaitingIt == null
-                    || tasks.createTaskQuery().processInstanceId(awaitingIt).taskDefinitionKey("validationAcces").count() > 0) {
-                return;
-            }
+        String awaitingIt = sarah.isEmpty()
+                ? arrive("Sarah", "Dubois", LAST_ARRIVAL_EMAIL,
+                        example.text("Directrice financière", "Chief financial officer"), "FINANCE", "DIRECTION")
+                : ensureRunning(sarah.get());
+        if (tasks.createTaskQuery().processInstanceId(awaitingIt).taskDefinitionKey("validationAcces").count() > 0) {
+            return;
         }
         if (tasks.createTaskQuery().processInstanceId(awaitingIt).taskDefinitionKey("validationManager").count() > 0) {
             complete(awaitingIt, "validationManager", Map.of("decisionManager", "APPROUVER"));
@@ -270,10 +266,11 @@ public class OnboardingDemoPack implements DemoPack {
         if (existing.isEmpty()) {
             instance = arrive("Nadia", "Claes", email, example.text("Comptable", "Accountant"), "FINANCE", "STANDARD");
         } else {
-            instance = processOf(existing.get());
-            if (instance == null || management.createDeadLetterJobQuery().processInstanceId(instance).count() > 0) {
+            String active = activeInstance(existing.get());
+            if (active != null && deadLetters(active) > 0) {
                 return;
             }
+            instance = ensureRunning(existing.get());
         }
         if (tasks.createTaskQuery().processInstanceId(instance).taskDefinitionKey("validationManager").count() > 0) {
             complete(instance, "validationManager", Map.of("decisionManager", "APPROUVER"));
@@ -292,10 +289,46 @@ public class OnboardingDemoPack implements DemoPack {
                 .findFirst();
     }
 
-    private String processOf(Dossier dossier) {
+    /** Vrai si Nadia a un incident rejouable. Le brouillon de routage ne se propose qu'alors (D-DEMO-INSTALL). */
+    boolean incidentReady() {
+        return byEmail("nadia.claes@example" + DemoFakeApis.OUTAGE_DOMAIN).map(this::activeInstance)
+                .filter(instance -> deadLetters(instance) > 0).isPresent();
+    }
+
+    /**
+     * Processus actif, ou redémarrage sur le dossier déjà créé si le démarrage n'a jamais abouti. Un processus terminé
+     * (présent dans l'historique, plus dans le runtime) n'est pas relancé.
+     */
+    private String ensureRunning(Dossier dossier) {
+        String active = activeInstance(dossier);
+        if (active != null) {
+            return active;
+        }
+        long historic = engine.getHistoryService().createHistoricProcessInstanceQuery().processInstanceTenantId(tenant.id())
+                .variableValueEquals("dossierId", dossier.id().toString()).count();
+        if (historic > 0) {
+            throw new IllegalStateException("demo: onboarding process for " + dossier.reference()
+                    + " already finished and is not restarted");
+        }
+        return startExisting(dossier);
+    }
+
+    private String activeInstance(Dossier dossier) {
         var found = runtime.createProcessInstanceQuery().processInstanceTenantId(tenant.id())
                 .variableValueEquals("dossierId", dossier.id().toString()).list();
         return found.isEmpty() ? null : found.get(0).getId();
+    }
+
+    private long deadLetters(String instance) {
+        return management.createDeadLetterJobQuery().processInstanceId(instance).count();
+    }
+
+    private String startExisting(Dossier dossier) {
+        var started = transaction.execute(status -> starter.start(dossier.id(), PROCESS, Map.of(),
+                "demo-onboarding-" + dossier.id(), ACTOR));
+        String instance = started.link().processInstanceId();
+        advanceTo(instance, "validationManager");
+        return instance;
     }
 
     /** Crée et ouvre un dossier d'arrivée, puis démarre le processus : il attend la validation du manager. */

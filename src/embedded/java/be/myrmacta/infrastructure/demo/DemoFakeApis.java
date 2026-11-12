@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.demo;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -114,7 +115,7 @@ public class DemoFakeApis implements SmartLifecycle {
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             String line = exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawPath();
-            byte[] body = exchange.getRequestBody().readNBytes(MAX_BODY_BYTES);
+            byte[] body = readBody(exchange.getRequestBody());
             synchronized (received) {
                 received.add(line);
                 while (received.size() > MAX_RECEIVED) {
@@ -156,6 +157,19 @@ public class DemoFakeApis implements SmartLifecycle {
             return new Response(204, "");
         }
         return new Response(404, "{\"error\":\"unknown route\"}");
+    }
+
+    /**
+     * Au plus {@link #MAX_BODY_BYTES} sont gardés pour la réponse. Le reste est jeté (tampon fixe) jusqu'à la fin du corps :
+     * sinon la requête suivante sur la même connexion HTTP est désalignée.
+     */
+    private static byte[] readBody(InputStream in) throws IOException {
+        byte[] body = in.readNBytes(MAX_BODY_BYTES);
+        byte[] sink = new byte[8192];
+        while (in.read(sink) >= 0) {
+            // jeter
+        }
+        return body;
     }
 
     /** Un texte de premier niveau du corps JSON, ou {@code null} (absent, vide ou corps illisible). */

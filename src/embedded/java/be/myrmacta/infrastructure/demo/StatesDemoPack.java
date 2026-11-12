@@ -133,6 +133,9 @@ public class StatesDemoPack implements DemoPack {
             invoice(invoice, now);
         }
         onboarding.seedIncident();
+        if (!onboarding.incidentReady()) {
+            throw new IllegalStateException("demo: SIRH incident missing, routing draft not proposed");
+        }
         proposeRoutingDraft();
         log.info("demo: states installed ({} invoices over four weeks, 1 incident, 1 MCP draft)", HISTORY.size());
     }

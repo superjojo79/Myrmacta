@@ -25,8 +25,10 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
 - **Paquets** (`DemoPack`) : chacun installe un exemple, ou un jeu d'états, par les vrais cas d'usage. `DemoSeeder`
   les installe dans l'ordre (`order()`, unique), au démarrage de l'application, et passe ceux que `installed()` dit
   présents. `installed()` ne regarde que le **dernier** effet du paquet (D-DEMO-INSTALL, §135) : le brouillon
-  `routageCourrier` pour les états, la tâche `validationAcces` pour l'onboarding. Un paquet interrompu avant est
-  rejoué, sans dupliquer les factures, l'incident ou les arrivées déjà créés. Un paquet en échec arrête la démo.
+  `routageCourrier` pour les états (proposé seulement si l'incident SIRH existe), la tâche `validationAcces` de Sarah
+  pour l'onboarding (Élise, qui passe par la même tâche, ne compte pas). Un dossier dont le processus n'a jamais
+  démarré est relancé sur place ; un processus déjà terminé ne l'est pas. Un paquet interrompu avant est rejoué, sans
+  dupliquer les factures, l'incident ou les arrivées déjà créés. Un paquet en échec arrête la démo.
 - **Paquets livrés :**
   - mail room (`MailRoomDemoPack`, ordre 10) ; le profil `demo-mailroom` n'active que lui (§113) ;
   - onboarding collaborateur (`OnboardingDemoPack`, ordre 20) : connecteurs sur les faux SIRH, IAM et ITSM de

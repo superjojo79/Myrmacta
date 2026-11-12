@@ -1,7 +1,9 @@
 <!doctype html>
 <!--
   TODO §128 (D-VIDEO-PIPELINE, issue #56) — carton plein écran des capsules : titre de capsule, transition (« 25 jours plus
-  tard ») ou fin. Page statique, ouverte par le tournage : card.html?kicker=…&title=…&subtitle=…  Aucun appel réseau.
+  tard ») ou fin. Page statique, ouverte par le tournage : card.html?kicker=…&title=…&subtitle=…&logo=1  Aucun appel
+  réseau. Avec logo=1 (ouverture et fin), le logo de Myrmacta (celui de l'application sur fond sombre) remplace le
+  sur-titre et le pied de page.
 -->
 <html lang="fr">
 <head>
@@ -15,6 +17,9 @@
            background: radial-gradient(circle at 30% 20%, var(--bg2), var(--bg1) 70%);
            font: 400 20px/1.4 "Segoe UI", "Inter", system-ui, sans-serif; }
     .card { text-align: center; max-width: 80vw; animation: in .9s ease-out both; }
+    .logo { display: none; width: min(46vw, 620px); height: auto; margin: 0 auto 30px; }
+    .with-logo .logo { display: block; }
+    .with-logo .kicker, .with-logo ~ .brand { display: none; }
     .kicker { color: var(--accent); letter-spacing: .25em; text-transform: uppercase; font-size: 22px; font-weight: 600; }
     h1 { font-size: 72px; line-height: 1.1; margin: 18px 0 14px; font-weight: 700; }
     .subtitle { color: var(--muted); font-size: 30px; }
@@ -25,7 +30,8 @@
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="card" id="card">
+    <img class="logo" src="../../src/assets/brand/myrmacta-logo-dark.svg" alt="Myrmacta">
     <div class="kicker" id="kicker"></div>
     <h1 id="title"></h1>
     <div class="subtitle" id="subtitle"></div>
@@ -37,6 +43,7 @@
       document.getElementById(key).textContent = params.get(key) || '';
     }
     document.documentElement.lang = params.get('lang') === 'en' ? 'en' : 'fr';
+    if (params.get('logo') === '1') document.getElementById('card').classList.add('with-logo');
   </script>
 </body>
 </html>

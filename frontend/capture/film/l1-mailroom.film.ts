@@ -41,9 +41,9 @@ async function invoice(page: Page, label = invoiceLabel): Promise<DossierSummary
   return until(async () => (await dossiers(page, 'FACTURE')).find((d) => d.label === label))
 }
 
-function card(kicker: string, title: string, subtitle = ''): string {
+function card(kicker: string, title: string, subtitle = '', logo = false): string {
   const url = pathToFileURL(resolve(REPO, 'frontend/capture/panel/card.html'))
-  url.search = new URLSearchParams({ kicker, title, subtitle, lang }).toString()
+  url.search = new URLSearchParams({ kicker, title, subtitle, lang, logo: logo ? '1' : '0' }).toString()
   return url.toString()
 }
 
@@ -68,7 +68,7 @@ test.describe.configure({ mode: 'serial' })
 
 test('intro', async ({ page }) => {
   const d = new Director(page, 'intro')
-  await page.goto(card('Myrmacta', capsule.title[lang], 'Digital Mail Room'))
+  await page.goto(card('Myrmacta', capsule.title[lang], 'Digital Mail Room', true))
   await d.holdForVoice()
   await d.wrap(order('intro'))
 })
@@ -216,7 +216,9 @@ test('conclusion', async ({ page }) => {
   await expect(page.locator('.dmn-decision-table-container, .dmn-drd-container').first()).toBeVisible()
   await d.beat(5)
   await d.banner(null)
-  await page.goto(card('Myrmacta', en ? 'Incoming mail, from the first e-mail to the due date' : 'Le courrier entrant, du premier e-mail à l’échéance', 'myrmacta.be'))
+  await page.goto(card('Myrmacta', en ? 'Incoming mail, from the first e-mail to the due date' : 'Le courrier entrant, du premier e-mail à l’échéance', 'myrmacta.be', true))
+  // Le carton de fin reste au moins 3 s, même si la voix s'est tue avant qu'il paraisse.
+  await d.beat(3)
   await d.holdForVoice(2.5)
   await d.wrap(order('conclusion'))
 })

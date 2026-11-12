@@ -51,11 +51,21 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   (`npm run capture`, `CAPTURE_LANG=fr|en`) pilotent une démo démarrée par `scripts/demo.sh` : connexion Keycloak
   mémorisée, puis 14 screenshots (S1 à S15 sans S13) dans `frontend/capture/out/<langue>/`, non versionnés. Procédure :
   [GETTING-STARTED](../guides/GETTING-STARTED.md), « Captures du site ».
+- **Capsule vidéo « Digital Mail Room »** (§128, D-VIDEO-MAIL, D-VIDEO-DEADLINE) : profil `demo-video-mailroom`. La
+  mail room s'installe sans ses trois courriers d'exemple ; `VideoMailRoomDemoPack` (ordre 30) crée la boîte IMAP de
+  l'exemple pointée sur le GreenMail local (`localhost:3143`, sans chiffrement : D-IMAP-LOCAL-LOOPBACK), inscrit l'agent
+  IA de la capsule (`app.demo.video.agent-subject`, défaut `agent-ia-tri`) dans l'annuaire et la file de tri (COURRIER),
+  et fait arriver deux factures du fournisseur connu dont l'échéance tombe dans 3 jours et avant-hier : le vrai job des
+  échéances envoie le rappel et escalade la seconde vers DIRECTION_FINANCIERE. Les e-mails du tournage partent en SMTP
+  vers GreenMail (`scripts/video/send_mail.py`) et suivent le vrai chemin ; ceux que Myrmacta envoie vont à Mailpit.
+  Commandes : `scripts/video.sh build | mail-servers | start | mail <scénario> | reset`.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.
 - **Tests :** `DemoSeederTest` (ordre, paquet déjà installé, échec), `DemoSeederIT` (profil `demo` sur base vide, puis
-  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais), `DemoGroupMembershipTest`.
+  redémarrage sans réinstallation), `MailRoomDemoSeederIT` (contenu du paquet mail room), `DemoFakeApisTest` et `OnboardingDemoPackIT` (paquet onboarding), `StatesDemoPackIT` (paquet « états »), `DemoExampleTest` et `DemoLocaleIT` (démo en anglais), `DemoGroupMembershipTest`,
+  `VideoMailRoomDemoPackIT` (scène de la capsule : pas de courriers d'exemple, boîte IMAP relevée par le vrai connecteur
+  sur un GreenMail, agent dans la file de tri, rappel et escalade des factures semées).
 
 ## Pourquoi pas Supabase / un PostgreSQL managé
 

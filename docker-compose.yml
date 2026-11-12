@@ -219,10 +219,25 @@ services:
     # MAIL_PORT=1025 dans .env ; l'indicateur de santé mail du backend passe alors UP. Jamais en
     # production : relais SMTP réel (docs/guides/GETTING-STARTED.md §6, docs/guides/DEPLOIEMENT.md).
     image: axllent/mailpit:v1.31.5
-    profiles: ["mailpit"]
+    profiles: ["mailpit", "video"]
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"   # SMTP
       - "8025:8025"                         # UI web
+
+  greenmail:
+    # Boîte e-mail de la capsule vidéo (TODO §128, D-VIDEO-MAIL) : le tournage envoie la facture et la réponse du
+    # fournisseur en SMTP (3025) à courrier@demo.example, que le connecteur IMAP de la démo relève (3143, sans chiffrement,
+    # permis seulement vers la boucle locale en profil local : D-IMAP-LOCAL-LOOPBACK). Même version que la bibliothèque
+    # de test. Jamais en production. `scripts/video.sh scene` le démarre avec Mailpit.
+    image: greenmail/standalone:2.1.15
+    profiles: ["video"]
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.imap -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=courrier:demo@demo.example -Dgreenmail.users.login=local_part -Dgreenmail.verbose
+    ports:
+      - "127.0.0.1:3025:3025"   # SMTP (envoi du tournage)
+      - "127.0.0.1:3143:3143"   # IMAP (relève par Myrmacta)
 
   # --- Observabilité — scrape local de /actuator/prometheus, exposé par le backend ---
 

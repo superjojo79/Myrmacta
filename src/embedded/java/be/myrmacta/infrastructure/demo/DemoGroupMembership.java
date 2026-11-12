@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
  * jamais la connexion. Build {@code embedded-db} seulement.
  */
 @Component
-@Profile("demo")
+@Profile({"demo", VideoMailRoomDemoPack.PROFILE})
 public class DemoGroupMembership {
 
     private static final Logger log = LoggerFactory.getLogger(DemoGroupMembership.class);

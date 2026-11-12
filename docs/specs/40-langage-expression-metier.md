@@ -79,3 +79,10 @@ bornés comme l'exécution réelle ; les expressions s'écrivent via les tools q
 
 `docs/guides/GUIDE-CONCEPTION-BPMN.md` (nouvelle syntaxe), `docs/guides/GUIDE-UTILISATEUR.md` (champs calculés),
 `05-workflow-engine.md`.
+
+## Implémentation — `$ascii` (TODO §134, D-EXPR-ASCII)
+
+`$ascii(texte)` normalise une chaîne pour un identifiant : décomposition NFD, marques combinatoires retirées,
+translittération `ß`→`ss`, `æ`→`ae`, `œ`→`oe`, `ø`→`o`, `ł`→`l`, minuscules, puis seuls les caractères
+`[a-z0-9.-]` sont conservés. `null` reste absent ; autre type refusé. Un résultat vide est une erreur (pas de login
+envoyé). Pas de regex. L'exemple onboarding l'utilise pour le login IAM (`evandenbroeck`).

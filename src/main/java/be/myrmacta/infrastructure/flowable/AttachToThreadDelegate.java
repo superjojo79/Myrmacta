@@ -4,6 +4,7 @@ import be.myrmacta.application.workflow.ManualStartOrchestrator;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.AccessContext;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierRelation;
 import be.myrmacta.domain.dossier.model.DossierStatus;
@@ -29,6 +30,7 @@ import be.myrmacta.domain.workflow.port.out.WorkflowDeploymentPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowEnginePort;
 import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowTypeConfigRepository;
+import be.myrmacta.infrastructure.config.I18nProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import be.myrmacta.infrastructure.mailroom.MailThreadAttacher;
@@ -44,6 +46,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -96,6 +99,35 @@ class AttachToThreadDelegate implements JavaDelegate {
     private final ManualStartOrchestrator orchestrator;
     private final UpdateDossierStatusUseCase updateStatus;
     private final MailThreadAttacher attacher;
+    private final Locale locale;
+
+    /** Langue du libellé « réponse » : langue par défaut du tenant (D-I18N-DOSSIER-TEXT). */
+    @Autowired
+    AttachToThreadDelegate(
+            MailMessageIndex index,
+            DossierRepository dossiers,
+            DossierRelationRepository relations,
+            CreateDossierRelationUseCase createRelation,
+            DossierElementRepository elements,
+            DocumentStoragePort storage,
+            AttachInboundFilesUseCase attachFiles,
+            DossierWorkflowLinkRepository links,
+            WorkflowParticipantPort participants,
+            SendNotificationUseCase notifications,
+            WorkflowEnginePort engine,
+            TenantProperties tenantProperties,
+            ReplyWorkflowSettings replySettings,
+            WorkflowDeploymentPort deployments,
+            WorkflowTypeConfigRepository workflowConfigs,
+            DossierTypeRepository types,
+            ChildDossierRelationConfirmer childConfirmer,
+            ManualStartOrchestrator orchestrator,
+            UpdateDossierStatusUseCase updateStatus,
+            I18nProperties i18n) {
+        this(index, dossiers, relations, createRelation, elements, storage, attachFiles, links, participants, notifications, engine,
+                tenantProperties, replySettings, deployments, workflowConfigs, types, childConfirmer, orchestrator, updateStatus,
+                i18n.locale());
+    }
 
     AttachToThreadDelegate(
             MailMessageIndex index,
@@ -117,6 +149,32 @@ class AttachToThreadDelegate implements JavaDelegate {
             ChildDossierRelationConfirmer childConfirmer,
             ManualStartOrchestrator orchestrator,
             UpdateDossierStatusUseCase updateStatus) {
+        this(index, dossiers, relations, createRelation, elements, storage, attachFiles, links, participants, notifications, engine,
+                tenantProperties, replySettings, deployments, workflowConfigs, types, childConfirmer, orchestrator, updateStatus,
+                Locale.FRENCH);
+    }
+
+    AttachToThreadDelegate(
+            MailMessageIndex index,
+            DossierRepository dossiers,
+            DossierRelationRepository relations,
+            CreateDossierRelationUseCase createRelation,
+            DossierElementRepository elements,
+            DocumentStoragePort storage,
+            AttachInboundFilesUseCase attachFiles,
+            DossierWorkflowLinkRepository links,
+            WorkflowParticipantPort participants,
+            SendNotificationUseCase notifications,
+            WorkflowEnginePort engine,
+            TenantProperties tenantProperties,
+            ReplyWorkflowSettings replySettings,
+            WorkflowDeploymentPort deployments,
+            WorkflowTypeConfigRepository workflowConfigs,
+            DossierTypeRepository types,
+            ChildDossierRelationConfirmer childConfirmer,
+            ManualStartOrchestrator orchestrator,
+            UpdateDossierStatusUseCase updateStatus,
+            Locale locale) {
         this.index = Objects.requireNonNull(index, "index");
         this.dossiers = Objects.requireNonNull(dossiers, "dossiers");
         this.relations = Objects.requireNonNull(relations, "relations");
@@ -136,8 +194,9 @@ class AttachToThreadDelegate implements JavaDelegate {
         this.childConfirmer = Objects.requireNonNull(childConfirmer, "childConfirmer");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
         this.updateStatus = Objects.requireNonNull(updateStatus, "updateStatus");
+        this.locale = Objects.requireNonNull(locale, "locale");
         this.attacher = new MailThreadAttacher(relations, createRelation, elements, storage, attachFiles, links, participants,
-                notifications, engine);
+                notifications, engine, locale);
     }
 
     @Override
@@ -242,10 +301,12 @@ class AttachToThreadDelegate implements JavaDelegate {
         String childKey = idempotencyKey + ":reponse";
         UUID child;
         try {
-            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(), "Réponse " + mail.reference(), Map.of(),
+            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(),
+                    ServerDossierTexts.supplierReplyLabel(locale, mail.reference()), Map.of(),
                     RelationType.PARENT_CHILD, childKey);
         } catch (DuplicateDossierRelationException race) {
-            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(), "Réponse " + mail.reference(), Map.of(),
+            child = childConfirmer.confirm(tenantId, target.id(), setting.childTypeCode(),
+                    ServerDossierTexts.supplierReplyLabel(locale, mail.reference()), Map.of(),
                     RelationType.PARENT_CHILD, childKey);
         }
         dossiers.findById(child).filter(dossier -> dossier.status() == DossierStatus.DRAFT).ifPresent(draft -> updateStatus.update(

@@ -150,6 +150,9 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 129 | [Libellé lisible d'un dossier créé par un déclencheur](129-libelle-dossier-cree-par-trigger.md) | clos | — |
 | 130 | [Éditeur DMN : conversion 1.1 → 1.3 à l'ouverture](130-editeur-dmn-conversion-1-1-vers-1-3.md) | clos | — |
 | 131 | [Historique d'exécution : étapes significatives seulement](131-historique-etapes-significatives.md) | clos | — |
+| 133 | [Langue des textes serveur posés sur un dossier](133-langue-des-textes-serveur-du-dossier.md) | clos | — |
+| 134 | [Normalisation ASCII d'un login calculé](134-normalisation-ascii-du-login-iam.md) | clos | — |
+| 135 | [Reprise d'un paquet de démo interrompu, faux services bornés](135-reprise-d-un-paquet-de-demo-interrompu.md) | clos | — |
 
 ## Sections de l'ancien registre
 

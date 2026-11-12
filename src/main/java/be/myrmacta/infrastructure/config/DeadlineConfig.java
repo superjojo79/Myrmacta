@@ -52,8 +52,9 @@ class DeadlineConfig {
             UserGroupsUseCase groups,
             WorkflowVisualizationPort engine,
             WorkflowLinkGroupRepository linkGroups,
-            DossierElementRepository elements) {
+            DossierElementRepository elements,
+            I18nProperties i18n) {
         return new EvaluateDeadlinesUseCaseImpl(settings, calendars, candidates, claims, links, participants, notifications, groups,
-                engine, linkGroups, elements);
+                engine, linkGroups, elements, i18n.locale());
     }
 }

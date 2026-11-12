@@ -34,7 +34,7 @@ REQ_SIRH = ("{'method': 'POST', 'path': '/employees', " + JSON + ",\n"
             "          'department': dossier.fields.departement, 'startDate': dossier.fields.dateArrivee,\n"
             "          'managerLogin': dossier.fields.managerLogin, 'externalReference': dossier.reference}}")
 REQ_IAM = ("{'method': 'POST', 'path': '/users', " + JSON + ",\n"
-           " 'body': {'username': $replace($lowercase($substring(dossier.fields.prenom, 0, 1) & dossier.fields.nom), ' ', ''),\n"
+           " 'body': {'username': $ascii($substring(dossier.fields.prenom, 0, 1) & dossier.fields.nom),\n"
            "          'firstName': dossier.fields.prenom, 'lastName': dossier.fields.nom,\n"
            "          'employeeNumber': dossier.fields.matriculeSirh, 'enabled': false,\n"
            "          'attributes': {'department': dossier.fields.departement, 'manager': dossier.fields.managerLogin}}}")

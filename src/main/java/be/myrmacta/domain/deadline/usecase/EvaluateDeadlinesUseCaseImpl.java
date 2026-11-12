@@ -1,6 +1,7 @@
 package be.myrmacta.domain.deadline.usecase;
 
 import be.myrmacta.domain.deadline.model.BusinessCalendar;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.deadline.model.DeadlineCandidate;
 import be.myrmacta.domain.deadline.model.DeadlineLevel;
 import be.myrmacta.domain.deadline.model.DeadlineSetting;
@@ -27,6 +28,7 @@ import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,6 +61,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
     private final WorkflowVisualizationPort engine;
     private final WorkflowLinkGroupRepository linkGroups;
     private final DossierElementRepository elements;
+    private final Locale locale;
 
     public EvaluateDeadlinesUseCaseImpl(
             DeadlineSettings settings,
@@ -72,6 +75,24 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
             WorkflowVisualizationPort engine,
             WorkflowLinkGroupRepository linkGroups,
             DossierElementRepository elements) {
+        this(settings, calendars, candidates, claims, links, participants, notifications, groups, engine, linkGroups, elements,
+                Locale.FRENCH);
+    }
+
+    /** Langue des notes et notifications : langue par défaut du tenant (D-I18N-DOSSIER-TEXT). */
+    public EvaluateDeadlinesUseCaseImpl(
+            DeadlineSettings settings,
+            TenantCalendars calendars,
+            DeadlineCandidates candidates,
+            DeadlineAlertClaims claims,
+            DossierWorkflowLinkRepository links,
+            WorkflowParticipantPort participants,
+            SendNotificationUseCase notifications,
+            UserGroupsUseCase groups,
+            WorkflowVisualizationPort engine,
+            WorkflowLinkGroupRepository linkGroups,
+            DossierElementRepository elements,
+            Locale locale) {
         this.settings = Objects.requireNonNull(settings, "settings");
         this.calendars = Objects.requireNonNull(calendars, "calendars");
         this.candidates = Objects.requireNonNull(candidates, "candidates");
@@ -83,6 +104,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
         this.engine = Objects.requireNonNull(engine, "engine");
         this.linkGroups = Objects.requireNonNull(linkGroups, "linkGroups");
         this.elements = Objects.requireNonNull(elements, "elements");
+        this.locale = Objects.requireNonNull(locale, "locale");
     }
 
     @Override
@@ -123,8 +145,8 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
         LocalDate remindFrom = calendar.subtract(deadline, setting.reminderDays(), setting.reminderDayCount());
         if (setting.reminderDays() > 0 && !today.isBefore(remindFrom)
                 && claims.claim(tenantId, candidate.dossierId(), DeadlineLevel.RAPPEL, deadline, now)) {
-            String title = "Échéance proche — " + candidate.reference();
-            String body = "Le dossier " + candidate.reference() + " arrive à échéance le " + deadline + ".";
+            String title = ServerDossierTexts.deadlineReminderTitle(locale, candidate.reference());
+            String body = ServerDossierTexts.deadlineReminderBody(locale, candidate.reference(), deadline);
             notifyUsers(tenantId, participantsOf(candidate.dossierId()), payload("DOSSIER_DEADLINE_REMINDER", title, body, candidate,
                     deadline));
         }
@@ -143,9 +165,8 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
             }
             linkGroups.assign(tenantId, link.id(), group);
         }
-        String title = "Échéance dépassée — " + candidate.reference();
-        String body = "Le dossier " + candidate.reference() + " a dépassé son échéance du " + deadline + "."
-                + (group == null ? "" : " Escaladé au groupe " + group + ".");
+        String title = ServerDossierTexts.deadlineEscalationTitle(locale, candidate.reference());
+        String body = ServerDossierTexts.deadlineEscalationBody(locale, candidate.reference(), deadline, group);
         Map<String, Object> payload = payload("DOSSIER_DEADLINE_ESCALATED", title, body, candidate, deadline);
         Set<String> recipients = new LinkedHashSet<>(previousParticipants);
         if (group != null) {
@@ -153,7 +174,7 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
         }
         notifyUsers(tenantId, recipients, payload);
         elements.save(new DossierElement(UUID.randomUUID(), candidate.dossierId(), tenantId, ElementType.NOTE,
-                noteLabel(deadline, setting.escalationGroup(), group, reassigned), null,
+                ServerDossierTexts.deadlineEscalationNote(locale, deadline, setting.escalationGroup(), group, reassigned), null,
                 noteMetadata(deadline, setting.escalationGroup(), group, reassigned), SYSTEM, now, null));
     }
 
@@ -214,17 +235,6 @@ public final class EvaluateDeadlinesUseCaseImpl implements EvaluateDeadlinesUseC
         payload.put("dossierTypeCode", candidate.dossierTypeCode());
         payload.put("deadline", deadline.toString());
         return Map.copyOf(payload);
-    }
-
-    private static String noteLabel(LocalDate deadline, String configured, String group, List<String> reassigned) {
-        String head = "Échéance du " + deadline + " dépassée";
-        if (group == null) {
-            return configured == null ? head + " : aucun groupe d'escalade" : head + " : groupe d'escalade introuvable (" + configured + ")";
-        }
-        if (reassigned.isEmpty()) {
-            return head + " : groupe " + group + " prévenu, aucune tâche ouverte";
-        }
-        return head + " : " + reassigned.size() + " tâche(s) réaffectée(s) au groupe " + group + " (" + String.join(", ", reassigned) + ")";
     }
 
     private static Map<String, Object> noteMetadata(LocalDate deadline, String configured, String group, List<String> reassigned) {

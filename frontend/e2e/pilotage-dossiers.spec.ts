@@ -48,6 +48,19 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
+/** TODO §131 (D-HISTORY-SIGNIFICANT) — frise : noms métier, pas d'ids techniques flow_… (contrat API filtré). */
+test('E2E-HISTORY-1 timeline shows named significant steps only', async ({ page }) => {
+  await mockSession(page)
+  await openApp(page)
+  await createAndOpenDossier(page)
+  await page.getByRole('button', { name: 'Démarrer workflow' }).click()
+  await page.locator('.dialog button.primary').click()
+  await expect(page.getByRole('heading', { name: 'Historique' })).toBeVisible()
+  await expect(page.locator('.history-timeline')).toContainText('Smoke Task')
+  await expect(page.locator('.history-timeline')).toContainText('Start')
+  await expect(page.locator('.history-timeline')).not.toContainText('flow_')
+})
+
 test('E2E-START-VARS-1 start variables typed in the dialog are sent with the start request (TODO §93)', async ({ page }) => {
   await mockSession(page)
   await openApp(page)

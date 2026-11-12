@@ -25,7 +25,7 @@ La visualisation est accessible aux utilisateurs impliqués dans l'instance (ass
 | Méthode | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/workflow-links/{linkId}/diagram` | XML BPMN + IDs actifs / terminés / en erreur |
-| `GET` | `/api/workflow-links/{linkId}/history` | Étapes avec timing, durée et assigné |
+| `GET` | `/api/workflow-links/{linkId}/history` | Étapes **significatives** avec timing, durée et assigné (TODO §131) |
 | `GET` | `/api/workflow-links/{linkId}/tasks` | Tâches actives avec assigné courant |
 | `POST` | `/api/workflow-links/{linkId}/tasks/{taskId}/reassign` | Réassignation de tâche |
 | `GET` | `/api/workflow-links/{linkId}/dossier` | Panneau dossier en regard du workflow (voir plus bas) |
@@ -62,6 +62,24 @@ public class ActivityHistoryEntry {
     Long     durationMs;
 }
 ```
+
+### Historique — étapes significatives
+
+> **Implémentation — D-HISTORY-SIGNIFICANT (TODO §131, issue #69).** L'endpoint `/history` ne
+> renvoie plus toutes les `HistoricActivityInstance` Flowable. Une règle domaine
+> (`SignificantActivityFilter`) exclut :
+>
+> 1. les types techniques : `sequenceFlow` et les passerelles (`exclusiveGateway`,
+>    `inclusiveGateway`, `parallelGateway`, `eventBasedGateway`, `complexGateway`) ;
+> 2. toute activité sans nom (nom null ou blanc).
+>
+> Le reste (tâches, événements nommés, service tasks de statut nommés, …) est paginé dans
+> l'ordre chronologique sur ce sous-ensemble. La lecture Flowable est bornée à
+> `SignificantActivityFilter.RAW_SCAN_LIMIT` (2 000) activités brutes via `listPage` — pas de
+> `.list()` non borné (§24). Au-delà de cette borne, des étapes plus récentes peuvent manquer
+> (ordre chronologique) ; un avertissement est journalisé, sans champ `truncated` sur l'enveloppe
+> (trade-off OpenAPI, §131). Le diagramme BPMN continue d'utiliser l'ensemble des IDs ; seul le
+> contrat d'historique métier est filtré (adaptateur `FlowableWorkflowVisualizationAdapter`).
 
 ### Adaptateur Flowable
 

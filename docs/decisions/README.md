@@ -149,6 +149,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 128 | [Capsules vidéo du site : tournage, voix et montage automatisés](128-capsules-video-du-site.md) | clos | — |
 | 129 | [Libellé lisible d'un dossier créé par un déclencheur](129-libelle-dossier-cree-par-trigger.md) | clos | — |
 | 130 | [Éditeur DMN : conversion 1.1 → 1.3 à l'ouverture](130-editeur-dmn-conversion-1-1-vers-1-3.md) | clos | — |
+| 131 | [Historique d'exécution : étapes significatives seulement](131-historique-etapes-significatives.md) | clos | — |
 
 ## Sections de l'ancien registre
 

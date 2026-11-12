@@ -26,6 +26,26 @@ describe('HistoryTimeline', () => {
     expect(wrapper.text()).toContain('Start')
   })
 
+  /** Contrat API §131 : le SPA reçoit déjà des étapes significatives nommées. */
+  it('prefers the activity name over the technical id', () => {
+    const wrapper = mount(HistoryTimeline, {
+      props: {
+        history: [
+          {
+            activityId: 'smokeTask',
+            name: 'Smoke Task',
+            assignee: null,
+            startTime: '2026-11-12T00:00:00Z',
+            endTime: null,
+            durationMs: null,
+          },
+        ],
+      },
+    })
+    expect(wrapper.text()).toContain('Smoke Task')
+    expect(wrapper.text()).not.toContain('flow_')
+  })
+
   it('shows the pager when there is more than one page and emits update:page', async () => {
     const wrapper = mount(HistoryTimeline, { props: { history: [], page: 0, totalPages: 2 } })
     expect(wrapper.find('[data-testid="admin-pager-next"]').exists()).toBe(true)

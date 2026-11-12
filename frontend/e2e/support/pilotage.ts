@@ -940,7 +940,31 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/history')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+      // Miroir D-HISTORY-SIGNIFICANT (TODO §131) : l'API ne renvoie déjà plus les sequenceFlow / passerelles.
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          envelope([
+            {
+              activityId: 'startEvent',
+              name: 'Start',
+              assignee: null,
+              startTime: '2026-11-12T10:00:00Z',
+              endTime: '2026-11-12T10:00:01Z',
+              durationMs: 1000,
+            },
+            {
+              activityId: 'smokeTask',
+              name: 'Smoke Task',
+              assignee: 'user-1',
+              startTime: '2026-11-12T10:00:01Z',
+              endTime: null,
+              durationMs: null,
+            },
+          ]),
+        ),
+      })
       return
     }
     if (url.includes('/reassign-group') && route.request().method() === 'POST') {

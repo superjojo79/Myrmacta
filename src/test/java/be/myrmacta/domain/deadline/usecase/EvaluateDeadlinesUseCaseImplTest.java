@@ -37,6 +37,7 @@ import be.myrmacta.domain.workflow.port.out.WorkflowParticipantPort;
 import be.myrmacta.domain.workflow.port.out.WorkflowVisualizationPort;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -159,6 +160,30 @@ class EvaluateDeadlinesUseCaseImplTest {
         useCase.scan(TENANT, at("2026-11-09"), Runnable::run);
 
         verify(claims).claim(eq(TENANT), eq(dossierId), eq(DeadlineLevel.ESCALADE), eq(LocalDate.parse("2026-11-06")), any());
+    }
+
+    /** TODO §132 (D-I18N-DOSSIER-TEXT) — en anglais, la note d'escalade et la notification ne restent pas en français. */
+    @Test
+    void anEnglishTenantWritesTheEscalationNoteAndNotificationInEnglish() {
+        useCase = new EvaluateDeadlinesUseCaseImpl(settings, calendars, candidates, claims, links, participants, notifications, groups,
+                engine, linkGroups, elements, Locale.ENGLISH);
+        when(links.findActiveByDossierId(dossierId)).thenReturn(Optional.of(link));
+        WorkflowTaskView handle = task("t1", "Handle the invoice");
+        when(engine.listActiveTasks(eq("pi-1"), eq(TENANT), any()))
+                .thenReturn(new PageResult<>(List.of(handle), 0, 100, 1, 1));
+        when(engine.reassignTaskToGroup(any(), any(), any(), any())).thenReturn(new TaskGroupReassignment("x", List.of(), null));
+
+        useCase.scan(TENANT, at("2026-12-01"), Runnable::run);
+
+        ArgumentCaptor<DossierElement> note = ArgumentCaptor.forClass(DossierElement.class);
+        verify(elements).save(note.capture());
+        assertThat(note.getValue().label())
+                .isEqualTo("Deadline of 2026-11-30 passed: 1 task(s) reassigned to group DIRECTION (Handle the invoice)");
+        assertThat(sent).allSatisfy(event -> {
+            assertThat(event.payload()).containsEntry("title", "Deadline passed — DOS-FACTURE-1");
+            assertThat(String.valueOf(event.payload().get("body"))).contains("missed its deadline of 2026-11-30")
+                    .contains("Escalated to group DIRECTION");
+        });
     }
 
     @Test

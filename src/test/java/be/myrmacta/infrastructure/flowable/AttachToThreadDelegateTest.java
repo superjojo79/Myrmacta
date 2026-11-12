@@ -13,6 +13,7 @@ import be.myrmacta.application.workflow.ManualStartOrchestrator;
 import be.myrmacta.domain.connector.port.in.AttachInboundFilesUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.dossier.model.Dossier;
+import be.myrmacta.domain.dossier.model.RelationType;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
 import be.myrmacta.domain.dossier.model.DossierWorkflowLink;
@@ -40,12 +41,14 @@ import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.dossier.ChildDossierRelationConfirmer;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /** TODO §113 (D-MAILROOM-THREAD) — sans fil sûr, le courrier suit le routage ordinaire, sans aucune écriture sur un autre dossier. */
 class AttachToThreadDelegateTest {
@@ -199,6 +202,37 @@ class AttachToThreadDelegateTest {
         assertThat(written).containsEntry("filResultat", "RATTACHE").containsEntry("filReponseWorkflow", "AUCUN")
                 .doesNotContainKey("filReponseMotif");
         verifyNoInteractions(orchestrator, childConfirmer);
+    }
+
+    /** TODO §132 (D-I18N-DOSSIER-TEXT) — en anglais, le dossier enfant d'une réponse fournisseur n'est pas libellé en français. */
+    @Test
+    void anEnglishTenantNamesTheSupplierReplyDossierInEnglish() {
+        delegate = new AttachToThreadDelegate(index, dossiers, relations, createRelation, elements, storage, attachFiles, links,
+                participants, notifications, engine, new TenantProperties(TENANT), replySettings, deployments, workflowConfigs, types,
+                childConfirmer, orchestrator, updateStatus, Locale.ENGLISH);
+        when(dossiers.findById(mailId)).thenReturn(Optional.of(dossier(mailId, "DOS-COURRIER-2026-000006", DossierStatus.EN_COURS)));
+        attachable();
+        when(replySettings.find(TENANT, "FACTURE")).thenReturn(Optional.of(new ReplyWorkflowSetting(TENANT, "FACTURE",
+                ReplyWorkflowSetting.Mode.DOSSIER_ENFANT, "traiterReponse", "REPONSE_FACTURE")));
+        when(deployments.findDeploymentInfo(TENANT, "traiterReponse"))
+                .thenReturn(Optional.of(new ProcessDeploymentInfo("traiterReponse", 1, 0)));
+        WorkflowTypeConfig config = mock(WorkflowTypeConfig.class);
+        when(config.allowsDossierStatus(any())).thenReturn(true);
+        when(workflowConfigs.findByWorkflowKey(TENANT, "traiterReponse")).thenReturn(Optional.of(config));
+        when(types.findByCode(TENANT, "REPONSE_FACTURE")).thenReturn(Optional.of(new DossierType(UUID.randomUUID(), TENANT,
+                "REPONSE_FACTURE", "Reply", "traiterReponse", true, false, java.util.List.of(), null, false, null, "system",
+                "system")));
+        UUID child = UUID.randomUUID();
+        when(childConfirmer.confirm(any(), any(), any(), any(), any(), any(), any())).thenReturn(child);
+        when(dossiers.findById(child)).thenReturn(Optional.empty());
+
+        delegate.execute(execution);
+
+        ArgumentCaptor<String> label = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(childConfirmer).confirm(eq(TENANT), eq(threadId), eq("REPONSE_FACTURE"), label.capture(),
+                eq(java.util.Map.of()), eq(RelationType.PARENT_CHILD), any());
+        assertThat(label.getValue()).isEqualTo("Reply DOS-COURRIER-2026-000006");
+        assertThat(written).containsEntry("filReponseWorkflow", "DEMARRE_SUR_ENFANT");
     }
 
     /** DOSSIER_ENFANT : un type enfant qu'on ne saurait pas remplir est refusé avant toute écriture. */

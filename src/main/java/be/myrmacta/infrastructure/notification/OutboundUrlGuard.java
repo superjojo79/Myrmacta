@@ -279,7 +279,8 @@ public class OutboundUrlGuard {
         }
     }
 
-    private static String extractAuthorityHost(String url) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static String extractAuthorityHost(String url) {
         int schemeIdx = url.indexOf("://");
         if (schemeIdx < 0) {
             return null;
@@ -330,7 +331,8 @@ public class OutboundUrlGuard {
         return ipv4 != null && isBlockedIpv4Literal(ipv4);
     }
 
-    private static boolean isBlockedIpv6(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isBlockedIpv6(String host) {
         if (!host.contains(":")) {
             return false;
         }
@@ -352,14 +354,16 @@ public class OutboundUrlGuard {
         return false;
     }
 
-    private static boolean isHex(char c) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isHex(char c) {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
     }
 
     /**
      * Returns dotted IPv4 if host is dotted quad, IPv4-mapped IPv6, or decimal IPv4.
      */
-    private static String extractIpv4(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static String extractIpv4(String host) {
         if (host.matches("\\d+")) {
             try {
                 long value = Long.parseLong(host);
@@ -405,7 +409,8 @@ public class OutboundUrlGuard {
         return host;
     }
 
-    private static boolean isBlockedIpv4Literal(String host) {
+    // Visible du paquet : testée aux bornes (seuil de mutation ; le contrôle de l'adresse résolue la double).
+    static boolean isBlockedIpv4Literal(String host) {
         String[] parts = host.split("\\.");
         if (parts.length != 4) {
             return false;

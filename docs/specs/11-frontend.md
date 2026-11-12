@@ -170,6 +170,13 @@ npm install -D vue-tsc
 - **SPA :** `AdminPager` et `useAdminListQuery` ; les listes déroulantes hors admin lisent toutes les pages
   (`listAllPages`, taille 100). Écran `/admin/notification-webhooks` ajouté.
 
+## Implémentation — durée SLA lisible sur Mes tâches (issue #67)
+
+- **Comportement :** `slaRemainingHours` (heures fractionnaires) est formaté par `formatDurationHours`
+  (`frontend/src/i18n/format.ts`) avant affichage sur `/tasks` — ex. `2 j 23 h` / `3 h 12 min` (FR),
+  `2 d 23 h` / `3 h 12 min` (EN) ; jamais le double brut.
+- **Tests :** Vitest `src/i18n/index.spec.ts` (FR/EN) et `MobileTasksView.spec.ts` ; Playwright `E2E-SLA-5`.
+
 ## Implémentation — tests de mutation StrykerJS (issue #245, TODO §108)
 
 - **Outil :** StrykerJS et son lanceur Vitest, dépendances de développement (hors SPA livré). Configuration

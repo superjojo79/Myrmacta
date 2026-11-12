@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyTenantDefault, clearStoredLocale, currentLocale, i18n, setLocale } from './index'
-import { formatDate, formatDateTime, formatMoney, formatNumber } from './format'
+import { formatDate, formatDateTime, formatDurationHours, formatMoney, formatNumber } from './format'
 import { LOCALE_STORAGE_KEY } from './locales'
 
 describe('runtime locale (D7)', () => {
@@ -85,5 +85,18 @@ describe('formats follow the language (D7)', () => {
     expect(formatNumber(undefined)).toBe('—')
     expect(formatMoney('12', 'not-a-currency')).toBe('12 not-a-currency')
     expect(formatMoney(null, 'EUR')).toBe('—')
+  })
+
+  it('formats a remaining SLA duration without raw fractional hours (issue #67)', () => {
+    expect(formatDurationHours(71.89438361111111)).toBe('2 j 23 h')
+    expect(formatDurationHours(3.2)).toBe('3 h 12 min')
+    expect(formatDurationHours(12)).toBe('12 h')
+    expect(formatDurationHours(0.4)).toBe('24 min')
+    expect(formatDurationHours(null)).toBe('—')
+    expect(formatDurationHours(Number.POSITIVE_INFINITY)).toBe('—')
+    setLocale('en')
+    expect(formatDurationHours(71.89438361111111)).toBe('2 d 23 h')
+    expect(formatDurationHours(3.2)).toBe('3 h 12 min')
+    expect(formatDurationHours(12)).toBe('12 h')
   })
 })

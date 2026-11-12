@@ -177,7 +177,7 @@ test('E2E-SLA-5 inbox shows remaining SLA hours', async ({ page }) => {
   await openApp(page)
   await page.getByRole('link', { name: 'Tâches' }).click()
   await expect(page.getByTestId('task-sla')).toContainText('SLA')
-  await expect(page.getByTestId('task-sla')).toContainText('12')
+  await expect(page.getByTestId('task-sla')).toContainText('12 h')
 })
 
 test('E2E-SLA-7 custom period is sent as UTC Instant not datetime-local', async ({ page }) => {

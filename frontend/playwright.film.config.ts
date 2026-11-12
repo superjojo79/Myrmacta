@@ -8,8 +8,11 @@ import { captureLang } from './capture/settings'
 
 const lang = captureLang()
 
-export const FILM_SIZE = { width: 1920, height: 1080 }
-/** Écran filmé : 1280×720, agrandi en 1920×1080 à l'enregistrement — l'interface reste lisible en vidéo. */
+/**
+ * Écran filmé : 1280×720, enregistré à cette même taille, puis agrandi en 1920×1080 au montage (scripts/video/assemble.py)
+ * — l'interface reste lisible en vidéo. Une vidéo plus grande que l'écran ne l'agrandit pas : Playwright pose l'image en
+ * haut à gauche et remplit le reste de gris.
+ */
 export const SCREEN = { width: 1280, height: 720 }
 
 export default defineConfig({
@@ -33,7 +36,7 @@ export default defineConfig({
     // Une action bloquée échoue en une minute, pas au bout des dix minutes du test.
     actionTimeout: 60_000,
     deviceScaleFactor: 1,
-    video: { mode: 'on', size: FILM_SIZE },
+    video: { mode: 'on', size: SCREEN },
     storageState: `capture/out/.auth-${lang}.json`,
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }

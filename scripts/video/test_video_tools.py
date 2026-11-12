@@ -107,3 +107,12 @@ def test_a_fast_span_needs_a_positive_factor():
 def test_ffmpeg_inputs_are_escaped():
     assert assemble.metadata_value("A=B;C#D\\E\nF") == "A\\=B\\;C\\#D\\\\E\\\nF"
     assert assemble.concat_line(Path("/tmp/l'atelier/x.mp4")).endswith("l'\\''atelier/x.mp4'\n")
+
+
+def test_the_filmed_frame_must_be_16_by_9():
+    import pytest
+
+    assemble.check_frame(1280, 720)
+    assemble.check_frame(1920, 1080)
+    with pytest.raises(SystemExit):
+        assemble.check_frame(1280, 800)

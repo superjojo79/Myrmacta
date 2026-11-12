@@ -628,8 +628,8 @@ de développement : jamais en production ni en CI.
    ```
 
    Trois temps : la voix off (`scripts/video/voice.py`, edge-tts, voix `fr-BE` ou `en-GB` : le texte, public, part chez
-   Microsoft) ; le tournage, un test Playwright par chapitre (`frontend/capture/film/`, écran 1280×720 filmé en
-   1920×1080), qui envoie lui-même la facture, le courrier inconnu et la réponse, dépose l'amende et lance l'agent IA ;
+   Microsoft) ; le tournage, un test Playwright par chapitre (`frontend/capture/film/`, écran 1280×720 filmé à
+   cette taille, agrandi en 1920×1080 au montage), qui envoie lui-même la facture, le courrier inconnu et la réponse, dépose l'amende et lance l'agent IA ;
    le montage (`scripts/video/assemble.py`, ffmpeg), qui coupe les attentes de relève, accélère l'agent, cale chaque
    chapitre sur sa voix et ajoute chapitres et sous-titres. Sortie (non versionnée) :
    `frontend/capture/out/film/<langue>/l1-mailroom-<langue>.mp4`, `.vtt` et `.srt`. Le texte de la capsule (voix,

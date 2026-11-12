@@ -820,7 +820,7 @@ de version ou de version active) s'affiche sous la forme « Action impossible da
   filtres au plus ; un champ sensible n'est jamais cherchable. Les filtres figurent dans l'URL (`f.montant.gte=5000`).
 - **Tâches** (`/tasks`) — vue personnelle des tâches actuellement assignées à l'utilisateur
   connecté, avec accès direct au dossier concerné, bouton **Compléter**, et un rappel SLA
-  (`dans N h` / `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
+  (durée lisible localisée, ex. `dans 2 j 23 h` / `dans 3 h 12 min`, ou `dépassée`) lorsque le type de dossier a un objectif en heures. Depuis TODO §52,
   une tâche dont le diagramme BPMN déclare un formulaire (voir
   [docs/guides/GUIDE-CONCEPTION-BPMN.md](GUIDE-CONCEPTION-BPMN.md) §3bis) affiche ce formulaire à la place du
   bouton nu — édition des champs du dossier, ou choix d'un document à générer parmi ceux autorisés

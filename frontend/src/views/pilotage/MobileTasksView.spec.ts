@@ -88,7 +88,34 @@ describe('MobileTasksView', () => {
     const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="task-sla"]').text()).toContain('SLA')
-    expect(wrapper.get('[data-testid="task-sla"]').text()).toContain('12')
+    expect(wrapper.get('[data-testid="task-sla"]').text()).toContain('12 h')
+  })
+
+  it('formats fractional SLA hours as a readable duration (issue #67)', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/tasks')
+    await router.isReady()
+    const store = useTasksStore()
+    vi.spyOn(store, 'refresh').mockResolvedValue()
+    store.tasks = [
+      {
+        taskId: 't1',
+        name: 'Review',
+        assigneeId: 'u1',
+        createdAt: null,
+        processInstanceId: 'pi',
+        dossierId: 'd1',
+        dossierReference: 'DOS-1',
+        linkId: 'l1',
+        slaRemainingHours: 71.89438361111111,
+      },
+    ]
+    store.loading = false
+    const wrapper = mount(MobileTasksView, { global: { plugins: [router] } })
+    await wrapper.vm.$nextTick()
+    const sla = wrapper.get('[data-testid="task-sla"]').text()
+    expect(sla).toContain('2 j 23 h')
+    expect(sla).not.toContain('71.894')
   })
 
   it('shows the blind complete button for a task without formKey (non-regression)', async () => {

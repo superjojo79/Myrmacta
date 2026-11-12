@@ -116,7 +116,7 @@ const pilotage: typeof fr = {
     title: 'My tasks',
     empty: 'No task assigned.',
     sla: 'SLA {state}',
-    slaIn: 'in {n} h',
+    slaIn: 'in {duration}',
     slaOver: 'overdue',
     dossier: 'Dossier',
     complete: 'Complete',

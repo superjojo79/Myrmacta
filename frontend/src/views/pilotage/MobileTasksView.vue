@@ -9,6 +9,7 @@ import { useAdminListQuery } from '@/composables/useAdminListQuery'
 import AdminPager from '@/components/admin/AdminPager.vue'
 import { resolveTaskFormComponent } from '@/components/workflow/task-forms/taskFormRegistry'
 import type { MyWorkflowTask } from '@/api/types'
+import { formatDurationHours } from '@/i18n/format'
 
 const { t } = useI18n()
 const store = useTasksStore()
@@ -57,7 +58,14 @@ async function take(task: MyWorkflowTask) {
             {{ task.dossierReference || task.dossierId }}
             <em v-if="task.assigneeId == null" class="group-task" data-testid="task-group">{{ t('myTasks.groupTask') }}</em>
             <em v-if="task.slaRemainingHours != null" data-testid="task-sla">
-              {{ t('myTasks.sla', { state: task.slaRemainingHours > 0 ? t('myTasks.slaIn', { n: task.slaRemainingHours }) : t('myTasks.slaOver') }) }}
+              {{
+                t('myTasks.sla', {
+                  state:
+                    task.slaRemainingHours > 0
+                      ? t('myTasks.slaIn', { duration: formatDurationHours(task.slaRemainingHours) })
+                      : t('myTasks.slaOver'),
+                })
+              }}
             </em>
           </span>
         </div>

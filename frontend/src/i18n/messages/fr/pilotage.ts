@@ -115,7 +115,7 @@ export default {
     title: 'Mes tâches',
     empty: 'Aucune tâche assignée.',
     sla: 'SLA {state}',
-    slaIn: 'dans {n} h',
+    slaIn: 'dans {duration}',
     slaOver: 'dépassée',
     dossier: 'Dossier',
     complete: 'Compléter',

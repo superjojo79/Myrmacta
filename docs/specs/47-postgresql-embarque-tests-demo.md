@@ -76,12 +76,18 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   et en `.vtt`/`.srt`). Texte de la capsule : `scripts/video/capsules/l1-mailroom.json` ; cartons :
   `frontend/capture/panel/card.html`. La scène propose aussi le brouillon de la table de routage (règle « imprimerie »,
   DMN 1.3) que montre la conclusion.
-  Commandes : `scripts/video.sh build | mail-servers | start | mail <scénario> | capsule | reset`.
+  Commandes : `scripts/video.sh build | mail-servers | start [capsule] | mail <scénario> | capsule [capsule] | reset` ;
+  capsule `l1-mailroom` par défaut. Sorties par capsule : `frontend/capture/out/film/<capsule>/<langue>/` (§136).
 - **Capsule vidéo L2 « onboarding »** (§136) : profil `demo-video-onboarding`. `OnboardingDemoPack` installe l'exemple
   sans arrivée (D-VIDEO-OFFSCREEN-PREP) ; le paquet est installé dès que le processus est déployé. Les faux SIRH, IAM et
   ITSM répondent en erreur sur commande (D-DEMO-FAKE-FAULTS) : `POST /_demo/faults` avec
   `{"step":"sirh|iam|groups|itsm","status":400-599,"times":1-10}` arme une panne, `DELETE /_demo/faults` les désarme ;
   les compensations ne sont jamais en panne et la route n'entre pas dans le journal des requêtes.
+  Tournage (D-VIDEO-PIP) : `scripts/video.sh start l2-onboarding` puis `capsule l2-onboarding`. Texte :
+  `scripts/video/capsules/l2-onboarding.json` (huit chapitres en deux parties, carton de partie) ; tournage :
+  `frontend/capture/film/l2-onboarding.film.ts`. La partie 1 est jouée dans l'interface ; le metteur en scène pose le
+  diagramme de l'instance (`BpmnViewer`) en vignette, réduit dans le coin inférieur droit, nœuds parcourus et en cours
+  remplis. Les arrivées de la partie 2 sont encodées et approuvées par l'API après la commande de panne, hors champ.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

@@ -82,11 +82,11 @@ Issue : #57 · Spec du domaine : docs/specs/47-postgresql-embarque-tests-demo.md
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Scène : pannes pilotables des faux services, profil `demo-video-onboarding` (exemple sans arrivées), IT, spec 47 | livré | lot 1 |
-| 2 | Outillage multi-capsule (`video.sh <capsule>`, sorties par capsule), texte et tournage L2, vignette, vidéos FR et EN, docs | à faire | |
+| 1 | Scène : pannes pilotables des faux services, profil `demo-video-onboarding` (exemple sans arrivées), IT, spec 47 | livré | #91 |
+| 2 | Outillage multi-capsule (`video.sh <capsule>`, sorties par capsule), texte et tournage L2, vignette, vidéos FR et EN, docs | livré | lot 2 |
 | 3 | Revue indépendante, correctifs, clôture (suppression de ce document) | à faire | |
 
-Prochaine action : lot 2, outillage multi-capsule puis tournage L2.
+Prochaine action : lot 2, PR ; puis revue indépendante (lot 3).
 
 ## Preuves
 
@@ -95,6 +95,10 @@ Prochaine action : lot 2, outillage multi-capsule puis tournage L2.
 | 2026-11-12 | `./mvnw test -Pembedded-db -Dtest=DemoFakeApisTest,OnboardingDemoPackResumeTest,VideoOnboardingDemoPackIT,OnboardingDemoPackIT,DemoSeederTest` | 23 tests, 0 échec |
 | 2026-11-12 | `scripts/check-docs.sh` | tous les contrôles ok |
 | 2026-11-12 | `./mvnw verify` | 4987 tests, 0 échec, 5 ignorés (existants) ; BUILD SUCCESS |
+| 2026-11-12 | `scripts/video.sh capsule l2-onboarding` (FR, EN) | 8 chapitres passés, 2 min 44 (FR) et 2 min 44 (EN), 22 sous-titres, 1920×1080 |
+| 2026-11-12 | `cd frontend && npm run lint && npm run test:all` | lint ok ; Vitest 930/930 ; Playwright 176/176 |
+| 2026-11-12 | `pytest scripts/video` | 13/13 |
+| 2026-11-12 | `playwright test -c playwright.film.config.ts --list` (sans capsule, puis `FILM_CAPSULE=l2-onboarding`) | 7 tests L1, 8 tests L2 |
 
 ## Revue de clôture
 

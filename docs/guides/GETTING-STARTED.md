@@ -634,13 +634,36 @@ de développement : jamais en production ni en CI.
    cette taille, agrandi en 1920×1080 au montage), qui envoie lui-même la facture, le courrier inconnu et la réponse, dépose l'amende et lance l'agent IA ;
    le montage (`scripts/video/assemble.py`, ffmpeg), qui coupe les attentes de relève, accélère l'agent, cale chaque
    chapitre sur sa voix et ajoute chapitres et sous-titres. Sortie (non versionnée) :
-   `frontend/capture/out/film/<langue>/l1-mailroom-<langue>.mp4`, `.vtt` et `.srt`. Le texte de la capsule (voix,
+   `frontend/capture/out/film/l1-mailroom/<langue>/l1-mailroom-<langue>.mp4`, `.vtt` et `.srt`. Le texte de la capsule (voix,
    titres, bandeaux « Sous le capot ») est `scripts/video/capsules/l1-mailroom.json`.
 8. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, `podman restart` du conteneur GreenMail (il garde
    les e-mails déjà relevés), puis `APP_DEMO_LOCALE=en scripts/video.sh start` et `APP_DEMO_LOCALE=en scripts/video.sh capsule`.
 
 Arrêter la scène par Ctrl+C (même remarque que pour la démo complète), puis
 `podman compose --profile video stop greenmail mailpit`.
+
+### Capsule vidéo L2 « onboarding » (TODO §136)
+
+L'arrivée d'un collaborateur orchestrée entre les faux SIRH, IAM et ITSM de la démo, embarqués dans le jar (aucun
+conteneur en plus). Keycloak, `.env`, jar de démo et `ffmpeg` : comme pour la capsule L1.
+
+1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
+   l2-onboarding` (journal : `demo: pack 'onboarding' installed`). L'exemple `exemples/onboarding-collaborateur` est
+   installé, sans arrivée ; ses connecteurs visent `http://localhost:18090` (`APP_DEMO_FAKE_APIS_PORT`).
+2. **Pannes à la demande** (D-DEMO-FAKE-FAULTS) : le tournage les commande lui-même, mais on peut les essayer à la main :
+
+   ```bash
+   curl -X POST localhost:18090/_demo/faults -d '{"step":"iam","status":503,"times":1}'
+   ```
+
+   Étapes : `sirh`, `iam`, `groups`, `itsm` ; statut 400 à 599 ; 1 à 10 appels. `curl -X DELETE
+   localhost:18090/_demo/faults` désarme tout.
+3. **La capsule complète** : `APP_DEMO_LOCALE=fr scripts/video.sh capsule l2-onboarding`. La partie 1 (encodage RH,
+   correction, approbation, validation IT) est filmée dans l'interface, avec le diagramme de l'instance en vignette
+   pendant les appels ; les deux arrivées de la partie 2 sont préparées par l'API hors champ, attentes coupées au
+   montage. Sortie : `frontend/capture/out/film/l2-onboarding/<langue>/l2-onboarding-<langue>.mp4`, `.vtt` et `.srt` ;
+   texte : `scripts/video/capsules/l2-onboarding.json`.
+4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
 
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 

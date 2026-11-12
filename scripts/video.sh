@@ -1,22 +1,37 @@
 #!/usr/bin/env bash
-# Capsules vidéo du site (§128, issue #56) — scène de tournage de la capsule « Digital Mail Room ». Outillage de
+# Capsules vidéo du site (§128, §136 ; issues #56, #57) — scènes de tournage et production des capsules. Outillage de
 # développement : build `embedded-db` (jamais le jar de production), conteneurs locaux, jamais en CI. À lancer depuis la
 # racine du dépôt.
 #
-#   scripts/video.sh build           construit le jar de démo (comme scripts/demo.sh build)
-#   scripts/video.sh mail-servers    démarre GreenMail (boîte courrier@demo.example, SMTP 3025, IMAP 3143) et Mailpit
-#                                    (e-mails envoyés par Myrmacta, http://localhost:8025) : podman compose, profil video
-#   scripts/video.sh start           démarre Myrmacta, profil demo-video-mailroom : mail room sans courriers d'exemple,
-#                                    boîte IMAP sur GreenMail, agent IA dans la file de tri, factures à échéance proche
-#   scripts/video.sh mail <scénario> envoie un e-mail du tournage : facture | inconnu | reponse (scripts/video/send_mail.py)
-#   scripts/video.sh capsule         sur une scène fraîche (start) : voix off (edge-tts), tournage (Playwright), montage
-#                                    (ffmpeg) → frontend/capture/out/film/<langue>/l1-mailroom-<langue>.mp4, .vtt, .srt
-#   scripts/video.sh reset [--yes]   vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
+#   scripts/video.sh build                construit le jar de démo (comme scripts/demo.sh build)
+#   scripts/video.sh mail-servers         démarre GreenMail (boîte courrier@demo.example, SMTP 3025, IMAP 3143) et Mailpit
+#                                         (e-mails envoyés par Myrmacta, http://localhost:8025) : podman compose, profil video
+#   scripts/video.sh start [capsule]      démarre Myrmacta sur la scène de la capsule :
+#                                           l1-mailroom (défaut) — profil demo-video-mailroom : mail room sans courriers
+#                                             d'exemple, boîte IMAP sur GreenMail, agent IA dans la file de tri, factures à
+#                                             échéance proche (mail-servers d'abord) ;
+#                                           l2-onboarding — profil demo-video-onboarding : exemple onboarding sans arrivée,
+#                                             faux SIRH, IAM et ITSM pilotables (http://localhost:18090/_demo/faults)
+#   scripts/video.sh mail <scénario>      envoie un e-mail du tournage L1 : facture | inconnu | reponse
+#   scripts/video.sh capsule [capsule]    sur une scène fraîche (start) : voix off (edge-tts), tournage (Playwright), montage
+#                                         (ffmpeg) → frontend/capture/out/film/<capsule>/<langue>/<capsule>-<langue>.mp4,
+#                                         .vtt, .srt
+#   scripts/video.sh reset [--yes]        vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
 #
-# Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues, reset. Connexion : comme scripts/demo.sh (Keycloak et
-# variables OIDC dans .env). M2M_JWT_SECRET (dev seulement) : secret HMAC du client MCP de l'agent IA (lot 3).
+# Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues ou deux capsules, reset. Connexion : comme
+# scripts/demo.sh (Keycloak et variables OIDC dans .env). M2M_JWT_SECRET (dev seulement) : secret HMAC du client MCP de
+# l'agent IA de la capsule L1.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+capsule_of() {
+  local capsule="${1:-l1-mailroom}"
+  [[ -f "scripts/video/capsules/$capsule.json" ]] || {
+    echo "capsule inconnue : $capsule (scripts/video/capsules/*.json)" >&2
+    exit 2
+  }
+  echo "$capsule"
+}
 
 case "${1:-}" in
   build)
@@ -26,6 +41,12 @@ case "${1:-}" in
     exec podman compose --profile video up -d greenmail mailpit
     ;;
   start)
+    capsule="$(capsule_of "${2:-}")"
+    case "$capsule" in
+      l1-mailroom) profile=demo-video-mailroom ;;
+      l2-onboarding) profile=demo-video-onboarding ;;
+      *) echo "pas de scène pour la capsule $capsule" >&2; exit 2 ;;
+    esac
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }
     # Variables locales (OIDC, clé maîtresse des connecteurs) : .env s'il existe ; celles qui suivent priment.
@@ -35,8 +56,9 @@ case "${1:-}" in
     # factures semées sont là au tournage.
     exec env -u DB_URL -u DB_USERNAME -u DB_PASSWORD -u DB_NAME -u DB_PORT \
       APP_ENVIRONMENT="${APP_ENVIRONMENT:-local}" \
-      SPRING_PROFILES_ACTIVE="local,embedded-db,demo-video-mailroom" \
+      SPRING_PROFILES_ACTIVE="local,embedded-db,$profile" \
       APP_DEMO_MAILROOM_DIR="${APP_DEMO_MAILROOM_DIR:-exemples/digital-mail-room}" \
+      APP_DEMO_ONBOARDING_DIR="${APP_DEMO_ONBOARDING_DIR:-exemples/onboarding-collaborateur}" \
       APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \
       APP_I18N_DEFAULT_LOCALE="${APP_I18N_DEFAULT_LOCALE:-${APP_DEMO_LOCALE:-fr}}" \
       MAIL_HOST=localhost MAIL_PORT="${MAILPIT_SMTP_PORT:-1025}" MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false \
@@ -48,19 +70,21 @@ case "${1:-}" in
     ;;
   capsule)
     # La langue de la scène (APP_DEMO_LOCALE) est celle de la capsule. ffmpeg et uv dans le PATH ; .env pour l'agent IA.
+    capsule="$(capsule_of "${2:-}")"
     lang="${APP_DEMO_LOCALE:-fr}"
-    capsule=scripts/video/capsules/l1-mailroom.json
+    out="frontend/capture/out/film/$capsule"
     if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
-    uv run scripts/video/voice.py "$capsule" --lang "$lang"
-    (cd frontend && CAPTURE_LANG="$lang" npx playwright test -c playwright.film.config.ts)
-    exec uv run scripts/video/assemble.py "$capsule" --lang "$lang"
+    uv run scripts/video/voice.py "scripts/video/capsules/$capsule.json" --lang "$lang" --out "$out"
+    (cd frontend && CAPTURE_LANG="$lang" FILM_CAPSULE="$capsule" FILM_OUT="capture/out/film/$capsule" \
+      npx playwright test -c playwright.film.config.ts)
+    exec uv run scripts/video/assemble.py "scripts/video/capsules/$capsule.json" --lang "$lang" --out "$out"
     ;;
   reset)
     shift
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,17p' "$0"
+    sed -n '2,25p' "$0"
     exit 2
     ;;
 esac

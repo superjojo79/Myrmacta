@@ -11,9 +11,12 @@ import { captureLang } from '../settings'
 export const REPO = resolve(process.cwd(), '..')
 export const lang = captureLang()
 
-/** Répertoire de la langue : voix (voice.json), vidéos et coupes des chapitres. */
+/** La capsule tournée (FILM_CAPSULE, défaut l1-mailroom). */
+export const capsuleId = process.env.FILM_CAPSULE ?? 'l1-mailroom'
+
+/** Répertoire de la capsule et de la langue : voix (voice.json), vidéos et coupes des chapitres (TODO §136). */
 export function filmDir(): string {
-  return resolve(process.env.FILM_OUT ?? 'capture/out/film', lang)
+  return resolve(process.env.FILM_OUT ?? `capture/out/film/${capsuleId}`, lang)
 }
 
 type Voice = { chapters: Record<string, { duration: number }> }
@@ -32,6 +35,7 @@ export class Director {
   private readonly t0 = Date.now()
   private readonly spans: Span[] = []
   private bannerText: string | null = null
+  private pipSelector: string | null = null
 
   constructor(
     readonly page: Page,
@@ -89,15 +93,65 @@ export class Director {
     await this.applyBanner()
   }
 
+  /**
+   * TODO §136 (D-VIDEO-PIP) — vignette : l'élément `selector` (le diagramme de l'instance) est posé, réduit, dans le coin
+   * inférieur droit de l'écran filmé, au-dessus du bandeau ; reposée après chaque navigation. `null` la retire.
+   */
+  async pip(selector: string | null): Promise<void> {
+    const previous = this.pipSelector
+    this.pipSelector = selector
+    if (previous && !selector) await this.page.locator(previous).first().evaluate((el) => el.removeAttribute('style'))
+    await this.applyPip()
+  }
+
   async goto(url: string): Promise<void> {
     await this.page.goto(url)
     await this.settle()
     await this.applyBanner()
+    await this.applyPip()
+  }
+
+  /** Recharge la page (l'interface ne se rafraîchit pas seule), puis repose bandeau et vignette. */
+  async reload(): Promise<void> {
+    await this.page.reload()
+    await this.settle()
+    await this.applyBanner()
+    await this.applyPip()
   }
 
   async settle(): Promise<void> {
     await this.page.waitForLoadState('networkidle')
     await this.page.waitForTimeout(500)
+  }
+
+  private async applyPip(): Promise<void> {
+    if (!this.pipSelector) return
+    const target = this.page.locator(this.pipSelector).first()
+    await target.waitFor()
+    // Le diagramme garde le cadrage calculé à son affichage : on réduit l'élément entier plutôt que de le redimensionner.
+    // Réduits, les contours du chemin parcouru (vert) et de l'étape en cours (bleu) s'effacent : on les remplit.
+    await this.page.evaluate(() => {
+      if (document.getElementById('film-pip-style')) return
+      const style = document.createElement('style')
+      style.id = 'film-pip-style'
+      style.textContent = [
+        '.highlight-completed:not(.djs-connection) .djs-visual > :nth-child(1)',
+        '{ fill: #b2f2bb !important; stroke-width: 5px !important; }',
+        '.highlight-active:not(.djs-connection) .djs-visual > :nth-child(1)',
+        '{ fill: #a5d8ff !important; stroke-width: 6px !important; }',
+        '.highlight-failed:not(.djs-connection) .djs-visual > :nth-child(1)',
+        '{ fill: #ffc9c9 !important; stroke-width: 6px !important; }',
+      ].join(' ')
+      document.head.appendChild(style)
+    })
+    await target.evaluate((el) => {
+      const width = (el as HTMLElement).getBoundingClientRect().width
+      Object.assign((el as HTMLElement).style, {
+        position: 'fixed', right: '24px', bottom: '110px', width: `${width}px`, margin: '0', zIndex: '2147483646',
+        transform: 'scale(0.55)', transformOrigin: 'bottom right', background: '#ffffff', borderRadius: '14px',
+        padding: '10px 16px', boxShadow: '0 12px 36px rgba(0,0,0,.35)', border: '3px solid #4cc9f0',
+      })
+    })
   }
 
   private async applyBanner(): Promise<void> {

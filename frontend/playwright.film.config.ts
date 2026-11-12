@@ -1,12 +1,14 @@
 // TODO §128 (D-VIDEO-PIPELINE, lot 4 de #56) — tournage des capsules vidéo contre une VRAIE scène
 // (`scripts/video.sh start`), un fichier vidéo par chapitre (un test par chapitre). Hors `test:all` et hors CI.
 //   CAPTURE_LANG=fr|en (défaut fr) · CAPTURE_BASE_URL (défaut http://localhost:8080) · CAPTURE_USER / CAPTURE_PASSWORD
-//   FILM_OUT (défaut capture/out/film) : la voix (voice.json) y est lue, les vidéos et les coupes y sont écrites.
-// Lancement complet : scripts/video.sh capsule (voix, tournage, montage).
+//   FILM_CAPSULE (défaut l1-mailroom) : la capsule tournée, capture/film/<capsule>.film.ts (TODO §136).
+//   FILM_OUT (défaut capture/out/film/<capsule>) : la voix (voice.json) y est lue, les vidéos et les coupes y sont écrites.
+// Lancement complet : scripts/video.sh capsule [capsule] (voix, tournage, montage).
 import { defineConfig, devices } from '@playwright/test'
 import { captureLang } from './capture/settings'
 
 const lang = captureLang()
+const capsule = process.env.FILM_CAPSULE ?? 'l1-mailroom'
 
 /**
  * Écran filmé : 1280×720, enregistré à cette même taille, puis agrandi en 1920×1080 au montage (scripts/video/assemble.py)
@@ -17,7 +19,7 @@ export const SCREEN = { width: 1280, height: 720 }
 
 export default defineConfig({
   testDir: './capture/film',
-  testMatch: '**/*.film.ts',
+  testMatch: `**/${capsule}.film.ts`,
   outputDir: './capture/out/.film-results',
   fullyParallel: false,
   workers: 1,

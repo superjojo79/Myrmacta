@@ -1,0 +1,162 @@
+{
+  "_commentaire": "Capsule L2 « onboarding orchestré » (TODO §136, issue #57). Source unique du texte : voix off (une phrase par entrée, lue par edge-tts), sous-titres, titres des chapitres, cartons de partie et bandeaux « Sous le capot ». Le tournage (frontend/capture/film/l2-onboarding.film.ts) joue les actions de chaque chapitre par son identifiant.",
+  "id": "l2-onboarding",
+  "title": { "fr": "L'arrivée d'un collaborateur, orchestrée sans développement", "en": "A new hire, orchestrated with no development" },
+  "voices": { "fr": "fr-BE-CharlineNeural", "en": "en-GB-SoniaNeural" },
+  "chapters": [
+    {
+      "id": "intro",
+      "title": { "fr": "Introduction", "en": "Introduction" },
+      "narration": {
+        "fr": [
+          "Une nouvelle collaboratrice arrive lundi. Il lui faut une fiche dans le SIRH, un compte, des accès et un ordinateur.",
+          "Avec Myrmacta, un processus configuré orchestre ces trois applications, et des personnes décident aux bons moments."
+        ],
+        "en": [
+          "A new colleague starts on Monday. She needs a record in the HR system, an account, access rights and a laptop.",
+          "With Myrmacta, a configured process orchestrates these three applications, and people decide at the right moments."
+        ]
+      }
+    },
+    {
+      "id": "encodage",
+      "part": { "fr": "Partie 1 — le parcours nominal", "en": "Part 1 — the happy path" },
+      "title": { "fr": "Les RH encodent l'arrivée", "en": "HR enters the new hire" },
+      "underTheHood": {
+        "fr": "Sous le capot : type de dossier « ONBOARDING_COLLABORATEUR » → processus BPMN « onboardingCollaborateur »",
+        "en": "Under the hood: case type \"ONBOARDING_COLLABORATEUR\" → BPMN process \"onboardingCollaborateur\""
+      },
+      "narration": {
+        "fr": [
+          "Les ressources humaines ouvrent un dossier d'arrivée : identité, fonction, département, manager et profil de poste.",
+          "Camille rejoint l'équipe informatique comme développeuse.",
+          "Le dossier ouvert, le processus démarre et attend la validation du manager."
+        ],
+        "en": [
+          "Human resources open a new-hire case: identity, role, department, manager and job profile.",
+          "Camille joins the IT team as a developer.",
+          "Once the case is open, the process starts and waits for the manager's approval."
+        ]
+      }
+    },
+    {
+      "id": "manager",
+      "title": { "fr": "Le manager valide", "en": "The manager approves" },
+      "underTheHood": {
+        "fr": "Sous le capot : questionnaire de tâche « validation-manager-onboarding » → passerelle APPROUVER / CORRIGER / REFUSER",
+        "en": "Under the hood: task form \"validation-manager-onboarding\" → gateway APPROUVER / CORRIGER / REFUSER"
+      },
+      "narration": {
+        "fr": [
+          "Le manager relit la fiche. La date d'arrivée est fausse : retour aux RH pour correction, avec un commentaire.",
+          "Les RH corrigent la date. La fiche revient au manager, qui approuve.",
+          "Rien n'a encore été créé ailleurs : aucun appel ne part avant l'approbation."
+        ],
+        "en": [
+          "The manager reviews the record. The start date is wrong: back to HR for correction, with a comment.",
+          "HR fixes the date. The record goes back to the manager, who approves it.",
+          "Nothing has been created elsewhere yet: no call goes out before approval."
+        ]
+      }
+    },
+    {
+      "id": "provisioning",
+      "title": { "fr": "Le SIRH, puis l'IAM", "en": "The HR system, then the IAM" },
+      "underTheHood": {
+        "fr": "Sous le capot : requête JSONata écrite dans le BPMN → réponse copiée dans des champs « managedByWorkflow »",
+        "en": "Under the hood: JSONata request written in the BPMN → response copied into \"managedByWorkflow\" fields"
+      },
+      "narration": {
+        "fr": [
+          "Myrmacta crée la fiche dans le SIRH, puis le compte dans l'IAM, avec le matricule rendu par le SIRH.",
+          "Les identifiants reçus s'inscrivent dans les champs « Provisioning » de la fiche. Personne ne peut les saisir à la main.",
+          "En vignette, le processus montre où en est l'arrivée."
+        ],
+        "en": [
+          "Myrmacta creates the record in the HR system, then the account in the IAM, with the employee number the HR system returned.",
+          "The identifiers received fill the \"Provisioning\" fields of the record. Nobody can type them in by hand.",
+          "In the corner, the process shows where the new hire stands."
+        ]
+      }
+    },
+    {
+      "id": "acces",
+      "title": { "fr": "L'IT valide les accès", "en": "IT approves the access" },
+      "underTheHood": {
+        "fr": "Sous le capot : profil sensible → validation IT → PUT IAM /groups → POST ITSM /tickets",
+        "en": "Under the hood: sensitive profile → IT approval → PUT IAM /groups → POST ITSM /tickets"
+      },
+      "narration": {
+        "fr": [
+          "Un profil de développeur est sensible : l'informatique valide les accès et choisit le groupe des développeurs.",
+          "Myrmacta ajoute le compte à ce groupe, puis commande le poste de travail dans l'outil de tickets.",
+          "Le numéro du ticket arrive sur la fiche, et le dossier passe à « Provisionné »."
+        ],
+        "en": [
+          "A developer profile is sensitive: IT approves the access and picks the developers group.",
+          "Myrmacta adds the account to that group, then orders the workstation in the ticketing tool.",
+          "The ticket number lands on the record, and the case moves to \"Provisioned\"."
+        ]
+      }
+    },
+    {
+      "id": "reessayer",
+      "part": { "fr": "Partie 2 — quand une application tombe", "en": "Part 2 — when an application fails" },
+      "title": { "fr": "L'IAM répond en erreur", "en": "The IAM answers with an error" },
+      "underTheHood": {
+        "fr": "Sous le capot : statut HTTP hors 2xx → champ « dernierIncident » → tâche « Traiter l'incident » → rejeu de la seule étape en échec",
+        "en": "Under the hood: non-2xx HTTP status → \"dernierIncident\" field → \"Handle the incident\" task → replay of the failed step only"
+      },
+      "narration": {
+        "fr": [
+          "Une autre arrivée, approuvée. Cette fois, l'IAM est indisponible et répond en erreur.",
+          "Le processus ne s'arrête pas en silence : l'incident est noté sur la fiche, avec l'étape et le statut, et confié à une personne.",
+          "La personne choisit de réessayer. Seul l'appel en échec est rejoué, et il passe."
+        ],
+        "en": [
+          "Another new hire, approved. This time, the IAM is down and answers with an error.",
+          "The process does not stop silently: the incident is recorded on the case, with the step and the status, and handed to a person.",
+          "The person chooses to retry. Only the failed call is replayed, and it goes through."
+        ]
+      }
+    },
+    {
+      "id": "abandon",
+      "title": { "fr": "L'ITSM échoue : on abandonne", "en": "The ITSM fails: abandon" },
+      "underTheHood": {
+        "fr": "Sous le capot : ABANDONNER → DELETE IAM /users/{id} puis DELETE SIRH /employees/{id}, sur les identifiants du dossier",
+        "en": "Under the hood: ABANDONNER → DELETE IAM /users/{id} then DELETE HR /employees/{id}, using the case identifiers"
+      },
+      "narration": {
+        "fr": [
+          "Sur une troisième arrivée, c'est l'outil de tickets qui échoue, alors que la fiche et le compte existent déjà.",
+          "La personne choisit d'abandonner. Myrmacta supprime d'abord le compte IAM, puis la fiche SIRH.",
+          "Rien ne reste à moitié créé, et le journal de compensation le montre sur la fiche."
+        ],
+        "en": [
+          "On a third new hire, it is the ticketing tool that fails, while the record and the account already exist.",
+          "The person chooses to abandon. Myrmacta first deletes the IAM account, then the HR record.",
+          "Nothing is left half-created, and the compensation log shows it on the case."
+        ]
+      }
+    },
+    {
+      "id": "conclusion",
+      "title": { "fr": "Conclusion", "en": "Wrap-up" },
+      "underTheHood": {
+        "fr": "Sous le capot : changer d'environnement = changer la baseUrl des connecteurs, pas le BPMN",
+        "en": "Under the hood: switching environment = changing the connectors' baseUrl, not the BPMN"
+      },
+      "narration": {
+        "fr": [
+          "Trois applications, des validations humaines, des erreurs reprises proprement : tout est configuré, rien n'est développé.",
+          "Myrmacta. L'orchestration de vos applications, pilotée par le métier."
+        ],
+        "en": [
+          "Three applications, human approvals, errors handled cleanly: everything is configured, nothing is developed.",
+          "Myrmacta. Orchestrating your applications, driven by the business."
+        ]
+      }
+    }
+  ]
+}

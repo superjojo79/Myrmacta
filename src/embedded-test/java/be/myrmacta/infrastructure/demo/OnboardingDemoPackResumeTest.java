@@ -109,7 +109,7 @@ class OnboardingDemoPackResumeTest {
                 mock(SaveWorkflowTypeConfigUseCase.class), mock(WorkflowTypeConfigRepository.class),
                 mock(ManageConnectorInstanceUseCase.class), mock(DeployBpmnProcessUseCase.class), createDossier,
                 mock(UpdateDossierStatusUseCase.class), starter, mock(CompleteTaskUseCase.class), mock(DemoFakeApis.class), tasks,
-                runtime, management, engine, transactions);
+                runtime, management, engine, transactions, new org.springframework.mock.env.MockEnvironment());
     }
 
     @Test

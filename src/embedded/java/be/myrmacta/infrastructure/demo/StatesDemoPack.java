@@ -50,7 +50,7 @@ public class StatesDemoPack implements DemoPack {
     static final int MAIL_SLA_HOURS = 24;
     private static final String ACTOR = "demo-etats";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
-    private static final String ROUTING = "routageCourrier";
+    static final String ROUTING = "routageCourrier";
     static final String DMN_11 = "http://www.omg.org/spec/DMN/20151101";
     static final String DMN_13 = "https://www.omg.org/spec/DMN/20191111/MODEL/";
     private static final Logger log = LoggerFactory.getLogger(StatesDemoPack.class);
@@ -172,6 +172,11 @@ public class StatesDemoPack implements DemoPack {
     }
 
     String routingWithPrinterRule() {
+        return routingWithPrinterRule(mailRoomExample);
+    }
+
+    /** Aussi utilisé par la capsule vidéo (TODO §128) : la règle ajoutée « sans code » de sa conclusion. */
+    static String routingWithPrinterRule(DemoExample mailRoomExample) {
         String xml = mailRoomExample.xml("routage-courrier.dmn");
         String description = mailRoomExample.text("Facture de l'imprimerie : la comptabilité, 30 jours.",
                 "Invoice from the printer: accounting, 30 days.");

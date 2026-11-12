@@ -7,6 +7,8 @@ import be.myrmacta.domain.connector.port.in.ManageConnectorInstanceUseCase;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
+import be.myrmacta.domain.workflow.model.Provenance;
+import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.domain.user.port.in.UserGroupsUseCase;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.time.Clock;
@@ -76,23 +78,25 @@ public class VideoMailRoomDemoPack implements DemoPack {
     private final int imapPort;
     private final String agentSubject;
     private final ProcessEngine engine;
+    private final ProposeDraftUseCase drafts;
     private final JdbcTemplate jdbc;
 
     @Autowired
     public VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors, RecordUserLoginUseCase directory,
             UserGroupsUseCase groups, DossierRepository dossiers, TenantProperties tenant, ObjectMapper json,
-            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc,
+            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, ProposeDraftUseCase drafts,
             @Value("${app.demo.video.imap-host:localhost}") String imapHost,
             @Value("${app.demo.video.imap-port:3143}") int imapPort,
             @Value("${app.demo.video.agent-subject:agent-ia-tri}") String agentSubject) {
-        this(mailRoom, connectors, directory, groups, dossiers, tenant, json, transactionManager, engine, jdbc, imapHost, imapPort,
-                agentSubject, Clock.systemDefaultZone());
+        this(mailRoom, connectors, directory, groups, dossiers, tenant, json, transactionManager, engine, jdbc, drafts, imapHost,
+                imapPort, agentSubject, Clock.systemDefaultZone());
     }
 
     VideoMailRoomDemoPack(MailRoomDemoPack mailRoom, ManageConnectorInstanceUseCase connectors, RecordUserLoginUseCase directory,
             UserGroupsUseCase groups, DossierRepository dossiers, TenantProperties tenant, ObjectMapper json,
-            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, String imapHost, int imapPort,
-            String agentSubject, Clock clock) {
+            PlatformTransactionManager transactionManager, ProcessEngine engine, JdbcTemplate jdbc, ProposeDraftUseCase drafts,
+            String imapHost, int imapPort, String agentSubject, Clock clock) {
+        this.drafts = drafts;
         this.engine = engine;
         this.jdbc = jdbc;
         this.mailRoom = mailRoom;
@@ -137,8 +141,12 @@ public class VideoMailRoomDemoPack implements DemoPack {
         for (DueInvoice invoice : DUE) {
             dueInvoice(simulated, invoice, today.plusDays(invoice.dueInDays()), example);
         }
-        log.info("demo-video-mailroom: IMAP mailbox on {}:{}, agent {} in the sorting queue, {} invoices near their due date",
-                imapHost, imapPort, agentSubject, DUE.size());
+        // La conclusion : une règle de plus dans la table de routage, proposée en brouillon (DMN 1.3, que l'éditeur ouvre).
+        String xml = StatesDemoPack.routingWithPrinterRule(example);
+        transaction.executeWithoutResult(status -> drafts.proposeDmn(ADMIN, Provenance.MCP, StatesDemoPack.ROUTING, xml,
+                example.text("Factures de l'imprimerie : comptabilité, 30 jours", "Printer invoices: accounting, 30 days"), false));
+        log.info("demo-video-mailroom: IMAP mailbox on {}:{}, agent {} in the sorting queue, {} invoices near their due date, "
+                + "routing draft", imapHost, imapPort, agentSubject, DUE.size());
     }
 
     /** La boîte IMAP de l'exemple, pointée sur le GreenMail local (sans chiffrement : boucle locale, profil local). */

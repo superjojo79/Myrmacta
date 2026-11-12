@@ -63,7 +63,15 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   seulement (`list_my_tasks`, `get_mail_thread`, `search_dossiers`, `attach_mail_to_dossier`, `complete_task`) ; un même
   appel rejoué plus de deux fois n'est pas refait. Son journal (lignes JSON) s'affiche dans
   `frontend/capture/panel/agent-panel.html`.
-  Commandes : `scripts/video.sh build | mail-servers | start | mail <scénario> | reset`.
+  Tournage (D-VIDEO-PIPELINE, D-VIDEO-TTS) : `scripts/video.sh capsule` enchaîne la voix off (`scripts/video/voice.py`,
+  edge-tts : une phrase à la fois, durées mesurées par ffprobe, repères de sous-titres), le tournage
+  (`frontend/playwright.film.config.ts`, `frontend/capture/film/` : un test et une vidéo par chapitre ; le metteur en
+  scène tient chaque plan le temps de la voix, note les attentes à couper et les passages à accélérer, pose le bandeau
+  « Sous le capot ») et le montage (`scripts/video/assemble.py`, ffmpeg : H.264 et AAC, chapitres, sous-titres en piste
+  et en `.vtt`/`.srt`). Texte de la capsule : `scripts/video/capsules/l1-mailroom.json` ; cartons :
+  `frontend/capture/panel/card.html`. La scène propose aussi le brouillon de la table de routage (règle « imprimerie »,
+  DMN 1.3) que montre la conclusion.
+  Commandes : `scripts/video.sh build | mail-servers | start | mail <scénario> | capsule | reset`.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

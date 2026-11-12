@@ -9,6 +9,8 @@
 #   scripts/video.sh start           démarre Myrmacta, profil demo-video-mailroom : mail room sans courriers d'exemple,
 #                                    boîte IMAP sur GreenMail, agent IA dans la file de tri, factures à échéance proche
 #   scripts/video.sh mail <scénario> envoie un e-mail du tournage : facture | inconnu | reponse (scripts/video/send_mail.py)
+#   scripts/video.sh capsule         sur une scène fraîche (start) : voix off (edge-tts), tournage (Playwright), montage
+#                                    (ffmpeg) → frontend/capture/out/film/<langue>/l1-mailroom-<langue>.mp4, .vtt, .srt
 #   scripts/video.sh reset [--yes]   vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
 #
 # Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues, reset. Connexion : comme scripts/demo.sh (Keycloak et
@@ -43,6 +45,15 @@ case "${1:-}" in
   mail)
     shift
     exec uv run scripts/video/send_mail.py "$@" --lang "${APP_DEMO_LOCALE:-fr}"
+    ;;
+  capsule)
+    # La langue de la scène (APP_DEMO_LOCALE) est celle de la capsule. ffmpeg et uv dans le PATH ; .env pour l'agent IA.
+    lang="${APP_DEMO_LOCALE:-fr}"
+    capsule=scripts/video/capsules/l1-mailroom.json
+    if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
+    uv run scripts/video/voice.py "$capsule" --lang "$lang"
+    (cd frontend && CAPTURE_LANG="$lang" npx playwright test -c playwright.film.config.ts)
+    exec uv run scripts/video/assemble.py "$capsule" --lang "$lang"
     ;;
   reset)
     shift

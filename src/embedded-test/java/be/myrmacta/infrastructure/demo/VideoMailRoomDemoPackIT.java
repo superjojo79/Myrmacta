@@ -69,8 +69,14 @@ class VideoMailRoomDemoPackIT {
             assertThat(context.getBean(UserGroupsUseCase.class).list()).filteredOn(g -> g.code().equals("COURRIER")).singleElement()
                     .satisfies(g -> assertThat(g.memberIds()).contains("agent-ia-tri"));
 
+            assertThat(jdbc.queryForObject("select xml from dmn_draft where decision_key = 'routageCourrier'", String.class))
+                    .as("le brouillon de la conclusion, en DMN 1.3").contains(StatesDemoPack.DMN_13).contains("regleFactureImprimerie");
+
             List<ConnectorInstanceData> imap = context.getBean(ConnectorInstanceRepository.class).listByTenantId(tenant).stream()
                     .filter(i -> i.connectorType().equals("imap-inbound")).toList();
+            assertThat(context.getBean(ConnectorInstanceRepository.class).listByTenantId(tenant))
+                    .as("le point de dépôt de l'écran « Déposer un courrier » (chapitre de l'amende)")
+                    .anySatisfy(i -> assertThat(i.connectorType()).isEqualTo("mail-deposit"));
             assertThat(imap).singleElement().satisfies(i -> {
                 assertThat(i.enabled()).isTrue();
                 assertThat(i.config()).containsEntry("host", "localhost").containsEntry("security", "PLAIN");

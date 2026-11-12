@@ -78,12 +78,12 @@ registre : §127 (démo et captures, clos), §128 à créer (capsules vidéo)
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Produit : IMAP vers la boucle locale en profil local/test (D-IMAP-LOCAL-LOOPBACK), tests, revue sécurité | en revue | #74 |
-| 2 | Scène : GreenMail en compose, profil `demo-video-mailroom`, envoi SMTP scripté, arrivée réelle vérifiée | en revue | #75 |
-| 3 | Agent IA : client Python Ollama ↔ MCP, panneau terminal | en revue | (cette PR) |
-| 4 | Tournage, voix, sous-titres, montage FR et EN ; guide | à faire | |
+| 1 | Produit : IMAP vers la boucle locale en profil local/test (D-IMAP-LOCAL-LOOPBACK), tests, revue sécurité | livré | #74 |
+| 2 | Scène : GreenMail en compose, profil `demo-video-mailroom`, envoi SMTP scripté, arrivée réelle vérifiée | livré | #75 |
+| 3 | Agent IA : client Python Ollama ↔ MCP, panneau terminal | livré | #76 |
+| 4 | Tournage, voix, sous-titres, montage FR et EN ; guide | en revue | (cette PR) |
 
-Prochaine action : lot 4 (tournage Playwright, voix edge-tts, sous-titres, montage ffmpeg). ffmpeg à installer sur le poste (accord de l'utilisateur).
+Prochaine action : revue de clôture (sous-agent), puis PR finale (document supprimé, §128 clos, Closes #56).
 
 ## Preuves
 
@@ -95,6 +95,11 @@ Prochaine action : lot 4 (tournage Playwright, voix edge-tts, sous-titres, monta
 | 2026-11-12 | lot 2 : `./mvnw clean verify` | 4 908 tests, 0 échec |
 | 2026-11-12 | lot 2 : tests embedded de la CI (dont `VideoMailRoomDemoPackIT`) | 32 tests, 0 échec |
 | 2026-11-12 | lot 2 : jar de production sans démo, `scripts/check-docs.sh` | ok |
+| 2026-11-12 | lot 1 (CI) : seuil de mutation des classes modifiées | 71 % → 92 % (tests aux bornes des graphies d'hôte) |
+| 2026-11-12 | lot 4 : `./mvnw clean verify` | 4 914 tests, 0 échec |
+| 2026-11-12 | lot 4 : tests embedded de la CI | 32 tests, 0 échec |
+| 2026-11-12 | lot 4 : jar sans démo, `npm run lint`, tsc du tournage, `pytest scripts/video` (10), `check-docs` | ok |
+| 2026-11-12 | lot 4 : `scripts/video.sh capsule` FR puis EN sur scène fraîche | 7 chapitres filmés ; MP4 de 2,8 min chacun, 7 chapitres, 25 sous-titres ; relus sur planches d'images |
 | 2026-11-12 | lot 3 : `pytest scripts/video` | 6 tests, 0 échec |
 | 2026-11-12 | lot 3 : agent réel sur la scène (gemma4:12b, Ollama) | 6 appels : tâches, fil, factures, rattachement à blanc puis réel, tâche terminée ; panneau relu |
 | 2026-11-12 | lot 2 : scène réelle (`scripts/video.sh mail-servers`, `start`, `mail facture`) | facture envoyée en SMTP, relevée par IMAP, accusé dans Mailpit 27 s plus tard |

@@ -2,6 +2,8 @@ export default {
   brand: 'Myrmacta',
   tagline: "L'intelligence collective au service de vos dossiers et décisions",
   navLabel: 'Pilotage',
+  toggleOpen: 'Ouvrir le menu',
+  toggleClose: 'Fermer le menu',
   sessionError: 'Impossible de charger la session',
   session: 'Session',
   logout: 'Déconnexion',

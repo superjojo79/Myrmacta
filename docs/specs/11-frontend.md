@@ -170,6 +170,15 @@ npm install -D vue-tsc
 - **SPA :** `AdminPager` et `useAdminListQuery` ; les listes déroulantes hors admin lisent toutes les pages
   (`listAllPages`, taille 100). Écran `/admin/notification-webhooks` ajouté.
 
+## Implémentation — menu shell repliable (issue #89, registre §137)
+
+- **Comportement (D-SHELL-NAV) :** `AppShell` expose un bouton burger. Replié : bandeau vertical +
+  burger. Ouvert sur grand écran : grille historique (220 px). Ouvert sous 768 px : tiroir en
+  superposition + fond cliquable ; un clic sur un lien referme. Défaut : replié si étroit, ouvert
+  sinon ; pas de `localStorage`. Composable `useShellNavCollapse`.
+- **Tests :** Vitest `useShellNavCollapse.spec.ts`, `AppShell.spec.ts` ; Playwright
+  `e2e/pilotage-shell-nav.spec.ts` (`E2E-SHELL-1`, `E2E-SHELL-2`).
+
 ## Implémentation — durée SLA lisible sur Mes tâches (issue #67)
 
 - **Comportement :** `slaRemainingHours` (heures fractionnaires) est formaté par `formatDurationHours`

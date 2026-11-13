@@ -22,18 +22,103 @@ body {
 }
 
 .app-shell {
+  --shell-nav-width: 220px;
+  --shell-rail-width: 3.25rem;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: var(--shell-nav-width) 1fr;
+  position: relative;
+}
+
+.app-shell--collapsed {
+  grid-template-columns: var(--shell-rail-width) 1fr;
+}
+
+.app-shell--narrow {
+  grid-template-columns: var(--shell-rail-width) 1fr;
+}
+
+.app-shell--narrow.app-shell--drawer-open {
+  grid-template-columns: var(--shell-rail-width) 1fr;
+}
+
+.app-shell__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(30, 42, 58, 0.45);
 }
 
 .app-shell__nav {
   background: var(--color-ink);
   color: var(--color-ink-on-dark);
-  padding: 1rem 0.75rem;
+  padding: 0.75rem 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
+  max-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 30;
+}
+
+.app-shell--narrow.app-shell--drawer-open .app-shell__nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(var(--shell-nav-width), 85vw);
+  padding: 0.75rem;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.28);
+  overflow-y: auto;
+}
+
+.app-shell__burger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin: 0 auto;
+  padding: 0;
+  border: 1px solid rgba(243, 244, 246, 0.28);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-shell__burger:hover,
+.app-shell__burger:focus-visible {
+  border-color: var(--color-coral-on-dark);
+  outline: none;
+}
+
+.app-shell__burger-icon {
+  display: block;
+  width: 1.15rem;
+  height: 0.85rem;
+  background:
+    linear-gradient(currentColor, currentColor) 0 0 / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 50% / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 100% / 100% 2px no-repeat;
+}
+
+.app-shell__nav-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.app-shell--collapsed:not(.app-shell--drawer-open) .app-shell__nav {
+  align-items: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 
 .app-shell__brand {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -6,6 +6,7 @@ import AppShell from './AppShell.vue'
 import { routes } from '@/app/routes'
 import { useAuthStore } from '@/stores/auth'
 import { applyTenantDefault, currentLocale, setLocale } from '@/i18n'
+import { SHELL_NAV_NARROW_MQ } from '@/composables/useShellNavCollapse'
 
 vi.mock('@/stores/notifications', () => ({
   useNotificationsStore: () => ({
@@ -13,6 +14,22 @@ vi.mock('@/stores/notifications', () => ({
     connect: vi.fn(), disconnect: vi.fn(), markRead: vi.fn(), markAllRead: vi.fn(),
   }),
 }))
+
+function stubWideViewport() {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches: false,
+      media: SHELL_NAV_NARROW_MQ,
+      onchange: null,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => true,
+    })),
+  )
+}
 
 async function mountShell() {
   const router = createRouter({ history: createMemoryHistory(), routes })
@@ -25,8 +42,13 @@ async function mountShell() {
 describe('AppShell language (D7)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    stubWideViewport()
     const auth = useAuthStore()
     auth.user = { id: 'a', name: 'Admin', email: null, roles: ['TENANT_ADMIN'] }
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renders the navigation in English when the language is English', async () => {

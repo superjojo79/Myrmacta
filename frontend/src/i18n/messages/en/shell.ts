@@ -4,6 +4,8 @@ const shell: typeof fr = {
   brand: 'Myrmacta',
   tagline: 'Collective intelligence for your cases and decisions',
   navLabel: 'Operations',
+  toggleOpen: 'Open menu',
+  toggleClose: 'Close menu',
   sessionError: 'Unable to load the session',
   session: 'Session',
   logout: 'Log out',

@@ -12,6 +12,12 @@ Pour installer et lancer l'environnement, voir [docs/guides/GETTING-STARTED.md](
 
 ## 0. Rôles et navigation
 
+Le bouton en haut du menu (icône « burger ») replie ou déplie la navigation. Replié, un bandeau
+vertical reste visible avec ce bouton. Sur un écran étroit (moins de 768 px de large), le menu
+démarre replié et s'ouvre en superposition au-dessus du contenu ; un clic sur un lien ou sur le fond
+le referme. Sur un grand écran, il démarre ouvert. L'état n'est pas mémorisé d'une visite à l'autre
+(registre §137).
+
 Le menu latéral affiche deux sections. La deuxième n'apparaît que si le rôle du compte connecté
 le permet — l'affichage du menu est indicatif, le contrôle réel se fait côté API :
 

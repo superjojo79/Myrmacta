@@ -80,6 +80,20 @@ public final class SignatureAccessResolver {
         return new InternalAccess(request, signer);
     }
 
+    /**
+     * Mêmes conditions que la décision par clic : demande {@code PENDING} et non échue, signataire {@code PENDING}
+     * (le signataire interne n'est pas filtré par {@link #resolveInternal}). Sinon, le refus uniforme.
+     */
+    public void requireOpen(SignatureRequest request, Signer signer) {
+        if (request.status() != SignatureStatus.PENDING || !request.deadlineAt().isAfter(clock.instant())) {
+            throw new PortalAccessDeniedException("request " + request.id() + " cannot take an upload ("
+                    + request.status() + ")");
+        }
+        if (signer.status() != SignerStatus.PENDING) {
+            throw new PortalAccessDeniedException("signer " + signer.id() + " cannot decide");
+        }
+    }
+
     public record ResolvedAccess(SignatureRequest request, Signer signer, Dossier dossier) {}
 
     public record InternalAccess(SignatureRequest request, Signer signer) {}

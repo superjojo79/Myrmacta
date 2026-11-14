@@ -3,6 +3,8 @@ package be.myrmacta.infrastructure.web.portal;
 import be.myrmacta.domain.dossier.model.DossierConflictException;
 import be.myrmacta.domain.dossier.model.InvalidDossierElementException;
 import be.myrmacta.domain.signature.model.HostedSignatureException;
+import be.myrmacta.domain.signature.model.InvalidCardSignatureInputException;
+import be.myrmacta.domain.signature.model.SigningSessionExpiredException;
 import be.myrmacta.domain.signature.model.SignedUploadRejectedException;
 import be.myrmacta.domain.signature.model.SignedUploadRequiredException;
 import be.myrmacta.domain.signature.model.SignedUploadTooLargeException;
@@ -77,6 +79,21 @@ class PortalExceptionHandler {
     ProblemDetail handleHostedSignature(HostedSignatureException ex) {
         return problem(HttpStatus.CONFLICT, "Signature chez le fournisseur",
                 "Cette signature se fait sur le site du fournisseur.");
+    }
+
+    /** Entrée illisible de la signature dans la page : 400 sans détail (TODO §138, D-EID-BRIDGE). */
+    @ExceptionHandler(InvalidCardSignatureInputException.class)
+    ProblemDetail handleInvalidCardInput(InvalidCardSignatureInputException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Saisie invalide", "Entrée illisible.");
+    }
+
+    /** Préparation trop ancienne ou dans le futur : le signataire recommence (TODO §138). */
+    @ExceptionHandler(SigningSessionExpiredException.class)
+    ProblemDetail handleSigningSessionExpired(SigningSessionExpiredException ex) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "Session de signature expirée",
+                "La session de signature a expiré, recommencez.");
+        problem.setProperty("code", "SIGNING_SESSION_EXPIRED");
+        return problem;
     }
 
     /** Le clic « signer » du portail ne clôt pas une signature apportée : il faut téléverser le PDF signé (TODO §138). */

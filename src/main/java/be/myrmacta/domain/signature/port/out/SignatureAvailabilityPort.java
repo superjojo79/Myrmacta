@@ -21,4 +21,10 @@ public interface SignatureAvailabilityPort {
 
     /** Taille maximale d'un PDF signé téléversé (TODO §138, D-EID-UPLOAD) : celle de la source, plus les signatures. */
     long maxSignedUploadBytes();
+
+    /**
+     * Ponts navigateur autorisés pour signer dans la page (TODO §138, D-EID-BRIDGE), dans l'ordre à essayer ; vide si
+     * la signature dans la page n'est pas offerte.
+     */
+    java.util.List<String> cardBridges();
 }

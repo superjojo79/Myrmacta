@@ -60,7 +60,8 @@ class EidSignatureAdapterTest extends SignaturePortContract {
     private final SignedUploadRepository uploads = mock(SignedUploadRepository.class);
     private final DocumentStoragePort storage = mock(DocumentStoragePort.class);
     private final SignedPdfVerifier verifier = mock(SignedPdfVerifier.class);
-    private final EidSignatureAdapter adapter = new EidSignatureAdapter(TENANT, repository, uploads, storage, verifier);
+    private final CardSignatureAssembler assembler = mock(CardSignatureAssembler.class);
+    private final EidSignatureAdapter adapter = new EidSignatureAdapter(TENANT, repository, uploads, storage, verifier, assembler);
 
     EidSignatureAdapterTest() {
         when(repository.findById(any())).thenAnswer(inv -> Optional.ofNullable(requests.get(inv.<UUID>getArgument(0))));
@@ -214,6 +215,21 @@ class EidSignatureAdapterTest extends SignaturePortContract {
         when(storage.retrieve(eq(TENANT), eq("storage/doc.pdf"))).thenReturn(TestPdfs.pdf(1, "Autre source"));
         assertThatThrownBy(() -> adapter.fetchArtifacts("eid:" + id)).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("source");
+    }
+
+    @Test
+    void cardSignatureIsDelegatedToTheAssemblerInBothSteps() {
+        SignaturePort.CardSignatureInput input =
+                new SignaturePort.CardSignatureInput(SOURCE, new byte[] {1}, List.of(new byte[] {2}), NOW);
+        SignaturePort.CardSignatureDigest digest = new SignaturePort.CardSignatureDigest(new byte[] {9}, "SHA-256");
+        when(assembler.prepare(input)).thenReturn(digest);
+        when(assembler.assemble(input, new byte[] {7})).thenReturn(SIGNED_1);
+
+        assertThat(adapter.prepareCardSignature(input)).isSameAs(digest);
+        assertThat(adapter.assembleCardSignature(input, new byte[] {7})).isEqualTo(SIGNED_1);
+        // une entrée illisible remonte telle quelle : le cas d'usage la rend en 400 sans détail
+        when(assembler.prepare(input)).thenThrow(new IllegalArgumentException("unreadable"));
+        assertThatThrownBy(() -> adapter.prepareCardSignature(input)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

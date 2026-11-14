@@ -10,6 +10,7 @@ import be.myrmacta.infrastructure.signature.DocusignSignatureAdapter;
 import be.myrmacta.infrastructure.signature.SignatureStubGuard;
 import be.myrmacta.infrastructure.signature.StubSignatureAdapter;
 import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.CardSignatureAssembler;
 import be.myrmacta.infrastructure.signature.eid.EidSignatureAdapter;
 import be.myrmacta.infrastructure.signature.eid.EidTrustAnchors;
 import be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier;
@@ -95,6 +96,14 @@ public class SignatureConfig {
                 new be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport());
     }
 
+    /** TODO §138 (D-EID-BRIDGE) — signature par carte en deux temps, avec les mêmes autorités de confiance. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(CardSignatureAssembler.class)
+    CardSignatureAssembler eidCardSignatureAssembler(EidTrustAnchors trustAnchors) {
+        return new be.myrmacta.infrastructure.signature.eid.DssCardSignatureAssembler(trustAnchors.certificates());
+    }
+
     /**
      * TODO §138 (D-EID-TRUST) — autorités de confiance du fournisseur {@code eid}, lues au démarrage : un
      * fichier absent, illisible ou sans certificat fait échouer le contexte avec un message explicite. Le
@@ -118,10 +127,11 @@ public class SignatureConfig {
             SignedUploadRepository uploads,
             DocumentStoragePort storage,
             SignedPdfVerifier verifier,
+            CardSignatureAssembler cardAssembler,
             EidTrustAnchors trustAnchors) {
         LOG.info("Signature provider eid active: {} trusted certificate authorities.",
                 trustAnchors.certificates().size());
-        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier);
+        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier, cardAssembler);
     }
 
     @Bean
@@ -160,6 +170,11 @@ public class SignatureConfig {
             @Override
             public long maxSignedUploadBytes() {
                 return properties.eid().maxUploadBytes();
+            }
+
+            @Override
+            public java.util.List<String> cardBridges() {
+                return properties.eid().bridges();
             }
         };
     }

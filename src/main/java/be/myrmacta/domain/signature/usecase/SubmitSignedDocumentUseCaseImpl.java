@@ -136,13 +136,7 @@ public final class SubmitSignedDocumentUseCaseImpl implements SubmitSignedDocume
 
     /** Mêmes conditions que la décision par clic : sinon, le refus uniforme. */
     private void requireOpen(SignatureRequest request, Signer signer) {
-        if (request.status() != SignatureStatus.PENDING || !request.deadlineAt().isAfter(clock.instant())) {
-            throw new PortalAccessDeniedException("request " + request.id() + " cannot take an upload ("
-                    + request.status() + ")");
-        }
-        if (signer.status() != SignerStatus.PENDING) {
-            throw new PortalAccessDeniedException("signer " + signer.id() + " cannot decide");
-        }
+        accessResolver.requireOpen(request, signer);
     }
 
     private DecideSignatureUseCase.Result record(

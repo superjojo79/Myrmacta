@@ -1,8 +1,10 @@
 package be.myrmacta.infrastructure.web.portal;
 
+import be.myrmacta.domain.signature.port.in.CardSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase;
+import be.myrmacta.infrastructure.web.signature.CardSignatureWire;
 import be.myrmacta.infrastructure.web.signature.MultipartSignedUpload;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.lang.annotation.ElementType;
@@ -10,6 +12,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.CacheControl;
@@ -49,11 +52,14 @@ class SignaturePortalController {
     private final GetSignatureUseCase getUseCase;
     private final DecideSignatureUseCase decideUseCase;
     private final SubmitSignedDocumentUseCase submitUseCase;
+    private final CardSignatureUseCase cardUseCase;
 
     SignaturePortalController(
             GetSignatureUseCase getUseCase,
             DecideSignatureUseCase decideUseCase,
-            SubmitSignedDocumentUseCase submitUseCase) {
+            SubmitSignedDocumentUseCase submitUseCase,
+            CardSignatureUseCase cardUseCase) {
+        this.cardUseCase = Objects.requireNonNull(cardUseCase, "cardUseCase");
         this.getUseCase = Objects.requireNonNull(getUseCase, "getUseCase");
         this.decideUseCase = Objects.requireNonNull(decideUseCase, "decideUseCase");
         this.submitUseCase = Objects.requireNonNull(submitUseCase, "submitUseCase");
@@ -94,6 +100,24 @@ class SignaturePortalController {
         return SignatureDecisionResponse.from(submitUseCase.submitByToken(token, new MultipartSignedUpload(file)));
     }
 
+    /** Signature dans la page (TODO §138, D-EID-BRIDGE) : condensé à faire signer par la carte, aucune écriture. */
+    @PostMapping(path = "/card-signature/prepare", consumes = "application/json")
+    CardSignatureWire.PrepareResponse cardPrepare(
+            @RequestHeader(name = PortalController.TOKEN_HEADER, required = false) String token,
+            @RequestBody(required = false) CardSignatureWire.PrepareRequest body) {
+        return CardSignatureWire.PrepareResponse.from(
+                cardUseCase.prepareByToken(token, CardSignatureWire.input(body)));
+    }
+
+    /** Valeur de signature rendue par la carte : assemblage puis chemin du téléversement. Pas de transaction. */
+    @PostMapping(path = "/card-signature/complete", consumes = "application/json")
+    SignatureDecisionResponse cardComplete(
+            @RequestHeader(name = PortalController.TOKEN_HEADER, required = false) String token,
+            @RequestBody(required = false) CardSignatureWire.CompleteRequest body) {
+        return SignatureDecisionResponse.from(
+                cardUseCase.completeByToken(token, CardSignatureWire.completion(body)));
+    }
+
     @PostMapping("/decline")
     @Transactional
     SignatureDecisionResponse decline(
@@ -129,11 +153,12 @@ class SignaturePortalController {
             boolean simulated,
             boolean hosted,
             boolean signedUpload,
+            List<String> cardBridges,
             @Schema(nullable = true) String signingUrl) {
         static SignatureContextResponse from(GetSignatureUseCase.Context context) {
             return new SignatureContextResponse(context.dossierReference(), context.documentLabel(), context.signerName(),
                     context.required(), context.deadlineAt(), context.simulated(), context.hosted(),
-                    context.signedUpload(), context.signingUrl());
+                    context.signedUpload(), context.cardBridges(), context.signingUrl());
         }
     }
 }

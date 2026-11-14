@@ -1,6 +1,7 @@
 package be.myrmacta.domain.signature.port.in;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Lecture, par un signataire externe, de ce qui le concerne (TODO §72) : le contexte de sa demande
@@ -16,6 +17,9 @@ public interface GetSignatureUseCase {
      * {@code signedUpload} : le signataire signe hors de Myrmacta et téléverse le PDF signé (TODO §138) ;
      * le document remis est alors le document de travail courant de la demande.
      *
+     * <p>{@code cardBridges} : ponts navigateur autorisés pour signer dans la page, dans l'ordre à essayer (TODO §138,
+     * D-EID-BRIDGE) ; vide si le fournisseur ne prend pas de PDF signé ou si l'exploitant n'en offre aucun.
+     *
      * <p>{@code signingUrl} est l'adresse chez le fournisseur au moment de l'ouverture, nulle tant que
      * le signataire n'est pas notifié ou si la signature se fait dans Myrmacta (D-SIGNATURE-LINK).
      */
@@ -28,6 +32,7 @@ public interface GetSignatureUseCase {
             boolean simulated,
             boolean hosted,
             boolean signedUpload,
+            List<String> cardBridges,
             String signingUrl) {}
 
     record DocumentContent(byte[] content, String contentType, String filename) {}

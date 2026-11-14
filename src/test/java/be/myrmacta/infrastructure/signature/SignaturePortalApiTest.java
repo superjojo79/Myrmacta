@@ -98,7 +98,7 @@ class SignaturePortalApiTest extends AbstractSignatureEngineTest {
         JsonNode json = objectMapper.readTree(body);
         assertThat(new ArrayList<>(json.propertyNames()))
                 .containsExactlyInAnyOrder("dossierReference", "documentLabel", "signerName", "required",
-                        "deadlineAt", "simulated", "hosted", "signedUpload", "signingUrl");
+                        "deadlineAt", "simulated", "hosted", "signedUpload", "cardBridges", "signingUrl");
         assertThat(body).doesNotContain("@example.org").doesNotContain(request.id().toString());
     }
 

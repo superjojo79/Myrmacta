@@ -50,7 +50,9 @@ import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
 import be.myrmacta.domain.signature.port.out.SignedArtifactDownload;
 import be.myrmacta.domain.signature.port.out.SignatureTransaction;
 import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
+import be.myrmacta.domain.signature.port.in.CardSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase;
+import be.myrmacta.domain.signature.usecase.CardSignatureUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.SubmitSignedDocumentUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.RequestSignatureUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.SendSignatureInvitesUseCaseImpl;
@@ -203,9 +205,24 @@ public class SignatureUseCaseConfig {
             DecideSignatureUseCase decideUseCase,
             SignaturePort port,
             SignedUploadRepository uploads,
-            SubmitSignedDocumentUseCase submitUseCase) {
+            SubmitSignedDocumentUseCase submitUseCase,
+            CardSignatureUseCase cardUseCase,
+            SignatureAvailabilityPort availability) {
         return new MySignaturesUseCaseImpl(tenantProperties.id(), repository, dossierRepository, accessPolicy,
-                elementRepository, storage, decideUseCase, port, CLOCK, uploads, submitUseCase);
+                elementRepository, storage, decideUseCase, port, CLOCK, uploads, submitUseCase, cardUseCase,
+                availability);
+    }
+
+    @Bean
+    CardSignatureUseCase cardSignatureUseCase(
+            TenantProperties tenantProperties,
+            SignatureAccessResolver accessResolver,
+            SignaturePort port,
+            DocumentStoragePort storage,
+            SignedUploadRepository uploads,
+            SubmitSignedDocumentUseCase submitUseCase) {
+        return new CardSignatureUseCaseImpl(tenantProperties.id(), accessResolver, port, storage, uploads,
+                submitUseCase, CLOCK);
     }
 
     /** Transaction courte du téléversement (TODO §138) : la vérification, elle, se fait hors transaction. */
@@ -283,9 +300,10 @@ public class SignatureUseCaseConfig {
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
             SignaturePort port,
-            SignedUploadRepository uploads) {
+            SignedUploadRepository uploads,
+            SignatureAvailabilityPort availability) {
         return new GetSignatureUseCaseImpl(tenantProperties.id(), accessResolver, elementRepository, storage, port,
-                uploads);
+                uploads, availability);
     }
 
     @Bean

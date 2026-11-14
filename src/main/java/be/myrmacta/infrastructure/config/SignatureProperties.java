@@ -1,6 +1,7 @@
 package be.myrmacta.infrastructure.config;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -74,10 +75,11 @@ public record SignatureProperties(
             dispatch = new Dispatch(null, 0, 0);
         }
         if (eid == null) {
-            eid = new Eid(null, 0, null);
+            eid = new Eid(null, 0, null, null);
         }
         if (eid.maxUploadBytes() <= 0) {
-            eid = new Eid(eid.trustAnchorsFile(), maxDocumentBytes + SIGNED_UPLOAD_MARGIN_BYTES, eid.revocation());
+            eid = new Eid(eid.trustAnchorsFile(), maxDocumentBytes + SIGNED_UPLOAD_MARGIN_BYTES, eid.revocation(),
+                    eid.bridges());
         }
         if (eid.maxUploadBytes() < maxDocumentBytes) {
             throw new IllegalStateException(
@@ -160,12 +162,39 @@ public record SignatureProperties(
      * ({@code spring.servlet.multipart}, 25 Mo par défaut) s'applique avant elle. {@code revocation} : appel
      * sortant vers l'état de révocation d'un certificat (D-EID-REVOCATION).
      */
-    public record Eid(String trustAnchorsFile, long maxUploadBytes, Revocation revocation) {
+    public record Eid(String trustAnchorsFile, long maxUploadBytes, Revocation revocation, List<String> bridges) {
+
+        /** Ponts navigateur reconnus (D-EID-BRIDGE), dans l'ordre d'essai par défaut. */
+        static final List<String> KNOWN_BRIDGES = List.of("web-eid", "beidconnect");
+
         public Eid {
             trustAnchorsFile = trustAnchorsFile == null || trustAnchorsFile.isBlank() ? null : trustAnchorsFile.trim();
             if (revocation == null) {
                 revocation = new Revocation(null, 0);
             }
+            bridges = normalizedBridges(bridges);
+        }
+
+        /** Absent : les deux ponts ; vide : signature dans la page non offerte ; valeur inconnue : démarrage refusé. */
+        private static List<String> normalizedBridges(List<String> raw) {
+            if (raw == null) {
+                return KNOWN_BRIDGES;
+            }
+            List<String> out = new java.util.ArrayList<>();
+            for (String value : raw) {
+                String bridge = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+                if (bridge.isEmpty()) {
+                    continue;
+                }
+                if (!KNOWN_BRIDGES.contains(bridge)) {
+                    throw new IllegalStateException("app.signature.eid.bridges '" + bridge
+                            + "' is unknown (expected a list of " + KNOWN_BRIDGES + ")");
+                }
+                if (!out.contains(bridge)) {
+                    out.add(bridge);
+                }
+            }
+            return List.copyOf(out);
         }
     }
 

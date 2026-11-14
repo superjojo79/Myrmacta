@@ -46,6 +46,10 @@ class MySignaturesUseCaseImplTest {
     private final SignaturePort port = mock(SignaturePort.class);
     private final be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase submit =
             mock(be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase.class);
+    private final be.myrmacta.domain.signature.port.in.CardSignatureUseCase card =
+            mock(be.myrmacta.domain.signature.port.in.CardSignatureUseCase.class);
+    private final be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort availability =
+            mock(be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort.class);
     private MySignaturesUseCaseImpl useCase;
     private SignatureRequest request;
     private final AccessContext.User bob = AccessContext.user("bob", Set.of("TENANT_ADMIN"));
@@ -61,7 +65,7 @@ class MySignaturesUseCaseImplTest {
                 mock(DossierElementRepository.class), mock(DocumentStoragePort.class), mock(DecideSignatureUseCase.class),
                 port, Clock.fixed(NOW, ZoneOffset.UTC),
                 mock(be.myrmacta.domain.signature.port.out.SignedUploadRepository.class),
-                submit);
+                submit, card, availability);
         when(port.capabilities()).thenReturn(capabilities(true));
     }
 
@@ -124,12 +128,34 @@ class MySignaturesUseCaseImplTest {
         repository.insert(request, List.of(internal(request.id(), 0, true, "bob").withStatus(SignerStatus.PENDING)));
         MySignaturesUseCase.Item item = useCase.list(bob).getFirst();
         assertThat(item.signedUpload()).isTrue();
+        when(availability.cardBridges()).thenReturn(List.of("web-eid"));
+        assertThat(useCase.list(bob).getFirst().cardBridges()).containsExactly("web-eid");
         assertThat(item.hosted()).isFalse();
         var upload = be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase.Upload.of("%PDF-".getBytes());
 
         useCase.submitSigned(bob, item.signerId(), upload);
 
         verify(submit).submitInternal("bob", item.signerId(), upload);
+    }
+
+    @Test
+    void cardSignatureStepsDelegateForTheSignerOnHisTurnAndRefuseOthers() {
+        repository.insert(request, List.of(internal(request.id(), 0, true, "bob").withStatus(SignerStatus.PENDING)));
+        UUID signerId = repository.findSigners(request.id()).getFirst().id();
+        var input = new be.myrmacta.domain.signature.port.in.CardSignatureUseCase.CardInput(new byte[] {1}, List.of());
+        var completion = new be.myrmacta.domain.signature.port.in.CardSignatureUseCase.Completion(
+                new byte[] {1}, List.of(), NOW, "d", new byte[] {2});
+
+        useCase.prepareCardSignature(bob, signerId, input);
+        useCase.completeCardSignature(bob, signerId, completion);
+
+        verify(card).prepareInternal("bob", signerId, input);
+        verify(card).completeInternal("bob", signerId, completion);
+        AccessContext.User eve = AccessContext.user("eve", Set.of("TENANT_ADMIN"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> useCase.prepareCardSignature(eve, signerId, input))
+                .isInstanceOf(be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> useCase.completeCardSignature(eve, signerId, completion))
+                .isInstanceOf(be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException.class);
     }
 
     @Test

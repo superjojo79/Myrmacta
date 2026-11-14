@@ -13,10 +13,12 @@ import be.myrmacta.domain.signature.model.SignatureStatus;
 import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
+import be.myrmacta.domain.signature.port.in.CardSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.MySignaturesUseCase;
 import be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase;
+import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
 import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
@@ -38,6 +40,8 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
     private final SignatureWorkingDocuments documents;
     private final DecideSignatureUseCase decideUseCase;
     private final SubmitSignedDocumentUseCase submitUseCase;
+    private final CardSignatureUseCase cardUseCase;
+    private final SignatureAvailabilityPort availability;
     private final SignaturePort port;
     private final Clock clock;
 
@@ -52,7 +56,9 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
             SignaturePort port,
             Clock clock,
             SignedUploadRepository uploads,
-            SubmitSignedDocumentUseCase submitUseCase) {
+            SubmitSignedDocumentUseCase submitUseCase,
+            CardSignatureUseCase cardUseCase,
+            SignatureAvailabilityPort availability) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dossierRepository = Objects.requireNonNull(dossierRepository, "dossierRepository");
@@ -60,6 +66,8 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.decideUseCase = Objects.requireNonNull(decideUseCase, "decideUseCase");
         this.submitUseCase = Objects.requireNonNull(submitUseCase, "submitUseCase");
+        this.cardUseCase = Objects.requireNonNull(cardUseCase, "cardUseCase");
+        this.availability = Objects.requireNonNull(availability, "availability");
         this.port = Objects.requireNonNull(port, "port");
         this.documents = new SignatureWorkingDocuments(tenantId, storage, uploads, port);
         this.clock = Objects.requireNonNull(clock, "clock");
@@ -101,6 +109,20 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         return submitUseCase.submitInternal(user.userId(), signerId, upload);
     }
 
+    @Override
+    public CardSignatureUseCase.Prepared prepareCardSignature(
+            AccessContext.User user, UUID signerId, CardSignatureUseCase.CardInput input) {
+        requireAccess(user, signerId);
+        return cardUseCase.prepareInternal(user.userId(), signerId, input);
+    }
+
+    @Override
+    public DecideSignatureUseCase.Result completeCardSignature(
+            AccessContext.User user, UUID signerId, CardSignatureUseCase.Completion completion) {
+        requireAccess(user, signerId);
+        return cardUseCase.completeInternal(user.userId(), signerId, completion);
+    }
+
     private Optional<Item> item(AccessContext.User user, Signer signer) {
         Optional<SignatureRequest> request = repository.findById(signer.requestId())
                 .filter(r -> r.status() == SignatureStatus.PENDING && r.deadlineAt().isAfter(clock.instant()));
@@ -117,7 +139,8 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         SignaturePort.SignatureProviderCapabilities capabilities = port.capabilities();
         return Optional.of(new Item(signer.id(), request.get().id(), dossier.get().id(), dossier.get().reference(),
                 label, signer.required(), myTurn, request.get().deadlineAt(), request.get().simulated(),
-                capabilities.hostedSigningUrl(), capabilities.signedUpload(), null));
+                capabilities.hostedSigningUrl(), capabilities.signedUpload(),
+                capabilities.signedUpload() ? availability.cardBridges() : List.of(), null));
     }
 
     @Override

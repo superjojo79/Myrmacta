@@ -35,7 +35,16 @@ public interface MySignaturesUseCase {
     DecideSignatureUseCase.Result submitSigned(
             AccessContext.User user, UUID signerId, SubmitSignedDocumentUseCase.Upload upload);
 
+    /** Signature dans la page (TODO §138, D-EID-BRIDGE) : même accès que {@link #decide}, aucune écriture. */
+    CardSignatureUseCase.Prepared prepareCardSignature(
+            AccessContext.User user, UUID signerId, CardSignatureUseCase.CardInput input);
+
+    /** Fin de la signature dans la page : même résultat qu'une décision {@code SIGN}. */
+    DecideSignatureUseCase.Result completeCardSignature(
+            AccessContext.User user, UUID signerId, CardSignatureUseCase.Completion completion);
+
     /**
+     * @param cardBridges ponts autorisés pour signer dans la page, vide si non offerte
      * @param signedUpload le signataire signe hors de Myrmacta et téléverse le PDF signé (TODO §138)
      * @param myTurn faux tant que le signataire est {@code WAITING} (mode séquentiel)
      * @param signingUrl toujours nulle dans la liste : le lien se demande au clic ({@link #signingUrl})
@@ -52,5 +61,6 @@ public interface MySignaturesUseCase {
             boolean simulated,
             boolean hosted,
             boolean signedUpload,
+            List<String> cardBridges,
             String signingUrl) {}
 }

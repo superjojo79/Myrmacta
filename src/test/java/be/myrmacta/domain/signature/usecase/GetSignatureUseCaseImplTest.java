@@ -43,6 +43,8 @@ class GetSignatureUseCaseImplTest {
     private final PortalTokenPort tokenPort = mock(PortalTokenPort.class);
     private final DossierRepository dossiers = mock(DossierRepository.class);
     private final SignaturePort port = mock(SignaturePort.class);
+    private final be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort availability =
+            mock(be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort.class);
     private final DocumentStoragePort storage = mock(DocumentStoragePort.class);
     private final DossierElementRepository elements = mock(DossierElementRepository.class);
     private final be.myrmacta.domain.signature.InMemorySignedUploadRepository uploads =
@@ -70,7 +72,7 @@ class GetSignatureUseCaseImplTest {
                         Map.of(), "system", NOW, null)));
         when(storage.retrieve(TENANT, "storage/doc.pdf")).thenReturn(SOURCE);
         when(storage.retrieve(TENANT, "work-1")).thenReturn(SIGNED);
-        useCase = new GetSignatureUseCaseImpl(TENANT, resolver, elements, storage, port, uploads);
+        useCase = new GetSignatureUseCaseImpl(TENANT, resolver, elements, storage, port, uploads, availability);
     }
 
     @Test
@@ -128,6 +130,21 @@ class GetSignatureUseCaseImplTest {
 
         assertThat(context.signedUpload()).isTrue();
         assertThat(context.hosted()).isFalse();
+    }
+
+    @Test
+    void contextListsTheOperatorCardBridgesOnlyForAProviderThatTakesUploads() {
+        when(availability.cardBridges()).thenReturn(List.of("beidconnect", "web-eid"));
+
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        assertThat(useCase.context("tok").cardBridges()).containsExactly("beidconnect", "web-eid");
+
+        when(port.capabilities()).thenReturn(capabilities(true));
+        assertThat(useCase.context("tok").cardBridges()).isEmpty();
+
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        when(availability.cardBridges()).thenReturn(List.of());
+        assertThat(useCase.context("tok").cardBridges()).isEmpty();
     }
 
     @Test

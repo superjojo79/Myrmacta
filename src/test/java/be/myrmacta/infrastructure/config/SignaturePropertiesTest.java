@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** T1.8 : valeurs par défaut et validation de {@code app.signature.*} (TODO §72). */
@@ -67,7 +68,7 @@ class SignaturePropertiesTest {
     void eidBlockIsKeptAndValidated() {
         SignatureProperties p = new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
                 new SignatureProperties.Eid(" /etc/anchors.pem ", 5000,
-                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048), null));
+                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048), null, null));
 
         assertThat(p.eid().trustAnchorsFile()).isEqualTo("/etc/anchors.pem");
         assertThat(p.eid().maxUploadBytes()).isEqualTo(5000);
@@ -75,7 +76,7 @@ class SignaturePropertiesTest {
         assertThat(p.eid().revocation().maxResponseBytes()).isEqualTo(2048);
 
         assertThatThrownBy(() -> new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
-                        new SignatureProperties.Eid(null, 500, null, null)))
+                        new SignatureProperties.Eid(null, 500, null, null, null)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("max-upload-bytes");
         assertThatThrownBy(() -> new SignatureProperties.Revocation(Duration.ZERO, 0))
@@ -84,5 +85,23 @@ class SignaturePropertiesTest {
         assertThat(new SignatureProperties.Timestamp(" ", null, 0).enabled()).isFalse();
         assertThatThrownBy(() -> new SignatureProperties.Timestamp("https://tsa.example", Duration.ZERO, 0))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void cardBridgesDefaultToBothInOrderAndCanBeReducedEmptiedOrRefused() {
+        // TODO §138 (D-EID-BRIDGE)
+        assertThat(of("eid", null, null).eid().bridges()).containsExactly("web-eid", "beidconnect");
+        assertThat(eidWith(List.of(" BeIDConnect ", "web-eid", "beidconnect")).bridges())
+                .containsExactly("beidconnect", "web-eid");
+        assertThat(eidWith(List.of()).bridges()).isEmpty();
+        assertThatThrownBy(() -> eidWith(List.of("web-eid", "applet")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("applet");
+    }
+
+    private static SignatureProperties.Eid eidWith(List<String> bridges) {
+        return new SignatureProperties("eid", null, 0, null, null, 0, null, null, null,
+                        new SignatureProperties.Eid(null, 0, null, null, bridges))
+                .eid();
     }
 }

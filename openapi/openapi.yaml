@@ -1079,6 +1079,54 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/signatures/mine/{signerId}/card-signature/prepare:
+    post:
+      tags:
+      - my-signatures-controller
+      operationId: cardPrepare
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PrepareResponse"
+  /api/signatures/mine/{signerId}/card-signature/complete:
+    post:
+      tags:
+      - my-signatures-controller
+      operationId: cardComplete
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
   /api/signature-requests/{requestId}/signers/{signerId}/resend:
     post:
       tags:
@@ -1231,6 +1279,52 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SignatureDeclineRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
+  /api/portal/signature/card-signature/prepare:
+    post:
+      tags:
+      - signature-portal-controller
+      operationId: cardPrepare_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PrepareResponse"
+  /api/portal/signature/card-signature/complete:
+    post:
+      tags:
+      - signature-portal-controller
+      operationId: cardComplete_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
       responses:
         "200":
           description: OK
@@ -4882,6 +4976,43 @@ components:
       properties:
         reason:
           type: string
+    PrepareRequest:
+      type: object
+      properties:
+        certificate:
+          type: string
+        certificateChain:
+          type: array
+          items:
+            type: string
+    PrepareResponse:
+      type: object
+      properties:
+        digest:
+          type: string
+        hashFunction:
+          type: string
+        signingTime:
+          type: string
+          format: date-time
+        documentDigest:
+          type: string
+    CompleteRequest:
+      type: object
+      properties:
+        certificate:
+          type: string
+        certificateChain:
+          type: array
+          items:
+            type: string
+        signingTime:
+          type: string
+          format: date-time
+        documentDigest:
+          type: string
+        signature:
+          type: string
     SignatureRequestResponse:
       type: object
       properties:
@@ -6479,6 +6610,10 @@ components:
           type: boolean
         signedUpload:
           type: boolean
+        cardBridges:
+          type: array
+          items:
+            type: string
         signingUrl:
           type:
           - string
@@ -6860,6 +6995,10 @@ components:
           type: boolean
         signedUpload:
           type: boolean
+        cardBridges:
+          type: array
+          items:
+            type: string
         signingUrl:
           type:
           - string

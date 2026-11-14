@@ -8,9 +8,11 @@ import be.myrmacta.domain.signature.SignatureAccessResolver.ResolvedAccess;
 import be.myrmacta.domain.signature.SignatureWorkingDocuments;
 import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
+import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
 import be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -24,6 +26,7 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
     private final DossierElementRepository elementRepository;
     private final SignatureWorkingDocuments documents;
     private final SignaturePort port;
+    private final SignatureAvailabilityPort availability;
 
     public GetSignatureUseCaseImpl(
             String tenantId,
@@ -31,11 +34,13 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
             SignaturePort port,
-            SignedUploadRepository uploads) {
+            SignedUploadRepository uploads,
+            SignatureAvailabilityPort availability) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.elementRepository = Objects.requireNonNull(elementRepository, "elementRepository");
         this.port = Objects.requireNonNull(port, "port");
+        this.availability = Objects.requireNonNull(availability, "availability");
         this.documents = new SignatureWorkingDocuments(tenantId, storage, uploads, port);
     }
 
@@ -48,7 +53,8 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
         boolean hosted = capabilities.hostedSigningUrl();
         return new Context(access.dossier().reference(), label, access.signer().displayName(),
                 access.signer().required(), request.deadlineAt(), request.simulated(), hosted,
-                capabilities.signedUpload(), signingUrl(hosted, request, access.signer().position()));
+                capabilities.signedUpload(),
+                capabilities.signedUpload() ? availability.cardBridges() : List.of(), signingUrl(hosted, request, access.signer().position()));
     }
 
     /** Échec fournisseur : écran d'attente, sans journaliser l'adresse (elle contient un jeton). */

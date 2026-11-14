@@ -44,6 +44,7 @@ public final class EidSignatureAdapter implements SignaturePort {
     private final SignedUploadRepository uploads;
     private final DocumentStoragePort storage;
     private final SignedPdfVerifier verifier;
+    private final CardSignatureAssembler cardAssembler;
     private final EidProofPdfFactory proofFactory = new EidProofPdfFactory();
     private final DocumentTimestamper timestamper;
     private final int dispatchMaxAttempts;
@@ -53,8 +54,9 @@ public final class EidSignatureAdapter implements SignaturePort {
             SignatureRequestRepository repository,
             SignedUploadRepository uploads,
             DocumentStoragePort storage,
-            SignedPdfVerifier verifier) {
-        this(tenantId, repository, uploads, storage, verifier, null, 0);
+            SignedPdfVerifier verifier,
+            CardSignatureAssembler cardAssembler) {
+        this(tenantId, repository, uploads, storage, verifier, cardAssembler, null, 0);
     }
 
     /**
@@ -69,6 +71,7 @@ public final class EidSignatureAdapter implements SignaturePort {
             SignedUploadRepository uploads,
             DocumentStoragePort storage,
             SignedPdfVerifier verifier,
+            CardSignatureAssembler cardAssembler,
             DocumentTimestamper timestamper,
             int dispatchMaxAttempts) {
         this.timestamper = timestamper;
@@ -78,6 +81,7 @@ public final class EidSignatureAdapter implements SignaturePort {
         this.uploads = Objects.requireNonNull(uploads, "uploads");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.verifier = Objects.requireNonNull(verifier, "verifier");
+        this.cardAssembler = Objects.requireNonNull(cardAssembler, "cardAssembler");
     }
 
     @Override
@@ -115,6 +119,16 @@ public final class EidSignatureAdapter implements SignaturePort {
     @Override
     public SignedUploadVerdict verifySignedUpload(SignedUploadCheck check) {
         return verifier.verify(check.baseDocument(), check.signedDocument(), check.usedCertificateFingerprints());
+    }
+
+    @Override
+    public CardSignatureDigest prepareCardSignature(CardSignatureInput input) {
+        return cardAssembler.prepare(input);
+    }
+
+    @Override
+    public byte[] assembleCardSignature(CardSignatureInput input, byte[] signatureValue) {
+        return cardAssembler.assemble(input, signatureValue);
     }
 
     @Override

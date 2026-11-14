@@ -386,6 +386,9 @@ app:
       # (spring.servlet.multipart, 25 Mo) s'applique avant elle.
       max-upload-bytes: ${APP_SIGNATURE_EID_MAX_UPLOAD_BYTES:0}
       # Appel sortant vers l'état de révocation du certificat (OCSP, sinon CRL) : délai total et taille de réponse maximale.
+      # Ponts navigateur offerts pour signer dans la page (D-EID-BRIDGE), dans l'ordre d'essai : web-eid, beidconnect.
+      # Liste vide : signature dans la page non offerte (téléversement seulement). Valeur inconnue : démarrage refusé.
+      bridges: ${APP_SIGNATURE_EID_BRIDGES:web-eid,beidconnect}
       revocation:
         timeout: ${APP_SIGNATURE_EID_REVOCATION_TIMEOUT:10s}
         max-response-bytes: ${APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES:1048576}

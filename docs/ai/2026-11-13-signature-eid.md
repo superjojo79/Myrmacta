@@ -1,4 +1,4 @@
-# Signature par carte eID sans agent — document de travail
+# Signature par carte eID — document de travail
 
 Issue : #10 · Spec du domaine : docs/specs/30-signature-electronique.md · Points du registre : §72, §109, §138
 
@@ -7,9 +7,10 @@ Issue : #10 · Spec du domaine : docs/specs/30-signature-electronique.md · Poin
 - Problème et utilisateurs : un tenant veut une signature qualifiée par carte eID belge, pour des signatures peu
   fréquentes, sans compte fournisseur et sans agent propre au produit sur le poste du signataire. Signataires :
   externes (portail) et internes (« Mes signatures »).
-- Périmètre : fournisseur `eid` de `app.signature.provider`. Le signataire télécharge le PDF, le signe hors de
-  Myrmacta, téléverse le PDF signé ; Myrmacta le vérifie, garde les constats, produit la preuve. Horodatage
-  RFC 3161 facultatif (lot 4).
+- Périmètre : fournisseur `eid` de `app.signature.provider`. Deux parcours, même vérification : (a) signature
+  dans la page par pont navigateur, Web eID ou BeIDConnect (demande de l'utilisateur du 2026-11-14) ; (b) en
+  repli, le signataire télécharge le PDF, le signe hors de Myrmacta et téléverse le PDF signé. Myrmacta vérifie,
+  garde les constats, produit la preuve. Horodatage RFC 3161 facultatif (lot 4).
 - Hors-périmètre : pilotage de la carte depuis le navigateur (D-EID-TRANSPORT), liste de confiance européenne,
   rapprochement automatique du nom du certificat avec le signataire attendu, signature par téléphone.
 - Critères de succès (vérifiables) :
@@ -22,6 +23,9 @@ Issue : #10 · Spec du domaine : docs/specs/30-signature-electronique.md · Poin
   4. Le document signé final porte toutes les signatures ; la preuve reprend les constats de chacune.
   5. Sans fichier d'autorités de confiance, l'instance refuse de démarrer avec `provider=eid`.
   6. Aucun appel sortant vers une adresse venue d'un certificat dont la chaîne n'est pas vérifiée.
+  7. Avec un pont détecté, la page signe sans quitter Myrmacta : certificat lu par le pont, condensé calculé par
+     le serveur, signature de la carte, PDF assemblé puis vérifié comme un téléversement. Sans pont, la page
+     propose le téléversement.
 - Contraintes : stack figée ; un tenant par instance ; portail anonyme (jeton en en-tête, refus uniforme 404 pour
   l'accès) ; JPA seulement ; MCP : sans objet (acte du signataire, lecture existante inchangée) ; documentation :
   spec 30, guides DEPLOIEMENT / GETTING-STARTED / GUIDE-UTILISATEUR, `.env*.example`, identifiants.
@@ -33,6 +37,8 @@ Issue : #10 · Spec du domaine : docs/specs/30-signature-electronique.md · Poin
 | Question | Options | Recommandation | Statut (ouverte, reportée, hypothèse, tranchée → §N) |
 |---|---|---|---|
 | Piste sans agent | WebAssembly + WebUSB ; Web Smart Card ; mTLS ; signature apportée | signature apportée | tranchée → §138 (D-EID-TRANSPORT, D-EID-UPLOAD) |
+| Signer dans la page | pont navigateur ; rester au téléversement | pont, téléversement en repli | tranchée par l'utilisateur → §138 (D-EID-BRIDGE) |
+| BeIDConnect accepte-t-il un site hors `belgium.be` / `fgov.be` ? | — | lire ses manifestes | ouverte (recherche en cours) |
 | Bibliothèque de validation | DSS ; BouncyCastle à la main | DSS 6.5.1 | tranchée → §138 (D-EID-VALIDATION) |
 | Outils réels (Acrobat, service fédéral) : signent-ils par mise à jour incrémentale ? | — | recette avec une vraie carte | hypothèse : oui ; sinon le motif `DOCUMENT_MISMATCH` s'affiche |
 | Horodatage injoignable après les reprises du répartiteur | bloquer ; livrer sans horodatage en le disant dans la preuve | à trancher au lot 4 | ouverte |
@@ -59,6 +65,18 @@ Portail (chaîne anonyme, jeton dans `X-Portal-Token`) :
 - `GET /api/signatures/mine` : chaque élément gagne `signedUpload: boolean`.
 - `GET /api/signatures/mine/{signerId}/document` : document de travail courant.
 - `POST /api/signatures/mine/{signerId}/signed-document` : même contrat que le portail.
+
+Signature dans la page (D-EID-BRIDGE), mêmes chaînes de sécurité que ci-dessus, corps JSON, binaire en base64 :
+
+- `POST /api/portal/signature/card-signature/prepare` et `POST /api/signatures/mine/{signerId}/card-signature/prepare` :
+  requête `{"certificate": "<DER base64>", "certificateChain": ["<DER base64>", …]}` (chaîne facultative) ;
+  réponse 200 `{"digest": "<base64>", "hashFunction": "SHA-256" | "SHA-384", "signingTime": "<instant ISO-8601>",
+  "documentDigest": "<SHA-256 hex du document courant>"}`.
+- `POST …/card-signature/complete` : requête `{"certificate", "certificateChain", "signingTime", "documentDigest",
+  "signature": "<base64>"}`, les quatre premiers repris tels quels de l'échange précédent ; réponse 200
+  `{"status":"SIGNED"}`.
+- Erreurs : 400 pour une entrée illisible (base64, certificat) ; 422 avec `code` comme pour le téléversement
+  (`STALE_DOCUMENT` si `documentDigest` n'est plus celui du document courant).
 
 Erreurs du téléversement :
 
@@ -94,6 +112,9 @@ Erreurs du téléversement :
 | 1 | Vérificateur DSS (`DssSignedPdfVerifier`) et ses tests | en cours | — |
 | 2 | Domaine, persistance, adaptateur `eid`, API, configuration, purge | en cours | — |
 | 3 | Frontend : portail et « Mes signatures » | en cours | — |
+| 1b | Assembleur PAdES en deux temps (`DssCardSignatureAssembler`) | en cours | — |
+| 2b | Points d'API `card-signature/prepare` et `complete`, cas d'usage | à faire | — |
+| 3b | Client des ponts Web eID et BeIDConnect, parcours dans la page | à faire | — |
 | 4 | Horodatage RFC 3161 et extension LT/LTA | à faire | — |
 | 5 | Clôture : revue indépendante, spec 30, guides, suppression de ce document | à faire | — |
 

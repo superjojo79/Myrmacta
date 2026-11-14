@@ -73,6 +73,48 @@ public interface SignaturePort {
     }
 
     /**
+     * Condensé que la carte du signataire doit signer pour ajouter sa signature au document remis
+     * (TODO §138, D-EID-BRIDGE) : la page le transmet au pont navigateur, qui demande le PIN. Aucune
+     * écriture, aucun appel réseau.
+     *
+     * @throws UnsupportedOperationException si {@code capabilities().signedUpload()} est faux
+     * @throws IllegalArgumentException si le certificat est illisible ou d'un type de clé non pris en charge
+     */
+    default CardSignatureDigest prepareCardSignature(CardSignatureInput input) {
+        throw new UnsupportedOperationException("provider " + code() + " does not sign with a card");
+    }
+
+    /**
+     * PDF signé, assemblé avec la valeur de signature rendue par la carte (D-EID-BRIDGE). Le résultat
+     * n'est pas tenu pour valide : il passe ensuite par {@link #verifySignedUpload}, comme un
+     * téléversement.
+     *
+     * @throws UnsupportedOperationException si {@code capabilities().signedUpload()} est faux
+     * @throws IllegalArgumentException si le certificat ou la valeur de signature est illisible
+     */
+    default byte[] assembleCardSignature(CardSignatureInput input, byte[] signatureValue) {
+        throw new UnsupportedOperationException("provider " + code() + " does not sign with a card");
+    }
+
+    /**
+     * Les deux appels d'une même signature reçoivent les mêmes valeurs : le condensé en dépend.
+     *
+     * @param baseDocument le PDF remis au signataire
+     * @param certificate certificat de signature lu sur la carte, en DER
+     * @param certificateChain autorités lues sur la carte, en DER ; vide si le pont ne les donne pas
+     * @param signingTime heure de signature déclarée, fixée par le serveur à la préparation
+     */
+    record CardSignatureInput(
+            byte[] baseDocument, byte[] certificate, List<byte[]> certificateChain, Instant signingTime) {
+        public CardSignatureInput {
+            certificateChain = certificateChain == null ? List.of() : List.copyOf(certificateChain);
+        }
+    }
+
+    /** @param hashFunction fonction de condensé à annoncer au pont : {@code SHA-256} ou {@code SHA-384} */
+    record CardSignatureDigest(byte[] digest, String hashFunction) {}
+
+    /**
      * @param baseDocument le PDF remis au signataire : la source, suivie des signatures déjà acceptées
      * @param signedDocument le PDF téléversé
      * @param usedCertificateFingerprints SHA-256 (hexadécimal minuscule) des certificats qui ont déjà

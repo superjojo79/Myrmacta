@@ -1,4 +1,4 @@
-# §138 — Signature par carte eID sans agent : signature apportée, vérifiée par Myrmacta
+# §138 — Signature par carte eID : pont navigateur et signature apportée, vérifiées par Myrmacta
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
@@ -10,6 +10,10 @@ document de travail dans `docs/ai/` jusqu'à la clôture. Le socle reste celui d
 **Mandat.** L'utilisateur a demandé le 2026-11-13 d'explorer les pistes sans agent sur le poste du
 signataire (dont un module WebAssembly), de retenir la meilleure et de la développer. Les décisions
 ci-dessous sont prises par l'agent sous ce mandat. Elles restent révisables tant que le point est ouvert.
+
+**Décisions de l'utilisateur (2026-11-14).** Au vu de l'exploration : la bibliothèque DSS est acceptée
+(D-EID-VALIDATION) ; la signature doit pouvoir se faire dans la page, et un pont navigateur (Web eID,
+BeIDConnect) est une dépendance acceptable sur le poste (D-EID-BRIDGE).
 
 ## Pistes explorées
 
@@ -24,10 +28,10 @@ WebAssembly porterait sans peine, mais le **transport** entre une page web et le
 | WebHID, Web Serial, Web Bluetooth, Web NFC | non viable | Aucune n'échange d'APDU avec une carte à contact dans un lecteur ordinaire |
 | WebAuthn / FIDO2 | non viable | La carte eID n'est pas un authentificateur FIDO |
 | Certificat client TLS (mTLS) | non viable pour signer | Le navigateur signe la poignée de main TLS, pas un document, et ne propose que le certificat d'authentification |
-| Pont natif (Web eID, BeIDConnect) | écarté par le mandat | C'est l'agent sur le poste que l'on veut éviter |
+| Pont natif (Web eID, BeIDConnect) | **retenu** par l'utilisateur | Seule voie pour signer dans la page ; dépendance jugée acceptable (D-EID-BRIDGE) |
 | Signature à distance (itsme, fournisseur hébergé) | hors sujet | Demande un compte fournisseur : c'est le §109 |
 | Authentification forte (§104) puis clic | écarté | Signature avancée au mieux, pas qualifiée |
-| **Signature apportée** | **retenue** | Voir D-EID-UPLOAD |
+| **Signature apportée** | **retenue**, en repli | Aucun composant propre à Myrmacta sur le poste (D-EID-UPLOAD) |
 
 Sources de la recherche du 2026-11-13 : dépôts `WICG/webusb` et `WICG/web-smart-card`, test WPT
 `webusb/protected-interface-classes`, fils blink-dev « WebUSB Interface Class Filtering » et « Unrestricted
@@ -39,7 +43,14 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
 - **D-EID-TRANSPORT.** Aucune page web ordinaire n'atteint la carte eID sans composant natif. La piste
   WebAssembly est abandonnée : elle résout la logique carte, pas le transport, et la saisie du PIN dans
   la page serait un recul de sécurité.
-- **D-EID-UPLOAD.** Signature apportée. Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
+- **D-EID-BRIDGE.** Signature dans la page par pont navigateur : Web eID ou BeIDConnect, celui que la page
+  détecte. La clé ne quitte pas la carte et le PIN est saisi dans la fenêtre du pont, jamais dans la page.
+  Le serveur calcule le condensé à signer, le pont le fait signer par la carte, le serveur assemble le PAdES
+  (signature invisible, mise à jour incrémentale). Le PDF assemblé n'est pas tenu pour valide : il passe par
+  la même vérification qu'un téléversement (D-EID-BINDING à D-EID-REVOCATION). Les deux appels sont sans
+  état : une valeur falsifiée entre les deux donne une signature invalide, donc un refus. Sans pont détecté,
+  la page propose le téléversement.
+- **D-EID-UPLOAD.** Signature apportée, en repli du pont. Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
   (Adobe Acrobat Reader et sa carte, ou le service fédéral de signature), puis téléverse le PDF signé.
   Myrmacta vérifie la signature. Aucun composant propre à Myrmacta n'est installé sur le poste. Fournisseur
   `eid` de `app.signature.provider`, un seul actif par instance comme au §109. Le clic « Signer » du socle
@@ -81,8 +92,10 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
 - Le profil exact des certificats eID (identifiants de politique, hôtes OCSP) n'a pas pu être relu sur les
   sites officiels depuis l'environnement de travail. La conception n'en dépend pas : les autorités sont
   fournies par l'exploitant, les adresses de révocation viennent des certificats.
-- Le signataire a toujours besoin d'un lecteur et d'un logiciel qui parle à la carte. Seul l'agent propre au
-  produit disparaît.
+- Le signataire a toujours besoin d'un lecteur et d'un logiciel qui parle à la carte : un pont navigateur
+  pour signer dans la page, ou son outil de signature pour le téléversement.
+- Aucun des deux ponts n'a pu être essayé avec une vraie extension et une vraie carte pendant le
+  développement : le code client suit leurs sources publiques et ses tests simulent l'extension.
 
 **Impacte.** `docs/specs/30-signature-electronique.md`, `docs/decisions/identifiants.md`,
 `docs/guides/DEPLOIEMENT.md`, `docs/guides/GETTING-STARTED.md`, `docs/guides/GUIDE-UTILISATEUR.md`,

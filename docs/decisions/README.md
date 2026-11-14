@@ -156,7 +156,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 135 | [Reprise d'un paquet de démo interrompu, faux services bornés](135-reprise-d-un-paquet-de-demo-interrompu.md) | clos | — |
 | 136 | [Capsule vidéo L2 « onboarding » : pannes commandées, vignette du processus](136-capsule-video-onboarding.md) | clos | — |
 | 137 | [Menu shell repliable (bandeau + tiroir)](137-menu-shell-repliable.md) | clos | — |
-| 138 | [Signature par carte eID sans agent : signature apportée, vérifiée par Myrmacta](138-signature-eid-sans-agent-signature-apportee.md) | ouvert | — |
+| 138 | [Signature par carte eID : pont navigateur et signature apportée, vérifiées par Myrmacta](138-signature-eid-sans-agent-signature-apportee.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

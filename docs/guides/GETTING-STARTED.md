@@ -469,6 +469,15 @@ démarrer (voir docs/guides/DEPLOIEMENT.md § Signature électronique). Les four
 `docusign` se règlent dans cette même section, avec les secrets sur le connecteur `signature`.
 Variables facultatives :
 `APP_SIGNATURE_DEFAULT_DEADLINE` (défaut `14d`), `APP_SIGNATURE_MAX_DEADLINE` (défaut `90d`).
+Pour la signature par carte eID (`APP_SIGNATURE_PROVIDER=eid`, TODO §138), voir
+docs/guides/DEPLOIEMENT.md § Signature par carte eID. Ce fournisseur exige un fichier PEM d'autorités de
+confiance (`APP_SIGNATURE_EID_TRUST_ANCHORS_FILE`) : sans lui, l'instance ne démarre pas. Variables
+facultatives : `APP_SIGNATURE_EID_BRIDGES` (défaut `web-eid,beidconnect`), `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES`,
+`APP_SIGNATURE_EID_REVOCATION_TIMEOUT` (défaut `10s`), `APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES`
+(défaut `1048576`), `APP_SIGNATURE_EID_TSA_URL` (vide : pas d'horodatage), `APP_SIGNATURE_EID_TSA_TIMEOUT`
+(défaut `10s`), `APP_SIGNATURE_EID_TSA_MAX_RESPONSE_BYTES` (défaut `65536`). Sans carte ni lecteur, ce
+fournisseur ne se teste pas en local : pour une démonstration, utilisez le `stub`.
+
 Déployer ensuite un BPMN contenant un bloc de signature (GUIDE-CONCEPTION-BPMN §3quater).
 
 ## 16. Assistant de conception IA (optionnel, TODO §86)

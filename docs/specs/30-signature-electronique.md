@@ -34,7 +34,8 @@
 >
 > **Fournisseurs livrés le 2026-10-28** ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247),
 > TODO §109, issue #191) : Yousign et DocuSign, un seul actif par instance. Le niveau eIDAS reste
-> celui du compte chez le fournisseur. Le parcours eID n'est pas dans ce lot. Détail en fin de spec.
+> celui du compte chez le fournisseur. Le fournisseur `eid` (signature par carte eID, TODO §138) n'en fait pas
+> partie : il est en cours de livraison par lots, voir la dernière section. Détail en fin de spec.
 
 ---
 
@@ -217,3 +218,42 @@ profil de production sans le second drapeau.
   garde-fous d'une URL libre de `http-rest`.
 - **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le
   fournisseur, pas un niveau choisi par Myrmacta.
+
+## Implémentation — fournisseur eid (TODO §138)
+
+Statut : en cours, par lots. Le fournisseur `eid` (`app.signature.provider=eid`) signe avec une carte eID
+belge, sans agent propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 (D-EID-TRANSPORT).
+
+- **Deux parcours, une vérification.** Dans la page, un pont navigateur signe : Web eID, puis BeIDConnect, selon
+  `app.signature.eid.bridges`. Le serveur calcule le condensé, la carte signe, le serveur assemble le PDF
+  (signature invisible, mise à jour incrémentale). En repli, le signataire télécharge le PDF, le signe hors de
+  Myrmacta et le téléverse. Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
+- **Contenu accepté.** Le fichier doit commencer, octet pour octet, par le document remis. Il ajoute exactement
+  une signature, qui couvre tout le fichier ; toute autre modification est refusée (D-EID-BINDING).
+- **Certificat.** Il doit remonter à une autorité de confiance de l'exploitant, être valide, porter la
+  non-répudiation et se déclarer qualifié sur dispositif qualifié. Le niveau enregistré est `QES`. La liste de
+  confiance européenne n'est pas consultée (D-EID-QUALIFIED).
+- **Révocation.** Obligatoire (OCSP, sinon CRL), demandée seulement pour un certificat dont la chaîne est vérifiée.
+  Révocation injoignable : téléversement refusé, à réessayer (D-EID-REVOCATION).
+- **Document de travail unique.** La demande garde une version : la source, puis les signatures acceptées. Un envoi
+  fait sur une version dépassée est refusé (`STALE_DOCUMENT`). Le PDF final porte toutes les signatures (D-EID-CHAIN).
+- **Constats et preuve.** Chaque signature acceptée garde le nom du signataire, l'émetteur, le numéro et l'empreinte
+  du certificat, l'heure déclarée, l'heure de vérification, le format et la source de révocation. La preuve PDF
+  les reprend (D-EID-EVIDENCE).
+- **Horodatage facultatif.** Avec `app.signature.eid.timestamp.url`, le document final est étendu au niveau long
+  terme quand les données de validation sont complètes, sinon il reçoit un horodatage de document. Une TSA
+  injoignable est reprise par le répartiteur, puis le document est livré sans horodatage, dit dans la preuve
+  (D-EID-TIMESTAMP).
+- **Garde-fous.** Démarrage refusé sans fichier d'autorités (`app.signature.eid.trust-anchors-file`). Aucun appel
+  sortant vers une adresse venue d'un certificat dont la chaîne n'est pas vérifiée. Le PIN n'est jamais envoyé au
+  serveur ni conservé (D-EID-PIN). Le numéro de registre national n'est ni extrait ni conservé à part (D-EID-NRN).
+  Le clic « Signer » est refusé pour ce fournisseur : 409, `code` = `SIGNED_UPLOAD_REQUIRED`.
+- **Routes.** Portail : `GET /api/portal/signature` (champ `signedUpload`), `GET /api/portal/signature/document`,
+  `POST /api/portal/signature/signed-document`. « Mes signatures » : `GET /api/signatures/mine`,
+  `GET /api/signatures/mine/{signerId}/document`, `POST /api/signatures/mine/{signerId}/signed-document`. Les points
+  de signature dans la page (`card-signature/prepare` et `complete`, champ `cardBridges`) sont en cours de livraison.
+- **Limites.** Aucun PDF signé avec une vraie carte n'a encore été vérifié, et aucun pont n'a été essayé avec une
+  vraie extension : les tests fabriquent leur hiérarchie de certificats et simulent l'extension. Le profil exact des
+  certificats eID n'a pas été relu sur les sites officiels.
+- **Hors lot.** Pilotage de la carte depuis le navigateur (D-EID-TRANSPORT), liste de confiance européenne,
+  rapprochement du nom du certificat avec le signataire attendu, signature par téléphone.

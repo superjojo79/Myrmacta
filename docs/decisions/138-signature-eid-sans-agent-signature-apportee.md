@@ -89,6 +89,11 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
 - **D-EID-TIMESTAMP.** L'horodatage (RFC 3161) est facultatif et configuré par l'exploitant. Absent par
   défaut. La TSA fédérale réserve son service à un usage non commercial, sans engagement de disponibilité
   (issue #10) : elle n'est pas un défaut.
+  Livré : le document final est étendu au niveau long terme (PAdES-BASELINE-LTA, par DSS) quand les données de
+  validation sont complètes ; sinon il reçoit un seul horodatage de document. TSA injoignable ou réponse refusée :
+  reprises du répartiteur, puis livraison sans horodatage à l'avant-dernière tentative, dit dans la preuve. Autorité
+  d'horodatage hors des autorités de l'exploitant : le jeton est gardé et vérifié cryptographiquement, mais la preuve
+  le dit non qualifié et non rattaché à une chaîne de confiance.
 
 ## Limites connues
 

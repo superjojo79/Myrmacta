@@ -4,7 +4,7 @@ import MySignaturesView from './MySignaturesView.vue'
 import * as api from '@/api/signatures'
 import * as lib from '@/lib/signedUpload'
 import * as bridges from '@/lib/cardBridge'
-import { CardBridgeError, type CardBridge } from '@/lib/cardBridge'
+import { CardBridgeError, type CardBridge, type CardChoice } from '@/lib/cardBridge'
 
 vi.mock('@/api/signatures')
 
@@ -272,14 +272,21 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
   const cardItem = (overrides: Partial<api.MySignatureItem> = {}) =>
     item({ signedUpload: true, simulated: false, cardBridges: ['web-eid', 'beidconnect'], ...overrides })
 
-  function fakeBridge(overrides: Partial<CardBridge> = {}): CardBridge {
+  function fakeBridge(o: {
+    id?: CardBridge['id']
+    needsPin?: boolean
+    choices?: CardChoice[]
+    readCertificate?: () => Promise<typeof CERT>
+    sign?: CardBridge['sign']
+  } = {}): CardBridge {
+    const needsPin = o.needsPin ?? false
+    const base: CardChoice = { id: '0:0', certificate: CERT, readerName: null, holder: null, notAfter: null, needsPin }
     return {
-      id: 'web-eid',
-      needsPin: false,
+      id: o.id ?? 'web-eid',
       detect: () => Promise.resolve(),
-      readCertificate: vi.fn(() => Promise.resolve(CERT)),
-      sign: vi.fn(() => Promise.resolve('U0lH')),
-      ...overrides,
+      listChoices: vi.fn(() => (o.readCertificate ? o.readCertificate().then((certificate) => [{ ...base, certificate }]) : Promise.resolve(o.choices ?? [base]))),
+      certificateOf: vi.fn((choice: CardChoice) => Promise.resolve(choice.certificate)),
+      sign: o.sign ?? vi.fn(() => Promise.resolve('U0lH')),
     }
   }
 
@@ -337,7 +344,7 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
 
     expect(detect).toHaveBeenCalledWith(['web-eid', 'beidconnect'], expect.any(String), undefined)
     expect(api.prepareMyCardSignature).toHaveBeenCalledWith('s1', CERT)
-    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', null)
+    expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ certificate: CERT }), 'RElH', 'SHA-256', null)
     expect(api.completeMyCardSignature).toHaveBeenCalledWith('s1', {
       ...CERT,
       signingTime: PREPARED.signingTime,
@@ -352,7 +359,7 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
 
   it('shows a visible status per step on the signer row only', async () => {
     let finishRead!: () => void
-    useBridge(fakeBridge({ readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
+    useBridge(fakeBridge({ id: 'beidconnect', readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
     vi.mocked(api.listMySignatures).mockResolvedValue([cardItem(), cardItem({ signerId: 's2', documentLabel: 'Avenant' })])
     const wrapper = mountView()
     await flushPromises()
@@ -389,7 +396,7 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
     await wrapper.get('[data-testid="signature-pin-form"]').trigger('submit')
     await flushPromises()
 
-    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', '1234')
+    expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ certificate: CERT }), 'RElH', 'SHA-256', '1234')
     expect(JSON.stringify(vi.mocked(api.prepareMyCardSignature).mock.calls)).not.toContain('1234')
     expect(JSON.stringify(vi.mocked(api.completeMyCardSignature).mock.calls)).not.toContain('1234')
     expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
@@ -498,5 +505,80 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
     vi.mocked(api.prepareMyCardSignature).mockRejectedValueOnce({ response: { status: 409, data: { detail: 'Demande close' } } })
     await clickSign(wrapper)
     expect(wrapper.get('[data-testid="signature-error"]').text()).toBe('Demande close')
+  })
+
+  describe('choix du lecteur et du certificat (lot 3c)', () => {
+    const CERT2 = { certificate: 'Q0VSVDI=', certificateChain: ['SU5UMg=='] }
+    const two = (): CardChoice[] => [
+      { id: '0:0', certificate: CERT, readerName: 'Lecteur A', holder: 'Alice Martin', notAfter: '2036-11-11T13:04:49Z', needsPin: true },
+      { id: '1:0', certificate: CERT2, readerName: 'Lecteur B', holder: null, notAfter: null, needsPin: false },
+    ]
+    const withTwo = () => {
+      const bridge = fakeBridge({ id: 'beidconnect', choices: two() })
+      useBridge(bridge)
+      return bridge
+    }
+
+    it('shows the choice step in the signer row, with the first choice preselected and nothing sent yet', async () => {
+      withTwo()
+      vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+      const wrapper = mountView()
+      await flushPromises()
+      await clickSign(wrapper)
+
+      const form = wrapper.get('[data-testid="signature-choice-form"]')
+      expect(form.get('legend').text()).toContain('Choisissez le certificat de signature')
+      const radios = form.findAll('input[type="radio"]')
+      expect(radios).toHaveLength(2)
+      expect((radios[0]!.element as HTMLInputElement).checked).toBe(true)
+      expect(form.text()).toContain('Alice Martin')
+      expect(form.text()).toContain('Certificat 2')
+      expect(form.text()).toContain('Lecteur : Lecteur B')
+      expect(api.prepareMyCardSignature).not.toHaveBeenCalled()
+    })
+
+    it('uses the certificate and the reader type of the chosen entry', async () => {
+      const bridge = withTwo()
+      vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+      const wrapper = mountView()
+      await flushPromises()
+      await clickSign(wrapper)
+      await wrapper.findAll('[data-testid="signature-choice"]')[1]!.setValue(true)
+      await wrapper.get('[data-testid="signature-choice-form"]').trigger('submit')
+      await flushPromises()
+
+      expect(api.prepareMyCardSignature).toHaveBeenCalledWith('s1', CERT2)
+      expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ id: '1:0' }), 'RElH', 'SHA-256', null)
+      expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
+      expect(api.completeMyCardSignature).toHaveBeenCalledWith('s1', expect.objectContaining({ certificate: CERT2.certificate }))
+    })
+
+    it('cancels from the choice step, and skips the step for a single choice', async () => {
+      const bridge = withTwo()
+      vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+      const wrapper = mountView()
+      await flushPromises()
+      await clickSign(wrapper)
+      await wrapper.get('[data-testid="signature-choice-cancel"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="signature-choice-form"]').exists()).toBe(false)
+      expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('annulée')
+      expect(api.prepareMyCardSignature).not.toHaveBeenCalled()
+      expect(bridge.sign).not.toHaveBeenCalled()
+
+      useBridge(fakeBridge({ id: 'beidconnect' }))
+      await clickSign(wrapper)
+      expect(wrapper.find('[data-testid="signature-choice-form"]').exists()).toBe(false)
+      expect(api.prepareMyCardSignature).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells a Web eID user to choose the certificate in the software window', async () => {
+      useBridge(fakeBridge({ id: 'web-eid', readCertificate: () => new Promise(() => {}) }))
+      vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+      const wrapper = mountView()
+      await flushPromises()
+      await clickSign(wrapper)
+      expect(wrapper.get('[data-testid="signature-card-status"]').text()).toContain('dans la fenêtre du logiciel eID')
+    })
   })
 })

@@ -16,6 +16,7 @@ import {
   uploadMySignedDocument,
   type MySignatureItem,
 } from '@/api/signatures'
+import CardChoiceForm from '@/components/CardChoiceForm.vue'
 import { CardBridgeError } from '@/lib/cardBridge'
 import { cardErrorMessage, noBridgeMessage, useCardSignature } from '@/lib/cardBridge/useCardSignature'
 import { rejectionMessageKey, saveBlob, signedDocumentFilename } from '@/lib/signedUpload'
@@ -151,11 +152,14 @@ const card = useCardSignature({
     uploadError.value = bridgeMessage(noBridgeMessage('mySignatures.card', e))
   },
 })
-const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive } = card
+const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive, bridgeId: cardBridgeId, choices: cardChoices, selectedChoice: cardSelected } = card
 const pinInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
-const cardStatus = computed(() =>
-  cardPhase.value === 'idle' || cardPhase.value === 'pin' ? '' : t(`mySignatures.card.phases.${cardPhase.value}`),
-)
+const cardStatus = computed(() => {
+  if (cardPhase.value === 'idle' || cardPhase.value === 'pin' || cardPhase.value === 'choosing') return ''
+  // Web eID : son logiciel natif affiche le choix du certificat, la page le dit.
+  const key = cardPhase.value === 'reading' && cardBridgeId.value === 'web-eid' ? 'readingWebEid' : cardPhase.value
+  return t(`mySignatures.card.phases.${key}`)
+})
 
 async function onCardSign(item: MySignatureItem) {
   cardItem.value = item
@@ -297,6 +301,15 @@ onMounted(load)
                   aria-live="polite"
                   data-testid="signature-card-status"
                 >{{ cardStatus }}</p>
+                <CardChoiceForm
+                  v-if="cardPhase === 'choosing' && cardItem?.signerId === item.signerId"
+                  v-model="cardSelected"
+                  :choices="cardChoices"
+                  prefix="mySignatures.card"
+                  :id-base="`signature-${item.signerId}`"
+                  @submit="card.submitChoice()"
+                  @cancel="card.cancelChoice()"
+                />
                 <form
                   v-if="cardPhase === 'pin' && cardItem?.signerId === item.signerId"
                   data-testid="signature-pin-form"

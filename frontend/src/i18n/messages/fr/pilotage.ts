@@ -97,7 +97,16 @@ export default {
         reading: 'Lecture de la carte… Suivez les instructions du logiciel eID si elles apparaissent.',
         preparing: 'Préparation du document à signer…',
         signing: 'Signature en cours. Si on vous le demande, saisissez votre code PIN dans la fenêtre du logiciel eID ou sur le lecteur.',
+        readingWebEid: 'Choisissez votre certificat de signature dans la fenêtre du logiciel eID qui s’est ouverte, puis suivez ses instructions.',
         completing: 'Vérification de votre signature…',
+      },
+      choice: {
+        title: 'Plusieurs certificats ou lecteurs sont disponibles. Choisissez le certificat de signature à utiliser.',
+        fallback: 'Certificat {n}',
+        validUntil: 'valable jusqu’au {date}',
+        reader: 'Lecteur : {reader}',
+        continue: 'Continuer',
+        cancel: 'Annuler',
       },
       pin: {
         label: 'Code PIN de votre carte (4 à 12 caractères)',

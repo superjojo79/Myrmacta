@@ -123,6 +123,37 @@ class SignatureConfigTest {
     }
 
     @Test
+    void eidRevocationTransportHonoursTheOperatorSettingsAndNoTimestampAuthorityIsWiredByDefault() {
+        // TODO §138 (D-EID-REVOCATION, D-EID-TIMESTAMP)
+        runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class))
+                .withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
+                        "app.signature.eid.revocation.timeout=4s",
+                        "app.signature.eid.revocation.max-response-bytes=4096")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    var transport = ctx.getBean(be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport.class);
+                    assertThat(transport.totalTimeout()).isEqualTo(java.time.Duration.ofSeconds(4));
+                    assertThat(transport.maxOcspBytes()).isEqualTo(4096);
+                    assertThat(SignatureConfig.eidTimestamper(ctx.getBean(SignatureProperties.class),
+                            ctx.getBean(EidTrustAnchors.class), transport)).isNull();
+                });
+        runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class))
+                .withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
+                        "app.signature.eid.timestamp.url=https://tsa.example.test/tsp")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(SignatureConfig.eidTimestamper(ctx.getBean(SignatureProperties.class),
+                            ctx.getBean(EidTrustAnchors.class),
+                            ctx.getBean(be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport.class)))
+                            .isNotNull();
+                });
+    }
+
+    @Test
     void eidProviderRefusesToStartWithoutAUsableTrustAnchorsFile() {
         // D-EID-TRUST : sans fichier d'autorités, l'instance ne démarre pas
         var base = runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))

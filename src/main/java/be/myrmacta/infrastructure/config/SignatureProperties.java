@@ -75,11 +75,11 @@ public record SignatureProperties(
             dispatch = new Dispatch(null, 0, 0);
         }
         if (eid == null) {
-            eid = new Eid(null, 0, null, null);
+            eid = new Eid(null, 0, null, null, null);
         }
         if (eid.maxUploadBytes() <= 0) {
             eid = new Eid(eid.trustAnchorsFile(), maxDocumentBytes + SIGNED_UPLOAD_MARGIN_BYTES, eid.revocation(),
-                    eid.bridges());
+                    eid.timestamp(), eid.bridges());
         }
         if (eid.maxUploadBytes() < maxDocumentBytes) {
             throw new IllegalStateException(
@@ -162,7 +162,12 @@ public record SignatureProperties(
      * ({@code spring.servlet.multipart}, 25 Mo par défaut) s'applique avant elle. {@code revocation} : appel
      * sortant vers l'état de révocation d'un certificat (D-EID-REVOCATION).
      */
-    public record Eid(String trustAnchorsFile, long maxUploadBytes, Revocation revocation, List<String> bridges) {
+    public record Eid(
+            String trustAnchorsFile,
+            long maxUploadBytes,
+            Revocation revocation,
+            Timestamp timestamp,
+            List<String> bridges) {
 
         /** Ponts navigateur reconnus (D-EID-BRIDGE), dans l'ordre d'essai par défaut. */
         static final List<String> KNOWN_BRIDGES = List.of("web-eid", "beidconnect");
@@ -171,6 +176,9 @@ public record SignatureProperties(
             trustAnchorsFile = trustAnchorsFile == null || trustAnchorsFile.isBlank() ? null : trustAnchorsFile.trim();
             if (revocation == null) {
                 revocation = new Revocation(null, 0);
+            }
+            if (timestamp == null) {
+                timestamp = new Timestamp(null, null, 0);
             }
             bridges = normalizedBridges(bridges);
         }
@@ -195,6 +203,30 @@ public record SignatureProperties(
                 }
             }
             return List.copyOf(out);
+        }
+    }
+
+    /**
+     * TODO §138 (D-EID-TIMESTAMP) — horodatage RFC 3161 du document signé final. {@code url} vide : pas
+     * d'horodatage (défaut, aucune TSA par défaut). {@code timeout} : délai total de l'appel, corps compris ;
+     * {@code maxResponseBytes} : taille maximale de la réponse.
+     */
+    public record Timestamp(String url, Duration timeout, long maxResponseBytes) {
+        public Timestamp {
+            url = url == null || url.isBlank() ? null : url.trim();
+            if (timeout == null) {
+                timeout = Duration.ofSeconds(10);
+            }
+            if (timeout.isNegative() || timeout.isZero()) {
+                throw new IllegalStateException("app.signature.eid.timestamp.timeout must be positive");
+            }
+            if (maxResponseBytes <= 0) {
+                maxResponseBytes = 64L * 1024;
+            }
+        }
+
+        public boolean enabled() {
+            return url != null;
         }
     }
 

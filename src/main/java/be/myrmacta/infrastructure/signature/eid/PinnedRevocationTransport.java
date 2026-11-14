@@ -76,6 +76,66 @@ public final class PinnedRevocationTransport implements RevocationTransport {
                 DEFAULT_MAX_OCSP_BYTES, DEFAULT_MAX_CRL_BYTES);
     }
 
+    /**
+     * Réglages de l'exploitant ({@code app.signature.eid.revocation.*}) : délai total (connexion comprise, borné à
+     * 5 s pour la seule connexion) et taille maximale d'une réponse OCSP ou d'une CRL.
+     */
+    public PinnedRevocationTransport(Duration timeout, long maxResponseBytes) {
+        this(guarded(new OutboundUrlGuard(false)), shorter(Duration.ofSeconds(5), timeout), timeout,
+                clamp(maxResponseBytes), clamp(maxResponseBytes));
+    }
+
+    /**
+     * Client de l'autorité d'horodatage (D-EID-TIMESTAMP) : même transport borné, mais l'adresse vient de
+     * l'exploitant, pas d'un certificat, et une TSA interne est légitime : le nom est résolu et figé sans refus des
+     * plages privées.
+     */
+    static PinnedRevocationTransport forOperatorUrl(Duration timeout, long maxResponseBytes) {
+        AddressPolicy resolveOnly = uri -> {
+            try {
+                return InetAddress.getByName(uri.getHost());
+            } catch (UnknownHostException ex) {
+                throw new IOException("host cannot be resolved");
+            }
+        };
+        return new PinnedRevocationTransport(resolveOnly, shorter(Duration.ofSeconds(5), timeout), timeout,
+                clamp(maxResponseBytes), clamp(maxResponseBytes));
+    }
+
+    private static Duration shorter(Duration a, Duration b) {
+        Objects.requireNonNull(b, "timeout");
+        if (b.isNegative() || b.isZero()) {
+            throw new IllegalArgumentException("timeout must be positive");
+        }
+        return a.compareTo(b) < 0 ? a : b;
+    }
+
+    private static int clamp(long bytes) {
+        if (bytes <= 0) {
+            throw new IllegalArgumentException("maximum response size must be positive");
+        }
+        return (int) Math.min(bytes, Integer.MAX_VALUE - 1L);
+    }
+
+    /** Taille maximale d'une réponse (OCSP ou CRL selon le constructeur). */
+    public int maxOcspBytes() {
+        return maxOcspBytes;
+    }
+
+    /** Délai total d'un appel, corps compris. */
+    public Duration totalTimeout() {
+        return totalTimeout;
+    }
+
+    /** POST borné générique (requête d'horodatage). */
+    byte[] post(URI uri, byte[] body, String contentType, String accept) throws IOException {
+        ClassicHttpRequest post = ClassicRequestBuilder.post(checked(uri))
+                .setEntity(new ByteArrayEntity(body, ContentType.create(contentType)))
+                .setHeader("Accept", accept)
+                .build();
+        return exchange(uri, post, maxOcspBytes);
+    }
+
     PinnedRevocationTransport(AddressPolicy addresses, Duration connectTimeout, Duration totalTimeout, int maxOcspBytes,
             int maxCrlBytes) {
         this.addresses = Objects.requireNonNull(addresses, "addresses");
@@ -136,9 +196,9 @@ public final class PinnedRevocationTransport implements RevocationTransport {
                 return read(client, request, maxBytes);
             } catch (IOException | RuntimeException failure) {
                 if (expired.get()) {
-                    throw new IOException("revocation call timed out");
+                    throw new IOException("outbound call timed out");
                 }
-                throw failure instanceof IOException io ? io : new IOException("revocation call failed", failure);
+                throw failure instanceof IOException io ? io : new IOException("outbound call failed", failure);
             } finally {
                 watchdog.cancel(false);
             }
@@ -150,15 +210,15 @@ public final class PinnedRevocationTransport implements RevocationTransport {
             int status = response.getCode();
             if (status >= 300 && status < 400) {
                 abort(response);
-                throw new IOException("revocation server redirected: redirections are not followed");
+                throw new IOException("server redirected: redirections are not followed");
             }
             if (status != 200 || response.getEntity() == null) {
                 abort(response);
-                throw new IOException("revocation server answered HTTP " + status);
+                throw new IOException("server answered HTTP " + status);
             }
             if (response.getEntity().getContentLength() > maxBytes) {
                 abort(response);
-                throw new IOException("revocation answer is too large");
+                throw new IOException("answer is too large");
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
@@ -168,7 +228,7 @@ public final class PinnedRevocationTransport implements RevocationTransport {
                     out.write(chunk, 0, read);
                     if (out.size() > maxBytes) {
                         abort(response);
-                        throw new IOException("revocation answer is too large");
+                        throw new IOException("answer is too large");
                     }
                 }
             }

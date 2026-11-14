@@ -1,4 +1,5 @@
-import { CardBridgeError, type CardBridge, type CardBridgeErrorKind, type CardCertificate, type CardHashFunction } from './types'
+import { summarizeCertificate } from './x509'
+import { CardBridgeError, type CardBridge, type CardBridgeErrorKind, type CardCertificate, type CardChoice, type CardHashFunction } from './types'
 
 // BeIDConnect 2.12 : extension du navigateur qui expose `window.EIDChromeExt`. Méthodes à promesses ; un échec rejette
 // avec un objet dont `message` (et `result`) vaut le code. L'extension ne gère aucun délai : ceux-ci sont imposés ici.
@@ -111,8 +112,6 @@ export function isBeidConnectPresent(win: Window = window): boolean {
 export function createBeidConnectBridge(lang: string, win: Window = window): CardBridge {
   const language = lang.slice(0, 2).toLowerCase()
   let extension: Extension | null = null
-  let pinpad = false
-  let needsPin = true
 
   function ext(): Extension {
     if (!isBeidConnectPresent(win)) throw new CardBridgeError('unavailable')
@@ -122,37 +121,60 @@ export function createBeidConnectBridge(lang: string, win: Window = window): Car
 
   return {
     id: 'beidconnect',
-    get needsPin() {
-      return needsPin
-    },
     async detect() {
       const response = await withTimeout(Promise.resolve().then(() => ext().getVersion()), BEID_TIMEOUT_MS)
       ensureOk(response)
     },
-    async readCertificate(): Promise<CardCertificate> {
+    /**
+     * Un choix par couple lecteur × certificat, filtré sur les certificats de signature (`NONREPUDIATION`). Un certificat
+     * dont l'usage de clé est lisible et sans non-répudiation est écarté ; si cela ne laisse rien, tout est gardé et le
+     * serveur tranche (`CERTIFICATE_NOT_QUALIFIED`).
+     */
+    async listChoices(): Promise<CardChoice[]> {
       const found = await withTimeout(Promise.resolve().then(() => ext().getUserCertificates(language, BEID_MAC, 'NONREPUDIATION')), BEID_TIMEOUT_MS)
       ensureOk(found)
       const readers = found.Readers ?? []
       if (readers.length === 0) throw new CardBridgeError('no-reader')
-      // Plusieurs lecteurs ou certificats : le premier qui porte un certificat de non-répudiation.
-      const reader = readers.find((r) => (r.certificates?.length ?? 0) > 0)
-      const certificate = reader?.certificates?.[0]
-      if (!reader || !certificate) throw new CardBridgeError('no-card')
-      pinpad = reader.ReaderType === 'pinpad'
-      // Type de lecteur inconnu : le PIN est demandé (pas de signature « à l'aveugle » sur un clavier qui n'existe pas).
-      needsPin = !pinpad
-      const chain = await withTimeout(Promise.resolve().then(() => ext().getUserCertificateChain(language, BEID_MAC, certificate)), BEID_TIMEOUT_MS)
+      const all: { choice: CardChoice; signing: boolean }[] = []
+      readers.forEach((reader, readerIndex) => {
+        ;(reader.certificates ?? []).forEach((certificate, certificateIndex) => {
+          if (typeof certificate !== 'string' || !certificate) return
+          const summary = summarizeCertificate(certificate)
+          all.push({
+            signing: summary?.nonRepudiation !== false,
+            choice: {
+              id: `${readerIndex}:${certificateIndex}`,
+              certificate: { certificate, certificateChain: [] },
+              readerName: typeof reader.ReaderName === 'string' && reader.ReaderName ? reader.ReaderName : null,
+              holder: summary?.holder ?? null,
+              notAfter: summary?.notAfter ?? null,
+              // Type de lecteur inconnu : le PIN est demandé (pas de signature « à l'aveugle » sur un clavier qui n'existe pas).
+              needsPin: reader.ReaderType !== 'pinpad',
+            },
+          })
+        })
+      })
+      if (all.length === 0) throw new CardBridgeError('no-card')
+      const signing = all.filter((c) => c.signing)
+      return (signing.length > 0 ? signing : all).map((c) => c.choice)
+    },
+    async certificateOf(choice: CardChoice): Promise<CardCertificate> {
+      const chain = await withTimeout(
+        Promise.resolve().then(() => ext().getUserCertificateChain(language, BEID_MAC, choice.certificate.certificate)),
+        BEID_TIMEOUT_MS,
+      )
       ensureOk(chain)
       const { rootCA, subCA } = chain.certificateChain ?? {}
       // Intermédiaires d'abord, racine en dernier.
       const certificateChain = [...(subCA ?? []), ...(rootCA ? [rootCA] : [])].filter((c) => typeof c === 'string' && c)
-      return { certificate, certificateChain }
+      return { certificate: choice.certificate.certificate, certificateChain }
     },
-    async sign(certificate, digest, hashFunction, pin) {
+    async sign(choice, digest, hashFunction, pin) {
       const algo = algorithmOf(hashFunction)
-      if (needsPin && pin === null) throw new CardBridgeError('failed')
+      const pinpad = !choice.needsPin
+      if (!pinpad && pin === null) throw new CardBridgeError('failed')
       const response = await withTimeout(
-        Promise.resolve().then(() => ext().sign(language, BEID_MAC, certificate.certificate, algo, digest, pinpad ? null : pin)),
+        Promise.resolve().then(() => ext().sign(language, BEID_MAC, choice.certificate.certificate, algo, digest, pinpad ? null : pin)),
         pinpad ? BEID_PINPAD_SIGN_TIMEOUT_MS : BEID_TIMEOUT_MS,
       )
       ensureOk(response)

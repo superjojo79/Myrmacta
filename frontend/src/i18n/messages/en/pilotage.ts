@@ -98,7 +98,16 @@ const pilotage: typeof fr = {
         reading: 'Reading the card… Follow the eID software instructions if they appear.',
         preparing: 'Preparing the document to sign…',
         signing: 'Signing in progress. If asked, enter your PIN in the eID software window or on the reader.',
+        readingWebEid: 'Choose your signing certificate in the eID software window that has opened, then follow its instructions.',
         completing: 'Checking your signature…',
+      },
+      choice: {
+        title: 'Several certificates or readers are available. Choose the signing certificate to use.',
+        fallback: 'Certificate {n}',
+        validUntil: 'valid until {date}',
+        reader: 'Reader: {reader}',
+        continue: 'Continue',
+        cancel: 'Cancel',
       },
       pin: {
         label: 'PIN of your card (4 to 12 characters)',

@@ -559,6 +559,93 @@ public final class EidTestPki {
         }
     }
 
+    /** TSA de test émise par la racine de cette hiérarchie (donc rattachée aux autorités de l'exploitant). */
+    public TestTsa trustedTsa() {
+        try {
+            KeyPair keys = rsa(2048);
+            X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(root.certificate(),
+                    BigInteger.valueOf(SERIALS.incrementAndGet()), Date.from(NOW.minus(Duration.ofDays(365))),
+                    Date.from(NOW.plus(Duration.ofDays(3650))), new X500Name("C=BE, CN=" + label + " TSA"), keys.getPublic());
+            JcaX509ExtensionUtils utils = new JcaX509ExtensionUtils();
+            builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+            builder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.digitalSignature | KeyUsage.nonRepudiation));
+            builder.addExtension(Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping));
+            builder.addExtension(Extension.authorityKeyIdentifier, false, utils.createAuthorityKeyIdentifier(root.certificate()));
+            builder.addExtension(Extension.cRLDistributionPoints, false, distributionPoint(rootCrlUrl));
+            X509Certificate certificate = toX509(builder.build(new JcaContentSignerBuilder("SHA256withRSA").build(root.key())));
+            return new TestTsa(new Issued(certificate, keys.getPrivate()));
+        } catch (Exception ex) {
+            throw new IllegalStateException("cannot issue test TSA", ex);
+        }
+    }
+
+    /**
+     * Autorité d'horodatage RFC 3161 en mémoire : répond aux requêtes (nonce et empreinte repris), compte les appels,
+     * peut être injoignable ou falsifier sa réponse.
+     */
+    public static final class TestTsa {
+        private final Issued tsa;
+        private final java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        private volatile boolean available = true;
+        private volatile boolean forged;
+
+        public TestTsa(Issued tsa) {
+            this.tsa = tsa;
+        }
+
+        /** TSA sous sa propre racine, hors des autorités de l'exploitant. */
+        public static TestTsa untrusted() {
+            return new TestTsa(timestampAuthority());
+        }
+
+        public TestTsa unavailable() {
+            available = false;
+            return this;
+        }
+
+        /** Réponse dont l'empreinte du message ne correspond pas à la requête. */
+        public TestTsa forged() {
+            forged = true;
+            return this;
+        }
+
+        public int callCount() {
+            return calls.get();
+        }
+
+        public X509Certificate certificate() {
+            return tsa.certificate();
+        }
+
+        public byte[] respond(byte[] query) throws IOException {
+            calls.incrementAndGet();
+            if (!available) {
+                throw new IOException("timestamp authority unreachable");
+            }
+            try {
+                org.bouncycastle.tsp.TimeStampRequest request = new org.bouncycastle.tsp.TimeStampRequest(query);
+                if (forged) {
+                    byte[] other = new byte[request.getMessageImprintDigest().length];
+                    java.util.Arrays.fill(other, (byte) 7);
+                    request = new org.bouncycastle.tsp.TimeStampRequestGenerator().generate(
+                            request.getMessageImprintAlgOID(), other, request.getNonce());
+                }
+                org.bouncycastle.tsp.TimeStampTokenGenerator generator = new org.bouncycastle.tsp.TimeStampTokenGenerator(
+                        new org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoGeneratorBuilder()
+                                .build("SHA256withRSA", tsa.key(), tsa.certificate()),
+                        digests().get(new org.bouncycastle.asn1.x509.AlgorithmIdentifier(
+                                org.bouncycastle.asn1.nist.NISTObjectIdentifiers.id_sha256)),
+                        new ASN1ObjectIdentifier("1.2.3.4.1"));
+                generator.addCertificates(new org.bouncycastle.cert.jcajce.JcaCertStore(List.of(tsa.certificate())));
+                return new org.bouncycastle.tsp.TimeStampResponseGenerator(generator, org.bouncycastle.tsp.TSPAlgorithms.ALLOWED)
+                        .generate(request, BigInteger.valueOf(SERIALS.incrementAndGet()), Date.from(NOW.minusSeconds(10)))
+                        .getEncoded();
+            } catch (Exception ex) {
+                throw new IOException("test TSA failed", ex);
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return "EidTestPki[" + label + "]";

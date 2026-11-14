@@ -5,7 +5,7 @@ import PortalSignature from './PortalSignature.vue'
 import * as api from './api'
 import * as bridges from '@/lib/cardBridge'
 import { setLocale } from '@/i18n'
-import { CardBridgeError, type CardBridge } from '@/lib/cardBridge'
+import { CardBridgeError, type CardBridge, type CardChoice } from '@/lib/cardBridge'
 
 const TOKEN = 'k'.repeat(43)
 
@@ -329,14 +329,21 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
   const PREPARED = { digest: 'RElH', hashFunction: 'SHA-256' as const, signingTime: '2026-11-14T10:00:00Z', documentDigest: 'abc' }
   const CERT = { certificate: 'Q0VSVA==', certificateChain: ['SU5U'] }
 
-  function fakeBridge(overrides: Partial<CardBridge> = {}): CardBridge {
+  function fakeBridge(o: {
+    id?: CardBridge['id']
+    needsPin?: boolean
+    choices?: CardChoice[]
+    readCertificate?: () => Promise<typeof CERT>
+    sign?: CardBridge['sign']
+  } = {}): CardBridge {
+    const needsPin = o.needsPin ?? false
+    const base: CardChoice = { id: '0:0', certificate: CERT, readerName: null, holder: null, notAfter: null, needsPin }
     return {
-      id: 'web-eid',
-      needsPin: false,
+      id: o.id ?? 'web-eid',
       detect: () => Promise.resolve(),
-      readCertificate: vi.fn(() => Promise.resolve(CERT)),
-      sign: vi.fn(() => Promise.resolve('U0lH')),
-      ...overrides,
+      listChoices: vi.fn(() => (o.readCertificate ? o.readCertificate().then((certificate) => [{ ...base, certificate }]) : Promise.resolve(o.choices ?? [base]))),
+      certificateOf: vi.fn((choice: CardChoice) => Promise.resolve(choice.certificate)),
+      sign: o.sign ?? vi.fn(() => Promise.resolve('U0lH')),
     }
   }
 
@@ -407,7 +414,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
 
     expect(detect).toHaveBeenCalledWith(['web-eid', 'beidconnect'], expect.any(String), undefined)
     expect(api.prepareCardSignature).toHaveBeenCalledWith(TOKEN, CERT)
-    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', null)
+    expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ certificate: CERT }), 'RElH', 'SHA-256', null)
     expect(api.completeCardSignature).toHaveBeenCalledWith(TOKEN, {
       ...CERT,
       signingTime: PREPARED.signingTime,
@@ -422,6 +429,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     let finishSign!: () => void
     useBridge(
       fakeBridge({
+        id: 'beidconnect',
         readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))),
         sign: () => new Promise((r) => (finishSign = () => r('U0lH'))),
       }),
@@ -465,7 +473,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     await wrapper.get('[data-testid="signature-pin-form"]').trigger('submit')
     await flushPromises()
 
-    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', '1234')
+    expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ certificate: CERT }), 'RElH', 'SHA-256', '1234')
     expect(JSON.stringify(vi.mocked(api.prepareCardSignature).mock.calls)).not.toContain('1234')
     expect(JSON.stringify(vi.mocked(api.completeCardSignature).mock.calls)).not.toContain('1234')
     expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
@@ -588,7 +596,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
 
   it('keeps the decline path and blocks the upload while a card signature runs', async () => {
     let finishRead!: () => void
-    useBridge(fakeBridge({ readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
+    useBridge(fakeBridge({ id: 'beidconnect', readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
     const wrapper = await mountReady()
     await click(wrapper)
     expect(wrapper.get('[data-testid="signature-file"]').attributes('disabled')).toBeDefined()
@@ -600,6 +608,100 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     const other = await mountReady()
     expect(other.get('.portal__actions button.portal__secondary').text()).toContain('Refuser')
     expect(other.get('.portal__actions button.portal__secondary').attributes('disabled')).toBeUndefined()
+  })
+
+  describe('choix du lecteur et du certificat (lot 3c)', () => {
+    const CERT2 = { certificate: 'Q0VSVDI=', certificateChain: ['SU5UMg=='] }
+    const two = (): CardChoice[] => [
+      { id: '0:0', certificate: CERT, readerName: 'Lecteur A', holder: 'Alice Martin', notAfter: '2036-11-11T13:04:49Z', needsPin: true },
+      { id: '1:0', certificate: CERT2, readerName: 'Lecteur B', holder: null, notAfter: null, needsPin: false },
+    ]
+    const withTwo = () => {
+      const bridge = fakeBridge({ id: 'beidconnect', choices: two() })
+      useBridge(bridge)
+      return bridge
+    }
+
+    it('shows an accessible choice step before prepare, with the first choice preselected and nothing sent yet', async () => {
+      withTwo()
+      const wrapper = await mountReady()
+      await click(wrapper)
+
+      const form = wrapper.get('[data-testid="signature-choice-form"]')
+      expect(form.get('legend').text()).toContain('Choisissez le certificat de signature')
+      const radios = form.findAll('input[type="radio"]')
+      expect(radios).toHaveLength(2)
+      expect(new Set(radios.map((r) => r.attributes('name'))).size).toBe(1)
+      expect((radios[0]!.element as HTMLInputElement).checked).toBe(true)
+      expect(form.text()).toContain('Alice Martin')
+      expect(form.text()).toContain('valable jusqu’au')
+      expect(form.text()).toContain('Lecteur : Lecteur A')
+      // Libellé de repli quand le certificat est illisible.
+      expect(form.text()).toContain('Certificat 2')
+      expect(form.text()).toContain('Lecteur : Lecteur B')
+      expect(form.get('[data-testid="signature-choice-submit"]').text()).toBe('Continuer')
+      expect(api.prepareCardSignature).not.toHaveBeenCalled()
+    })
+
+    it('uses the chosen certificate for prepare and sign, and the reader type of that choice for the PIN', async () => {
+      const bridge = withTwo()
+      const wrapper = await mountReady()
+      await click(wrapper)
+      await wrapper.findAll('[data-testid="signature-choice"]')[1]!.setValue(true)
+      await wrapper.get('[data-testid="signature-choice-form"]').trigger('submit')
+      await flushPromises()
+
+      // Le second lecteur est à clavier : aucune saisie du PIN dans la page.
+      expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
+      expect(api.prepareCardSignature).toHaveBeenCalledWith(TOKEN, CERT2)
+      expect(bridge.sign).toHaveBeenCalledWith(expect.objectContaining({ id: '1:0' }), 'RElH', 'SHA-256', null)
+      expect(api.completeCardSignature).toHaveBeenCalledWith(TOKEN, expect.objectContaining({ certificate: CERT2.certificate, certificateChain: CERT2.certificateChain }))
+      expect(wrapper.find('[data-testid="signature-signed"]').exists()).toBe(true)
+    })
+
+    it('asks for the PIN after choosing a certificate on a standard reader', async () => {
+      withTwo()
+      const wrapper = await mountReady()
+      await click(wrapper)
+      await wrapper.get('[data-testid="signature-choice-form"]').trigger('submit')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(true)
+      expect(api.prepareCardSignature).toHaveBeenCalledWith(TOKEN, CERT)
+    })
+
+    it('cancels from the choice step without any call to the server', async () => {
+      const bridge = withTwo()
+      const wrapper = await mountReady()
+      await click(wrapper)
+      await wrapper.get('[data-testid="signature-choice-cancel"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-testid="signature-choice-form"]').exists()).toBe(false)
+      expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('annulée')
+      expect(api.prepareCardSignature).not.toHaveBeenCalled()
+      expect(bridge.sign).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-testid="signature-card-sign"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('skips the step when there is a single choice', async () => {
+      useBridge(fakeBridge({ id: 'beidconnect' }))
+      const wrapper = await mountReady()
+      await click(wrapper)
+      expect(wrapper.find('[data-testid="signature-choice-form"]').exists()).toBe(false)
+      expect(api.prepareCardSignature).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells a Web eID user to choose the certificate in the software window', async () => {
+      let finishRead!: () => void
+      useBridge(fakeBridge({ id: 'web-eid', readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
+      const wrapper = await mountReady()
+      await wrapper.get('[data-testid="signature-card-sign"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-testid="signature-card-status"]').text()).toContain('Choisissez votre certificat de signature dans la fenêtre du logiciel eID')
+      expect(wrapper.find('[data-testid="signature-choice-form"]').exists()).toBe(false)
+      finishRead()
+      await flushPromises()
+    })
   })
 
   describe('with a simulated BeIDConnect extension and the real HTTP client', () => {

@@ -37,6 +37,7 @@ public final class EidSignatureAdapter implements SignaturePort {
     public static final String LEVEL = "QES";
     static final String REFERENCE_PREFIX = "eid:";
     private static final String PDF = "application/pdf";
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EidSignatureAdapter.class);
 
     private final String tenantId;
     private final SignatureRequestRepository repository;
@@ -45,6 +46,8 @@ public final class EidSignatureAdapter implements SignaturePort {
     private final SignedPdfVerifier verifier;
     private final CardSignatureAssembler cardAssembler;
     private final EidProofPdfFactory proofFactory = new EidProofPdfFactory();
+    private final DocumentTimestamper timestamper;
+    private final int dispatchMaxAttempts;
 
     public EidSignatureAdapter(
             String tenantId,
@@ -53,6 +56,26 @@ public final class EidSignatureAdapter implements SignaturePort {
             DocumentStoragePort storage,
             SignedPdfVerifier verifier,
             CardSignatureAssembler cardAssembler) {
+        this(tenantId, repository, uploads, storage, verifier, cardAssembler, null, 0);
+    }
+
+    /**
+     * @param timestamper horodatage du document final (D-EID-TIMESTAMP) ; {@code null} : non configuré
+     * @param dispatchMaxAttempts tentatives du répartiteur ({@code app.signature.dispatch.max-attempts}) : à
+     *     l'avant-dernière, une TSA injoignable n'empêche plus la livraison, qui se fait sans horodatage, dit dans la
+     *     preuve et journalisé
+     */
+    public EidSignatureAdapter(
+            String tenantId,
+            SignatureRequestRepository repository,
+            SignedUploadRepository uploads,
+            DocumentStoragePort storage,
+            SignedPdfVerifier verifier,
+            CardSignatureAssembler cardAssembler,
+            DocumentTimestamper timestamper,
+            int dispatchMaxAttempts) {
+        this.timestamper = timestamper;
+        this.dispatchMaxAttempts = dispatchMaxAttempts;
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.uploads = Objects.requireNonNull(uploads, "uploads");
@@ -129,6 +152,24 @@ public final class EidSignatureAdapter implements SignaturePort {
         if (source == null || !SignatureWorkingDocuments.digestOf(source).equals(request.sourceDigest())) {
             throw new IllegalStateException("source document changed since emission of request " + request.id());
         }
+        EidProofPdfFactory.ProofTimestamp timestamp = EidProofPdfFactory.ProofTimestamp.NOT_CONFIGURED;
+        if (timestamper != null) {
+            try {
+                DocumentTimestamper.Result result = timestamper.timestamp(signed);
+                signed = result.document();
+                timestamp = new EidProofPdfFactory.ProofTimestamp(true, true, result.tokenTime(), result.authority(),
+                        result.authorityTrusted(), result.level());
+            } catch (RfcTimestampSource.TimestampUnavailableException unavailable) {
+                if (request.dispatchAttempts() < dispatchMaxAttempts - 2) {
+                    // Le répartiteur reprendra (D-EID-TIMESTAMP).
+                    throw new IllegalStateException("timestamp authority unavailable for request " + request.id(), unavailable);
+                }
+                // Avant-dernière tentative : livrer sans horodatage plutôt que bloquer le dossier, et le dire.
+                LOG.warn("eID signed document of request {} delivered WITHOUT timestamp at dispatch attempt {} of {}: {}",
+                        request.id(), request.dispatchAttempts() + 1, dispatchMaxAttempts, unavailable.getMessage());
+                timestamp = EidProofPdfFactory.ProofTimestamp.UNAVAILABLE;
+            }
+        }
         Map<UUID, SignedUpload> bySigner = new java.util.HashMap<>();
         accepted.forEach(u -> bySigner.put(u.signerId(), u));
         List<EidProofPdfFactory.ProofSigner> lines = repository.findSigners(request.id()).stream()
@@ -136,7 +177,7 @@ public final class EidSignatureAdapter implements SignaturePort {
                 .toList();
         byte[] proof = proofFactory.proof(new EidProofPdfFactory.ProofData(
                 request.id(), CODE, request.mode().name(), request.createdAt(), request.completedAt(),
-                request.sourceDigest(), last.digest(), lines));
+                request.sourceDigest(), SignatureWorkingDocuments.digestOf(signed), lines, timestamp));
         return new SignedArtifacts(signed, PDF, proof, PDF, false);
     }
 

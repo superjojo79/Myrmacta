@@ -3,7 +3,7 @@ import { detectCardBridge, mostRelevantError, type BridgeFactories } from './ind
 import { CardBridgeError, type CardBridge, type CardBridgeId } from './types'
 
 function fake(id: CardBridgeId, detect: () => Promise<void>): CardBridge {
-  return { id, needsPin: false, detect: vi.fn(detect), readCertificate: vi.fn(), sign: vi.fn() }
+  return { id, detect: vi.fn(detect), listChoices: vi.fn(), certificateOf: vi.fn(), sign: vi.fn() }
 }
 
 function factories(web: () => Promise<void>, beid: () => Promise<void>) {

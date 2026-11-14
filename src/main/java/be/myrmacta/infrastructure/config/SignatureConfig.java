@@ -81,6 +81,21 @@ public class SignatureConfig {
     }
 
     /**
+     * TODO §138 (D-EID-VALIDATION) — vérificateur réel, fondé sur DSS. Les autorités sont celles de
+     * l'exploitant (D-EID-TRUST) ; la révocation passe par un transport borné (D-EID-REVOCATION).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(
+            be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier.class)
+    be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier eidSignedPdfVerifier(EidTrustAnchors trustAnchors) {
+        return new be.myrmacta.infrastructure.signature.eid.DssSignedPdfVerifier(
+                trustAnchors.certificates(),
+                java.time.Clock.systemUTC(),
+                new be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport());
+    }
+
+    /**
      * TODO §138 (D-EID-TRUST) — autorités de confiance du fournisseur {@code eid}, lues au démarrage : un
      * fichier absent, illisible ou sans certificat fait échouer le contexte avec un message explicite. Le
      * vérificateur ({@link SignedPdfVerifier}) les prend en paramètre.

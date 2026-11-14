@@ -57,13 +57,17 @@ class SignaturePropertiesTest {
         assertThat(p.eid().maxUploadBytes()).isLessThan(25L * 1024 * 1024);
         assertThat(p.eid().revocation().timeout()).isEqualTo(Duration.ofSeconds(10));
         assertThat(p.eid().revocation().maxResponseBytes()).isEqualTo(1024 * 1024);
+        // D-EID-TIMESTAMP : pas de TSA par défaut
+        assertThat(p.eid().timestamp().enabled()).isFalse();
+        assertThat(p.eid().timestamp().timeout()).isEqualTo(Duration.ofSeconds(10));
+        assertThat(p.eid().timestamp().maxResponseBytes()).isEqualTo(64 * 1024);
     }
 
     @Test
     void eidBlockIsKeptAndValidated() {
         SignatureProperties p = new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
                 new SignatureProperties.Eid(" /etc/anchors.pem ", 5000,
-                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048)));
+                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048), null));
 
         assertThat(p.eid().trustAnchorsFile()).isEqualTo("/etc/anchors.pem");
         assertThat(p.eid().maxUploadBytes()).isEqualTo(5000);
@@ -71,10 +75,14 @@ class SignaturePropertiesTest {
         assertThat(p.eid().revocation().maxResponseBytes()).isEqualTo(2048);
 
         assertThatThrownBy(() -> new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
-                        new SignatureProperties.Eid(null, 500, null)))
+                        new SignatureProperties.Eid(null, 500, null, null)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("max-upload-bytes");
         assertThatThrownBy(() -> new SignatureProperties.Revocation(Duration.ZERO, 0))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(new SignatureProperties.Timestamp(" https://tsa.example/tsp ", null, 0).url()).isEqualTo("https://tsa.example/tsp");
+        assertThat(new SignatureProperties.Timestamp(" ", null, 0).enabled()).isFalse();
+        assertThatThrownBy(() -> new SignatureProperties.Timestamp("https://tsa.example", Duration.ZERO, 0))
                 .isInstanceOf(IllegalStateException.class);
     }
 }

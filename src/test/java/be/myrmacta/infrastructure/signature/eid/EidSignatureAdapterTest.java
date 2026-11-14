@@ -195,6 +195,61 @@ class EidSignatureAdapterTest extends SignaturePortContract {
         assertThat(proof).doesNotContain("alice@example.org");
     }
 
+    private UUID signedRequest(int dispatchAttempts) {
+        UUID id = UUID.randomUUID();
+        SignatureRequest base = SignatureFixtures.request(id, SignatureMode.SEQUENTIAL, "proc-1", DIGEST);
+        requests.put(id, base.closed(SignatureOutcome.SIGNED, null, NOW).withDispatchAttempts(dispatchAttempts));
+        Signer alice = external(id, 0, true, "alice@example.org").decided(SignerStatus.SIGNED, NOW, null);
+        signers.put(id, List.of(alice));
+        uploadsByRequest.put(id, List.of(upload(id, alice.id(), 1, "work-1", SIGNED_1, "fp-alice")));
+        return id;
+    }
+
+    private EidSignatureAdapter withTimestamper(DocumentTimestamper timestamper, int maxAttempts) {
+        return new EidSignatureAdapter(TENANT, repository, uploads, storage, verifier, timestamper, maxAttempts);
+    }
+
+    @Test
+    void withoutTimestampConfigurationTheProofSaysSoAndTheDocumentIsUnchanged() {
+        UUID id = signedRequest(0);
+
+        SignaturePort.SignedArtifacts artifacts = adapter.fetchArtifacts("eid:" + id);
+
+        assertThat(artifacts.signedDocument()).isEqualTo(SIGNED_1);
+        assertThat(TestPdfs.text(artifacts.proof())).contains("non configur");
+    }
+
+    @Test
+    void timestampedDocumentIsDeliveredAndTheProofNamesTheAuthorityTheTimeAndTheLevel() {
+        UUID id = signedRequest(0);
+        byte[] stamped = TestPdfs.pdf(2, "Contrat signé horodaté");
+        DocumentTimestamper timestamper = signed -> new DocumentTimestamper.Result(stamped,
+                Instant.parse("2026-11-13T10:00:05Z"), "CN=Test TSA,C=BE", true, DssDocumentTimestamper.LEVEL_LTA);
+
+        SignaturePort.SignedArtifacts artifacts = withTimestamper(timestamper, 20).fetchArtifacts("eid:" + id);
+
+        assertThat(artifacts.signedDocument()).isEqualTo(stamped);
+        String proof = TestPdfs.text(artifacts.proof());
+        assertThat(proof).contains("2026-11-13T10:00:05Z", "CN=Test TSA", "PAdES-BASELINE-LTA",
+                SignatureWorkingDocuments.digestOf(stamped).substring(0, 32));
+    }
+
+    @Test
+    void unavailableTimestampAuthorityFailsSoTheDispatcherRetriesThenDeliversWithoutTimestampAtThePenultimateAttempt() {
+        DocumentTimestamper down = signed -> {
+            throw new RfcTimestampSource.TimestampUnavailableException("timestamp authority cannot be reached", null);
+        };
+        UUID early = signedRequest(17);
+        assertThatThrownBy(() -> withTimestamper(down, 20).fetchArtifacts("eid:" + early))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("timestamp authority unavailable");
+
+        UUID penultimate = signedRequest(18);
+        SignaturePort.SignedArtifacts artifacts = withTimestamper(down, 20).fetchArtifacts("eid:" + penultimate);
+
+        assertThat(artifacts.signedDocument()).isEqualTo(SIGNED_1);
+        assertThat(TestPdfs.text(artifacts.proof())).contains("NON HORODAT", "injoignable");
+    }
+
     @Test
     void artifactsAreRefusedWithoutAnyAcceptedUploadOrWhenADocumentChanged() {
         UUID id = UUID.randomUUID();

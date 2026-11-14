@@ -134,6 +134,8 @@ logging:
   level:
     org.apache.hc: WARN
     org.apache.http: WARN
+    # TODO §138 : DSS (vérification des signatures eID) journalise des détails de certificats en INFO et DEBUG.
+    eu.europa.esig: WARN
 
 server:
   forward-headers-strategy: framework
@@ -387,6 +389,13 @@ app:
       revocation:
         timeout: ${APP_SIGNATURE_EID_REVOCATION_TIMEOUT:10s}
         max-response-bytes: ${APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES:1048576}
+      # D-EID-TIMESTAMP : horodatage RFC 3161 du document signé final, par la TSA choisie par l'exploitant (http ou https).
+      # Vide : pas d'horodatage. Aucune TSA par défaut. TSA injoignable : reprise du répartiteur, puis livraison sans
+      # horodatage à l'avant-dernière tentative, dite dans la preuve.
+      timestamp:
+        url: ${APP_SIGNATURE_EID_TSA_URL:}
+        timeout: ${APP_SIGNATURE_EID_TSA_TIMEOUT:10s}
+        max-response-bytes: ${APP_SIGNATURE_EID_TSA_MAX_RESPONSE_BYTES:65536}
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

@@ -10,8 +10,10 @@ import be.myrmacta.infrastructure.signature.DocusignSignatureAdapter;
 import be.myrmacta.infrastructure.signature.SignatureStubGuard;
 import be.myrmacta.infrastructure.signature.StubSignatureAdapter;
 import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.DssDocumentTimestamper;
 import be.myrmacta.infrastructure.signature.eid.EidSignatureAdapter;
 import be.myrmacta.infrastructure.signature.eid.EidTrustAnchors;
+import be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport;
 import be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -88,11 +90,32 @@ public class SignatureConfig {
     @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
     @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(
             be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier.class)
-    be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier eidSignedPdfVerifier(EidTrustAnchors trustAnchors) {
+    be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier eidSignedPdfVerifier(
+            EidTrustAnchors trustAnchors, PinnedRevocationTransport eidRevocationTransport) {
         return new be.myrmacta.infrastructure.signature.eid.DssSignedPdfVerifier(
-                trustAnchors.certificates(),
-                java.time.Clock.systemUTC(),
-                new be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport());
+                trustAnchors.certificates(), java.time.Clock.systemUTC(), eidRevocationTransport);
+    }
+
+    /** TODO §138 (D-EID-REVOCATION) — transport de révocation aux réglages {@code app.signature.eid.revocation.*}. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    PinnedRevocationTransport eidRevocationTransport(SignatureProperties properties) {
+        SignatureProperties.Revocation revocation = properties.eid().revocation();
+        return new PinnedRevocationTransport(revocation.timeout(), revocation.maxResponseBytes());
+    }
+
+    /**
+     * TODO §138 (D-EID-TIMESTAMP) — horodatage du document final, seulement si l'exploitant a configuré
+     * {@code app.signature.eid.timestamp.url} ; sinon {@code null} (aucune TSA par défaut).
+     */
+    static DssDocumentTimestamper eidTimestamper(
+            SignatureProperties properties, EidTrustAnchors trustAnchors, PinnedRevocationTransport revocation) {
+        SignatureProperties.Timestamp timestamp = properties.eid().timestamp();
+        if (!timestamp.enabled()) {
+            return null;
+        }
+        return new DssDocumentTimestamper(timestamp.url(), trustAnchors.certificates(), revocation,
+                timestamp.timeout(), timestamp.maxResponseBytes());
     }
 
     /**
@@ -118,10 +141,14 @@ public class SignatureConfig {
             SignedUploadRepository uploads,
             DocumentStoragePort storage,
             SignedPdfVerifier verifier,
-            EidTrustAnchors trustAnchors) {
-        LOG.info("Signature provider eid active: {} trusted certificate authorities.",
-                trustAnchors.certificates().size());
-        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier);
+            EidTrustAnchors trustAnchors,
+            SignatureProperties properties,
+            PinnedRevocationTransport eidRevocationTransport) {
+        DssDocumentTimestamper timestamper = eidTimestamper(properties, trustAnchors, eidRevocationTransport);
+        LOG.info("Signature provider eid active: {} trusted certificate authorities, document timestamp {}.",
+                trustAnchors.certificates().size(), timestamper == null ? "off" : "on");
+        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier, timestamper,
+                properties.dispatch().maxAttempts());
     }
 
     @Bean

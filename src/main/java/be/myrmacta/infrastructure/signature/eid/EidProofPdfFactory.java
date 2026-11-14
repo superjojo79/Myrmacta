@@ -37,6 +37,16 @@ final class EidProofPdfFactory {
             Integer sequence,
             SignedUploadEvidence evidence) {}
 
+    /**
+     * Horodatage du document final (D-EID-TIMESTAMP). {@code configured} faux : l'exploitant n'en a pas configuré ;
+     * {@code configured} vrai et {@code timestamped} faux : la TSA était injoignable, livraison sans horodatage.
+     */
+    record ProofTimestamp(boolean configured, boolean timestamped, Instant tokenTime, String authority,
+            boolean authorityTrusted, String level) {
+        static final ProofTimestamp NOT_CONFIGURED = new ProofTimestamp(false, false, null, null, false, null);
+        static final ProofTimestamp UNAVAILABLE = new ProofTimestamp(true, false, null, null, false, null);
+    }
+
     record ProofData(
             UUID requestId,
             String providerCode,
@@ -45,7 +55,24 @@ final class EidProofPdfFactory {
             Instant completedAt,
             String sourceDigest,
             String finalDigest,
-            List<ProofSigner> signers) {}
+            List<ProofSigner> signers,
+            ProofTimestamp timestamp) {
+
+        ProofData(UUID requestId, String providerCode, String mode, Instant createdAt, Instant completedAt,
+                String sourceDigest, String finalDigest, List<ProofSigner> signers) {
+            this(requestId, providerCode, mode, createdAt, completedAt, sourceDigest, finalDigest, signers,
+                    ProofTimestamp.NOT_CONFIGURED);
+        }
+
+        ProofData {
+            timestamp = timestamp == null ? ProofTimestamp.NOT_CONFIGURED : timestamp;
+        }
+    }
+
+    /** Texte de la livraison sans horodatage, repris tel quel (D-EID-TIMESTAMP : jamais de dégradation silencieuse). */
+    static final String TIMESTAMP_UNAVAILABLE = "Horodatage : NON HORODATÉ. L'autorité d'horodatage configurée était "
+            + "injoignable ou a donné une réponse invalide à chaque tentative ; le document a été livré sans horodatage "
+            + "pour ne pas bloquer le dossier.";
 
     byte[] proof(ProofData data) {
         try {
@@ -67,6 +94,7 @@ final class EidProofPdfFactory {
             document.add(new Paragraph("Terminée le : " + data.completedAt(), body));
             document.add(new Paragraph("Empreinte SHA-256 du document source : " + data.sourceDigest(), small));
             document.add(new Paragraph("Empreinte SHA-256 du document final : " + data.finalDigest(), small));
+            timestamp(document, heading, small, data.timestamp());
             document.add(new Paragraph(" ", body));
             document.add(new Paragraph("Signataires", heading));
             for (ProofSigner signer : data.signers()) {
@@ -102,6 +130,27 @@ final class EidProofPdfFactory {
         } catch (DocumentException ex) {
             throw new IllegalStateException("cannot build the signature proof", ex);
         }
+    }
+
+    private static void timestamp(Document document, Font heading, Font small, ProofTimestamp timestamp)
+            throws DocumentException {
+        document.add(new Paragraph(" ", small));
+        document.add(new Paragraph("Horodatage du document final", heading));
+        if (!timestamp.configured()) {
+            document.add(new Paragraph("Horodatage : non configuré par l'exploitant (document non horodaté).", small));
+            return;
+        }
+        if (!timestamp.timestamped()) {
+            document.add(new Paragraph(TIMESTAMP_UNAVAILABLE, small));
+            return;
+        }
+        line(document, small, "Horodaté", "oui");
+        line(document, small, "Heure du jeton d'horodatage", timestamp.tokenTime() == null ? null : timestamp.tokenTime().toString());
+        line(document, small, "Autorité d'horodatage", timestamp.authority());
+        line(document, small, "Niveau atteint", timestamp.level());
+        line(document, small, "Autorité rattachée aux autorités de confiance de l'exploitant",
+                timestamp.authorityTrusted() ? "oui" : "non (horodatage non qualifié, date attestée par la TSA choisie "
+                        + "par l'exploitant, sans chaîne de confiance vérifiée)");
     }
 
     private static void line(Document document, Font font, String label, String value) throws DocumentException {

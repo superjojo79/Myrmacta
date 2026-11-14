@@ -38,7 +38,8 @@ Issue : #10 · Spec du domaine : docs/specs/30-signature-electronique.md · Poin
 |---|---|---|---|
 | Piste sans agent | WebAssembly + WebUSB ; Web Smart Card ; mTLS ; signature apportée | signature apportée | tranchée → §138 (D-EID-TRANSPORT, D-EID-UPLOAD) |
 | Signer dans la page | pont navigateur ; rester au téléversement | pont, téléversement en repli | tranchée par l'utilisateur → §138 (D-EID-BRIDGE) |
-| BeIDConnect accepte-t-il un site hors `belgium.be` / `fgov.be` ? | — | lire ses manifestes | ouverte (recherche en cours) |
+| BeIDConnect accepte-t-il un site hors `belgium.be` / `fgov.be` ? | — | lire ses manifestes | tranchée : oui sous Chrome, Edge et Firefox ; non sous Safari (§138) |
+| PIN saisi dans la page avec BeIDConnect sur lecteur ordinaire | accepter ; lecteur à clavier seulement ; exclure BeIDConnect | accepter, réglable par l'exploitant | tranchée → §138 (D-EID-PIN), à confirmer par l'utilisateur |
 | Bibliothèque de validation | DSS ; BouncyCastle à la main | DSS 6.5.1 | tranchée → §138 (D-EID-VALIDATION) |
 | Outils réels (Acrobat, service fédéral) : signent-ils par mise à jour incrémentale ? | — | recette avec une vraie carte | hypothèse : oui ; sinon le motif `DOCUMENT_MISMATCH` s'affiche |
 | Horodatage injoignable après les reprises du répartiteur | bloquer ; livrer sans horodatage en le disant dans la preuve | à trancher au lot 4 | ouverte |
@@ -68,6 +69,10 @@ Portail (chaîne anonyme, jeton dans `X-Portal-Token`) :
 
 Signature dans la page (D-EID-BRIDGE), mêmes chaînes de sécurité que ci-dessus, corps JSON, binaire en base64 :
 
+- `GET /api/portal/signature` et chaque élément de `GET /api/signatures/mine` gagnent
+  `cardBridges: string[]` : les ponts autorisés par l'exploitant, dans l'ordre à essayer, parmi `web-eid` et
+  `beidconnect` ; tableau vide si la signature dans la page n'est pas offerte.
+
 - `POST /api/portal/signature/card-signature/prepare` et `POST /api/signatures/mine/{signerId}/card-signature/prepare` :
   requête `{"certificate": "<DER base64>", "certificateChain": ["<DER base64>", …]}` (chaîne facultative) ;
   réponse 200 `{"digest": "<base64>", "hashFunction": "SHA-256" | "SHA-384", "signingTime": "<instant ISO-8601>",
@@ -76,7 +81,9 @@ Signature dans la page (D-EID-BRIDGE), mêmes chaînes de sécurité que ci-dess
   "signature": "<base64>"}`, les quatre premiers repris tels quels de l'échange précédent ; réponse 200
   `{"status":"SIGNED"}`.
 - Erreurs : 400 pour une entrée illisible (base64, certificat) ; 422 avec `code` comme pour le téléversement
-  (`STALE_DOCUMENT` si `documentDigest` n'est plus celui du document courant).
+  (`STALE_DOCUMENT` si `documentDigest` n'est plus celui du document courant) ; 422 avec
+  `code` = `SIGNING_SESSION_EXPIRED` si `signingTime` date de plus de quinze minutes ou est dans le futur.
+- Le PIN ne figure dans aucun de ces échanges (D-EID-PIN).
 
 Erreurs du téléversement :
 

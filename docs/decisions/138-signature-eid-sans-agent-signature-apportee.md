@@ -43,13 +43,19 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
 - **D-EID-TRANSPORT.** Aucune page web ordinaire n'atteint la carte eID sans composant natif. La piste
   WebAssembly est abandonnée : elle résout la logique carte, pas le transport, et la saisie du PIN dans
   la page serait un recul de sécurité.
-- **D-EID-BRIDGE.** Signature dans la page par pont navigateur : Web eID ou BeIDConnect, celui que la page
-  détecte. La clé ne quitte pas la carte et le PIN est saisi dans la fenêtre du pont, jamais dans la page.
-  Le serveur calcule le condensé à signer, le pont le fait signer par la carte, le serveur assemble le PAdES
-  (signature invisible, mise à jour incrémentale). Le PDF assemblé n'est pas tenu pour valide : il passe par
-  la même vérification qu'un téléversement (D-EID-BINDING à D-EID-REVOCATION). Les deux appels sont sans
-  état : une valeur falsifiée entre les deux donne une signature invalide, donc un refus. Sans pont détecté,
-  la page propose le téléversement.
+- **D-EID-BRIDGE.** Signature dans la page par pont navigateur. La page essaie Web eID puis BeIDConnect,
+  parmi les ponts que l'exploitant autorise (`app.signature.eid.bridges`, les deux par défaut). Le serveur
+  calcule le condensé à signer, le pont le fait signer par la carte, le serveur assemble le PAdES (signature
+  invisible, mise à jour incrémentale). Le PDF assemblé n'est pas tenu pour valide : il passe par la même
+  vérification qu'un téléversement (D-EID-BINDING à D-EID-REVOCATION). Les deux appels sont sans état : une
+  valeur falsifiée entre les deux donne une signature invalide, donc un refus. Sans pont détecté, la page
+  propose le téléversement. Aucune dépendance npm : la page parle le protocole de chaque extension, lu dans
+  ses sources (la bibliothèque Web eID n'est pas publiée sur npmjs).
+- **D-EID-PIN.** Le PIN n'est jamais envoyé au serveur ni conservé. Avec Web eID, il est saisi dans la fenêtre
+  du logiciel eID, hors de la page. BeIDConnect n'ouvre pas de fenêtre : sur un lecteur à clavier, le PIN est
+  saisi sur le lecteur ; sur un lecteur ordinaire, la page doit le demander et le passer à l'extension, comme
+  le fait le site fédéral de signature. La page le garde en mémoire le temps de l'appel. L'exploitant qui
+  refuse cette saisie dans la page retire `beidconnect` des ponts autorisés.
 - **D-EID-UPLOAD.** Signature apportée, en repli du pont. Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
   (Adobe Acrobat Reader et sa carte, ou le service fédéral de signature), puis téléverse le PDF signé.
   Myrmacta vérifie la signature. Aucun composant propre à Myrmacta n'est installé sur le poste. Fournisseur
@@ -96,6 +102,21 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   pour signer dans la page, ou son outil de signature pour le téléversement.
 - Aucun des deux ponts n'a pu être essayé avec une vraie extension et une vraie carte pendant le
   développement : le code client suit leurs sources publiques et ses tests simulent l'extension.
+- Web eID ne rend que le certificat du signataire : les autorités intermédiaires (Citizen CA) doivent alors
+  figurer dans le fichier de l'exploitant (D-EID-TRUST). BeIDConnect rend la chaîne lue sur la carte.
+
+## Ce que les sources des ponts établissent (lues le 2026-11-14)
+
+| | Web eID | BeIDConnect |
+|---|---|---|
+| À installer sur le poste | extension, application native **et** logiciel eID belge (module PKCS#11) | extension et application native ; pas de logiciel eID |
+| Sites acceptés | tous, en HTTPS réel | tous sous Chrome, Edge et Firefox ; domaines fédéraux seulement sous Safari |
+| Saisie du PIN | fenêtre du logiciel eID | lecteur à clavier, sinon la page |
+| Certificat rendu | le certificat seul | le certificat et la chaîne de la carte |
+| Signature ECDSA rendue | brute (r puis s) | DER |
+
+Versions lues : bibliothèque `web-eid.js` 2.1.0, extension Web eID 2.5.0, application Web eID 2.10.0,
+BeIDConnect 2.12. La prise en charge de la carte belge par Web eID vient de `libelectronic-id`.
 
 **Impacte.** `docs/specs/30-signature-electronique.md`, `docs/decisions/identifiants.md`,
 `docs/guides/DEPLOIEMENT.md`, `docs/guides/GETTING-STARTED.md`, `docs/guides/GUIDE-UTILISATEUR.md`,

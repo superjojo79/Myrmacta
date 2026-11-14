@@ -13,6 +13,7 @@ import be.myrmacta.domain.workflow.portal.port.out.PortalTokenPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * TODO §72 — jeton → signataire externe {@code PENDING} d'une demande {@code PENDING} non échue
@@ -66,5 +67,20 @@ public final class SignatureAccessResolver {
         return new ResolvedAccess(request, signer, dossier);
     }
 
+    /**
+     * Signataire interne de l'utilisateur et sa demande. Seule l'identité est contrôlée ici : l'état de la
+     * demande et du signataire l'est par l'appelant, au moment d'écrire (tout refus : même exception).
+     */
+    public InternalAccess resolveInternal(String userId, UUID signerId) {
+        Signer signer = repository.findSignerById(signerId)
+                .filter(s -> s.kind() == SignerKind.INTERNAL && userId != null && userId.equals(s.userId()))
+                .orElseThrow(() -> new PortalAccessDeniedException("no internal signer " + signerId + " for user"));
+        SignatureRequest request = repository.findById(signer.requestId())
+                .orElseThrow(() -> new PortalAccessDeniedException("request gone for signer " + signerId));
+        return new InternalAccess(request, signer);
+    }
+
     public record ResolvedAccess(SignatureRequest request, Signer signer, Dossier dossier) {}
+
+    public record InternalAccess(SignatureRequest request, Signer signer) {}
 }

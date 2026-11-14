@@ -363,7 +363,8 @@ public class DossierConfig {
             WorkflowEnginePort workflowEnginePort,
             be.myrmacta.domain.workflow.port.out.TaskQuestionAnswerRepository taskQuestionAnswerRepository,
             be.myrmacta.domain.workflow.portal.port.out.PortalLinkRepository portalLinkRepository,
-            be.myrmacta.domain.signature.port.out.SignatureRequestRepository signatureRequestRepository) {
+            be.myrmacta.domain.signature.port.out.SignatureRequestRepository signatureRequestRepository,
+            be.myrmacta.domain.signature.port.out.SignedUploadRepository signedUploadRepository) {
         return new ProcessPurgeOutboxUseCaseImpl(
                 purgeOutboxRepository,
                 dossierRepository,
@@ -374,7 +375,8 @@ public class DossierConfig {
                 workflowEnginePort,
                 taskQuestionAnswerRepository,
                 portalLinkRepository,
-                signatureRequestRepository);
+                signatureRequestRepository,
+                signedUploadRepository);
     }
 
     @Bean

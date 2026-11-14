@@ -1,11 +1,13 @@
 package be.myrmacta.infrastructure.web.portal;
 
+import be.myrmacta.domain.signature.SignatureAccessResolver;
 import be.myrmacta.domain.workflow.portal.PortalAccessResolver;
 import be.myrmacta.domain.workflow.portal.model.PortalCredential;
 import be.myrmacta.infrastructure.security.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Objects;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.HandlerMethod;
@@ -25,7 +27,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *   <li>toutes les routes de {@link PortalController} : limite par IP (T-ACCESS-4), l'IP étant
  *       celle de {@link ClientIpResolver} (C2 : jamais un en-tête que le client contrôle) ;
  *   <li>dépôt de pièce : jeton vivant exigé avant lecture du corps, sans effet de bord
- *       ({@link PortalAccessResolver#assertUsableToken}) — le use case refait le contrôle complet.
+ *       ({@link PortalAccessResolver#assertUsableToken}) — le use case refait le contrôle complet ;
+ *   <li>dépôt d'un PDF signé (TODO §138) : de même, avec le jeton de signature ({@link SignatureAccessResolver}).
  * </ul>
  *
  * <p>Les exceptions levées ici passent par {@link PortalExceptionHandler} (le handler est déjà
@@ -36,12 +39,17 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
     private final PortalPreAuthRateLimiter rateLimiter;
     private final PortalAccessResolver accessResolver;
     private final ClientIpResolver clientIpResolver;
+    private final ObjectProvider<SignatureAccessResolver> signatureAccessResolver;
 
     PortalPreAuthInterceptor(
-            PortalPreAuthRateLimiter rateLimiter, PortalAccessResolver accessResolver, ClientIpResolver clientIpResolver) {
+            PortalPreAuthRateLimiter rateLimiter,
+            PortalAccessResolver accessResolver,
+            ClientIpResolver clientIpResolver,
+            ObjectProvider<SignatureAccessResolver> signatureAccessResolver) {
         this.rateLimiter = Objects.requireNonNull(rateLimiter, "rateLimiter");
         this.accessResolver = Objects.requireNonNull(accessResolver, "accessResolver");
         this.clientIpResolver = Objects.requireNonNull(clientIpResolver, "clientIpResolver");
+        this.signatureAccessResolver = Objects.requireNonNull(signatureAccessResolver, "signatureAccessResolver");
     }
 
     @Override
@@ -53,6 +61,14 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
         if (method.hasMethodAnnotation(PortalController.TokenCheckedBeforeBody.class)) {
             accessResolver.assertUsable(PortalCredential.of(request.getHeader(PortalController.TOKEN_HEADER),
                     request.getHeader(PortalController.IDENTITY_HEADER)));
+        }
+        if (method.hasMethodAnnotation(SignaturePortalController.TokenCheckedBeforeBody.class)) {
+            // TODO §138 : même garde pour le PDF signé, avec la résolution complète du jeton de signature
+            // (aucun effet de bord) ; le use case refait le contrôle.
+            SignatureAccessResolver signatureResolver = signatureAccessResolver.getIfAvailable();
+            if (signatureResolver != null) {
+                signatureResolver.resolve(request.getHeader(PortalController.TOKEN_HEADER));
+            }
         }
         return true;
     }
@@ -73,19 +89,23 @@ final class PortalPreAuthInterceptor implements HandlerInterceptor {
         private final PortalPreAuthRateLimiter rateLimiter;
         private final PortalAccessResolver accessResolver;
         private final ClientIpResolver clientIpResolver;
+        private final ObjectProvider<SignatureAccessResolver> signatureAccessResolver;
 
         Registration(
                 PortalPreAuthRateLimiter rateLimiter,
                 PortalAccessResolver accessResolver,
-                ClientIpResolver clientIpResolver) {
+                ClientIpResolver clientIpResolver,
+                ObjectProvider<SignatureAccessResolver> signatureAccessResolver) {
             this.rateLimiter = rateLimiter;
             this.accessResolver = accessResolver;
             this.clientIpResolver = clientIpResolver;
+            this.signatureAccessResolver = signatureAccessResolver;
         }
 
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
-            registry.addInterceptor(new PortalPreAuthInterceptor(rateLimiter, accessResolver, clientIpResolver))
+            registry.addInterceptor(new PortalPreAuthInterceptor(
+                            rateLimiter, accessResolver, clientIpResolver, signatureAccessResolver))
                     .addPathPatterns("/api/portal/**");
         }
     }

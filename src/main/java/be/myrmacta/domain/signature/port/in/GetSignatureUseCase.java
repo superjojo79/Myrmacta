@@ -13,7 +13,10 @@ public interface GetSignatureUseCase {
     DocumentContent document(String token);
 
     /**
-     * {@code signingUrl} est l'adresse chez le fournisseur au moment de l'ouverture, nulle tant que
+     * {@code signedUpload} : le signataire signe hors de Myrmacta et téléverse le PDF signé (TODO §138) ;
+     * le document remis est alors le document de travail courant de la demande.
+     *
+     * <p>{@code signingUrl} est l'adresse chez le fournisseur au moment de l'ouverture, nulle tant que
      * le signataire n'est pas notifié ou si la signature se fait dans Myrmacta (D-SIGNATURE-LINK).
      */
     record Context(
@@ -24,6 +27,7 @@ public interface GetSignatureUseCase {
             Instant deadlineAt,
             boolean simulated,
             boolean hosted,
+            boolean signedUpload,
             String signingUrl) {}
 
     record DocumentContent(byte[] content, String contentType, String filename) {}

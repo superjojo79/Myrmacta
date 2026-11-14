@@ -2,6 +2,9 @@ package be.myrmacta.infrastructure.web.signature;
 
 import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.signature.model.HostedSignatureException;
+import be.myrmacta.domain.signature.model.SignedUploadRejectedException;
+import be.myrmacta.domain.signature.model.SignedUploadRequiredException;
+import be.myrmacta.domain.signature.model.SignedUploadTooLargeException;
 import be.myrmacta.infrastructure.security.SecurityAuditLog;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -10,6 +13,7 @@ import be.myrmacta.domain.dossier.model.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /** TODO §72 — erreurs de l'API instructeur des demandes de signature. */
 @RestControllerAdvice(assignableTypes = {SignatureAdminController.class, MySignaturesController.class})
@@ -47,6 +51,29 @@ class SignatureAdminExceptionHandler {
     ProblemDetail handleHostedSignature(HostedSignatureException ex) {
         return problem(HttpStatus.CONFLICT, "Signature chez le fournisseur",
                 "Cette signature se fait sur le site du fournisseur.");
+    }
+
+    /** Signature apportée : le clic « Signer » est refusé, il faut téléverser le PDF signé (TODO §138). */
+    @ExceptionHandler(SignedUploadRequiredException.class)
+    ProblemDetail handleSignedUploadRequired(SignedUploadRequiredException ex) {
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, "Téléversement requis",
+                "Cette signature se fait en téléversant le PDF signé.");
+        problem.setProperty("code", "SIGNED_UPLOAD_REQUIRED");
+        return problem;
+    }
+
+    /** PDF signé refusé : le motif ne décrit que le fichier du signataire, il lui est restitué tel quel (TODO §138). */
+    @ExceptionHandler(SignedUploadRejectedException.class)
+    ProblemDetail handleSignedUploadRejected(SignedUploadRejectedException ex) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "Document signé refusé",
+                "Le document signé a été refusé.");
+        problem.setProperty("code", ex.rejection().name());
+        return problem;
+    }
+
+    @ExceptionHandler({SignedUploadTooLargeException.class, MaxUploadSizeExceededException.class})
+    ProblemDetail handleTooLarge(Exception ex) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Fichier trop volumineux", "Le fichier dépasse la taille autorisée.");
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {

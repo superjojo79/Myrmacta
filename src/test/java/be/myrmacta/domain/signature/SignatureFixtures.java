@@ -25,6 +25,11 @@ public final class SignatureFixtures {
                 Set.of(hosted ? "ELECTRONIC" : "SIMULATED"));
     }
 
+    /** Fournisseur à PDF apporté (TODO §138) : le signataire téléverse le PDF signé, le répartiteur livre les artefacts. */
+    public static SignaturePort.SignatureProviderCapabilities eidCapabilities() {
+        return new SignaturePort.SignatureProviderCapabilities(true, true, false, true, true, Set.of("QES"));
+    }
+
     public static Signer external(UUID requestId, int position, boolean required, String email) {
         return new Signer(UUID.randomUUID(), TENANT, requestId, position, SignerKind.EXTERNAL, required, null,
                 "Signataire " + position, email, null, SignerStatus.WAITING, null, 0, null, null, 0L);

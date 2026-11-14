@@ -8,8 +8,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * TODO §72 (signature-electronique). {@code provider} : {@code none} (défaut, aucune fonctionnalité,
  * un bloc signature est refusé au déploiement), {@code stub} (simulation, D-SIGNATURE-STUB-BEHAVIOR),
- * {@code yousign} ou {@code docusign} (TODO §109, D-SIGNATURE-PROVIDER). Le stub est soumis à la garde de profil
- * (D-SIGNATURE-STUB-GUARD) : hors profil {@code local}/{@code test}, il exige
+ * {@code yousign} ou {@code docusign} (TODO §109, D-SIGNATURE-PROVIDER), ou {@code eid} : signature qualifiée par
+ * carte eID, le signataire téléverse le PDF qu'il a signé (TODO §138, D-EID-UPLOAD). Le stub est soumis à la garde
+ * de profil (D-SIGNATURE-STUB-GUARD) : hors profil {@code local}/{@code test}, il exige
  * {@code stub.allowOutsideLocal=true}.
  */
 @ConfigurationProperties(prefix = "app.signature")
@@ -22,14 +23,19 @@ public record SignatureProperties(
         long maxDocumentBytes,
         Send send,
         Expiry expiry,
-        Dispatch dispatch) {
+        Dispatch dispatch,
+        Eid eid) {
 
     public static final String PROVIDER_NONE = "none";
     public static final String PROVIDER_STUB = "stub";
     public static final String PROVIDER_YOUSIGN = "yousign";
     public static final String PROVIDER_DOCUSIGN = "docusign";
+    public static final String PROVIDER_EID = "eid";
     private static final Set<String> KNOWN_PROVIDERS =
-            Set.of(PROVIDER_NONE, PROVIDER_STUB, PROVIDER_YOUSIGN, PROVIDER_DOCUSIGN);
+            Set.of(PROVIDER_NONE, PROVIDER_STUB, PROVIDER_YOUSIGN, PROVIDER_DOCUSIGN, PROVIDER_EID);
+
+    /** Marge ajoutée à {@code max-document-bytes} pour un PDF signé : les signatures s'ajoutent à la source. */
+    static final long SIGNED_UPLOAD_MARGIN_BYTES = 2L * 1024 * 1024;
 
     public SignatureProperties {
         provider = provider == null || provider.isBlank() ? PROVIDER_NONE : provider.trim().toLowerCase(Locale.ROOT);
@@ -67,6 +73,17 @@ public record SignatureProperties(
         if (dispatch == null) {
             dispatch = new Dispatch(null, 0, 0);
         }
+        if (eid == null) {
+            eid = new Eid(null, 0, null);
+        }
+        if (eid.maxUploadBytes() <= 0) {
+            eid = new Eid(eid.trustAnchorsFile(), maxDocumentBytes + SIGNED_UPLOAD_MARGIN_BYTES, eid.revocation());
+        }
+        if (eid.maxUploadBytes() < maxDocumentBytes) {
+            throw new IllegalStateException(
+                    "app.signature.eid.max-upload-bytes must not be below app.signature.max-document-bytes: a signed "
+                            + "PDF is its source plus signatures");
+        }
     }
 
     public boolean providerActive() {
@@ -75,6 +92,10 @@ public record SignatureProperties(
 
     public boolean stubSelected() {
         return PROVIDER_STUB.equals(provider);
+    }
+
+    public boolean eidSelected() {
+        return PROVIDER_EID.equals(provider);
     }
 
     public int defaultDeadlineDays() {
@@ -128,6 +149,37 @@ public record SignatureProperties(
             }
             if (batchSize <= 0) {
                 batchSize = 50;
+            }
+        }
+    }
+
+    /**
+     * Fournisseur {@code eid} (TODO §138). {@code trustAnchorsFile} : fichier PEM des autorités de confiance de
+     * l'exploitant, obligatoire avec {@code provider=eid} (D-EID-TRUST). {@code maxUploadBytes} : taille maximale
+     * d'un PDF signé téléversé, par défaut {@code max-document-bytes} plus 2 Mio ; la limite multipart globale
+     * ({@code spring.servlet.multipart}, 25 Mo par défaut) s'applique avant elle. {@code revocation} : appel
+     * sortant vers l'état de révocation d'un certificat (D-EID-REVOCATION).
+     */
+    public record Eid(String trustAnchorsFile, long maxUploadBytes, Revocation revocation) {
+        public Eid {
+            trustAnchorsFile = trustAnchorsFile == null || trustAnchorsFile.isBlank() ? null : trustAnchorsFile.trim();
+            if (revocation == null) {
+                revocation = new Revocation(null, 0);
+            }
+        }
+    }
+
+    /** Délai total de l'appel de révocation (connexion et lecture) et taille maximale de sa réponse. */
+    public record Revocation(Duration timeout, long maxResponseBytes) {
+        public Revocation {
+            if (timeout == null) {
+                timeout = Duration.ofSeconds(10);
+            }
+            if (timeout.isNegative() || timeout.isZero()) {
+                throw new IllegalStateException("app.signature.eid.revocation.timeout must be positive");
+            }
+            if (maxResponseBytes <= 0) {
+                maxResponseBytes = 1024L * 1024;
             }
         }
     }

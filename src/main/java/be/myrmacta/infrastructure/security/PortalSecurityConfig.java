@@ -21,13 +21,15 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
  * {@code X-Portal-Token}, qu'un site tiers ne peut pas poser sans pré-vol CORS (aucun CORS
  * applicatif, décision n° 27) — la protection CSRF n'a donc rien à protéger ici. Mêmes en-têtes
  * de sécurité que le reste de l'application (CSP enforce A4). Corps JSON plafonné avant
- * bufférisation ; le multipart reste borné par {@code spring.servlet.multipart.*}.
+ * bufférisation ; le multipart (pièces, PDF signé) reste borné par {@code spring.servlet.multipart.*}.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.portal", name = "enabled", havingValue = "true")
 class PortalSecurityConfig {
 
     static final String ATTACHMENTS_PATH = "/api/portal/task/attachments";
+    /** TODO §138 — dépôt d'un PDF signé : multipart, borné par {@code spring.servlet.multipart.*} et par le use case. */
+    static final String SIGNED_DOCUMENT_PATH = "/api/portal/signature/signed-document";
 
     @Bean
     @Order(3)
@@ -54,7 +56,8 @@ class PortalSecurityConfig {
 
         @Override
         protected boolean shouldNotFilter(HttpServletRequest request) {
-            return request.getRequestURI().endsWith(ATTACHMENTS_PATH);
+            String uri = request.getRequestURI();
+            return uri.endsWith(ATTACHMENTS_PATH) || uri.endsWith(SIGNED_DOCUMENT_PATH);
         }
     }
 }

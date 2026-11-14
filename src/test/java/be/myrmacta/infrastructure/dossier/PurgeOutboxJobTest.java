@@ -131,7 +131,8 @@ class PurgeOutboxJobTest {
                 outbox, dossiers, elements, relations, links, storage, engine,
                 org.mockito.Mockito.mock(be.myrmacta.domain.workflow.port.out.TaskQuestionAnswerRepository.class),
                 org.mockito.Mockito.mock(be.myrmacta.domain.workflow.portal.port.out.PortalLinkRepository.class),
-                org.mockito.Mockito.mock(be.myrmacta.domain.signature.port.out.SignatureRequestRepository.class));
+                org.mockito.Mockito.mock(be.myrmacta.domain.signature.port.out.SignatureRequestRepository.class),
+                org.mockito.Mockito.mock(be.myrmacta.domain.signature.port.out.SignedUploadRepository.class));
         PurgeOutboxJob job = new PurgeOutboxJob(
                 useCase,
                 new PurgeProperties(Duration.ofHours(1), 50, Duration.ofHours(2)),

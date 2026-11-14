@@ -47,11 +47,14 @@ export type PortalCredential = string | { proof: string }
 export class PortalApiError extends Error {
   readonly status: number
   readonly detail: string
+  /** Code métier du corps d'erreur (`application/problem+json`), quand le serveur en donne un. */
+  readonly code?: string
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, code?: string) {
     super(detail)
     this.status = status
     this.detail = detail
+    this.code = code
   }
 }
 
@@ -74,6 +77,20 @@ export function apiBase(pathname: string = window.location.pathname): string {
   return `${prefix}/api/portal/task`
 }
 
+/** Lit `detail` et `code` du corps d'erreur ; un corps absent ou illisible donne une erreur sans détail. */
+async function toApiError(response: Response): Promise<PortalApiError> {
+  let detail = ''
+  let code: string | undefined
+  try {
+    const body = (await response.json()) as { detail?: unknown; code?: unknown }
+    detail = typeof body.detail === 'string' ? body.detail : ''
+    code = typeof body.code === 'string' ? body.code : undefined
+  } catch {
+    detail = ''
+  }
+  return new PortalApiError(response.status, detail, code)
+}
+
 async function request<T>(credential: PortalCredential, path: string, init: RequestInit = {}, base = apiBase()): Promise<T> {
   const headers = new Headers(init.headers)
   setCredential(headers, credential)
@@ -82,14 +99,7 @@ async function request<T>(credential: PortalCredential, path: string, init: Requ
   // interne, même si le tiers est aussi un utilisateur connecté dans le même navigateur.
   const response = await fetch(base + path, { ...init, headers, credentials: 'omit' })
   if (!response.ok) {
-    let detail = ''
-    try {
-      const body = (await response.json()) as { detail?: string }
-      detail = body.detail ?? ''
-    } catch {
-      detail = ''
-    }
-    throw new PortalApiError(response.status, detail)
+    throw await toApiError(response)
   }
   if (response.status === 204) {
     return undefined as T
@@ -156,6 +166,11 @@ export interface SignatureContext {
   hosted: boolean
   /** Adresse du fournisseur à l'ouverture ; nulle tant que le signataire n'est pas notifié. */
   signingUrl: string | null
+  /**
+   * Issue #10 — signature apportée : le signataire télécharge le PDF, le signe avec sa carte eID hors de la page puis
+   * le téléverse. Le clic « Signer » est alors refusé par le serveur.
+   */
+  signedUpload: boolean
 }
 
 export type SignatureDecision = 'SIGNED' | 'DECLINED'
@@ -169,13 +184,7 @@ async function signatureRequest<T>(token: string, path: string, init: RequestIni
   headers.set(TOKEN_HEADER, token)
   const response = await fetch(signatureBase() + path, { ...init, headers, credentials: 'omit' })
   if (!response.ok) {
-    let detail = ''
-    try {
-      detail = ((await response.json()) as { detail?: string }).detail ?? ''
-    } catch {
-      detail = ''
-    }
-    throw new PortalApiError(response.status, detail)
+    throw await toApiError(response)
   }
   return init.method === 'POST' || path === '' ? ((await response.json()) as T) : ((await response.blob()) as T)
 }
@@ -198,4 +207,11 @@ export function declineSignature(token: string, reason: string): Promise<{ statu
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ reason: reason.trim() || null }),
   })
+}
+
+/** Issue #10 — téléverse le PDF signé (multipart, partie `file`) ; un refus 422 porte son motif dans `PortalApiError.code`. */
+export function uploadSignedDocument(token: string, file: File): Promise<{ status: SignatureDecision }> {
+  const body = new FormData()
+  body.append('file', file)
+  return signatureRequest(token, '/signed-document', { method: 'POST', headers: { Accept: 'application/json' }, body })
 }

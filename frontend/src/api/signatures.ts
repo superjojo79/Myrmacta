@@ -52,6 +52,8 @@ export interface MySignatureItem {
   hosted: boolean
   /** Adresse du fournisseur, seulement quand c'est son tour ; nulle en attente du lien. */
   signingUrl: string | null
+  /** Issue #10 — signature apportée : télécharger le PDF, le signer avec sa carte eID, téléverser le résultat. */
+  signedUpload: boolean
 }
 
 /** Navigation vers la cérémonie du fournisseur (isolée pour les tests). */
@@ -97,6 +99,17 @@ export async function fetchMySignatureDocument(signerId: string): Promise<Blob> 
   const { data } = await axios.get<Blob>(`/api/signatures/mine/${encodeURIComponent(signerId)}/document`, {
     responseType: 'blob',
   })
+  return data
+}
+
+/** Issue #10 — téléverse le PDF signé (multipart, partie `file`) ; un refus 422 porte son motif dans `code` (`toProblemDetail`). */
+export async function uploadMySignedDocument(signerId: string, file: File): Promise<{ status: SignerStatus }> {
+  const body = new FormData()
+  body.append('file', file)
+  const { data } = await axios.post<{ status: SignerStatus }>(
+    `/api/signatures/mine/${encodeURIComponent(signerId)}/signed-document`,
+    body,
+  )
   return data
 }
 

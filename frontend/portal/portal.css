@@ -164,3 +164,16 @@ body {
   font-weight: 600;
   color: var(--portal-accent);
 }
+
+/* Issue #10 — signature apportée : trois étapes numérotées (télécharger, signer, envoyer). */
+.portal__steps {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.portal__steps input[type='file'] {
+  display: block;
+  margin: 0.25rem 0 0.75rem;
+}

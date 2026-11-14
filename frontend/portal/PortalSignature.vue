@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/i18n/format'
+import { rejectionMessageKey, signedDocumentFilename } from '@/lib/signedUpload'
 import {
   declineSignature,
   fetchSignatureContext,
@@ -9,6 +10,7 @@ import {
   navigateTo,
   PortalApiError,
   signDocument,
+  uploadSignedDocument,
   type SignatureContext,
 } from './api'
 
@@ -26,11 +28,16 @@ const busy = ref(false)
 const declining = ref(false)
 const reason = ref('')
 const error = ref('')
+// Issue #10 — signature apportée : le PDF signé hors de la page, choisi puis envoyé.
+const fileInput = ref<HTMLInputElement | null>(null)
+const chosenFile = ref<File | null>(null)
 
 const deadline = computed(() =>
   context.value?.deadlineAt ? formatDate(context.value.deadlineAt, { day: 'numeric', month: 'long', year: 'numeric' }) : '',
 )
 const hosted = computed(() => context.value?.hosted === true)
+const signedUpload = computed(() => context.value?.signedUpload === true)
+const downloadName = computed(() => signedDocumentFilename(context.value?.documentLabel ?? ''))
 const awaitingLink = computed(() => hosted.value && !context.value?.signingUrl)
 
 function handleError(e: unknown): string {
@@ -40,6 +47,7 @@ function handleError(e: unknown): string {
       return ''
     }
     if (e.status === 429) return t('portal.errors.tooMany')
+    if (e.status === 413) return t('portal.errors.tooLarge')
     return e.detail || t('portal.errors.generic')
   }
   state.value = 'unavailable'
@@ -75,6 +83,49 @@ async function onSign() {
     error.value = handleError(e)
   } finally {
     busy.value = false
+  }
+}
+
+function onFileChange(event: Event) {
+  chosenFile.value = (event.target as HTMLInputElement).files?.[0] ?? null
+}
+
+/** Remplace le document de travail (nouveau lien de téléchargement) : l'ancien lien est libéré. */
+async function loadDocument() {
+  const previous = documentUrl.value
+  documentUrl.value = URL.createObjectURL(await fetchSignatureDocument(props.token))
+  if (previous) URL.revokeObjectURL(previous)
+}
+
+async function onUpload() {
+  const file = chosenFile.value
+  if (!file) return
+  busy.value = true
+  error.value = ''
+  try {
+    await uploadSignedDocument(props.token, file)
+    state.value = 'signed'
+  } catch (e) {
+    if (e instanceof PortalApiError && e.status === 422) {
+      error.value = t(rejectionMessageKey('portal.signature.upload', e.code))
+      if (e.code === 'STALE_DOCUMENT') await refreshAfterStale()
+    } else {
+      error.value = handleError(e)
+    }
+  } finally {
+    busy.value = false
+  }
+}
+
+/** Le document a changé entre-temps : le fichier choisi ne vaut plus, le nouveau document est rechargé. */
+async function refreshAfterStale() {
+  chosenFile.value = null
+  if (fileInput.value) fileInput.value.value = ''
+  try {
+    await loadDocument()
+  } catch (e) {
+    const message = handleError(e)
+    if (message) error.value = message
   }
 }
 
@@ -127,12 +178,47 @@ async function onDecline() {
       <p v-if="deadline" class="portal__expiry">{{ t('portal.signature.deadline', { date: deadline }) }}</p>
       <p v-if="!context.required" class="portal__muted">{{ t('portal.signature.optional') }}</p>
       <p v-if="awaitingLink" data-testid="signature-waiting">{{ t('portal.signature.waiting') }}</p>
-      <p>
+      <p v-if="!signedUpload">
         <a v-if="documentUrl" :href="documentUrl" target="_blank" rel="noopener" data-testid="signature-document">
           {{ t('portal.signature.view') }}
         </a>
         <span v-else class="portal__muted">{{ t('portal.signature.documentLoading') }}</span>
       </p>
+    </section>
+
+    <section v-if="signedUpload && !declining" class="portal__card" data-testid="signature-upload" :aria-busy="busy">
+      <h2>{{ t('portal.signature.upload.steps') }}</h2>
+      <ol class="portal__steps">
+        <li>
+          <a v-if="documentUrl" :href="documentUrl" :download="downloadName" data-testid="signature-download">
+            {{ t('portal.signature.upload.download') }}
+          </a>
+          <span v-else class="portal__muted">{{ t('portal.signature.documentLoading') }}</span>
+        </li>
+        <li>{{ t('portal.signature.upload.signStep') }}</li>
+        <li>
+          <p>{{ t('portal.signature.upload.sendStep') }}</p>
+          <label for="signature-file">{{ t('portal.signature.upload.file') }}</label>
+          <input
+            id="signature-file"
+            ref="fileInput"
+            type="file"
+            accept="application/pdf,.pdf"
+            data-testid="signature-file"
+            :disabled="busy"
+            @change="onFileChange"
+          />
+          <button
+            type="button"
+            class="portal__primary"
+            data-testid="signature-send"
+            :disabled="busy || !chosenFile"
+            @click="onUpload"
+          >
+            {{ busy ? t('portal.signature.upload.sending') : t('portal.signature.upload.send') }}
+          </button>
+        </li>
+      </ol>
     </section>
 
     <section v-if="declining" class="portal__card">
@@ -143,7 +229,7 @@ async function onDecline() {
     <section class="portal__actions">
       <p v-if="error" class="portal__error" role="alert" data-testid="signature-error">{{ error }}</p>
       <template v-if="!declining">
-        <button v-if="!hosted" type="button" class="portal__primary" :disabled="busy" @click="onSign">
+        <button v-if="!hosted && !signedUpload" type="button" class="portal__primary" :disabled="busy" @click="onSign">
           {{ busy ? t('portal.submitting') : t('portal.signature.sign') }}
         </button>
         <button type="button" class="portal__secondary" :disabled="busy" @click="declining = true">{{ t('portal.signature.decline') }}</button>

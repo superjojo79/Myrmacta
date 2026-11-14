@@ -220,9 +220,9 @@ test('E2E-SIG-2 internal signer signs from « Mes signatures » (S-PW-1)', async
   await mockSession(page)
   let items = [
     { signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
-      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true, hosted: false, signingUrl: null },
+      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true, hosted: false, signingUrl: null, signedUpload: false },
     { signerId: 'sg-2', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Avenant',
-      required: true, myTurn: false, deadlineAt: null, simulated: true, hosted: false, signingUrl: null },
+      required: true, myTurn: false, deadlineAt: null, simulated: true, hosted: false, signingUrl: null, signedUpload: false },
   ]
   await page.route('**/api/signatures/mine**', async (route) => {
     const request = route.request()
@@ -274,7 +274,7 @@ test('E2E-SIG-9 internal signer continues on the provider', async ({ page }) => 
       body: JSON.stringify([{
         signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
         required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
-        hosted: true, signingUrl: null,
+        hosted: true, signingUrl: null, signedUpload: false,
       }]),
     })
   })
@@ -301,7 +301,7 @@ test('E2E-SIG-10 internal signer waits when the provider link is not ready', asy
       body: JSON.stringify([{
         signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
         required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
-        hosted: true, signingUrl: null,
+        hosted: true, signingUrl: null, signedUpload: false,
       }]),
     })
   })
@@ -460,4 +460,82 @@ test('E2E-PORTAL-7 a refused identity shows the neutral screen without any API c
   await expect(page.getByTestId('portal-identity-refused')).toContainText('Identification non reconnue')
   await expect(page).toHaveURL(/\/portal\/$/)
   expect(portalCalls).toEqual([])
+})
+
+/** Issue #10 — signature apportée : télécharger, signer hors de l'application avec la carte eID, téléverser. */
+test('E2E-SIG-15 internal signer downloads, uploads the signed PDF and the request leaves the list', async ({ page }) => {
+  await mockSession(page)
+  let items = [{
+    signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+    required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
+    hosted: false, signingUrl: null, signedUpload: true,
+  }]
+  const uploads: string[] = []
+  await page.route('**/api/signatures/mine**', async (route) => {
+    const request = route.request()
+    const url = request.url()
+    if (url.endsWith('/sg-1/document')) {
+      await route.fulfill({ status: 200, contentType: 'application/pdf', body: Buffer.from('%PDF-1.4 stub') })
+    } else if (url.endsWith('/sg-1/signed-document')) {
+      uploads.push(/name="file"; filename="([^"]*)"/.exec(request.postDataBuffer()?.toString('utf8') ?? '')?.[1] ?? '?')
+      items = []
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'SIGNED' }) })
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(items) })
+    }
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  const active = page.getByTestId('signatures-active')
+  await expect(active.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  const send = active.getByRole('button', { name: 'Envoyer le document signé' })
+  await expect(send).toBeDisabled()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    active.getByRole('button', { name: 'Télécharger le document à signer' }).click(),
+  ])
+  expect(download.suggestedFilename()).toBe('Contrat.pdf')
+
+  await active.getByLabel('Document signé (PDF)').setInputFiles({
+    name: 'Contrat signé.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 signed'),
+  })
+  await send.click()
+
+  await expect(page.getByTestId('signature-upload-done')).toContainText('bien été enregistrée')
+  await expect(page.getByTestId('signatures-empty')).toBeVisible()
+  expect(uploads).toEqual(['Contrat signé.pdf'])
+})
+
+test('E2E-SIG-16 internal signer sees why the signed PDF was refused', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'about:blank', status: 422, code: 'CERTIFICATE_NOT_QUALIFIED' }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+        required: true, myTurn: true, deadlineAt: null, simulated: false,
+        hosted: false, signingUrl: null, signedUpload: true,
+      }]),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByLabel('Document signé (PDF)').setInputFiles({
+    name: 'Contrat signé.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 signed'),
+  })
+  await page.getByRole('button', { name: 'Envoyer le document signé' }).click()
+
+  await expect(page.getByTestId('signature-error')).toContainText('pas valable pour signer')
+  await expect(page.getByTestId('signatures-active')).toContainText('Contrat')
 })

@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiBase, fetchTask, PortalApiError, startIdentity, submitAnswers, uploadAttachment } from './api'
+import {
+  apiBase,
+  fetchSignatureDocument,
+  fetchTask,
+  PortalApiError,
+  startIdentity,
+  submitAnswers,
+  uploadAttachment,
+  uploadSignedDocument,
+} from './api'
 
 const TOKEN = 't'.repeat(43)
 
@@ -88,5 +97,47 @@ describe('portal api client', () => {
     expect((init.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
     expect(JSON.parse(init.body)).toEqual({ provider: 'fas' })
     expect(init.credentials).toBe('omit')
+  })
+
+  /** Issue #10 — le PDF signé part en multipart (partie `file`), jeton en en-tête, sans cookie. */
+  it('uploads the signed document as multipart with the token in the header', async () => {
+    const fetchMock = mockFetch(200, { status: 'SIGNED' })
+    window.history.replaceState(null, '', '/tenant-a/portal/')
+    const file = new File(['%PDF signed'], 'Contrat.pdf', { type: 'application/pdf' })
+
+    await expect(uploadSignedDocument(TOKEN, file)).resolves.toEqual({ status: 'SIGNED' })
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('/tenant-a/api/portal/signature/signed-document')
+    expect(String(url)).not.toContain(TOKEN)
+    expect(init.method).toBe('POST')
+    expect((init.body as FormData).get('file')).toBe(file)
+    expect((init.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
+    expect((init.headers as Headers).has('Content-Type')).toBe(false)
+    expect(init.credentials).toBe('omit')
+  })
+
+  it('reads the rejection code of a problem+json body, with or without a detail', async () => {
+    mockFetch(422, { type: 'about:blank', status: 422, code: 'NO_NEW_SIGNATURE', detail: 'x' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toEqual(
+      new PortalApiError(422, 'x', 'NO_NEW_SIGNATURE'),
+    )
+
+    mockFetch(422, { code: 'STALE_DOCUMENT' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toMatchObject({
+      status: 422,
+      detail: '',
+      code: 'STALE_DOCUMENT',
+    })
+
+    mockFetch(413, { detail: 'trop gros' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toMatchObject({ status: 413, code: undefined })
+  })
+
+  it('reads the code on the other portal calls too and ignores a non-text code', async () => {
+    mockFetch(409, { code: 'SIGNED_UPLOAD_REQUIRED' })
+    await expect(fetchSignatureDocument(TOKEN)).rejects.toMatchObject({ status: 409, code: 'SIGNED_UPLOAD_REQUIRED' })
+    mockFetch(500, { code: 42 })
+    await expect(fetchTask(TOKEN)).rejects.toMatchObject({ status: 500, code: undefined })
   })
 })

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BEID_MAC, BEID_PINPAD_SIGN_TIMEOUT_MS, BEID_TIMEOUT_MS, createBeidConnectBridge, isBeidConnectPresent } from './beidConnect'
-import { CardBridgeError } from './types'
+import { AUTH_CERT, SIGNING_CERT } from './fixtures'
+import { CardBridgeError, type CardBridge, type CardChoice } from './types'
 
 type Fn = (...args: unknown[]) => Promise<unknown>
 
@@ -44,7 +45,10 @@ async function rejection(promise: Promise<unknown>): Promise<CardBridgeError> {
   return e as CardBridgeError
 }
 
-const CERT = { certificate: 'TEVBRg==', certificateChain: [] as string[] }
+async function firstChoice(bridge: CardBridge): Promise<CardChoice> {
+  return (await bridge.listChoices())[0]!
+}
+
 
 describe('BeIDConnect bridge', () => {
   it('is detected by the EIDChromeExt constructor only', () => {
@@ -61,33 +65,36 @@ describe('BeIDConnect bridge', () => {
     expect((await rejection(createBeidConnectBridge('fr', {} as Window).detect())).kind).toBe('unavailable')
   })
 
-  it('reads the non-repudiation certificate and the chain (intermediates first, root last)', async () => {
+  it('lists the choices without the chain, then reads the chain of the chosen one (intermediates first, root last)', async () => {
     const { win, spies } = fakeWindow()
     const bridge = createBeidConnectBridge('FR-BE', win)
 
-    await expect(bridge.readCertificate()).resolves.toEqual({
+    const choices = await bridge.listChoices()
+    expect(choices).toEqual([
+      { id: '0:0', certificate: { certificate: 'TEVBRg==', certificateChain: [] }, readerName: 'R', holder: null, notAfter: null, needsPin: true },
+    ])
+    expect(spies.getUserCertificates).toHaveBeenCalledWith('fr', BEID_MAC, 'NONREPUDIATION')
+    expect(spies.getUserCertificateChain).not.toHaveBeenCalled()
+
+    await expect(bridge.certificateOf(choices[0]!)).resolves.toEqual({
       certificate: 'TEVBRg==',
       certificateChain: ['U1VC', 'U1VC Mg==', 'Uk9PVA=='],
     })
-
-    expect(spies.getUserCertificates).toHaveBeenCalledWith('fr', BEID_MAC, 'NONREPUDIATION')
     expect(spies.getUserCertificateChain).toHaveBeenCalledWith('fr', BEID_MAC, 'TEVBRg==')
     expect(BEID_MAC).toBe('0123456789ABCDEF0123456789ABCDEF')
   })
 
   it('asks the page for the PIN on a standard reader and never on a pinpad reader', async () => {
-    const standard = createBeidConnectBridge('fr', fakeWindow().win)
-    await standard.readCertificate()
-    expect(standard.needsPin).toBe(true)
+    expect((await firstChoice(createBeidConnectBridge('fr', fakeWindow().win))).needsPin).toBe(true)
 
     const pinpad = fakeWindow({
       getUserCertificates: () =>
         Promise.resolve({ result: 'OK', Readers: [{ ReaderType: 'pinpad', certificates: ['TEVBRg=='] }] }),
     })
     const bridge = createBeidConnectBridge('fr', pinpad.win)
-    await bridge.readCertificate()
-    expect(bridge.needsPin).toBe(false)
-    await bridge.sign(CERT, 'RElH', 'SHA-256', 'must-not-be-forwarded')
+    const choice = await firstChoice(bridge)
+    expect(choice.needsPin).toBe(false)
+    await bridge.sign(choice, 'RElH', 'SHA-256', 'must-not-be-forwarded')
     expect(pinpad.spies.sign).toHaveBeenCalledWith('fr', BEID_MAC, 'TEVBRg==', 'SHA256', 'RElH', null)
   })
 
@@ -95,17 +102,59 @@ describe('BeIDConnect bridge', () => {
     const unknown = fakeWindow({
       getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [{ certificates: ['TEVBRg=='] }] }),
     })
-    const bridge = createBeidConnectBridge('fr', unknown.win)
-    await bridge.readCertificate()
-    expect(bridge.needsPin).toBe(true)
+    expect((await firstChoice(createBeidConnectBridge('fr', unknown.win))).needsPin).toBe(true)
+  })
+
+  it('offers one choice per reader and certificate, each with the reader type of its own reader', async () => {
+    const { win } = fakeWindow({
+      getUserCertificates: () =>
+        Promise.resolve({
+          result: 'OK',
+          Readers: [
+            { ReaderName: 'Lecteur A', ReaderType: 'standard', certificates: ['QUFB'] },
+            { ReaderName: 'Lecteur B', ReaderType: 'pinpad', certificates: ['QkJC', 'Q0ND'] },
+            { ReaderName: 'Lecteur vide', ReaderType: 'standard', certificates: [] },
+          ],
+        }),
+    })
+    const choices = await createBeidConnectBridge('fr', win).listChoices()
+
+    expect(choices.map((c) => [c.id, c.readerName, c.certificate.certificate, c.needsPin])).toEqual([
+      ['0:0', 'Lecteur A', 'QUFB', true],
+      ['1:0', 'Lecteur B', 'QkJC', false],
+      ['1:1', 'Lecteur B', 'Q0ND', false],
+    ])
+  })
+
+  it('labels each choice from its certificate and never exposes the national number', async () => {
+    const { win } = fakeWindow({
+      getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [{ ReaderName: 'R', ReaderType: 'standard', certificates: [SIGNING_CERT] }] }),
+    })
+    const [choice] = await createBeidConnectBridge('fr', win).listChoices()
+    expect(choice).toMatchObject({ holder: 'Alice Martin', notAfter: '2036-11-11T13:04:49Z' })
+    expect(JSON.stringify({ ...choice, certificate: undefined })).not.toContain('85010112345')
+  })
+
+  it('only keeps signing certificates when the key usage is readable, and lets the server decide otherwise', async () => {
+    const mixed = fakeWindow({
+      getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [{ ReaderType: 'standard', certificates: [AUTH_CERT, SIGNING_CERT, 'QUFB'] }] }),
+    })
+    const kept = await createBeidConnectBridge('fr', mixed.win).listChoices()
+    // Le certificat d'authentification (sans non-répudiation) est écarté ; l'illisible est gardé.
+    expect(kept.map((c) => c.certificate.certificate)).toEqual([SIGNING_CERT, 'QUFB'])
+
+    const onlyAuth = fakeWindow({
+      getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [{ ReaderType: 'standard', certificates: [AUTH_CERT] }] }),
+    })
+    expect((await createBeidConnectBridge('fr', onlyAuth.win).listChoices()).map((c) => c.certificate.certificate)).toEqual([AUTH_CERT])
   })
 
   it('signs with the converted algorithm, the digest and the PIN of a standard reader', async () => {
     const { win, spies } = fakeWindow()
     const bridge = createBeidConnectBridge('en', win)
-    await bridge.readCertificate()
+    const choice = await firstChoice(bridge)
 
-    await expect(bridge.sign(CERT, 'RElH', 'SHA-384', '1234')).resolves.toBe('U0lH')
+    await expect(bridge.sign(choice, 'RElH', 'SHA-384', '1234')).resolves.toBe('U0lH')
 
     expect(spies.sign).toHaveBeenCalledWith('en', BEID_MAC, 'TEVBRg==', 'SHA384', 'RElH', '1234')
   })
@@ -113,19 +162,19 @@ describe('BeIDConnect bridge', () => {
   it('refuses to sign on a standard reader without a PIN, and never signs an unknown hash function', async () => {
     const { win, spies } = fakeWindow()
     const bridge = createBeidConnectBridge('fr', win)
-    await bridge.readCertificate()
-    expect((await rejection(bridge.sign(CERT, 'RElH', 'SHA-256', null))).kind).toBe('failed')
-    expect((await rejection(bridge.sign(CERT, 'RElH', 'SHA-512' as never, '1234'))).kind).toBe('failed')
+    const choice = await firstChoice(bridge)
+    expect((await rejection(bridge.sign(choice, 'RElH', 'SHA-256', null))).kind).toBe('failed')
+    expect((await rejection(bridge.sign(choice, 'RElH', 'SHA-512' as never, '1234'))).kind).toBe('failed')
     expect(spies.sign).not.toHaveBeenCalled()
   })
 
   it('reports no reader and no card from the shape of the answer', async () => {
     const noReader = fakeWindow({ getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [] }) })
-    expect((await rejection(createBeidConnectBridge('fr', noReader.win).readCertificate())).kind).toBe('no-reader')
+    expect((await rejection(createBeidConnectBridge('fr', noReader.win).listChoices())).kind).toBe('no-reader')
     const noCard = fakeWindow({
       getUserCertificates: () => Promise.resolve({ result: 'OK', Readers: [{ ReaderType: 'standard', certificates: [] }] }),
     })
-    expect((await rejection(createBeidConnectBridge('fr', noCard.win).readCertificate())).kind).toBe('no-card')
+    expect((await rejection(createBeidConnectBridge('fr', noCard.win).listChoices())).kind).toBe('no-card')
   })
 
   it.each([
@@ -152,8 +201,8 @@ describe('BeIDConnect bridge', () => {
   ])('maps the rejection « %s » to « %s »', async (code, kind, attemptsLeft) => {
     const { win } = fakeWindow({ sign: () => Promise.reject({ message: code, result: code }) })
     const bridge = createBeidConnectBridge('fr', win)
-    await bridge.readCertificate()
-    const error = await rejection(bridge.sign(CERT, 'RElH', 'SHA-256', '1234'))
+    const choice = await firstChoice(bridge)
+    const error = await rejection(bridge.sign(choice, 'RElH', 'SHA-256', '1234'))
     expect(error.kind).toBe(kind)
     expect(error.attemptsLeft).toBe(attemptsLeft)
     expect(error.bridgeCode).toBe(code)
@@ -172,8 +221,8 @@ describe('BeIDConnect bridge', () => {
   it('fails cleanly on a success without signature', async () => {
     const { win } = fakeWindow({ sign: () => Promise.resolve({ result: 'OK' }) })
     const bridge = createBeidConnectBridge('fr', win)
-    await bridge.readCertificate()
-    expect((await rejection(bridge.sign(CERT, 'RElH', 'SHA-256', '1234'))).kind).toBe('failed')
+    const choice = await firstChoice(bridge)
+    expect((await rejection(bridge.sign(choice, 'RElH', 'SHA-256', '1234'))).kind).toBe('failed')
   })
 
   describe('delays (the extension has none)', () => {
@@ -186,7 +235,7 @@ describe('BeIDConnect bridge', () => {
 
     it('gives up after 20 seconds on a call that never answers', async () => {
       const { win } = fakeWindow({ getUserCertificates: () => new Promise(() => {}) })
-      const outcome = rejection(createBeidConnectBridge('fr', win).readCertificate())
+      const outcome = rejection(createBeidConnectBridge('fr', win).listChoices())
       await vi.advanceTimersByTimeAsync(BEID_TIMEOUT_MS)
       expect((await outcome).kind).toBe('timeout')
     })
@@ -198,8 +247,8 @@ describe('BeIDConnect bridge', () => {
         sign: never,
       })
       const padBridge = createBeidConnectBridge('fr', pad.win)
-      await padBridge.readCertificate()
-      const padSign = rejection(padBridge.sign(CERT, 'RElH', 'SHA-256', null))
+      const padChoice = await firstChoice(padBridge)
+      const padSign = rejection(padBridge.sign(padChoice, 'RElH', 'SHA-256', null))
       await vi.advanceTimersByTimeAsync(BEID_TIMEOUT_MS)
       let settled = false
       void padSign.then(() => (settled = true))
@@ -210,8 +259,8 @@ describe('BeIDConnect bridge', () => {
 
       const standard = fakeWindow({ sign: never })
       const bridge = createBeidConnectBridge('fr', standard.win)
-      await bridge.readCertificate()
-      const sign = rejection(bridge.sign(CERT, 'RElH', 'SHA-256', '1234'))
+      const choice = await firstChoice(bridge)
+      const sign = rejection(bridge.sign(choice, 'RElH', 'SHA-256', '1234'))
       await vi.advanceTimersByTimeAsync(BEID_TIMEOUT_MS)
       expect((await sign).kind).toBe('timeout')
     })

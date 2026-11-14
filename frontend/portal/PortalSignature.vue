@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/i18n/format'
+import CardChoiceForm from '@/components/CardChoiceForm.vue'
 import { CardBridgeError } from '@/lib/cardBridge'
 import { cardErrorMessage, noBridgeMessage, useCardSignature } from '@/lib/cardBridge/useCardSignature'
 import { rejectionMessageKey, signedDocumentFilename } from '@/lib/signedUpload'
@@ -146,11 +147,14 @@ const card = useCardSignature({
     error.value = bridgeMessage(noBridgeMessage('portal.signature.card', e))
   },
 })
-const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive } = card
+const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive, bridgeId: cardBridgeId, choices: cardChoices, selectedChoice: cardSelected } = card
 const pinInput = ref<HTMLInputElement | null>(null)
-const cardStatus = computed(() =>
-  cardPhase.value === 'idle' || cardPhase.value === 'pin' ? '' : t(`portal.signature.card.phases.${cardPhase.value}`),
-)
+const cardStatus = computed(() => {
+  if (cardPhase.value === 'idle' || cardPhase.value === 'pin' || cardPhase.value === 'choosing') return ''
+  // Web eID : son logiciel natif affiche le choix du certificat, la page le dit.
+  const key = cardPhase.value === 'reading' && cardBridgeId.value === 'web-eid' ? 'readingWebEid' : cardPhase.value
+  return t(`portal.signature.card.phases.${key}`)
+})
 
 async function onCardSign() {
   error.value = ''
@@ -246,6 +250,16 @@ async function onDecline() {
         {{ t('portal.signature.card.sign') }}
       </button>
       <p class="portal__muted" role="status" aria-live="polite" data-testid="signature-card-status">{{ cardStatus }}</p>
+      <CardChoiceForm
+        v-if="cardPhase === 'choosing'"
+        v-model="cardSelected"
+        :choices="cardChoices"
+        prefix="portal.signature.card"
+        id-base="portal-signature"
+        portal
+        @submit="card.submitChoice()"
+        @cancel="card.cancelChoice()"
+      />
       <form v-if="cardPhase === 'pin'" data-testid="signature-pin-form" @submit.prevent="card.submitPin()">
         <label for="signature-pin">{{ t('portal.signature.card.pin.label') }}</label>
         <input

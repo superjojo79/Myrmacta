@@ -2,25 +2,37 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, watch } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { cardErrorMessage, noBridgeMessage, useCardSignature, type CardPhase, type CardSignatureOptions } from './useCardSignature'
-import { CardBridgeError, type BridgeFactories, type CardBridge, type CardPrepareResponse } from './types'
+import { CardBridgeError, type BridgeFactories, type CardBridge, type CardChoice, type CardPrepareResponse } from './types'
 
 const PREPARED: CardPrepareResponse = { digest: 'RElH', hashFunction: 'SHA-256', signingTime: '2026-11-14T10:00:00Z', documentDigest: 'abc' }
 
-function setup(overrides: Partial<CardSignatureOptions> = {}, bridge: Partial<CardBridge> = {}) {
+const CERT = { certificate: 'Q0VSVA==', certificateChain: ['SU5U'] }
+
+interface FakeOptions {
+  id?: CardBridge['id']
+  needsPin?: boolean
+  choices?: CardChoice[]
+  readCertificate?: () => Promise<typeof CERT>
+  sign?: CardBridge['sign']
+}
+
+function setup(overrides: Partial<CardSignatureOptions> = {}, bridge: FakeOptions = {}) {
   const calls: string[] = []
+  const base: CardChoice = { id: '0:0', certificate: CERT, readerName: null, holder: null, notAfter: null, needsPin: bridge.needsPin ?? true }
   const fake: CardBridge = {
-    id: 'beidconnect',
-    needsPin: true,
+    id: bridge.id ?? 'beidconnect',
     detect: () => Promise.resolve(),
-    readCertificate: vi.fn(() => {
+    listChoices: vi.fn(() => {
       calls.push('read')
-      return Promise.resolve({ certificate: 'Q0VSVA==', certificateChain: ['SU5U'] })
+      return bridge.readCertificate ? bridge.readCertificate().then((certificate) => [{ ...base, certificate }]) : Promise.resolve(bridge.choices ?? [base])
     }),
-    sign: vi.fn(() => {
-      calls.push('sign')
-      return Promise.resolve('U0lH')
-    }),
-    ...bridge,
+    certificateOf: vi.fn((choice: CardChoice) => Promise.resolve(choice.certificate)),
+    sign:
+      bridge.sign ??
+      vi.fn(() => {
+        calls.push('sign')
+        return Promise.resolve('U0lH')
+      }),
   }
   const factories: BridgeFactories = { 'web-eid': () => fake, beidconnect: () => fake }
   const phases: CardPhase[] = []
@@ -75,7 +87,7 @@ describe('useCardSignature', () => {
 
     expect(calls).toEqual(['read', 'prepare', 'sign', 'complete', 'signed'])
     expect(options.prepare).toHaveBeenCalledWith({ certificate: 'Q0VSVA==', certificateChain: ['SU5U'] })
-    expect(fake.sign).toHaveBeenCalledWith({ certificate: 'Q0VSVA==', certificateChain: ['SU5U'] }, 'RElH', 'SHA-256', '123456')
+    expect(fake.sign).toHaveBeenCalledWith(expect.objectContaining({ id: '0:0', certificate: CERT }), 'RElH', 'SHA-256', '123456')
     expect(options.complete).toHaveBeenCalledWith({
       certificate: 'Q0VSVA==',
       certificateChain: ['SU5U'],
@@ -113,7 +125,7 @@ describe('useCardSignature', () => {
   it('does not ask for a PIN when the bridge does not need one', async () => {
     const { card, fake } = setup({}, { needsPin: false })
     await card.start()
-    expect(fake.sign).toHaveBeenCalledWith(expect.anything(), 'RElH', 'SHA-256', null)
+    expect(fake.sign).toHaveBeenCalledWith(expect.objectContaining({ needsPin: false }), 'RElH', 'SHA-256', null)
   })
 
   it('stops with « cancelled » when the PIN prompt is cancelled, without signing', async () => {
@@ -131,7 +143,7 @@ describe('useCardSignature', () => {
   })
 
   it('clears the PIN and reports the error when the signature fails', async () => {
-    const { card, options } = setup({}, { sign: () => Promise.reject(new CardBridgeError('pin-incorrect', { attemptsLeft: 2 })) })
+    const { card, options } = setup({}, { sign: vi.fn(() => Promise.reject(new CardBridgeError('pin-incorrect', { attemptsLeft: 2 }))) })
     const running = card.start()
     await flushPromises()
     card.pin.value = '9999'
@@ -159,8 +171,8 @@ describe('useCardSignature', () => {
 
   it('reports no bridge, with the most relevant reason, and goes no further', async () => {
     const factories: BridgeFactories = {
-      'web-eid': () => ({ id: 'web-eid', needsPin: false, detect: () => Promise.reject(new CardBridgeError('insecure-context')), readCertificate: vi.fn(), sign: vi.fn() }),
-      beidconnect: () => ({ id: 'beidconnect', needsPin: false, detect: () => Promise.reject(new CardBridgeError('unavailable')), readCertificate: vi.fn(), sign: vi.fn() }),
+      'web-eid': () => ({ id: 'web-eid', detect: () => Promise.reject(new CardBridgeError('insecure-context')), listChoices: vi.fn(), certificateOf: vi.fn(), sign: vi.fn() }),
+      beidconnect: () => ({ id: 'beidconnect', detect: () => Promise.reject(new CardBridgeError('unavailable')), listChoices: vi.fn(), certificateOf: vi.fn(), sign: vi.fn() }),
     }
     const { card, options } = setup({ factories, bridges: () => ['web-eid', 'beidconnect'] })
     await card.start()
@@ -183,6 +195,49 @@ describe('useCardSignature', () => {
     await card.start()
     expect(vi.mocked(options.onError).mock.calls[0]![0]).toMatchObject({ kind: 'failed' })
     expect(fake.sign).not.toHaveBeenCalled()
+  })
+
+  it('offers the choice step when the bridge lists several choices, then uses the chosen one', async () => {
+    const CERT2 = { certificate: 'Q0VSVDI=', certificateChain: [] }
+    const choices: CardChoice[] = [
+      { id: '0:0', certificate: CERT, readerName: 'A', holder: 'Alice', notAfter: null, needsPin: true },
+      { id: '1:0', certificate: CERT2, readerName: 'B', holder: 'Bob', notAfter: null, needsPin: false },
+    ]
+    const { card, options, fake } = setup({}, { choices })
+    const running = card.start()
+    await flushPromises()
+
+    expect(card.phase.value).toBe('choosing')
+    expect(card.choices.value).toHaveLength(2)
+    expect(card.selectedChoice.value).toBe('0:0')
+    expect(options.prepare).not.toHaveBeenCalled()
+
+    card.selectedChoice.value = '1:0'
+    card.submitChoice()
+    await running
+
+    expect(options.prepare).toHaveBeenCalledWith(CERT2)
+    expect(fake.certificateOf).toHaveBeenCalledWith(choices[1])
+    expect(fake.sign).toHaveBeenCalledWith(choices[1], 'RElH', 'SHA-256', null)
+    expect(card.choices.value).toEqual([])
+    expect(options.onError).not.toHaveBeenCalled()
+  })
+
+  it('stops with « cancelled » when the choice step is cancelled', async () => {
+    const choices: CardChoice[] = [
+      { id: '0:0', certificate: CERT, readerName: 'A', holder: null, notAfter: null, needsPin: true },
+      { id: '1:0', certificate: CERT, readerName: 'B', holder: null, notAfter: null, needsPin: true },
+    ]
+    const { card, options, fake } = setup({}, { choices })
+    const running = card.start()
+    await flushPromises()
+    card.cancelChoice()
+    await running
+
+    expect(vi.mocked(options.onError).mock.calls[0]![0]).toMatchObject({ kind: 'cancelled' })
+    expect(options.prepare).not.toHaveBeenCalled()
+    expect(fake.sign).not.toHaveBeenCalled()
+    expect(card.phase.value).toBe('idle')
   })
 
   it('ignores a second start while one is running and releases a pending PIN prompt on unmount', async () => {

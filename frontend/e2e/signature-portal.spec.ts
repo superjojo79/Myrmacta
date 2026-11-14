@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { SIGNING_CERT, SIGNING_CERT_BOB } from '../src/lib/cardBridge/fixtures'
 import { beidLog, CERTIFICATE, installBeidConnect, installWebEid, recordRequests, SIGNATURE, webEidLog } from './support/cardBridges'
 
 // TODO §72 — écran signataire externe du portail (build `dist/portal`, servi par `vite preview`).
@@ -346,4 +347,53 @@ test('E2E-SIG-23 a card error from the bridge is explained without calling the s
   await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
   await expect(page.getByRole('alert')).toContainText('annulée')
   expect(calls).toEqual(['prepare'])
+})
+
+const TWO_READERS = [
+  { name: 'Lecteur A', type: 'standard' as const, certificates: [SIGNING_CERT] },
+  { name: 'Lecteur B', type: 'pinpad' as const, certificates: [SIGNING_CERT_BOB] },
+]
+
+test('E2E-SIG-24 external signer chooses the reader and certificate; the chosen one goes to prepare and to the card', async ({ page }) => {
+  await installBeidConnect(page, { readers: TWO_READERS })
+  const calls = await mockSignatureApi(page, { context: { ...CARD_CONTEXT, cardBridges: ['beidconnect'] } })
+  await page.goto(LINK)
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const group = page.getByRole('group', { name: /Choisissez le certificat de signature/ })
+  await expect(group).toBeVisible()
+  await expect(group.getByRole('radio')).toHaveCount(2)
+  await expect(group.getByRole('radio', { name: /Alice Martin/ })).toBeChecked()
+  await expect(group).toContainText('Lecteur : Lecteur A')
+  await expect(group).not.toContainText('85010112345')
+  await expect(group).not.toContainText('90020254321')
+  expect(calls).toEqual([]) // rien n'est parti avant le choix
+
+  await group.getByRole('radio', { name: /Bob Janssens/ }).check()
+  await page.getByRole('button', { name: 'Continuer' }).click()
+
+  // Le second lecteur est à clavier : aucun champ PIN dans la page.
+  await expect(page.getByTestId('signature-signed')).toBeVisible()
+  expect(calls).toEqual(['prepare', 'complete'])
+  expect((calls.bodies.prepare as { certificate: string }).certificate).toBe(SIGNING_CERT_BOB)
+  expect((calls.bodies.complete as { certificate: string }).certificate).toBe(SIGNING_CERT_BOB)
+  const log = await beidLog(page)
+  expect(log.chainCalls.map((c) => c[2])).toEqual([SIGNING_CERT_BOB])
+  expect(log.signCalls).toHaveLength(1)
+  expect(log.signCalls[0]![2]).toBe(SIGNING_CERT_BOB)
+  expect(log.signCalls[0]![5]).toBeNull()
+})
+
+test('E2E-SIG-25 cancelling the choice step sends nothing', async ({ page }) => {
+  await installBeidConnect(page, { readers: TWO_READERS })
+  const calls = await mockSignatureApi(page, { context: { ...CARD_CONTEXT, cardBridges: ['beidconnect'] } })
+  await page.goto(LINK)
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  await page.getByTestId('signature-choice-cancel').click()
+
+  await expect(page.getByRole('alert')).toContainText('annulée')
+  await expect(page.getByRole('radio')).toHaveCount(0)
+  expect(calls).toEqual([])
+  expect((await beidLog(page)).signCalls).toHaveLength(0)
 })

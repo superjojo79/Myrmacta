@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CardBridgeError } from './types'
+import { CardBridgeError, type CardChoice } from './types'
 import {
   createWebEidBridge,
   WEB_EID_ACK_TIMEOUT_MS,
@@ -32,6 +32,8 @@ function simulator(respond: (request: Message) => Message[], secure = true) {
   }
   return { transport, sent, listeners: () => handlers.size }
 }
+
+const choiceOf = (certificate: string): CardChoice => ({ id: '0:0', certificate: { certificate, certificateChain: [] }, readerName: null, holder: null, notAfter: null, needsPin: false })
 
 const ack = (action: string): Message => ({ action: `web-eid:${action}-ack` })
 const failure = (action: string, code: string): Message => ({ action: `web-eid:${action}-failure`, error: { code, message: 'x' } })
@@ -68,17 +70,17 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
     ])
     const bridge = createWebEidBridge('FR-BE', sim.transport)
 
-    await expect(bridge.readCertificate()).resolves.toEqual({ certificate: 'TEVBRg==', certificateChain: [] })
+    // Un seul choix : le logiciel natif de Web eID affiche lui-même le choix du lecteur et du certificat.
+    await expect(bridge.listChoices()).resolves.toEqual([choiceOf('TEVBRg==')])
 
     expect(sim.sent[0]).toEqual({ action: 'web-eid:get-signing-certificate', libraryVersion: '2.1.0', options: { lang: 'fr' } })
-    expect(bridge.needsPin).toBe(false)
   })
 
   it('signs with the exact certificate string, the base64 hash and the hyphenated hash function', async () => {
     const sim = simulator(() => [ack('sign'), { action: 'web-eid:sign-success', signature: 'U0lH', signatureAlgorithm: {} }])
     const bridge = createWebEidBridge('en', sim.transport)
 
-    await expect(bridge.sign({ certificate: 'TEVBRg==', certificateChain: [] }, 'RElHRVNU', 'SHA-384', null)).resolves.toBe('U0lH')
+    await expect(bridge.sign(choiceOf('TEVBRg=='), 'RElHRVNU', 'SHA-384', null)).resolves.toBe('U0lH')
 
     expect(sim.sent[0]).toEqual({
       action: 'web-eid:sign',
@@ -116,7 +118,7 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
     ['ERR_SOMETHING_NEW', 'failed'],
   ])('maps %s to « %s »', async (code, kind) => {
     const sim = simulator(() => [ack('sign'), failure('sign', code)])
-    const error = await rejection(createWebEidBridge('fr', sim.transport).sign({ certificate: 'c', certificateChain: [] }, 'h', 'SHA-256', null))
+    const error = await rejection(createWebEidBridge('fr', sim.transport).sign(choiceOf('c'), 'h', 'SHA-256', null))
     expect(error.kind).toBe(kind)
     expect(error.bridgeCode).toBe(code)
   })
@@ -147,7 +149,7 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
   it('waits two minutes for the user before a timeout on signing and certificate reading', async () => {
     const sim = simulator((r) => [ack(String(r.action).replace('web-eid:', ''))])
     const bridge = createWebEidBridge('fr', sim.transport)
-    const reading = rejection(bridge.readCertificate())
+    const reading = rejection(bridge.listChoices())
     await vi.advanceTimersByTimeAsync(WEB_EID_USER_TIMEOUT_MS - 1)
     let settled = false
     void reading.then(() => (settled = true))
@@ -156,7 +158,7 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect((await reading).kind).toBe('timeout')
 
-    const signing = rejection(bridge.sign({ certificate: 'c', certificateChain: [] }, 'h', 'SHA-256', null))
+    const signing = rejection(bridge.sign(choiceOf('c'), 'h', 'SHA-256', null))
     await vi.advanceTimersByTimeAsync(WEB_EID_USER_TIMEOUT_MS)
     expect((await signing).kind).toBe('timeout')
   })
@@ -164,10 +166,10 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
   it('allows only one action of the same type at a time', async () => {
     const sim = simulator((r) => (r.action === 'web-eid:sign' ? [ack('sign')] : []))
     const bridge = createWebEidBridge('fr', sim.transport)
-    const first = rejection(bridge.sign({ certificate: 'c', certificateChain: [] }, 'h', 'SHA-256', null))
+    const first = rejection(bridge.sign(choiceOf('c'), 'h', 'SHA-256', null))
     await vi.advanceTimersByTimeAsync(0)
 
-    const second = await rejection(bridge.sign({ certificate: 'c', certificateChain: [] }, 'h', 'SHA-256', null))
+    const second = await rejection(bridge.sign(choiceOf('c'), 'h', 'SHA-256', null))
     expect(second).toMatchObject({ kind: 'failed', bridgeCode: 'ERR_WEBEID_ACTION_PENDING' })
 
     await vi.advanceTimersByTimeAsync(WEB_EID_USER_TIMEOUT_MS)
@@ -176,9 +178,9 @@ describe('Web eID bridge (protocole web-eid.js 2.1.0)', () => {
 
   it('fails cleanly on a success without certificate or signature', async () => {
     const certificate = simulator(() => [ack('get-signing-certificate'), { action: 'web-eid:get-signing-certificate-success' }])
-    expect((await rejection(createWebEidBridge('fr', certificate.transport).readCertificate())).kind).toBe('failed')
+    expect((await rejection(createWebEidBridge('fr', certificate.transport).listChoices())).kind).toBe('failed')
     const signature = simulator(() => [ack('sign'), { action: 'web-eid:sign-success' }])
-    expect((await rejection(createWebEidBridge('fr', signature.transport).sign({ certificate: 'c', certificateChain: [] }, 'h', 'SHA-256', null))).kind).toBe('failed')
+    expect((await rejection(createWebEidBridge('fr', signature.transport).sign(choiceOf('c'), 'h', 'SHA-256', null))).kind).toBe('failed')
   })
 })
 

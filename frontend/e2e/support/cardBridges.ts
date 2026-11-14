@@ -14,6 +14,13 @@ export interface WebEidLog {
 export interface BeidLog {
   signCalls: unknown[][]
   certificateCalls: unknown[][]
+  chainCalls: unknown[][]
+}
+
+export interface BeidReader {
+  name: string
+  type: 'standard' | 'pinpad'
+  certificates: string[]
 }
 
 /** Web eID : `postMessage` vers la page, réponses `…-ack` puis `…-success` (ou `…-failure` avec le code donné). */
@@ -52,10 +59,10 @@ export async function webEidLog(page: Page): Promise<WebEidLog> {
 }
 
 /** BeIDConnect : `window.EIDChromeExt`, lecteur ordinaire (PIN à demander à la page) ou lecteur à clavier. */
-export async function installBeidConnect(page: Page, opts: { readerType?: 'standard' | 'pinpad'; signFailsWith?: string } = {}) {
+export async function installBeidConnect(page: Page, opts: { readerType?: 'standard' | 'pinpad'; readers?: BeidReader[]; signFailsWith?: string } = {}) {
   await page.addInitScript(
-    ({ certificate, signature, readerType, signFailsWith }) => {
-      const log = { signCalls: [] as unknown[][], certificateCalls: [] as unknown[][] }
+    ({ certificate, signature, readers, signFailsWith }) => {
+      const log = { signCalls: [] as unknown[][], certificateCalls: [] as unknown[][], chainCalls: [] as unknown[][] }
       ;(window as unknown as { __beid: typeof log }).__beid = log
       ;(window as unknown as { EIDChromeExt: unknown }).EIDChromeExt = class {
         getVersion() {
@@ -65,10 +72,11 @@ export async function installBeidConnect(page: Page, opts: { readerType?: 'stand
           log.certificateCalls.push(args)
           return Promise.resolve({
             result: 'OK',
-            Readers: [{ ReaderName: 'Lecteur simulé', ReaderType: readerType, cardType: 'BEID', certificates: [certificate] }],
+            Readers: readers.map((r) => ({ ReaderName: r.name, ReaderType: r.type, cardType: 'BEID', certificates: r.certificates.length ? r.certificates : [certificate] })),
           })
         }
-        getUserCertificateChain() {
+        getUserCertificateChain(...args: unknown[]) {
+          log.chainCalls.push(args)
           return Promise.resolve({ result: 'OK', certificateChain: { rootCA: 'Uk9PVA==', subCA: ['SU5URVJNRURJQVRF'] } })
         }
         sign(...args: unknown[]) {
@@ -77,7 +85,12 @@ export async function installBeidConnect(page: Page, opts: { readerType?: 'stand
         }
       }
     },
-    { certificate: CERTIFICATE, signature: SIGNATURE, readerType: opts.readerType ?? 'standard', signFailsWith: opts.signFailsWith ?? null },
+    {
+      certificate: CERTIFICATE,
+      signature: SIGNATURE,
+      readers: opts.readers ?? [{ name: 'Lecteur simulé', type: opts.readerType ?? 'standard', certificates: [] }],
+      signFailsWith: opts.signFailsWith ?? null,
+    },
   )
 }
 

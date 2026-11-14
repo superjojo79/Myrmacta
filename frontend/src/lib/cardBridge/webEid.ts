@@ -1,4 +1,5 @@
-import { CardBridgeError, type CardBridge, type CardBridgeErrorKind, type CardCertificate, type CardHashFunction } from './types'
+import { summarizeCertificate } from './x509'
+import { CardBridgeError, type CardBridge, type CardBridgeErrorKind, type CardCertificate, type CardChoice, type CardHashFunction } from './types'
 
 // Web eID, protocole de web-eid.js 2.1.0 (bibliothèque de référence, non publiée sur npmjs) réimplémenté sans dépendance :
 // `window.postMessage` vers l'extension du navigateur, réponses `web-eid:<action>-ack|success|failure`.
@@ -113,22 +114,33 @@ export function createWebEidBridge(lang: string, transport: WebEidTransport = wi
 
   return {
     id: 'web-eid',
-    needsPin: false,
     async detect() {
       if (!transport.isSecureContext()) throw new CardBridgeError('insecure-context')
       await call('status', {}, WEB_EID_NATIVE_TIMEOUT_MS)
     },
-    async readCertificate(): Promise<CardCertificate> {
+    // Le logiciel natif de Web eID affiche lui-même le choix du lecteur et du certificat : un seul choix côté page.
+    async listChoices(): Promise<CardChoice[]> {
       const response = await call('get-signing-certificate', { options }, WEB_EID_USER_TIMEOUT_MS)
       if (typeof response.certificate !== 'string' || !response.certificate) throw new CardBridgeError('failed')
       // Web eID ne rend que le certificat feuille : la chaîne est laissée au serveur.
-      return { certificate: response.certificate, certificateChain: [] }
+      const summary = summarizeCertificate(response.certificate)
+      return [
+        {
+          id: '0:0',
+          certificate: { certificate: response.certificate, certificateChain: [] },
+          readerName: null,
+          holder: summary?.holder ?? null,
+          notAfter: summary?.notAfter ?? null,
+          needsPin: false,
+        },
+      ]
     },
-    async sign(certificate: CardCertificate, digest: string, hashFunction: CardHashFunction): Promise<string> {
+    certificateOf: (choice: CardChoice): Promise<CardCertificate> => Promise.resolve(choice.certificate),
+    async sign(choice: CardChoice, digest: string, hashFunction: CardHashFunction): Promise<string> {
       const response = await call(
         'sign',
         // `certificate` : exactement la chaîne rendue par get-signing-certificate.
-        { certificate: certificate.certificate, hash: digest, hashFunction, options },
+        { certificate: choice.certificate.certificate, hash: digest, hashFunction, options },
         WEB_EID_USER_TIMEOUT_MS,
       )
       if (typeof response.signature !== 'string' || !response.signature) throw new CardBridgeError('failed')

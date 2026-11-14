@@ -1,5 +1,6 @@
 // E2E « pilotage » — En-têtes de sécurité, portail externe, signature, langue (TODO §95 : découpage de pilotage.spec.ts par écran).
 import { expect, test, type Page } from '@playwright/test'
+import { SIGNING_CERT, SIGNING_CERT_BOB } from '../src/lib/cardBridge/fixtures'
 import { beidLog, CERTIFICATE, installBeidConnect, installWebEid, recordRequests, SIGNATURE } from './support/cardBridges'
 import {
   DOSSIER_ID,
@@ -640,4 +641,37 @@ test('E2E-SIG-22b internal signer sees why the server refused the card signature
   await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
   await expect(page.getByTestId('signature-error')).toContainText('préparation de la signature a expiré')
   await expect(page.getByTestId('signatures-active')).toContainText('Contrat')
+})
+
+test('E2E-SIG-24b internal signer picks the second reader with the keyboard and types the PIN for that certificate', async ({ page }) => {
+  const PIN = '112233'
+  await mockSession(page)
+  await installBeidConnect(page, {
+    readers: [
+      { name: 'Lecteur A', type: 'pinpad', certificates: [SIGNING_CERT] },
+      { name: 'Lecteur B', type: 'standard', certificates: [SIGNING_CERT_BOB] },
+    ],
+  })
+  const allRequests = recordRequests(page)
+  const calls = await mockCardSignatures(page, { bridges: ['beidconnect'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const first = page.getByRole('radio', { name: /Alice Martin/ })
+  await expect(first).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('radio', { name: /Bob Janssens/ })).toBeChecked()
+  await page.getByRole('button', { name: 'Continuer' }).click()
+
+  // Le certificat retenu est sur un lecteur ordinaire : la page demande le PIN.
+  await page.getByLabel(/Code PIN de votre carte/).fill(PIN)
+  await page.getByRole('button', { name: 'Valider le PIN' }).click()
+
+  await expect(page.getByTestId('signature-upload-done')).toBeVisible()
+  expect((calls.bodies.prepare as { certificate: string }).certificate).toBe(SIGNING_CERT_BOB)
+  const log = await beidLog(page)
+  expect(log.signCalls[0]![2]).toBe(SIGNING_CERT_BOB)
+  expect(log.signCalls[0]![5]).toBe(PIN)
+  expect(allRequests()).not.toContain(PIN)
 })

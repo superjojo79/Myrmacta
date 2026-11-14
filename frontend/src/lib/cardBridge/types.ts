@@ -41,18 +41,33 @@ export class CardBridgeError extends Error {
   }
 }
 
+/**
+ * Un choix possible de l'utilisateur : un certificat de signature, sur un lecteur. Web eID n'en rend qu'un (son logiciel
+ * natif affiche lui-même le choix) ; BeIDConnect en rend un par couple lecteur × certificat.
+ */
+export interface CardChoice {
+  id: string
+  /** Certificat feuille ; la chaîne s'obtient par `certificateOf`. */
+  certificate: CardCertificate
+  readerName: string | null
+  /** Titulaire lu dans le certificat (nom, jamais le numéro de registre national) ; `null` si illisible. */
+  holder: string | null
+  /** Fin de validité, ISO-8601 UTC ; `null` si illisible. */
+  notAfter: string | null
+  /** Vrai quand la page doit demander le PIN (BeIDConnect sur un lecteur sans clavier) ; avec Web eID, jamais. */
+  needsPin: boolean
+}
+
 export interface CardBridge {
   readonly id: CardBridgeId
-  /**
-   * Vrai quand la page doit demander le PIN (BeIDConnect sur un lecteur sans clavier). Connu après `readCertificate` ;
-   * avec Web eID le PIN est toujours saisi dans la fenêtre du logiciel eID.
-   */
-  readonly needsPin: boolean
   /** Vérifie que le pont répond ; rejette avec une `CardBridgeError` (indisponible, à mettre à jour, contexte non sécurisé). */
   detect(): Promise<void>
-  readCertificate(): Promise<CardCertificate>
-  /** `pin` est `null` quand `needsPin` est faux ; le PIN n'est utilisé que pour cet appel. Rend la signature en base64. */
-  sign(certificate: CardCertificate, digest: string, hashFunction: CardHashFunction, pin: string | null): Promise<string>
+  /** Les choix de signature offerts par la carte ou les cartes présentes (au moins un, sinon une erreur). */
+  listChoices(): Promise<CardChoice[]>
+  /** Le certificat du choix retenu, avec sa chaîne quand le pont la donne. */
+  certificateOf(choice: CardChoice): Promise<CardCertificate>
+  /** `pin` est `null` quand `choice.needsPin` est faux ; le PIN n'est utilisé que pour cet appel. Rend la signature en base64. */
+  sign(choice: CardChoice, digest: string, hashFunction: CardHashFunction, pin: string | null): Promise<string>
 }
 
 // Échanges avec le serveur (identiques pour le portail et « Mes signatures »).

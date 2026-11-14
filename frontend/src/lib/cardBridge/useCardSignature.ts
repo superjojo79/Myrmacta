@@ -1,11 +1,11 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { CardBridgeError, detectCardBridge, mostRelevantError, type BridgeFactories } from './index'
-import type { CardCompleteRequest, CardPrepareRequest, CardPrepareResponse } from './types'
+import type { CardBridgeId, CardChoice, CardCompleteRequest, CardPrepareRequest, CardPrepareResponse } from './types'
 
 // Issue #10, lot 3b — enchaînement de la signature dans la page, commun au portail et à « Mes signatures » :
 // détection du pont → certificat → prepare → (PIN) → signature par le pont → complete.
 
-export type CardPhase = 'idle' | 'detecting' | 'reading' | 'preparing' | 'pin' | 'signing' | 'completing'
+export type CardPhase = 'idle' | 'detecting' | 'reading' | 'choosing' | 'preparing' | 'pin' | 'signing' | 'completing'
 
 export const PIN_MIN_LENGTH = 4
 export const PIN_MAX_LENGTH = 12
@@ -35,6 +35,32 @@ export function useCardSignature(options: CardSignatureOptions) {
   const pinValid = computed(() => pin.value.length >= PIN_MIN_LENGTH && pin.value.length <= PIN_MAX_LENGTH)
   const active = computed(() => phase.value !== 'idle')
   let pinResolver: ((value: string | null) => void) | null = null
+
+  // Lot 3c — étape de choix du lecteur et du certificat, quand le pont offre plus d'un choix.
+  const bridgeId = ref<CardBridgeId | null>(null)
+  const choices = ref<CardChoice[]>([])
+  const selectedChoice = ref('')
+  let choiceResolver: ((id: string | null) => void) | null = null
+
+  function askChoice(list: CardChoice[]): Promise<string | null> {
+    choices.value = list
+    selectedChoice.value = list[0]!.id
+    return new Promise((resolve) => {
+      choiceResolver = resolve
+    })
+  }
+
+  function submitChoice() {
+    const resolve = choiceResolver
+    choiceResolver = null
+    resolve?.(selectedChoice.value)
+  }
+
+  function cancelChoice() {
+    const resolve = choiceResolver
+    choiceResolver = null
+    resolve?.(null)
+  }
 
   function askPin(): Promise<string | null> {
     pin.value = ''
@@ -70,16 +96,30 @@ export function useCardSignature(options: CardSignatureOptions) {
         options.onNoBridge(mostRelevantError(errors))
         return
       }
+      bridgeId.value = bridge.id
       phase.value = 'reading'
-      const certificate = await bridge.readCertificate()
+      const offered = await bridge.listChoices()
+      const first = offered[0]
+      if (!first) throw new CardBridgeError('failed')
+      let choice: CardChoice = first
+      if (offered.length > 1) {
+        phase.value = 'choosing'
+        const picked = await askChoice(offered)
+        choices.value = []
+        if (picked === null) throw new CardBridgeError('cancelled')
+        const found = offered.find((c) => c.id === picked)
+        if (!found) throw new CardBridgeError('failed')
+        choice = found
+      }
       phase.value = 'preparing'
+      const certificate = await bridge.certificateOf(choice)
       const prepared = await options.prepare({
         certificate: certificate.certificate,
         certificateChain: certificate.certificateChain,
       })
       if (prepared.hashFunction !== 'SHA-256' && prepared.hashFunction !== 'SHA-384') throw new CardBridgeError('failed')
       let secret: string | null = null
-      if (bridge.needsPin) {
+      if (choice.needsPin) {
         phase.value = 'pin'
         secret = await askPin()
         if (secret === null) throw new CardBridgeError('cancelled')
@@ -87,7 +127,7 @@ export function useCardSignature(options: CardSignatureOptions) {
       phase.value = 'signing'
       let signature: string
       try {
-        signature = await bridge.sign(certificate, prepared.digest, prepared.hashFunction, secret)
+        signature = await bridge.sign(choice, prepared.digest, prepared.hashFunction, secret)
       } finally {
         secret = null
       }
@@ -105,13 +145,18 @@ export function useCardSignature(options: CardSignatureOptions) {
     } finally {
       pin.value = ''
       pinResolver = null
+      choiceResolver = null
+      choices.value = []
       phase.value = 'idle'
     }
   }
 
-  onBeforeUnmount(cancelPin)
+  onBeforeUnmount(() => {
+    cancelPin()
+    cancelChoice()
+  })
 
-  return { phase, pin, pinValid, active, start, submitPin, cancelPin }
+  return { phase, pin, pinValid, active, bridgeId, choices, selectedChoice, start, submitPin, cancelPin, submitChoice, cancelChoice }
 }
 
 /** Clé et paramètre du message d'une erreur du pont, sous `prefix` (`….card`). */

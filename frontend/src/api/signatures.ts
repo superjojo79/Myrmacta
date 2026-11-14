@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { CardCompleteRequest, CardPrepareRequest, CardPrepareResponse } from '@/lib/cardBridge/types'
 
 // TODO §72 (signature-electronique) — API instructeur des demandes de signature d'un dossier et
 // « Mes signatures » de l'utilisateur connecté (chaîne BFF).
@@ -54,6 +55,8 @@ export interface MySignatureItem {
   signingUrl: string | null
   /** Issue #10 — signature apportée : télécharger le PDF, le signer avec sa carte eID, téléverser le résultat. */
   signedUpload: boolean
+  /** Lot 3b — ponts de carte autorisés (`web-eid`, `beidconnect`), dans l'ordre à essayer ; vide : pas de signature dans la page. */
+  cardBridges: string[]
 }
 
 /** Navigation vers la cérémonie du fournisseur (isolée pour les tests). */
@@ -109,6 +112,23 @@ export async function uploadMySignedDocument(signerId: string, file: File): Prom
   const { data } = await axios.post<{ status: SignerStatus }>(
     `/api/signatures/mine/${encodeURIComponent(signerId)}/signed-document`,
     body,
+  )
+  return data
+}
+
+/** Lot 3b — signature dans la page : préparation du condensé, puis dépôt de la signature faite par la carte. */
+export async function prepareMyCardSignature(signerId: string, request: CardPrepareRequest): Promise<CardPrepareResponse> {
+  const { data } = await axios.post<CardPrepareResponse>(
+    `/api/signatures/mine/${encodeURIComponent(signerId)}/card-signature/prepare`,
+    request,
+  )
+  return data
+}
+
+export async function completeMyCardSignature(signerId: string, request: CardCompleteRequest): Promise<{ status: SignerStatus }> {
+  const { data } = await axios.post<{ status: SignerStatus }>(
+    `/api/signatures/mine/${encodeURIComponent(signerId)}/card-signature/complete`,
+    request,
   )
   return data
 }

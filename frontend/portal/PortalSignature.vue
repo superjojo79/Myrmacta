@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDate } from '@/i18n/format'
+import { CardBridgeError } from '@/lib/cardBridge'
+import { cardErrorMessage, noBridgeMessage, useCardSignature } from '@/lib/cardBridge/useCardSignature'
 import { rejectionMessageKey, signedDocumentFilename } from '@/lib/signedUpload'
 import {
+  completeCardSignature,
   declineSignature,
   fetchSignatureContext,
   fetchSignatureDocument,
   navigateTo,
   PortalApiError,
+  prepareCardSignature,
   signDocument,
   uploadSignedDocument,
   type SignatureContext,
@@ -20,7 +24,7 @@ type State = 'loading' | 'denied' | 'ready' | 'signed' | 'declined' | 'unavailab
 
 const props = defineProps<{ token: string }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const state = ref<State>('loading')
 const context = ref<SignatureContext | null>(null)
 const documentUrl = ref<string | null>(null)
@@ -38,6 +42,8 @@ const deadline = computed(() =>
 const hosted = computed(() => context.value?.hosted === true)
 const signedUpload = computed(() => context.value?.signedUpload === true)
 const downloadName = computed(() => signedDocumentFilename(context.value?.documentLabel ?? ''))
+// Lot 3b — signature dans la page par un pont de carte ; vide : le comportement du lot 3 (téléversement) ou du clic.
+const cardAvailable = computed(() => (context.value?.cardBridges.length ?? 0) > 0)
 const awaitingLink = computed(() => hosted.value && !context.value?.signingUrl)
 
 function handleError(e: unknown): string {
@@ -97,6 +103,15 @@ async function loadDocument() {
   if (previous) URL.revokeObjectURL(previous)
 }
 
+/** Message d'un refus du serveur (téléversement ou signature dans la page) ; un 404 bascule sur l'écran neutre. */
+async function describeApiError(e: unknown): Promise<string> {
+  if (e instanceof PortalApiError && e.status === 422) {
+    if (e.code === 'STALE_DOCUMENT') await refreshAfterStale()
+    return t(rejectionMessageKey('portal.signature.upload', e.code))
+  }
+  return handleError(e)
+}
+
 async function onUpload() {
   const file = chosenFile.value
   if (!file) return
@@ -106,16 +121,48 @@ async function onUpload() {
     await uploadSignedDocument(props.token, file)
     state.value = 'signed'
   } catch (e) {
-    if (e instanceof PortalApiError && e.status === 422) {
-      error.value = t(rejectionMessageKey('portal.signature.upload', e.code))
-      if (e.code === 'STALE_DOCUMENT') await refreshAfterStale()
-    } else {
-      error.value = handleError(e)
-    }
+    error.value = await describeApiError(e)
   } finally {
     busy.value = false
   }
 }
+
+function bridgeMessage(message: { key: string; named?: { count: number } }): string {
+  return t(message.key, message.named ?? {})
+}
+
+const card = useCardSignature({
+  bridges: () => context.value?.cardBridges ?? [],
+  lang: () => locale.value,
+  prepare: (request) => prepareCardSignature(props.token, request),
+  complete: (request) => completeCardSignature(props.token, request),
+  onSigned: () => {
+    state.value = 'signed'
+  },
+  onError: async (e) => {
+    error.value = e instanceof CardBridgeError ? bridgeMessage(cardErrorMessage('portal.signature.card', e)) : await describeApiError(e)
+  },
+  onNoBridge: (e) => {
+    error.value = bridgeMessage(noBridgeMessage('portal.signature.card', e))
+  },
+})
+const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive } = card
+const pinInput = ref<HTMLInputElement | null>(null)
+const cardStatus = computed(() =>
+  cardPhase.value === 'idle' || cardPhase.value === 'pin' ? '' : t(`portal.signature.card.phases.${cardPhase.value}`),
+)
+
+async function onCardSign() {
+  error.value = ''
+  await card.start()
+}
+
+watch(cardPhase, async (value) => {
+  if (value === 'pin') {
+    await nextTick()
+    pinInput.value?.focus()
+  }
+})
 
 /** Le document a changé entre-temps : le fichier choisi ne vaut plus, le nouveau document est rechargé. */
 async function refreshAfterStale() {
@@ -178,7 +225,7 @@ async function onDecline() {
       <p v-if="deadline" class="portal__expiry">{{ t('portal.signature.deadline', { date: deadline }) }}</p>
       <p v-if="!context.required" class="portal__muted">{{ t('portal.signature.optional') }}</p>
       <p v-if="awaitingLink" data-testid="signature-waiting">{{ t('portal.signature.waiting') }}</p>
-      <p v-if="!signedUpload">
+      <p v-if="!signedUpload || cardAvailable">
         <a v-if="documentUrl" :href="documentUrl" target="_blank" rel="noopener" data-testid="signature-document">
           {{ t('portal.signature.view') }}
         </a>
@@ -186,8 +233,43 @@ async function onDecline() {
       </p>
     </section>
 
+    <section v-if="cardAvailable && !declining" class="portal__card" data-testid="signature-card" :aria-busy="cardActive">
+      <h2>{{ t('portal.signature.card.title') }}</h2>
+      <p>{{ t('portal.signature.card.intro') }}</p>
+      <button
+        type="button"
+        class="portal__primary"
+        data-testid="signature-card-sign"
+        :disabled="busy || cardActive"
+        @click="onCardSign"
+      >
+        {{ t('portal.signature.card.sign') }}
+      </button>
+      <p class="portal__muted" role="status" aria-live="polite" data-testid="signature-card-status">{{ cardStatus }}</p>
+      <form v-if="cardPhase === 'pin'" data-testid="signature-pin-form" @submit.prevent="card.submitPin()">
+        <label for="signature-pin">{{ t('portal.signature.card.pin.label') }}</label>
+        <input
+          id="signature-pin"
+          ref="pinInput"
+          v-model="cardPin"
+          type="password"
+          autocomplete="off"
+          minlength="4"
+          maxlength="12"
+          data-testid="signature-pin"
+        />
+        <p class="portal__muted">{{ t('portal.signature.card.pin.hint') }}</p>
+        <button type="submit" class="portal__primary" data-testid="signature-pin-submit" :disabled="!cardPinValid">
+          {{ t('portal.signature.card.pin.submit') }}
+        </button>
+        <button type="button" class="portal__secondary" data-testid="signature-pin-cancel" @click="card.cancelPin()">
+          {{ t('portal.signature.card.pin.cancel') }}
+        </button>
+      </form>
+    </section>
+
     <section v-if="signedUpload && !declining" class="portal__card" data-testid="signature-upload" :aria-busy="busy">
-      <h2>{{ t('portal.signature.upload.steps') }}</h2>
+      <h2>{{ cardAvailable ? t('portal.signature.upload.stepsAlt') : t('portal.signature.upload.steps') }}</h2>
       <ol class="portal__steps">
         <li>
           <a v-if="documentUrl" :href="documentUrl" :download="downloadName" data-testid="signature-download">
@@ -205,14 +287,14 @@ async function onDecline() {
             type="file"
             accept="application/pdf,.pdf"
             data-testid="signature-file"
-            :disabled="busy"
+            :disabled="busy || cardActive"
             @change="onFileChange"
           />
           <button
             type="button"
             class="portal__primary"
             data-testid="signature-send"
-            :disabled="busy || !chosenFile"
+            :disabled="busy || cardActive || !chosenFile"
             @click="onUpload"
           >
             {{ busy ? t('portal.signature.upload.sending') : t('portal.signature.upload.send') }}
@@ -229,10 +311,10 @@ async function onDecline() {
     <section class="portal__actions">
       <p v-if="error" class="portal__error" role="alert" data-testid="signature-error">{{ error }}</p>
       <template v-if="!declining">
-        <button v-if="!hosted && !signedUpload" type="button" class="portal__primary" :disabled="busy" @click="onSign">
+        <button v-if="!hosted && !signedUpload && !cardAvailable" type="button" class="portal__primary" :disabled="busy" @click="onSign">
           {{ busy ? t('portal.submitting') : t('portal.signature.sign') }}
         </button>
-        <button type="button" class="portal__secondary" :disabled="busy" @click="declining = true">{{ t('portal.signature.decline') }}</button>
+        <button type="button" class="portal__secondary" :disabled="busy || cardActive" @click="declining = true">{{ t('portal.signature.decline') }}</button>
       </template>
       <template v-else>
         <button type="button" class="portal__primary" :disabled="busy" @click="onDecline">{{ t('portal.signature.confirmDecline') }}</button>

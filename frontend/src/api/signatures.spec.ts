@@ -6,7 +6,9 @@ import {
   fetchMySignatureDocument,
   fetchMySigningUrl,
   listMySignatures,
+  completeMyCardSignature,
   listSignatureRequests,
+  prepareMyCardSignature,
   resendSignatureInvite,
   signMine,
   uploadMySignedDocument,
@@ -62,5 +64,19 @@ describe('signatures api (TODO §72)', () => {
     expect((body as FormData).get('file')).toBe(file)
     // Pas d'en-tête Content-Type posé à la main : le client fixe la frontière du multipart.
     expect(vi.mocked(axios.post).mock.calls[0]).toHaveLength(2)
+  })
+
+  it('prepares and completes a card signature through the session client, encoding the signer id (lot 3b)', async () => {
+    const prepared = { digest: 'RElH', hashFunction: 'SHA-384', signingTime: 't', documentDigest: 'd' }
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: prepared }).mockResolvedValueOnce({ data: { status: 'SIGNED' } })
+
+    await expect(prepareMyCardSignature('s 1', { certificate: 'c', certificateChain: ['i'] })).resolves.toEqual(prepared)
+    const body = { certificate: 'c', certificateChain: ['i'], signingTime: 't', documentDigest: 'd', signature: 's' }
+    await expect(completeMyCardSignature('s 1', body)).resolves.toEqual({ status: 'SIGNED' })
+
+    expect(vi.mocked(axios.post).mock.calls).toEqual([
+      ['/api/signatures/mine/s%201/card-signature/prepare', { certificate: 'c', certificateChain: ['i'] }],
+      ['/api/signatures/mine/s%201/card-signature/complete', body],
+    ])
   })
 })

@@ -1,4 +1,5 @@
 import type { FieldType } from '@/api/types'
+import type { CardCompleteRequest, CardPrepareRequest, CardPrepareResponse } from '@/lib/cardBridge/types'
 
 export interface PortalField {
   name: string
@@ -171,6 +172,8 @@ export interface SignatureContext {
    * le téléverse. Le clic « Signer » est alors refusé par le serveur.
    */
   signedUpload: boolean
+  /** Lot 3b — ponts de carte autorisés (`web-eid`, `beidconnect`), dans l'ordre à essayer ; vide : pas de signature dans la page. */
+  cardBridges: string[]
 }
 
 export type SignatureDecision = 'SIGNED' | 'DECLINED'
@@ -214,4 +217,21 @@ export function uploadSignedDocument(token: string, file: File): Promise<{ statu
   const body = new FormData()
   body.append('file', file)
   return signatureRequest(token, '/signed-document', { method: 'POST', headers: { Accept: 'application/json' }, body })
+}
+
+/** Lot 3b — signature dans la page : le serveur prépare le condensé à signer par la carte (le PIN ne passe jamais ici). */
+export function prepareCardSignature(token: string, request: CardPrepareRequest): Promise<CardPrepareResponse> {
+  return signatureRequest(token, '/card-signature/prepare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(request),
+  })
+}
+
+export function completeCardSignature(token: string, request: CardCompleteRequest): Promise<{ status: SignatureDecision }> {
+  return signatureRequest(token, '/card-signature/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(request),
+  })
 }

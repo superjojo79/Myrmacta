@@ -20,9 +20,12 @@ export const SIGNED_UPLOAD_REJECTIONS = [
 
 export type SignedUploadRejection = (typeof SIGNED_UPLOAD_REJECTIONS)[number]
 
+/** Motifs de refus de la signature dans la page : ceux du téléversement, plus la préparation expirée (lot 3b). */
+export const CARD_SIGNATURE_REJECTIONS = [...SIGNED_UPLOAD_REJECTIONS, 'SIGNING_SESSION_EXPIRED'] as const
+
 /** Clé du message d'un refus sous `prefix` : le message du code, ou `unknown` pour un code absent ou inconnu. */
 export function rejectionMessageKey(prefix: string, code: string | null | undefined): string {
-  const known = SIGNED_UPLOAD_REJECTIONS.find((c) => c === code)
+  const known = CARD_SIGNATURE_REJECTIONS.find((c) => c === code)
   return known ? `${prefix}.rejections.${known}` : `${prefix}.rejections.unknown`
 }
 

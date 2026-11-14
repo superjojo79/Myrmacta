@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MySignaturesView from './MySignaturesView.vue'
 import * as api from '@/api/signatures'
 import * as lib from '@/lib/signedUpload'
+import * as bridges from '@/lib/cardBridge'
+import { CardBridgeError, type CardBridge } from '@/lib/cardBridge'
 
 vi.mock('@/api/signatures')
 
@@ -21,6 +23,7 @@ function item(overrides: Partial<api.MySignatureItem> = {}): api.MySignatureItem
     hosted: false,
     signingUrl: null,
     signedUpload: false,
+    cardBridges: [],
     ...overrides,
   }
 }
@@ -258,6 +261,242 @@ describe('MySignaturesView, signature apportée (issue #10)', () => {
     await flushPromises()
     await send(wrapper)
 
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toBe('Demande close')
+  })
+})
+
+/** Lot 3b — signature dans la page par un pont de carte, depuis « Mes signatures ». */
+describe('MySignaturesView, signature dans la page (lot 3b)', () => {
+  const PREPARED = { digest: 'RElH', hashFunction: 'SHA-256' as const, signingTime: '2026-11-14T10:00:00Z', documentDigest: 'abc' }
+  const CERT = { certificate: 'Q0VSVA==', certificateChain: ['SU5U'] }
+  const cardItem = (overrides: Partial<api.MySignatureItem> = {}) =>
+    item({ signedUpload: true, simulated: false, cardBridges: ['web-eid', 'beidconnect'], ...overrides })
+
+  function fakeBridge(overrides: Partial<CardBridge> = {}): CardBridge {
+    return {
+      id: 'web-eid',
+      needsPin: false,
+      detect: () => Promise.resolve(),
+      readCertificate: vi.fn(() => Promise.resolve(CERT)),
+      sign: vi.fn(() => Promise.resolve('U0lH')),
+      ...overrides,
+    }
+  }
+
+  const useBridge = (bridge: CardBridge | null, errors: CardBridgeError[] = []) =>
+    vi.spyOn(bridges, 'detectCardBridge').mockResolvedValue({ bridge, errors })
+
+  async function clickSign(wrapper: ReturnType<typeof mountView>) {
+    await wrapper.get('[data-testid="signature-card-sign"]').trigger('click')
+    await flushPromises()
+  }
+
+  const rejection = (code: string, status = 422) => ({ response: { status, data: { status, code } } })
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.mocked(api.prepareMyCardSignature).mockResolvedValue(PREPARED)
+    vi.mocked(api.completeMyCardSignature).mockResolvedValue({ status: 'SIGNED' })
+  })
+
+  it('offers the card signature as the main action with the upload as another way, and no click signature', async () => {
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="signature-card-sign"]').text()).toBe('Signer avec ma carte eID')
+    expect(wrapper.get('[data-testid="signature-card"]').text()).toContain('n’est jamais envoyé à ce site')
+    expect(wrapper.get('[data-testid="signature-card"]').text()).toContain('Autre moyen : signer hors de cette page')
+    expect(wrapper.find('[data-testid="signature-download"]').exists()).toBe(true)
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Signer')).toBe(false)
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Refuser')).toBe(true)
+  })
+
+  it('shows nothing of the card signature when no bridge is offered, or while waiting for the turn', async () => {
+    vi.mocked(api.listMySignatures).mockResolvedValue([
+      cardItem({ cardBridges: [] }),
+      cardItem({ signerId: 's2', myTurn: false }),
+      item({ signerId: 's3' }),
+    ])
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="signature-card"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="signature-upload"]')).toHaveLength(1)
+    expect(wrapper.findAll('button').filter((b) => b.text() === 'Signer')).toHaveLength(1)
+  })
+
+  it('signs in the page, then reloads the list and confirms', async () => {
+    const bridge = fakeBridge()
+    const detect = useBridge(bridge)
+    vi.mocked(api.listMySignatures).mockResolvedValueOnce([cardItem()]).mockResolvedValueOnce([])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await clickSign(wrapper)
+
+    expect(detect).toHaveBeenCalledWith(['web-eid', 'beidconnect'], expect.any(String), undefined)
+    expect(api.prepareMyCardSignature).toHaveBeenCalledWith('s1', CERT)
+    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', null)
+    expect(api.completeMyCardSignature).toHaveBeenCalledWith('s1', {
+      ...CERT,
+      signingTime: PREPARED.signingTime,
+      documentDigest: 'abc',
+      signature: 'U0lH',
+    })
+    expect(api.signMine).not.toHaveBeenCalled()
+    expect(api.listMySignatures).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-testid="signature-upload-done"]').text()).toContain('bien été enregistrée')
+    expect(wrapper.find('[data-testid="signatures-empty"]').exists()).toBe(true)
+  })
+
+  it('shows a visible status per step on the signer row only', async () => {
+    let finishRead!: () => void
+    useBridge(fakeBridge({ readCertificate: () => new Promise((r) => (finishRead = () => r(CERT))) }))
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem(), cardItem({ signerId: 's2', documentLabel: 'Avenant' })])
+    const wrapper = mountView()
+    await flushPromises()
+
+    await clickSign(wrapper)
+
+    const statuses = wrapper.findAll('[data-testid="signature-card-status"]')
+    expect(statuses).toHaveLength(1)
+    expect(statuses[0]!.text()).toContain('Lecture de la carte')
+    expect(statuses[0]!.attributes('aria-live')).toBe('polite')
+    expect(wrapper.findAll('[data-testid="signature-card-sign"]').every((b) => b.attributes('disabled') !== undefined)).toBe(true)
+    finishRead()
+    await flushPromises()
+  })
+
+  it('asks for the PIN in a labelled password field, passes it to the bridge only and wipes it', async () => {
+    const bridge = fakeBridge({ id: 'beidconnect', needsPin: true })
+    useBridge(bridge)
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+    await clickSign(wrapper)
+
+    const input = wrapper.get('[data-testid="signature-pin"]')
+    expect(input.attributes('type')).toBe('password')
+    expect(input.attributes('autocomplete')).toBe('off')
+    expect(input.attributes('maxlength')).toBe('12')
+    expect(wrapper.get('label[for="signature-pin-s1"]').text()).toContain('Code PIN')
+    expect(wrapper.get('[data-testid="signature-pin-form"]').text()).toContain('n’est jamais envoyé à ce site')
+    expect(wrapper.get('[data-testid="signature-pin-submit"]').attributes('disabled')).toBeDefined()
+
+    await input.setValue('1234')
+    expect(wrapper.get('[data-testid="signature-pin-submit"]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('[data-testid="signature-pin-form"]').trigger('submit')
+    await flushPromises()
+
+    expect(bridge.sign).toHaveBeenCalledWith(CERT, 'RElH', 'SHA-256', '1234')
+    expect(JSON.stringify(vi.mocked(api.prepareMyCardSignature).mock.calls)).not.toContain('1234')
+    expect(JSON.stringify(vi.mocked(api.completeMyCardSignature).mock.calls)).not.toContain('1234')
+    expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
+    expect(wrapper.html()).not.toContain('1234')
+  })
+
+  it('wipes the PIN after a wrong one and says how many attempts remain', async () => {
+    useBridge(fakeBridge({ needsPin: true, sign: vi.fn(() => Promise.reject(new CardBridgeError('pin-incorrect', { attemptsLeft: 1 }))) }))
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+    await clickSign(wrapper)
+    await wrapper.get('[data-testid="signature-pin"]').setValue('0000')
+    await wrapper.get('[data-testid="signature-pin-form"]').trigger('submit')
+    await flushPromises()
+
+    const alert = wrapper.get('[data-testid="signature-error"]')
+    expect(alert.attributes('role')).toBe('alert')
+    expect(alert.text()).toContain('Il vous reste 1 essai(s)')
+    expect(wrapper.html()).not.toContain('0000')
+    expect(api.completeMyCardSignature).not.toHaveBeenCalled()
+  })
+
+  it('lets the signer cancel the PIN prompt', async () => {
+    const bridge = fakeBridge({ needsPin: true })
+    useBridge(bridge)
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+    await clickSign(wrapper)
+
+    await wrapper.get('[data-testid="signature-pin-cancel"]').trigger('click')
+    await flushPromises()
+
+    expect(bridge.sign).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('annulée')
+  })
+
+  it('says no eID software was found, names both bridges and keeps the upload available', async () => {
+    useBridge(null, [new CardBridgeError('unavailable')])
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+    await clickSign(wrapper)
+
+    const text = wrapper.get('[data-testid="signature-error"]').text()
+    expect(text).toContain('Aucun logiciel eID')
+    expect(text).toContain('Web eID')
+    expect(text).toContain('BeIDConnect')
+    expect(api.prepareMyCardSignature).not.toHaveBeenCalled()
+    expect(wrapper.findAll('[data-testid="signature-error"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="signature-send"]').exists()).toBe(true)
+  })
+
+  it.each([
+    ['no-reader', 'Aucun lecteur'],
+    ['no-card', 'Aucune carte'],
+    ['timeout', 'délai est dépassé'],
+    ['card-blocked', 'bloquée'],
+    ['update-required', 'Mettez-le à jour'],
+    ['insecure-context', 'connexion sécurisée'],
+    ['failed', 'a échoué'],
+  ] as const)('translates the bridge error « %s »', async (kind, fragment) => {
+    useBridge(fakeBridge({ readCertificate: () => Promise.reject(new CardBridgeError(kind)) }))
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain(fragment)
+  })
+
+  it('explains an expired preparation, and falls back on the upload messages for the shared codes', async () => {
+    useBridge(fakeBridge())
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+
+    vi.mocked(api.completeMyCardSignature).mockRejectedValueOnce(rejection('SIGNING_SESSION_EXPIRED'))
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('préparation de la signature a expiré')
+
+    vi.mocked(api.completeMyCardSignature).mockRejectedValueOnce(rejection('CERTIFICATE_NOT_QUALIFIED'))
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('pas valable')
+
+    vi.mocked(api.completeMyCardSignature).mockRejectedValueOnce(rejection('NEW_CODE'))
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('Le document signé a été refusé')
+  })
+
+  it('reloads the list on STALE_DOCUMENT, and shows 413 and server details as before', async () => {
+    useBridge(fakeBridge())
+    vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
+    const wrapper = mountView()
+    await flushPromises()
+
+    vi.mocked(api.prepareMyCardSignature).mockRejectedValueOnce(rejection('STALE_DOCUMENT'))
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('Quelqu’un d’autre a signé')
+    expect(api.listMySignatures).toHaveBeenCalledTimes(2)
+
+    vi.mocked(api.prepareMyCardSignature).mockRejectedValueOnce({ response: { status: 413, data: {} } })
+    await clickSign(wrapper)
+    expect(wrapper.get('[data-testid="signature-error"]').text()).toBe('Le fichier dépasse la taille autorisée.')
+
+    vi.mocked(api.prepareMyCardSignature).mockRejectedValueOnce({ response: { status: 409, data: { detail: 'Demande close' } } })
+    await clickSign(wrapper)
     expect(wrapper.get('[data-testid="signature-error"]').text()).toBe('Demande close')
   })
 })

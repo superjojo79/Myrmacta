@@ -1,24 +1,28 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toProblemDetail } from '@/api/http'
 import { formatDate as formatLocalDate } from '@/i18n/format'
 import {
   declineMine,
   fetchMySignatureDocument,
+  completeMyCardSignature,
   fetchMySigningUrl,
   listMySignatures,
   openSigningPage,
+  prepareMyCardSignature,
   signMine,
   uploadMySignedDocument,
   type MySignatureItem,
 } from '@/api/signatures'
+import { CardBridgeError } from '@/lib/cardBridge'
+import { cardErrorMessage, noBridgeMessage, useCardSignature } from '@/lib/cardBridge/useCardSignature'
 import { rejectionMessageKey, saveBlob, signedDocumentFilename } from '@/lib/signedUpload'
 
 // TODO §72 US-10 — signatures internes qui me sont adressées. « À mon tour » (actives) puis
 // « En attente » (séquentiel : un signataire précédent doit d'abord décider).
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const items = ref<MySignatureItem[]>([])
 const loading = ref(true)
 const unavailable = ref(false)
@@ -78,6 +82,25 @@ async function downloadDocument(item: MySignatureItem) {
   }
 }
 
+/** Message d'un refus du serveur (téléversement ou signature dans la page), propre à la ligne du signataire. */
+async function reportUploadError(item: MySignatureItem, e: unknown) {
+  uploadErrorId.value = item.signerId
+  const problem = toProblemDetail(e)
+  if (problem.status === 422) {
+    uploadError.value = t(rejectionMessageKey('mySignatures.upload', problem.code))
+  } else if (problem.status === 413) {
+    uploadError.value = t('mySignatures.errors.tooLarge')
+  } else {
+    uploadError.value = problem.detail ?? t('mySignatures.errors.action')
+  }
+  if (problem.code === 'STALE_DOCUMENT') {
+    // Le document a changé : le fichier choisi ne vaut plus, la liste est relue (le téléchargement relit le document).
+    chosenFiles.value = { ...chosenFiles.value, [item.signerId]: undefined }
+    inputVersion.value++
+    await load()
+  }
+}
+
 async function onUpload(item: MySignatureItem) {
   const file = chosenFiles.value[item.signerId]
   if (!file) return
@@ -93,25 +116,63 @@ async function onUpload(item: MySignatureItem) {
     uploadDone.value = true
     await load()
   } catch (e) {
-    const problem = toProblemDetail(e)
-    uploadErrorId.value = item.signerId
-    if (problem.status === 422) {
-      uploadError.value = t(rejectionMessageKey('mySignatures.upload', problem.code))
-    } else if (problem.status === 413) {
-      uploadError.value = t('mySignatures.errors.tooLarge')
-    } else {
-      uploadError.value = problem.detail ?? t('mySignatures.errors.action')
-    }
-    if (problem.code === 'STALE_DOCUMENT') {
-      // Le document a changé : le fichier choisi ne vaut plus, la liste est relue (le téléchargement relit le document).
-      chosenFiles.value = { ...chosenFiles.value, [item.signerId]: undefined }
-      inputVersion.value++
-      await load()
-    }
+    await reportUploadError(item, e)
   } finally {
     uploadingId.value = null
   }
 }
+
+function bridgeMessage(message: { key: string; named?: { count: number } }): string {
+  return t(message.key, message.named ?? {})
+}
+
+// Lot 3b — signature dans la page par un pont de carte : une seule à la fois, pour la ligne `cardItem`.
+const cardItem = ref<MySignatureItem | null>(null)
+const card = useCardSignature({
+  bridges: () => cardItem.value?.cardBridges ?? [],
+  lang: () => locale.value,
+  prepare: (request) => prepareMyCardSignature(cardItem.value!.signerId, request),
+  complete: (request) => completeMyCardSignature(cardItem.value!.signerId, request),
+  onSigned: async () => {
+    uploadDone.value = true
+    await load()
+  },
+  onError: async (e) => {
+    const item = cardItem.value!
+    if (e instanceof CardBridgeError) {
+      uploadErrorId.value = item.signerId
+      uploadError.value = bridgeMessage(cardErrorMessage('mySignatures.card', e))
+    } else {
+      await reportUploadError(item, e)
+    }
+  },
+  onNoBridge: (e) => {
+    uploadErrorId.value = cardItem.value!.signerId
+    uploadError.value = bridgeMessage(noBridgeMessage('mySignatures.card', e))
+  },
+})
+const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive } = card
+const pinInput = ref<HTMLInputElement | HTMLInputElement[] | null>(null)
+const cardStatus = computed(() =>
+  cardPhase.value === 'idle' || cardPhase.value === 'pin' ? '' : t(`mySignatures.card.phases.${cardPhase.value}`),
+)
+
+async function onCardSign(item: MySignatureItem) {
+  cardItem.value = item
+  uploadErrorId.value = null
+  uploadError.value = ''
+  uploadDone.value = false
+  error.value = ''
+  await card.start()
+}
+
+watch(cardPhase, async (value) => {
+  if (value === 'pin') {
+    await nextTick()
+    const input = pinInput.value
+    ;(Array.isArray(input) ? input[0] : input)?.focus()
+  }
+})
 
 async function onSign(item: MySignatureItem) {
   if (item.hosted) {
@@ -195,10 +256,10 @@ onMounted(load)
                     >
                       {{ t('mySignatures.signAtProvider') }}
                     </button>
-                    <button v-else-if="!item.signedUpload" type="button" :disabled="busyId === item.signerId" @click="onSign(item)">
+                    <button v-else-if="!item.signedUpload && item.cardBridges.length === 0" type="button" :disabled="busyId === item.signerId" @click="onSign(item)">
                       {{ t('mySignatures.sign') }}
                     </button>
-                    <button type="button" :disabled="busyId === item.signerId" @click="decliningId = item.signerId">
+                    <button type="button" :disabled="busyId === item.signerId || cardActive" @click="decliningId = item.signerId">
                       {{ t('mySignatures.decline') }}
                     </button>
                   </template>
@@ -214,6 +275,54 @@ onMounted(load)
                     <button type="button" @click="decliningId = null">{{ t('common.cancel') }}</button>
                   </template>
                 </template>
+              </div>
+              <div
+                v-if="group.active && item.cardBridges.length > 0 && decliningId !== item.signerId"
+                class="my-signatures__upload"
+                data-testid="signature-card"
+                :aria-busy="cardActive && cardItem?.signerId === item.signerId"
+              >
+                <p>{{ t('mySignatures.card.intro') }}</p>
+                <button
+                  type="button"
+                  data-testid="signature-card-sign"
+                  :disabled="cardActive || busyId === item.signerId"
+                  @click="onCardSign(item)"
+                >
+                  {{ t('mySignatures.card.sign') }}
+                </button>
+                <p
+                  v-if="cardItem?.signerId === item.signerId"
+                  role="status"
+                  aria-live="polite"
+                  data-testid="signature-card-status"
+                >{{ cardStatus }}</p>
+                <form
+                  v-if="cardPhase === 'pin' && cardItem?.signerId === item.signerId"
+                  data-testid="signature-pin-form"
+                  @submit.prevent="card.submitPin()"
+                >
+                  <label :for="`signature-pin-${item.signerId}`">{{ t('mySignatures.card.pin.label') }}</label>
+                  <input
+                    :id="`signature-pin-${item.signerId}`"
+                    ref="pinInput"
+                    v-model="cardPin"
+                    type="password"
+                    autocomplete="off"
+                    minlength="4"
+                    maxlength="12"
+                    data-testid="signature-pin"
+                  />
+                  <p>{{ t('mySignatures.card.pin.hint') }}</p>
+                  <button type="submit" data-testid="signature-pin-submit" :disabled="!cardPinValid">
+                    {{ t('mySignatures.card.pin.submit') }}
+                  </button>
+                  <button type="button" data-testid="signature-pin-cancel" @click="card.cancelPin()">
+                    {{ t('mySignatures.card.pin.cancel') }}
+                  </button>
+                </form>
+                <p v-if="uploadErrorId === item.signerId" class="error" role="alert" data-testid="signature-error">{{ uploadError }}</p>
+                <p v-if="item.signedUpload" class="my-signatures__alt">{{ t('mySignatures.upload.stepsAlt') }}</p>
               </div>
               <div
                 v-if="group.active && item.signedUpload && decliningId !== item.signerId"
@@ -237,20 +346,20 @@ onMounted(load)
                       type="file"
                       accept="application/pdf,.pdf"
                       data-testid="signature-file"
-                      :disabled="uploadingId === item.signerId"
+                      :disabled="uploadingId === item.signerId || cardActive"
                       @change="onFileChange(item, $event)"
                     />
                     <button
                       type="button"
                       data-testid="signature-send"
-                      :disabled="uploadingId === item.signerId || !chosenFiles[item.signerId]"
+                      :disabled="uploadingId === item.signerId || cardActive || !chosenFiles[item.signerId]"
                       @click="onUpload(item)"
                     >
                       {{ uploadingId === item.signerId ? t('mySignatures.upload.sending') : t('mySignatures.upload.send') }}
                     </button>
                   </li>
                 </ol>
-                <p v-if="uploadErrorId === item.signerId" class="error" role="alert" data-testid="signature-error">{{ uploadError }}</p>
+                <p v-if="uploadErrorId === item.signerId && item.cardBridges.length === 0" class="error" role="alert" data-testid="signature-error">{{ uploadError }}</p>
               </div>
             </li>
           </ul>
@@ -285,6 +394,10 @@ onMounted(load)
 }
 .my-signatures__upload {
   flex-basis: 100%;
+}
+.my-signatures__alt {
+  margin: 0.5rem 0 0;
+  font-weight: 600;
 }
 .my-signatures__upload ol {
   margin: 0;

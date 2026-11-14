@@ -250,8 +250,9 @@ belge, sans agent propre à Myrmacta sur le poste du signataire. Le transport es
   Le clic « Signer » est refusé pour ce fournisseur : 409, `code` = `SIGNED_UPLOAD_REQUIRED`.
 - **Routes.** Portail : `GET /api/portal/signature` (champ `signedUpload`), `GET /api/portal/signature/document`,
   `POST /api/portal/signature/signed-document`. « Mes signatures » : `GET /api/signatures/mine`,
-  `GET /api/signatures/mine/{signerId}/document`, `POST /api/signatures/mine/{signerId}/signed-document`. Les points
-  de signature dans la page (`card-signature/prepare` et `complete`, champ `cardBridges`) sont en cours de livraison.
+  `GET /api/signatures/mine/{signerId}/document`, `POST /api/signatures/mine/{signerId}/signed-document`. Signature
+  dans la page : champ `cardBridges` des deux lectures, puis `POST …/card-signature/prepare` et
+  `POST …/card-signature/complete` sous les deux mêmes préfixes.
 - **Limites.** Aucun PDF signé avec une vraie carte n'a encore été vérifié, et aucun pont n'a été essayé avec une
   vraie extension : les tests fabriquent leur hiérarchie de certificats et simulent l'extension. Le profil exact des
   certificats eID n'a pas été relu sur les sites officiels.

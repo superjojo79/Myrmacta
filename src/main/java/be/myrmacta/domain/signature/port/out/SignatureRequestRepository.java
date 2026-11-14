@@ -24,6 +24,13 @@ public interface SignatureRequestRepository {
 
     Optional<SignatureRequest> findById(UUID id);
 
+    /**
+     * Relit la demande en posant un verrou de ligne jusqu'à la fin de la transaction courante (TODO §138) :
+     * les téléversements d'une même demande se suivent. À appeler avant toute autre lecture de la demande
+     * dans la transaction.
+     */
+    Optional<SignatureRequest> findByIdForUpdate(UUID id);
+
     /** Retrouve la demande d'un événement du fournisseur (référence propre au fournisseur). */
     Optional<SignatureRequest> findByProviderReference(String providerReference);
 

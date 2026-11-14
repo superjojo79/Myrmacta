@@ -355,7 +355,7 @@ app:
         encryption-key-id: ${APP_PORTAL_STRONG_AUTH_ENCRYPTION_KEY_ID:}
   signature:
     # TODO §72, §109. provider : none (défaut : fonctionnalité absente, un bloc signature est
-    # refusé au déploiement) | stub (simulation, sans valeur juridique) | yousign | docusign.
+    # refusé au déploiement) | stub (simulation, sans valeur juridique) | yousign | docusign | eid.
     # Les secrets des fournisseurs réels sont des champs du connecteur signature, pas des
     # variables d'environnement. Le stub ne démarre sans drapeau que sous le profil local ou
     # test (D-SIGNATURE-STUB-GUARD).
@@ -375,6 +375,18 @@ app:
       poll-delay: 15s
       max-attempts: 20
       batch-size: 50
+    # TODO §138 : provider=eid, signature qualifiée par carte eID belge sans agent sur le poste. Le signataire signe le PDF
+    # hors de l'application et le téléverse ; l'instance le vérifie. trust-anchors-file : fichier PEM des autorités de
+    # confiance (racines et intermédiaires) choisies par l'exploitant, obligatoire avec provider=eid (démarrage refusé sinon).
+    eid:
+      trust-anchors-file: ${APP_SIGNATURE_EID_TRUST_ANCHORS_FILE:}
+      # Taille maximale d'un PDF signé téléversé. Défaut : max-document-bytes + 2 Mio. La limite multipart globale
+      # (spring.servlet.multipart, 25 Mo) s'applique avant elle.
+      max-upload-bytes: ${APP_SIGNATURE_EID_MAX_UPLOAD_BYTES:0}
+      # Appel sortant vers l'état de révocation du certificat (OCSP, sinon CRL) : délai total et taille de réponse maximale.
+      revocation:
+        timeout: ${APP_SIGNATURE_EID_REVOCATION_TIMEOUT:10s}
+        max-response-bytes: ${APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES:1048576}
   dossier:
     attachment:
       # Taille max : app.storage n'a pas de borne dédiée, la seule limite est

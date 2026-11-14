@@ -5,10 +5,14 @@ import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
 import be.myrmacta.infrastructure.signature.DocusignSignatureAdapter;
 import be.myrmacta.infrastructure.signature.SignatureStubGuard;
 import be.myrmacta.infrastructure.signature.StubSignatureAdapter;
 import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.EidSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.EidTrustAnchors;
+import be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Set;
@@ -76,6 +80,35 @@ public class SignatureConfig {
         return new DocusignSignatureAdapter(tenantProperties.id(), instances, portal.publicBaseUrl());
     }
 
+    /**
+     * TODO §138 (D-EID-TRUST) — autorités de confiance du fournisseur {@code eid}, lues au démarrage : un
+     * fichier absent, illisible ou sans certificat fait échouer le contexte avec un message explicite. Le
+     * vérificateur ({@link SignedPdfVerifier}) les prend en paramètre.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    EidTrustAnchors eidTrustAnchors(SignatureProperties properties) {
+        return EidTrustAnchors.load(properties.eid().trustAnchorsFile());
+    }
+
+    /**
+     * TODO §138 (D-EID-UPLOAD) — signature par carte eID : le signataire téléverse le PDF qu'il a signé, que le
+     * {@link SignedPdfVerifier} vérifie. Le vérificateur est un bean à part (bibliothèque de validation).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    SignaturePort eidSignaturePort(
+            TenantProperties tenantProperties,
+            SignatureRequestRepository repository,
+            SignedUploadRepository uploads,
+            DocumentStoragePort storage,
+            SignedPdfVerifier verifier,
+            EidTrustAnchors trustAnchors) {
+        LOG.info("Signature provider eid active: {} trusted certificate authorities.",
+                trustAnchors.certificates().size());
+        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier);
+    }
+
     @Bean
     SignatureAvailabilityPort signatureAvailabilityPort(SignatureProperties properties, PortalProperties portal) {
         return new SignatureAvailabilityPort() {
@@ -107,6 +140,11 @@ public class SignatureConfig {
             @Override
             public long maxDocumentBytes() {
                 return properties.maxDocumentBytes();
+            }
+
+            @Override
+            public long maxSignedUploadBytes() {
+                return properties.eid().maxUploadBytes();
             }
         };
     }

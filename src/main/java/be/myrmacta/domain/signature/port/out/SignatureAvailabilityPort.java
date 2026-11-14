@@ -18,4 +18,7 @@ public interface SignatureAvailabilityPort {
     int maxDeadlineDays();
 
     long maxDocumentBytes();
+
+    /** Taille maximale d'un PDF signé téléversé (TODO §138, D-EID-UPLOAD) : celle de la source, plus les signatures. */
+    long maxSignedUploadBytes();
 }

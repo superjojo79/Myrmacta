@@ -19,6 +19,7 @@ import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.signature.InMemorySignatureRepository;
+import be.myrmacta.domain.signature.SignatureFixtures;
 import be.myrmacta.domain.signature.SignatureAccessResolver;
 import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignatureRequest;
@@ -35,20 +36,26 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Contexte du portail : lien demandé à l'ouverture (TODO §109, D-SIGNATURE-LINK). */
+/** Contexte et document du portail : lien demandé à l'ouverture (TODO §109, D-SIGNATURE-LINK). */
 class GetSignatureUseCaseImplTest {
 
     private final InMemorySignatureRepository repository = new InMemorySignatureRepository();
     private final PortalTokenPort tokenPort = mock(PortalTokenPort.class);
     private final DossierRepository dossiers = mock(DossierRepository.class);
     private final SignaturePort port = mock(SignaturePort.class);
+    private final DocumentStoragePort storage = mock(DocumentStoragePort.class);
+    private final DossierElementRepository elements = mock(DossierElementRepository.class);
+    private final be.myrmacta.domain.signature.InMemorySignedUploadRepository uploads =
+            new be.myrmacta.domain.signature.InMemorySignedUploadRepository(repository);
     private GetSignatureUseCaseImpl useCase;
     private SignatureRequest request;
 
     @BeforeEach
     void setUp() {
         when(tokenPort.hash(any())).thenAnswer(inv -> "hash:" + inv.getArgument(0));
-        request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("yousign:1")
+        request = request(UUID.randomUUID(), SignatureMode.PARALLEL, "proc-1",
+                        be.myrmacta.domain.signature.SignatureWorkingDocuments.digestOf(SOURCE))
+                .withProviderReference("yousign:1")
                 .withSimulation(false, "ELECTRONIC");
         repository.insert(request, List.of(external(request.id(), 0, true, "a@example.org")
                 .withStatus(SignerStatus.PENDING).withToken("hash:tok")));
@@ -57,8 +64,13 @@ class GetSignatureUseCaseImplTest {
                 null, null, null)));
         SignatureAccessResolver resolver = new SignatureAccessResolver(repository, tokenPort, dossiers,
                 Clock.fixed(NOW, ZoneOffset.UTC));
-        useCase = new GetSignatureUseCaseImpl(TENANT, resolver, mock(DossierElementRepository.class),
-                mock(DocumentStoragePort.class), port);
+        when(elements.findByIdAndTenantId(request.sourceElementId(), TENANT)).thenReturn(Optional.of(
+                new be.myrmacta.domain.dossier.model.DossierElement(request.sourceElementId(), request.dossierId(), TENANT,
+                        be.myrmacta.domain.dossier.model.ElementType.PRODUCED_DOC, "Contrat", "storage/doc.pdf",
+                        Map.of(), "system", NOW, null)));
+        when(storage.retrieve(TENANT, "storage/doc.pdf")).thenReturn(SOURCE);
+        when(storage.retrieve(TENANT, "work-1")).thenReturn(SIGNED);
+        useCase = new GetSignatureUseCaseImpl(TENANT, resolver, elements, storage, port, uploads);
     }
 
     @Test
@@ -95,5 +107,55 @@ class GetSignatureUseCaseImplTest {
         assertThat(context.hosted()).isFalse();
         assertThat(context.signingUrl()).isNull();
         verify(port, never()).signingUrl(any(), anyInt());
+    }
+
+    private static final byte[] SOURCE = "%PDF-source".getBytes();
+    private static final byte[] SIGNED = "%PDF-source-signed".getBytes();
+
+    private void upload(String ref, byte[] content, int sequence) {
+        uploads.save(new be.myrmacta.domain.signature.model.SignedUpload(UUID.randomUUID(), TENANT, request.id(),
+                UUID.randomUUID(), sequence, ref, be.myrmacta.domain.signature.SignatureWorkingDocuments.digestOf(content),
+                new be.myrmacta.domain.signature.model.SignedUploadEvidence("A", "CA", "1", "fp" + sequence, null, NOW,
+                        "PAdES", "RSA", true, true, "OCSP", NOW),
+                NOW));
+    }
+
+    @Test
+    void signedUploadProviderContextAnnouncesTheUpload() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+
+        GetSignatureUseCase.Context context = useCase.context("tok");
+
+        assertThat(context.signedUpload()).isTrue();
+        assertThat(context.hosted()).isFalse();
+    }
+
+    @Test
+    void theDocumentIsTheSourceThenTheLastAcceptedUpload() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        assertThat(useCase.document("tok").content()).isEqualTo(SOURCE);
+
+        upload("work-1", SIGNED, 1);
+
+        GetSignatureUseCase.DocumentContent current = useCase.document("tok");
+        assertThat(current.content()).isEqualTo(SIGNED);
+        assertThat(current.contentType()).isEqualTo("application/pdf");
+    }
+
+    @Test
+    void aTamperedWorkingDocumentClosesTheAccess() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        upload("work-1", "%PDF-other".getBytes(), 1);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> useCase.document("tok"))
+                .isInstanceOf(be.myrmacta.domain.workflow.portal.model.PortalAccessDeniedException.class);
+    }
+
+    @Test
+    void otherProvidersKeepServingTheSourceWithoutReadingUploads() {
+        when(port.capabilities()).thenReturn(capabilities(true));
+        upload("work-1", SIGNED, 1);
+
+        assertThat(useCase.document("tok").content()).isEqualTo(SOURCE);
     }
 }

@@ -1,0 +1,145 @@
+databaseChangeLog:
+  - changeSet:
+      id: 051-signature-signed-upload
+      author: myrmacta
+      comment: >-
+        TODO §138 (D-EID-UPLOAD, D-EID-CHAIN, D-EID-EVIDENCE) — PDF signés hors de Myrmacta puis téléversés :
+        un par signataire accepté, dans l'ordre (document de travail de la demande = le dernier). Les constats
+        de la vérification sont gardés pour la preuve ; jamais le numéro de registre national (D-EID-NRN).
+        Unicité (request_id, sequence_number) : un seul document courant ; unicité
+        (request_id, certificate_fingerprint) : un certificat ne signe qu'une fois par demande. Supprimé avec
+        la demande (ON DELETE CASCADE) ; le blob storage_ref n'est pas un élément du dossier et est supprimé
+        par la purge.
+      changes:
+        - createTable:
+            tableName: signature_signed_upload
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_signature_signed_upload
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: signer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence_number
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_ref
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: digest
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: signer_name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: certificate_issuer
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: certificate_serial
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: certificate_fingerprint
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: signing_time
+                  type: timestamp with time zone
+              - column:
+                  name: verified_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: signature_format
+                  type: varchar(64)
+              - column:
+                  name: signature_algorithm
+                  type: varchar(64)
+              - column:
+                  name: qualified_certificate
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: qualified_device
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revocation_source
+                  type: varchar(16)
+              - column:
+                  name: revocation_produced_at
+                  type: timestamp with time zone
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: signature_signed_upload
+            baseColumnNames: request_id
+            referencedTableName: signature_request
+            referencedColumnNames: id
+            constraintName: fk_signature_signed_upload_request
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: signature_signed_upload
+            baseColumnNames: signer_id
+            referencedTableName: signature_signer
+            referencedColumnNames: id
+            constraintName: fk_signature_signed_upload_signer
+            onDelete: CASCADE
+        - createIndex:
+            tableName: signature_signed_upload
+            indexName: ux_signature_signed_upload_sequence
+            unique: true
+            columns:
+              - column:
+                  name: request_id
+              - column:
+                  name: sequence_number
+        - createIndex:
+            tableName: signature_signed_upload
+            indexName: ux_signature_signed_upload_certificate
+            unique: true
+            columns:
+              - column:
+                  name: request_id
+              - column:
+                  name: certificate_fingerprint
+      rollback:
+        - dropTable:
+            tableName: signature_signed_upload

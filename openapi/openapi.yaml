@@ -1006,6 +1006,36 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TaskQuestionSchemaResponse"
+  /api/signatures/mine/{signerId}/signed-document:
+    post:
+      tags:
+      - my-signatures-controller
+      operationId: signedDocument
+      parameters:
+      - name: signerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
   /api/signatures/mine/{signerId}/sign:
     post:
       tags:
@@ -1138,6 +1168,35 @@ paths:
       responses:
         "200":
           description: OK
+  /api/portal/signature/signed-document:
+    post:
+      tags:
+      - signature-portal-controller
+      operationId: signedDocument_1
+      parameters:
+      - name: X-Portal-Token
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignatureDecisionResponse"
   /api/portal/signature/sign:
     post:
       tags:
@@ -6418,6 +6477,8 @@ components:
           type: boolean
         hosted:
           type: boolean
+        signedUpload:
+          type: boolean
         signingUrl:
           type:
           - string
@@ -6796,6 +6857,8 @@ components:
         simulated:
           type: boolean
         hosted:
+          type: boolean
+        signedUpload:
           type: boolean
         signingUrl:
           type:

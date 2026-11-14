@@ -94,8 +94,9 @@ public final class SignatureOutcomeHandler {
         metrics.outcome(outcome);
         List<String> stored = new ArrayList<>();
         // TODO §109 — Yousign exige une réponse en moins d'une seconde : le PDF est téléchargé
-        // par le répartiteur, qui reprend ensuite le process. Le stub reste synchrone.
-        boolean deferToDispatcher = outcome == SignatureOutcome.SIGNED && port.capabilities().hostedSigningUrl();
+        // par le répartiteur, qui reprend ensuite le process. Le fournisseur eid y produit aussi le document
+        // final et la preuve, avec ses reprises (TODO §138). Le stub reste synchrone.
+        boolean deferToDispatcher = outcome == SignatureOutcome.SIGNED && port.capabilities().artifactsDeferred();
         try {
             if (outcome == SignatureOutcome.SIGNED && !deferToDispatcher) {
                 attachArtifacts(closed, stored);
@@ -130,12 +131,13 @@ public final class SignatureOutcomeHandler {
     }
 
     /**
-     * Télécharge le PDF et la preuve d'une demande hébergée déjà {@code SIGNED}, une seule fois.
-     * Appelé par le répartiteur, hors du webhook (TODO §109, D-SIGNATURE-WEBHOOK).
+     * Produit le PDF signé et la preuve d'une demande déjà {@code SIGNED} dont le fournisseur les livre hors de
+     * la décision (hébergé, ou PDF apporté), une seule fois. Appelé par le répartiteur, hors du webhook
+     * (TODO §109, D-SIGNATURE-WEBHOOK, TODO §138).
      */
     public void ensureSignedArtifacts(SignatureRequest request) {
         if (request.status() != be.myrmacta.domain.signature.model.SignatureStatus.SIGNED
-                || !port.capabilities().hostedSigningUrl()
+                || !port.capabilities().artifactsDeferred()
                 || artifactsStored(request)) {
             return;
         }

@@ -1,17 +1,24 @@
 package be.myrmacta.infrastructure.persistence.signature;
 
 import be.myrmacta.domain.signature.model.SignatureStatus;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface SpringDataSignatureRequestRepository extends JpaRepository<SignatureRequestJpaEntity, UUID> {
+
+    /** Verrou de la ligne jusqu'à la fin de la transaction : les téléversements d'une demande se suivent (TODO §138). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from SignatureRequestJpaEntity r where r.id = :id")
+    Optional<SignatureRequestJpaEntity> lockById(@Param("id") UUID id);
 
     Optional<SignatureRequestJpaEntity> findFirstByProviderReference(String providerReference);
 

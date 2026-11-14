@@ -22,7 +22,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * TODO §72 US-10 — « Mes signatures » (chaîne BFF authentifiée, CSRF). L'identité vient de la session,
@@ -74,6 +76,17 @@ class MySignaturesController {
                 accessContextFactory.user(authentication), signerId, DecideSignatureUseCase.Choice.SIGN, null));
     }
 
+    /**
+     * TODO §138 — le signataire téléverse le PDF qu'il a signé hors de Myrmacta (multipart, partie {@code file}).
+     * Pas de transaction ici : la vérification joint le réseau, le use case ouvre la sienne pour enregistrer.
+     */
+    @PostMapping(path = "/{signerId}/signed-document", consumes = "multipart/form-data")
+    SignatureDecisionResponse signedDocument(
+            @PathVariable UUID signerId, @RequestParam("file") MultipartFile file, Authentication authentication) {
+        return SignatureDecisionResponse.from(useCase.submitSigned(
+                accessContextFactory.user(authentication), signerId, new MultipartSignedUpload(file)));
+    }
+
     @PostMapping("/{signerId}/decline")
     @Transactional
     SignatureDecisionResponse decline(
@@ -104,10 +117,12 @@ class MySignaturesController {
             Instant deadlineAt,
             boolean simulated,
             boolean hosted,
+            boolean signedUpload,
             @Schema(nullable = true) String signingUrl) {
         static MySignatureItemResponse from(MySignaturesUseCase.Item item) {
             return new MySignatureItemResponse(item.signerId(), item.dossierId(), item.dossierReference(), item.documentLabel(),
-                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated(), item.hosted(), item.signingUrl());
+                    item.required(), item.myTurn(), item.deadlineAt(), item.simulated(), item.hosted(),
+                    item.signedUpload(), item.signingUrl());
         }
     }
 }

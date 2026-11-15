@@ -28,7 +28,12 @@ export default {
     mergedInto: 'Fusionné vers',
     mergedFrom: 'Fusionné depuis',
   },
-  workflows: { title: 'Workflows', empty: 'Aucun workflow.', ongoing: 'en cours' },
+  workflows: {
+    title: 'Workflows',
+    empty: 'Aucun workflow.',
+    ongoing: 'en cours',
+    select: 'Afficher le workflow {key} n°{sequence}',
+  },
   fieldsEditor: { title: 'Champs', save: 'Enregistrer les champs' },
   pieceTypes: {
     legend: 'Types de pièces justificatives',

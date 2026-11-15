@@ -360,9 +360,12 @@ Depuis la fiche dossier (`/dossiers/{id}`), bouton **Démarrer workflow** :
 
 Toujours sur la fiche dossier :
 
+- **Workflows** — liste des exécutions rattachées au dossier. Cliquer une entrée affiche son
+  diagramme et son historique. Par défaut : l'exécution active, sinon la plus récente (y compris
+  après clôture du processus — TODO §141).
 - **Diagramme BPMN** — vue en lecture seule (bpmn-js), avec surbrillance des étapes actives,
-  terminées et en erreur. Affiché uniquement si une instance de workflow est démarrée sur ce
-  dossier.
+  terminées et en erreur. Pour une exécution terminée, le chemin parcouru reste visible
+  (`completedIds`, plus d'étape active).
 - **Tâches** — liste des tâches humaines en cours, bouton **Compléter**. L'assigné s'affiche par
   son nom quand il est connu (« vous » pour soi-même).
   - **M'assigner** — tout utilisateur qui peut modifier le dossier (ACL **EDIT** du type, ou rôle

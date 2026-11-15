@@ -129,6 +129,29 @@ class FlowableWorkflowVisualizationAdapterTest {
                 .isInstanceOf(WorkflowProcessInstanceNotFoundException.class);
     }
 
+    /** TODO §141 (D-VIZ-ENDED) — instance terminée : XML + chemin parcouru, pas d'actifs. */
+    @Test
+    void getDiagram_finishedProcess_returnsCompletedPathWithoutActiveIds() {
+        stubFinishedProcess();
+        HistoricActivityInstance completed = activity("start", null, new Date(), null);
+        HistoricActivityInstance task = activity("smokeTask", null, new Date(), null);
+        HistoricActivityInstanceQuery activityQuery = mock(HistoricActivityInstanceQuery.class);
+        when(historyService.createHistoricActivityInstanceQuery()).thenReturn(activityQuery);
+        when(activityQuery.processInstanceId(PI)).thenReturn(activityQuery);
+        when(activityQuery.activityTenantId(TENANT)).thenReturn(activityQuery);
+        when(activityQuery.list()).thenReturn(List.of(completed, task));
+        when(repositoryService.getProcessModel(DEF))
+                .thenReturn(new ByteArrayInputStream("<xml/>".getBytes(StandardCharsets.UTF_8)));
+
+        WorkflowDiagramView view = adapter.getDiagram(PI, TENANT);
+
+        assertThat(view.bpmnXml()).isEqualTo("<xml/>");
+        assertThat(view.activeIds()).isEmpty();
+        assertThat(view.completedIds()).containsExactly("start", "smokeTask");
+        verify(runtimeService, never()).getActiveActivityIds(PI);
+        verify(incidentPort, never()).listByProcessInstance(PI, TENANT);
+    }
+
     /** TODO §131 (D-HISTORY-SIGNIFICANT) — pagination sur le sous-ensemble filtré, lecture Flowable bornée. */
     @Test
     void getHistory_filtersTechnicalStepsThenPaginates() {
@@ -324,6 +347,22 @@ class FlowableWorkflowVisualizationAdapterTest {
         when(runtimeQuery.processInstanceTenantId(TENANT)).thenReturn(runtimeQuery);
         when(runtimeQuery.singleResult()).thenReturn(runtime);
         when(runtime.getProcessDefinitionId()).thenReturn(DEF);
+    }
+
+    private void stubFinishedProcess() {
+        ProcessInstanceQuery runtimeQuery = mock(ProcessInstanceQuery.class);
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(runtimeQuery);
+        when(runtimeQuery.processInstanceId(PI)).thenReturn(runtimeQuery);
+        when(runtimeQuery.processInstanceTenantId(TENANT)).thenReturn(runtimeQuery);
+        when(runtimeQuery.singleResult()).thenReturn(null);
+
+        HistoricProcessInstanceQuery historicQuery = mock(HistoricProcessInstanceQuery.class);
+        HistoricProcessInstance historic = mock(HistoricProcessInstance.class);
+        when(historyService.createHistoricProcessInstanceQuery()).thenReturn(historicQuery);
+        when(historicQuery.processInstanceId(PI)).thenReturn(historicQuery);
+        when(historicQuery.processInstanceTenantId(TENANT)).thenReturn(historicQuery);
+        when(historicQuery.singleResult()).thenReturn(historic);
+        when(historic.getProcessDefinitionId()).thenReturn(DEF);
     }
 
     private static HistoricActivityInstance activity(

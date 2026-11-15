@@ -30,7 +30,12 @@ const dossier: typeof fr = {
     mergedInto: 'Merged into',
     mergedFrom: 'Merged from',
   },
-  workflows: { title: 'Workflows', empty: 'No workflow.', ongoing: 'ongoing' },
+  workflows: {
+    title: 'Workflows',
+    empty: 'No workflow.',
+    ongoing: 'ongoing',
+    select: 'Show workflow {key} #{sequence}',
+  },
   fieldsEditor: { title: 'Fields', save: 'Save the fields' },
   pieceTypes: {
     legend: 'Supporting-document types',

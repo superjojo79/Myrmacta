@@ -17,26 +17,45 @@ import org.springframework.web.servlet.resource.ResourceTransformerChain;
 /** TODO §68 T-SEC-5 — le repli d'une route /portal/** ne sert jamais le SPA interne. */
 class SpaFallbackConfigTest {
 
-    private final SpaFallbackConfig.SpaResourceResolver resolver = new SpaFallbackConfig.SpaResourceResolver();
     private final Resource staticRoot = new ClassPathResource("/does-not-exist/");
 
-    private String fallbackFor(String path) throws IOException {
-        Resource resource = resolver.getResource(path, staticRoot);
-        return resource == null ? null : ((ClassPathResource) resource).getPath();
+    private static String fallbackFor(String path) {
+        return SpaFallbackConfig.SpaResourceResolver.entryPoint(path);
     }
 
     @Test
-    void portalRoutes_fallBackToThePortalEntryPoint() throws IOException {
+    void portalRoutes_fallBackToThePortalEntryPoint() {
         assertThat(fallbackFor("portal")).isEqualTo("static/portal/index.html");
         assertThat(fallbackFor("portal/")).isEqualTo("static/portal/index.html");
         assertThat(fallbackFor("portal/some/deep/route")).isEqualTo("static/portal/index.html");
     }
 
     @Test
-    void internalRoutes_fallBackToTheInternalSpa_andApiIsNeverFallenBack() throws IOException {
+    void internalRoutes_fallBackToTheInternalSpa_andApiIsNeverFallenBack() {
         assertThat(fallbackFor("dossiers/123")).isEqualTo("static/index.html");
         assertThat(fallbackFor("portalx/route")).isEqualTo("static/index.html");
         assertThat(fallbackFor("api/portal/unknown")).isNull();
+    }
+
+    /** Issue #95 — un point d'entrée absent ne doit pas être renvoyé, même si le vrai fichier est construit. */
+    @Test
+    void missingEntryPoint_isNotResolved() throws IOException {
+        SpaFallbackConfig.SpaResourceResolver missing = new SpaFallbackConfig.SpaResourceResolver(
+                path -> new ClassPathResource("missing/" + path));
+        assertThat(missing.getResource("dossiers/123", staticRoot)).isNull();
+        assertThat(missing.getResource("portal/some/deep/route", staticRoot)).isNull();
+        assertThat(missing.getResource("api/portal/unknown", staticRoot)).isNull();
+    }
+
+    /** Une ressource lisible est servie ; {@code api/} ne replie jamais, même si le chargeur en fournirait une. */
+    @Test
+    void readableEntryPoint_isServed_andApiIsNeverFallenBack() throws IOException {
+        Resource readable = new ByteArrayResource("ok".getBytes(StandardCharsets.UTF_8));
+        SpaFallbackConfig.SpaResourceResolver resolver =
+                new SpaFallbackConfig.SpaResourceResolver(path -> readable);
+        assertThat(resolver.getResource("dossiers/123", staticRoot)).isSameAs(readable);
+        assertThat(resolver.getResource("portal/some/deep/route", staticRoot)).isSameAs(readable);
+        assertThat(resolver.getResource("api/portal/unknown", staticRoot)).isNull();
     }
 
     // --- DD-BASE : <base href> du SPA = context-path de l'instance ---

@@ -35,6 +35,7 @@ class OpenApiDisabledApiTest {
     }
 
     private static void assertNotOpenApiDocument(MvcResult result) throws Exception {
+        assertNotServerError(result);
         String type = result.getResponse().getContentType();
         String body = result.getResponse().getContentAsString();
         boolean openApiJson = result.getResponse().getStatus() == 200
@@ -48,9 +49,18 @@ class OpenApiDisabledApiTest {
     }
 
     private static void assertNotSwaggerUi(MvcResult result) throws Exception {
+        assertNotServerError(result);
         String body = result.getResponse().getContentAsString();
         if (result.getResponse().getStatus() == 200 && body.contains("Swagger UI")) {
             throw new AssertionError("Swagger UI must not return 200 when disabled");
+        }
+    }
+
+    /** Issue #95 — sans index.html construit, le repli SPA répond 404, pas une erreur serveur. */
+    private static void assertNotServerError(MvcResult result) {
+        int status = result.getResponse().getStatus();
+        if (status >= 500) {
+            throw new AssertionError("disabled OpenAPI route must not fail the request, status " + status);
         }
     }
 

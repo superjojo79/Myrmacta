@@ -68,7 +68,7 @@ class SignaturePropertiesTest {
     void eidBlockIsKeptAndValidated() {
         SignatureProperties p = new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
                 new SignatureProperties.Eid(" /etc/anchors.pem ", 5000,
-                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048), null, null));
+                        new SignatureProperties.Revocation(Duration.ofSeconds(3), 2048), null, null, false));
 
         assertThat(p.eid().trustAnchorsFile()).isEqualTo("/etc/anchors.pem");
         assertThat(p.eid().maxUploadBytes()).isEqualTo(5000);
@@ -76,7 +76,7 @@ class SignaturePropertiesTest {
         assertThat(p.eid().revocation().maxResponseBytes()).isEqualTo(2048);
 
         assertThatThrownBy(() -> new SignatureProperties("eid", null, 0, null, null, 1000, null, null, null,
-                        new SignatureProperties.Eid(null, 500, null, null, null)))
+                        new SignatureProperties.Eid(null, 500, null, null, null, false)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("max-upload-bytes");
         assertThatThrownBy(() -> new SignatureProperties.Revocation(Duration.ZERO, 0))
@@ -101,7 +101,30 @@ class SignaturePropertiesTest {
 
     private static SignatureProperties.Eid eidWith(List<String> bridges) {
         return new SignatureProperties("eid", null, 0, null, null, 0, null, null, null,
-                        new SignatureProperties.Eid(null, 0, null, null, bridges))
+                        new SignatureProperties.Eid(null, 0, null, null, bridges, true))
                 .eid();
+    }
+
+    @Test
+    void theUploadOfASignedPdfIsOffByDefault() {
+        // TODO §138 : désactivé par défaut, la signature dans la page par pont reste offerte
+        assertThat(of("eid", null, null).eid().uploadEnabled()).isFalse();
+        assertThat(of("eid", null, null).eid().bridges()).isNotEmpty();
+    }
+
+    @Test
+    void eidWithoutUploadNorBridgeOffersNoWayToSignAndRefusesToStart() {
+        assertThatThrownBy(() -> new SignatureProperties("eid", null, 0, null, null, 0, null, null, null,
+                        new SignatureProperties.Eid(null, 0, null, null, List.of(), false)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("upload-enabled")
+                .hasMessageContaining("bridges");
+        // l'un ou l'autre suffit ; un autre fournisseur n'est pas concerné
+        assertThat(new SignatureProperties("eid", null, 0, null, null, 0, null, null, null,
+                        new SignatureProperties.Eid(null, 0, null, null, List.of(), true)).eid().bridges())
+                .isEmpty();
+        assertThat(new SignatureProperties("stub", null, 0, null, null, 0, null, null, null,
+                        new SignatureProperties.Eid(null, 0, null, null, List.of(), false)).eid().uploadEnabled())
+                .isFalse();
     }
 }

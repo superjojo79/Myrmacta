@@ -83,14 +83,14 @@ public final class CardSignatureUseCaseImpl implements CardSignatureUseCase {
     public DecideSignatureUseCase.Result completeByToken(String token, Completion completion) {
         ResolvedAccess access = accessResolver.resolve(token);
         SignedPdf pdf = assemble(access.request(), access.signer(), completion);
-        return submitUseCase.submitByToken(token, SubmitSignedDocumentUseCase.Upload.of(pdf.content()));
+        return submitUseCase.submitAssembledByToken(token, SubmitSignedDocumentUseCase.Upload.of(pdf.content()));
     }
 
     @Override
     public DecideSignatureUseCase.Result completeInternal(String userId, UUID signerId, Completion completion) {
         InternalAccess access = accessResolver.resolveInternal(userId, signerId);
         SignedPdf pdf = assemble(access.request(), access.signer(), completion);
-        return submitUseCase.submitInternal(userId, signerId, SubmitSignedDocumentUseCase.Upload.of(pdf.content()));
+        return submitUseCase.submitAssembledInternal(userId, signerId, SubmitSignedDocumentUseCase.Upload.of(pdf.content()));
     }
 
     private Prepared prepare(SignatureRequest request, Signer signer, CardInput input) {

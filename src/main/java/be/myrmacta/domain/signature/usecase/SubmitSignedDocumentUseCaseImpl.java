@@ -13,6 +13,7 @@ import be.myrmacta.domain.signature.model.Signer;
 import be.myrmacta.domain.signature.model.SignerStatus;
 import be.myrmacta.domain.signature.model.SignedUpload;
 import be.myrmacta.domain.signature.model.SignedUploadEvidence;
+import be.myrmacta.domain.signature.model.SignedUploadDisabledException;
 import be.myrmacta.domain.signature.model.SignedUploadRejectedException;
 import be.myrmacta.domain.signature.model.SignedUploadRejection;
 import be.myrmacta.domain.signature.model.SignedUploadTooLargeException;
@@ -91,13 +92,35 @@ public final class SubmitSignedDocumentUseCaseImpl implements SubmitSignedDocume
     @Override
     public DecideSignatureUseCase.Result submitByToken(String token, Upload upload) {
         ResolvedAccess access = accessResolver.resolve(token);
+        requireUploadEnabled(access.request(), access.signer());
+        return submit(access.request(), access.signer(), upload);
+    }
+
+    @Override
+    public DecideSignatureUseCase.Result submitAssembledByToken(String token, Upload upload) {
+        ResolvedAccess access = accessResolver.resolve(token);
+        return submit(access.request(), access.signer(), upload);
+    }
+
+    @Override
+    public DecideSignatureUseCase.Result submitAssembledInternal(String userId, UUID signerId, Upload upload) {
+        InternalAccess access = accessResolver.resolveInternal(userId, signerId);
         return submit(access.request(), access.signer(), upload);
     }
 
     @Override
     public DecideSignatureUseCase.Result submitInternal(String userId, UUID signerId, Upload upload) {
         InternalAccess access = accessResolver.resolveInternal(userId, signerId);
+        requireUploadEnabled(access.request(), access.signer());
         return submit(access.request(), access.signer(), upload);
+    }
+
+    /** Après l'accès (refus uniforme prioritaire), avant toute lecture du fichier : l'exploitant a coupé ce parcours. */
+    private void requireUploadEnabled(SignatureRequest request, Signer signer) {
+        accessResolver.requireOpen(request, signer);
+        if (!availability.signedUploadEnabled()) {
+            throw new SignedUploadDisabledException();
+        }
     }
 
     private DecideSignatureUseCase.Result submit(SignatureRequest request, Signer signer, Upload upload) {

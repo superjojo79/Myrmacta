@@ -23,6 +23,13 @@ public interface SignatureAvailabilityPort {
     long maxSignedUploadBytes();
 
     /**
+     * Le téléversement d'un PDF signé hors de l'application est offert (TODO §138) ; faux par défaut. Distinct de la
+     * capacité {@code signedUpload} du port, qui reste vraie pour {@code eid} (clic « Signer » refusé, document de
+     * travail, signature dans la page).
+     */
+    boolean signedUploadEnabled();
+
+    /**
      * Ponts navigateur autorisés pour signer dans la page (TODO §138, D-EID-BRIDGE), dans l'ordre à essayer ; vide si
      * la signature dans la page n'est pas offerte.
      */

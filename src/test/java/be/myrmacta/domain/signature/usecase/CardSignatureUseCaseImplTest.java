@@ -83,7 +83,7 @@ class CardSignatureUseCaseImplTest {
         when(storage.retrieve(TENANT, "source")).thenReturn(SOURCE);
         when(port.prepareCardSignature(any())).thenReturn(new SignaturePort.CardSignatureDigest(new byte[] {5}, "SHA-256"));
         when(port.assembleCardSignature(any(), any())).thenReturn("%PDF-assembled".getBytes());
-        when(submit.submitByToken(any(), any())).thenReturn(new DecideSignatureUseCase.Result(
+        when(submit.submitAssembledByToken(any(), any())).thenReturn(new DecideSignatureUseCase.Result(
                 UUID.randomUUID(), be.myrmacta.domain.signature.model.SignerStatus.SIGNED, SignatureStatus.SIGNED));
         request = new SignatureRequest(UUID.randomUUID(), TENANT, UUID.randomUUID(), "proc-1", "signStep",
                 UUID.randomUUID(), "source", SignatureWorkingDocuments.digestOf(SOURCE), "eid", "eid:x",
@@ -131,7 +131,7 @@ class CardSignatureUseCaseImplTest {
         assertThat(given.getValue().signingTime()).isEqualTo(NOW);
         assertThat(uploads.uploads).isEmpty();
         assertThat(repository.findSigners(request.id())).isEqualTo(signers);
-        verify(submit, never()).submitByToken(any(), any());
+        verify(submit, never()).submitAssembledByToken(any(), any());
     }
 
     @Test
@@ -163,14 +163,14 @@ class CardSignatureUseCaseImplTest {
         assertThat(given.getValue().baseDocument()).isEqualTo(SOURCE);
         ArgumentCaptor<SubmitSignedDocumentUseCase.Upload> upload =
                 ArgumentCaptor.forClass(SubmitSignedDocumentUseCase.Upload.class);
-        verify(submit).submitByToken(org.mockito.ArgumentMatchers.eq("tok"), upload.capture());
+        verify(submit).submitAssembledByToken(org.mockito.ArgumentMatchers.eq("tok"), upload.capture());
         assertThat(upload.getValue().read()).isEqualTo("%PDF-assembled".getBytes());
     }
 
     @Test
     void internalSignerCompletesByIdentityAndAnotherUserIsRefused() {
         Signer bob = signers.get(1);
-        when(submit.submitInternal(any(), any(), any())).thenReturn(new DecideSignatureUseCase.Result(
+        when(submit.submitAssembledInternal(any(), any(), any())).thenReturn(new DecideSignatureUseCase.Result(
                 request.id(), be.myrmacta.domain.signature.model.SignerStatus.SIGNED, SignatureStatus.SIGNED));
 
         assertThatThrownBy(() -> useCase.prepareInternal("mallory", bob.id(), input()))
@@ -180,7 +180,7 @@ class CardSignatureUseCaseImplTest {
         assertThat(useCase.prepareInternal("bob", bob.id(), input()).documentDigest()).isEqualTo(sourceDigest());
         useCase.completeInternal("bob", bob.id(), completion(NOW, sourceDigest()));
 
-        verify(submit).submitInternal(org.mockito.ArgumentMatchers.eq("bob"), org.mockito.ArgumentMatchers.eq(bob.id()), any());
+        verify(submit).submitAssembledInternal(org.mockito.ArgumentMatchers.eq("bob"), org.mockito.ArgumentMatchers.eq(bob.id()), any());
     }
 
     @Test
@@ -189,7 +189,7 @@ class CardSignatureUseCaseImplTest {
                 .isInstanceOfSatisfying(SignedUploadRejectedException.class,
                         ex -> assertThat(ex.rejection()).isEqualTo(SignedUploadRejection.STALE_DOCUMENT));
         verify(port, never()).assembleCardSignature(any(), any());
-        verify(submit, never()).submitByToken(any(), any());
+        verify(submit, never()).submitAssembledByToken(any(), any());
     }
 
     @Test

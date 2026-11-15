@@ -53,7 +53,7 @@ public final class GetSignatureUseCaseImpl implements GetSignatureUseCase {
         boolean hosted = capabilities.hostedSigningUrl();
         return new Context(access.dossier().reference(), label, access.signer().displayName(),
                 access.signer().required(), request.deadlineAt(), request.simulated(), hosted,
-                capabilities.signedUpload(),
+                capabilities.signedUpload() && availability.signedUploadEnabled(),
                 capabilities.signedUpload() ? availability.cardBridges() : List.of(), signingUrl(hosted, request, access.signer().position()));
     }
 

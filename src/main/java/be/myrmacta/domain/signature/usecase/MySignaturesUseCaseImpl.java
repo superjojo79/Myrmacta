@@ -139,7 +139,7 @@ public final class MySignaturesUseCaseImpl implements MySignaturesUseCase {
         SignaturePort.SignatureProviderCapabilities capabilities = port.capabilities();
         return Optional.of(new Item(signer.id(), request.get().id(), dossier.get().id(), dossier.get().reference(),
                 label, signer.required(), myTurn, request.get().deadlineAt(), request.get().simulated(),
-                capabilities.hostedSigningUrl(), capabilities.signedUpload(),
+                capabilities.hostedSigningUrl(), capabilities.signedUpload() && availability.signedUploadEnabled(),
                 capabilities.signedUpload() ? availability.cardBridges() : List.of(), null));
     }
 

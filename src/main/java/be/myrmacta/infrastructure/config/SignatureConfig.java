@@ -155,6 +155,11 @@ public class SignatureConfig {
             SignatureProperties properties,
             PinnedRevocationTransport eidRevocationTransport) {
         DssDocumentTimestamper timestamper = eidTimestamper(properties, trustAnchors, eidRevocationTransport);
+        if (properties.eid().uploadEnabled()) {
+            LOG.warn("Signature upload of externally signed PDFs is ENABLED (app.signature.eid.upload-enabled=true): "
+                    + "this path is not considered safe against a malicious signer until its verification has been "
+                    + "reviewed and tested.");
+        }
         LOG.info("Signature provider eid active: {} trusted certificate authorities, document timestamp {}.",
                 trustAnchors.certificates().size(), timestamper == null ? "off" : "on");
         return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier, cardAssembler,
@@ -197,6 +202,11 @@ public class SignatureConfig {
             @Override
             public long maxSignedUploadBytes() {
                 return properties.eid().maxUploadBytes();
+            }
+
+            @Override
+            public boolean signedUploadEnabled() {
+                return properties.eid().uploadEnabled();
             }
 
             @Override

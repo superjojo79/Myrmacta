@@ -125,10 +125,14 @@ class GetSignatureUseCaseImplTest {
     @Test
     void signedUploadProviderContextAnnouncesTheUpload() {
         when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        when(availability.signedUploadEnabled()).thenReturn(true);
 
         GetSignatureUseCase.Context context = useCase.context("tok");
 
         assertThat(context.signedUpload()).isTrue();
+        // téléversement coupé par l'exploitant : le champ le dit, la capacité du port reste vraie (document courant servi)
+        when(availability.signedUploadEnabled()).thenReturn(false);
+        assertThat(useCase.context("tok").signedUpload()).isFalse();
         assertThat(context.hosted()).isFalse();
     }
 

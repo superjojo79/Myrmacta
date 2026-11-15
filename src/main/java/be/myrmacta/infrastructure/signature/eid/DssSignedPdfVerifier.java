@@ -181,11 +181,23 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
             }
             // Revue de clôture (HAUT 1, HAUT 3) : redéfinitions lues dans les tables de références croisées, et aire des
             // widgets de signature neufs, indépendamment du parcours d'objets de DSS.
-            String refusal = IncrementalUpdateCheck.refusal(baseReader.getPDDocument(), finalReader.getPDDocument(),
-                    limits.maxSignatureAreaFraction());
+            // Contre-revue (HAUT B) : sections de références ajoutées lues strictement par Myrmacta.
+            String refusal = AddedXrefSections.refusal(base, signed, baseReader.getPDDocument().getDocument().getXrefTable(),
+                    finalReader.getPDDocument().getDocument().getXrefTable());
+            if (refusal == null) {
+                refusal = IncrementalUpdateCheck.refusal(baseReader.getPDDocument(), finalReader.getPDDocument(),
+                        limits.maxSignatureAreaFraction());
+            }
             if (refusal == null && signedRevision != signed) {
                 refusal = IncrementalUpdateCheck.refusal(revisionReader.getPDDocument(), finalReader.getPDDocument(),
                         limits.maxSignatureAreaFraction());
+            }
+            // Contre-revue (HAUT A, C, D, E, F) : graphe final parcouru depuis le catalogue.
+            if (refusal == null) {
+                refusal = FinalGraphWalk.refusal(baseReader.getPDDocument(), finalReader.getPDDocument(), signedRevisionEnd);
+            }
+            if (refusal == null && signedRevision != signed) {
+                refusal = FinalGraphWalk.refusal(revisionReader.getPDDocument(), finalReader.getPDDocument(), -1);
             }
             if (refusal != null) {
                 log.info("eID signed upload refused: {}", refusal);

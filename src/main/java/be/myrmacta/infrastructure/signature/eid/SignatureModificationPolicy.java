@@ -113,7 +113,8 @@ final class SignatureModificationPolicy {
             return true;
         }
         // Profil de couleur d'une apparence visible, verrou de certification : création seulement.
-        if (creation && "Catalog".equals(parent) && isOneOf(last, "OutputIntents", "Perms")) {
+        // /Perms (certification /DocMDP) n'est plus admis : il ferait refuser tous les signataires suivants (BAS F).
+        if (creation && "Catalog".equals(parent) && isOneOf(last, "OutputIntents")) {
             return true;
         }
         return false;

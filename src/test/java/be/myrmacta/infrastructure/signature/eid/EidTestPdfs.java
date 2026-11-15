@@ -78,9 +78,25 @@ public final class EidTestPdfs {
 
     /** Options d'une signature faite avec DSS. */
     public record SignOptions(String subFilter, SignatureLevel level, boolean visible, Instant signingTime,
-            EidTestPki pkiForExtension, EidTestPki.FakeTransport revocationForExtension) {
+            EidTestPki pkiForExtension, EidTestPki.FakeTransport revocationForExtension, float[] fieldBox, boolean certify) {
         public SignOptions(String subFilter, SignatureLevel level, boolean visible, Instant signingTime, EidTestPki pkiForExtension) {
-            this(subFilter, level, visible, signingTime, pkiForExtension, null);
+            this(subFilter, level, visible, signingTime, pkiForExtension, null, null, false);
+        }
+
+        public SignOptions(String subFilter, SignatureLevel level, boolean visible, Instant signingTime, EidTestPki pkiForExtension,
+                EidTestPki.FakeTransport revocationForExtension) {
+            this(subFilter, level, visible, signingTime, pkiForExtension, revocationForExtension, null, false);
+        }
+
+        /** Signature visible au cadre donné (DSS : origine en haut à gauche, en points). */
+        public SignOptions visibleAt(float originX, float originY, float width, float height) {
+            return new SignOptions(subFilter, level, true, signingTime, pkiForExtension, revocationForExtension,
+                    new float[] {originX, originY, width, height}, certify);
+        }
+
+        /** Signature de certification {@code /DocMDP P=1} (crée {@code /Perms}). */
+        public SignOptions certifying() {
+            return new SignOptions(subFilter, level, visible, signingTime, pkiForExtension, revocationForExtension, fieldBox, true);
         }
 
         /** Révocation embarquée par l'extension LT/LTA, servie par ce transport (par défaut celui de la hiérarchie). */
@@ -177,13 +193,17 @@ public final class EidTestPdfs {
         parameters.setCertificateChain(chain);
         parameters.bLevel().setSigningDate(Date.from(options.signingTime()));
         parameters.setSubFilter(options.subFilter());
+        if (options.certify()) {
+            parameters.setPermission(eu.europa.esig.dss.enumerations.CertificationPermission.NO_CHANGE_PERMITTED);
+        }
         if (options.visible()) {
             SignatureImageParameters image = new SignatureImageParameters();
             SignatureFieldParameters field = new SignatureFieldParameters();
-            field.setOriginX(300);
-            field.setOriginY(600);
-            field.setWidth(200);
-            field.setHeight(60);
+            float[] box = options.fieldBox() == null ? new float[] {300, 600, 200, 60} : options.fieldBox();
+            field.setOriginX(box[0]);
+            field.setOriginY(box[1]);
+            field.setWidth(box[2]);
+            field.setHeight(box[3]);
             image.setFieldParameters(field);
             SignatureImageTextParameters text = new SignatureImageTextParameters();
             text.setText("Signé par carte eID");
@@ -469,6 +489,166 @@ public final class EidTestPdfs {
             } catch (Exception ex) {
                 throw new IllegalStateException("test TSA failed", ex);
             }
+        };
+    }
+
+    // --- révisions forgées à la main (contre-revue : graphes neufs, entrées libres, générations) ---
+
+    /**
+     * Ajoute une révision incrémentale écrite à la main : {@code objects} (numéro → texte complet entre
+     * {@code N G obj} et {@code endobj}, génération {@code generations} ou 0), {@code extraEntries} des sous-sections
+     * de table supplémentaires (texte brut), {@code root} la référence du catalogue du trailer.
+     */
+    public static byte[] appendRevision(byte[] pdf, java.util.Map<Integer, String> objects, java.util.Map<Integer, Integer> generations,
+            String extraEntries, String root) {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            String text = new String(pdf, java.nio.charset.StandardCharsets.ISO_8859_1);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("startxref\\s+(\\d+)").matcher(text);
+            long previous = -1;
+            while (matcher.find()) {
+                previous = Long.parseLong(matcher.group(1));
+            }
+            long size = Math.max(document.getDocument().getHighestXRefObjectNumber() + 1,
+                    objects.keySet().stream().mapToLong(n -> n + 1L).max().orElse(0));
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            out.write(pdf);
+            out.write('\n');
+            StringBuilder table = new StringBuilder("xref\n");
+            for (java.util.Map.Entry<Integer, String> object : new java.util.TreeMap<>(objects).entrySet()) {
+                int generation = generations == null ? 0 : generations.getOrDefault(object.getKey(), 0);
+                table.append(object.getKey()).append(" 1\n").append(String.format("%010d %05d n \n", out.size(), generation));
+                out.write((object.getKey() + " " + generation + " obj\n" + object.getValue() + "\nendobj\n")
+                        .getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            }
+            if (extraEntries != null) {
+                table.append(extraEntries);
+            }
+            long xref = out.size();
+            out.write((table + "trailer\n<< /Size " + size + " /Root " + root + " /Prev " + previous + " >>\nstartxref\n" + xref
+                    + "\n%%EOF\n").getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Texte PDF d'une valeur COS (références gardées telles quelles). */
+    public static String cos(org.apache.pdfbox.cos.COSBase value) {
+        if (value instanceof org.apache.pdfbox.cos.COSObject object) {
+            return object.getKey().getNumber() + " " + object.getKey().getGeneration() + " R";
+        }
+        if (value != null && value.getKey() != null && !(value instanceof org.apache.pdfbox.cos.COSStream)) {
+            return value.getKey().getNumber() + " " + value.getKey().getGeneration() + " R";
+        }
+        if (value instanceof COSDictionary dictionary) {
+            StringBuilder out = new StringBuilder("<<");
+            for (java.util.Map.Entry<COSName, org.apache.pdfbox.cos.COSBase> entry : dictionary.entrySet()) {
+                out.append(" /").append(entry.getKey().getName()).append(' ').append(cos(entry.getValue()));
+            }
+            return out.append(" >>").toString();
+        }
+        if (value instanceof org.apache.pdfbox.cos.COSArray array) {
+            StringBuilder out = new StringBuilder("[");
+            for (int i = 0; i < array.size(); i++) {
+                out.append(' ').append(cos(array.get(i)));
+            }
+            return out.append(" ]").toString();
+        }
+        if (value instanceof COSName name) {
+            return "/" + name.getName();
+        }
+        if (value instanceof org.apache.pdfbox.cos.COSString string) {
+            return "<" + java.util.HexFormat.of().formatHex(string.getBytes()) + ">";
+        }
+        if (value instanceof org.apache.pdfbox.cos.COSInteger integer) {
+            return Long.toString(integer.longValue());
+        }
+        if (value instanceof org.apache.pdfbox.cos.COSFloat number) {
+            return Float.toString(number.floatValue());
+        }
+        if (value instanceof org.apache.pdfbox.cos.COSBoolean bool) {
+            return Boolean.toString(bool.getValue());
+        }
+        return "null";
+    }
+
+    /** Clé « N G » d'un objet indirect du catalogue, de la page {@code index}, ou de son premier flux de contenu. */
+    public record Keys(int catalog, int pages, int page, int content, int highest) {}
+
+    public static Keys keys(byte[] pdf, int pageIndex) {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            COSDictionary trailer = document.getDocument().getTrailer();
+            org.apache.pdfbox.cos.COSObject root = (org.apache.pdfbox.cos.COSObject) trailer.getItem(COSName.ROOT);
+            COSDictionary catalog = (COSDictionary) root.getObject();
+            org.apache.pdfbox.cos.COSObject pages = (org.apache.pdfbox.cos.COSObject) catalog.getItem(COSName.PAGES);
+            org.apache.pdfbox.cos.COSArray kids = (org.apache.pdfbox.cos.COSArray) ((COSDictionary) pages.getObject()).getDictionaryObject(COSName.KIDS);
+            org.apache.pdfbox.cos.COSObject page = (org.apache.pdfbox.cos.COSObject) kids.get(pageIndex);
+            org.apache.pdfbox.cos.COSBase contents = ((COSDictionary) page.getObject()).getItem(COSName.CONTENTS);
+            int content = (int) ((org.apache.pdfbox.cos.COSObject) contents).getKey().getNumber();
+            return new Keys((int) root.getKey().getNumber(), (int) pages.getKey().getNumber(), (int) page.getKey().getNumber(),
+                    content, (int) document.getDocument().getHighestXRefObjectNumber());
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Dictionnaire (sans les références de flux) de l'objet {@code number} génération 0. */
+    public static COSDictionary dictionary(byte[] pdf, int number) {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            COSDictionary dictionary = (COSDictionary) document.getDocument()
+                    .getObjectFromPool(new org.apache.pdfbox.cos.COSObjectKey(number, 0)).getObject();
+            COSDictionary copy = new COSDictionary();
+            for (java.util.Map.Entry<COSName, org.apache.pdfbox.cos.COSBase> entry : dictionary.entrySet()) {
+                copy.setItem(entry.getKey(), entry.getValue());
+            }
+            return copy;
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Flux de contenu en texte PDF. */
+    public static String contentStream(String operators) {
+        return "<< /Length " + operators.length() + " >>\nstream\n" + operators + "\nendstream";
+    }
+
+    /** Champs de signature vides en mosaïque opaque (moins de 5 % chacun), sur la page {@code index}. */
+    public static PdfTamper emptySignatureMosaic(int count) {
+        return (document, changed) -> {
+            org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm form = document.getDocumentCatalog().getAcroForm();
+            if (form == null) {
+                form = new org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm(document);
+                document.getDocumentCatalog().setAcroForm(form);
+            }
+            PDPage page = document.getPage(0);
+            for (int i = 0; i < count; i++) {
+                org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField field =
+                        new org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField(form);
+                field.setPartialName("Mosaic" + i);
+                org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget = field.getWidgets().get(0);
+                PDRectangle rect = new PDRectangle(60 + (i % 5) * 100, 700 - (i / 5) * 40, 100, 40);
+                widget.setRectangle(rect);
+                widget.setPage(page);
+                org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream stream =
+                        new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream(document);
+                stream.setBBox(new PDRectangle(0, 0, 100, 40));
+                try (PDPageContentStream content = new PDPageContentStream(document, stream)) {
+                    content.setNonStrokingColor(java.awt.Color.WHITE);
+                    content.addRect(0, 0, 100, 40);
+                    content.fill();
+                }
+                org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary appearance =
+                        new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary();
+                appearance.setNormalAppearance(stream);
+                widget.setAppearance(appearance);
+                form.getFields().add(field);
+                page.getAnnotations().add(widget);
+            }
+            page.getCOSObject().setNeedToBeUpdated(true);
+            form.getCOSObject().setNeedToBeUpdated(true);
+            changed.add(page.getCOSObject());
+            changed.add(form.getCOSObject());
+            changed.add(document.getDocumentCatalog().getCOSObject());
         };
     }
 

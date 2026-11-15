@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -54,12 +55,11 @@ final class IncrementalUpdateCheck {
     private static final COSName DSS = COSName.getPDFName("DSS");
     private static final COSName EXTENSIONS = COSName.getPDFName("Extensions");
     private static final COSName OUTPUT_INTENTS = COSName.getPDFName("OutputIntents");
-    private static final COSName PERMS = COSName.getPDFName("Perms");
     private static final COSName SIG_FLAGS = COSName.getPDFName("SigFlags");
     private static final COSName NEED_APPEARANCES = COSName.getPDFName("NeedAppearances");
     private static final COSName SIG = COSName.getPDFName("Sig");
     private static final Set<COSName> CATALOG_CHANGEABLE = Set.of(DSS, EXTENSIONS, COSName.METADATA, COSName.VERSION);
-    private static final Set<COSName> CATALOG_ADDABLE = Set.of(OUTPUT_INTENTS, PERMS);
+    private static final Set<COSName> CATALOG_ADDABLE = Set.of(OUTPUT_INTENTS);
     private static final Set<COSName> EMPTY_FIELD_FILLABLE = Set.of(COSName.V, COSName.AP, COSName.F, COSName.RECT, COSName.MK);
 
     private IncrementalUpdateCheck() {}
@@ -88,6 +88,7 @@ final class IncrementalUpdateCheck {
         private final COSObjectKey metadataKey;
         private final Set<COSObjectKey> annotsOrFieldsArrays = new HashSet<>();
         private final Set<COSObjectKey> dssObjects = new HashSet<>();
+        private final Set<COSObjectKey> reachableFromPagesOrForm = new HashSet<>();
 
         Context(PDDocument before, PDDocument after) {
             this.beforeDocument = before.getDocument();
@@ -115,7 +116,55 @@ final class IncrementalUpdateCheck {
                     annotsOrFieldsArrays.add(fields);
                 }
             }
-            collect(catalog.getItem(DSS), dssObjects);
+            collectDss(catalog.getDictionaryObject(DSS), dssObjects);
+            collect(catalog.getItem(COSName.PAGES), reachableFromPagesOrForm);
+            collect(catalog.getItem(COSName.ACRO_FORM), reachableFromPagesOrForm);
+        }
+
+        /**
+         * Contre-revue (MOYEN D) : sous {@code /DSS}, seuls {@code /Certs}, {@code /CRLs}, {@code /OCSPs} et {@code /VRI}
+         * (puis {@code /Cert}, {@code /CRL}, {@code /OCSP}, {@code /TS}) sont suivis, flux seulement en feuilles.
+         */
+        private void collectDss(COSBase dss, Set<COSObjectKey> into) {
+            if (!(dss instanceof COSDictionary dictionary) || dss instanceof COSStream) {
+                return;
+            }
+            for (String name : List.of("Certs", "CRLs", "OCSPs")) {
+                collectStreams(dictionary.getItem(COSName.getPDFName(name)), into);
+            }
+            COSBase vriItem = dictionary.getItem(COSName.getPDFName("VRI"));
+            addKey(vriItem, into);
+            if (deref(vriItem) instanceof COSDictionary vri && !(deref(vriItem) instanceof COSStream)) {
+                for (COSBase entryItem : vri.getValues()) {
+                    addKey(entryItem, into);
+                    if (deref(entryItem) instanceof COSDictionary entry && !(deref(entryItem) instanceof COSStream)) {
+                        for (String name : List.of("Cert", "CRL", "OCSP")) {
+                            collectStreams(entry.getItem(COSName.getPDFName(name)), into);
+                        }
+                        if (deref(entry.getItem(COSName.getPDFName("TS"))) instanceof COSStream) {
+                            addKey(entry.getItem(COSName.getPDFName("TS")), into);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void collectStreams(COSBase arrayItem, Set<COSObjectKey> into) {
+            addKey(arrayItem, into);
+            if (deref(arrayItem) instanceof COSArray array) {
+                for (int i = 0; i < array.size(); i++) {
+                    if (deref(array.get(i)) instanceof COSStream) {
+                        addKey(array.get(i), into);
+                    }
+                }
+            }
+        }
+
+        private static void addKey(COSBase value, Set<COSObjectKey> into) {
+            COSObjectKey key = keyOf(value);
+            if (key != null) {
+                into.add(key);
+            }
         }
 
         String redefinitions() {
@@ -151,11 +200,22 @@ final class IncrementalUpdateCheck {
         }
 
         private boolean allowedRedefinition(COSObjectKey beforeKey, COSObjectKey afterKey) {
-            if (beforeKey.equals(infoKey) || beforeKey.equals(metadataKey) || dssObjects.contains(beforeKey)) {
-                return true;
-            }
             COSBase old = beforeDocument.getObjectFromPool(beforeKey).getObject();
             COSBase now = afterDocument.getObjectFromPool(afterKey).getObject();
+            // Contre-revue (MOYEN D) : exceptions par rôle seulement si l'objet n'est pas aussi atteint depuis /Pages ou
+            // /AcroForm, et de la nature attendue (XMP : flux ; /Info : dictionnaire sans flux).
+            if (!reachableFromPagesOrForm.contains(beforeKey)) {
+                if (beforeKey.equals(infoKey) && old instanceof COSDictionary && !(old instanceof COSStream)
+                        && now instanceof COSDictionary && !(now instanceof COSStream)) {
+                    return true;
+                }
+                if (beforeKey.equals(metadataKey) && old instanceof COSStream && now instanceof COSStream) {
+                    return true;
+                }
+                if (dssObjects.contains(beforeKey) && (old instanceof COSStream) == (now instanceof COSStream)) {
+                    return true;
+                }
+            }
             // Réécriture à l'identique (les outils réécrivent par exemple les champs de signature déjà remplis) :
             // rien ne change, donc admise.
             if (identical(old, now)) {

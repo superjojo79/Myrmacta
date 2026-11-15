@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C1 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Le titre dit le bénéfice ; la carte de fin « Sous le capot » donne le détail technique. Tournage : frontend/capture/film/c01-dossier.film.ts, sur la démo complète.",
+  "id": "c01-dossier",
+  "format": "short",
+  "title": { "fr": "Un dossier complet, suivi de bout en bout", "en": "A complete case, tracked end to end" },
+  "underTheHood": {
+    "fr": ["Champs dynamiques déclarés par type de dossier", "Statuts pilotés par le workflow BPMN"],
+    "en": ["Dynamic fields declared per case type", "Statuses driven by the BPMN workflow"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "creation",
+      "title": { "fr": "Créer le dossier", "en": "Create the case" },
+      "captions": {
+        "fr": ["Choisissez un type de dossier : le formulaire prend ses champs.", "Listes, dates, champs obligatoires : tout est contrôlé à la saisie."],
+        "en": ["Pick a case type: the form takes on its fields.", "Lists, dates, required fields: everything is checked as you type."]
+      }
+    },
+    {
+      "id": "suivi",
+      "title": { "fr": "Suivre le dossier", "en": "Track the case" },
+      "captions": {
+        "fr": ["La fiche réunit les données, les tâches et l'historique.", "Le statut suit le workflow, de l'ouverture à la clôture."],
+        "en": ["The case page brings together data, tasks and history.", "The status follows the workflow, from opening to closing."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

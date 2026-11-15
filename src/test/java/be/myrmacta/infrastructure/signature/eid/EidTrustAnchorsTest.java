@@ -24,7 +24,8 @@ class EidTrustAnchorsTest {
 
     @Test
     void readsASingleAuthority(@TempDir Path dir) throws Exception {
-        String first = Files.readString(Path.of(DIR + "test-anchors.pem")).split("(?<=-----END CERTIFICATE-----\\n)")[0];
+        // \r?\n : un checkout Windows (core.autocrlf) rend le fichier en CRLF.
+        String first = Files.readString(Path.of(DIR + "test-anchors.pem")).split("(?<=-----END CERTIFICATE-----\\r?\\n)")[0];
         Path file = dir.resolve("one.pem");
         Files.writeString(file, first);
 

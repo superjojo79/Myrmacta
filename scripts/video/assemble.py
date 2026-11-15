@@ -10,6 +10,10 @@ mov_text et fichiers .vtt et .srt à côté).
 
     uv run scripts/video/assemble.py scripts/video/capsules/l1-mailroom.json --lang fr
 
+Capsule courte ("format": "short", TODO §140, D-VIDEO-SHORT, issue #58) : pas de voix. Chaque plan dure au moins le
+temps de lecture de ses sous-titres (voice.json écrit par voice.py) ; le MP4 n'a pas de piste audio ni de chapitres, et
+ses sous-titres sont incrustés dans l'image (libass), pour une vidéo muette qui tourne en boucle sur le site.
+
 <out> vaut par défaut frontend/capture/out/film/<id de la capsule> (TODO §136), le dossier que lit le tournage.
     → <out>/<lang>/<capsule>-<lang>.mp4, .vtt, .srt
 """
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -85,19 +90,41 @@ def video_filter(parts: list[tuple[float, float, float]], pad: float) -> str:
     return ";".join(chains)
 
 
-def chapter_clip(video: Path, spans: list[dict], voice: Path, target: Path) -> float:
-    """Un chapitre monté (MP4) ; rend sa durée."""
+def chapter_command(video: Path, parts: list[tuple[float, float, float]], voice: Path | None, length: float,
+                    target: Path) -> list[str]:
+    """ffmpeg pour un chapitre de `length` s : la dernière image est tenue ; avec une voix, prolongée de silence,
+    sans voix (capsule courte), pas de piste audio."""
+    graph = video_filter(parts, length - screen_length(parts))
+    inputs, audio = ["-i", str(video)], ["-an"]
+    if voice is not None:
+        inputs += ["-i", str(voice)]
+        graph += f";[1:a]apad=whole_dur={length:.3f}[a]"
+        audio = ["-map", "[a]", "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]
+    return [tool("ffmpeg"), "-y", "-v", "error", *inputs, "-filter_complex", graph, "-map", "[v]", *audio,
+            "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+            "-r", str(FPS), str(target)]
+
+
+def chapter_clip(video: Path, spans: list[dict], voice: Path | None, target: Path, minimum: float = 0.0) -> float:
+    """Un chapitre monté (MP4), au moins aussi long que sa voix ou que `minimum` ; rend sa durée."""
     check_frame(*probe_size(video))
     parts = segments(spans, probe_duration(video))
-    shown = screen_length(parts)
-    spoken = probe_duration(voice)
-    length = max(shown, spoken)
-    graph = video_filter(parts, length - shown) + f";[1:a]apad=whole_dur={length:.3f}[a]"
-    subprocess.run([tool("ffmpeg"), "-y", "-v", "error", "-i", str(video), "-i", str(voice), "-filter_complex", graph,
-                    "-map", "[v]", "-map", "[a]", "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "20",
-                    "-pix_fmt", "yuv420p", "-r", str(FPS), "-c:a", "aac", "-b:a", "160k", "-ar", "48000", str(target)],
-                   check=True)
+    length = max(screen_length(parts), probe_duration(voice) if voice is not None else 0.0, minimum)
+    subprocess.run(chapter_command(video, parts, voice, length, target), check=True)
     return probe_duration(target)
+
+
+# Sous-titres incrustés d'une capsule courte : blanc sur bandeau sombre, en bas, lisibles une fois la vidéo réduite.
+BURN_STYLE = ("FontName=Segoe UI,Fontsize=19,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H262A1B0D,"
+              "BorderStyle=3,Outline=6,Shadow=0,MarginV=20,MarginL=40,MarginR=40,Alignment=2")
+
+
+def burn_filter(srt_name: str) -> str:
+    """Le filtre libass qui incruste le fichier `srt_name`, lu dans le répertoire courant de ffmpeg : un nom simple
+    (l'id de la capsule) évite d'échapper un chemin Windows (« C: ») dans le graphe de filtres."""
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", srt_name):
+        raise ValueError(f"subtitle file name must be a plain name: {srt_name!r}")
+    return f"subtitles=filename={srt_name}:force_style='{BURN_STYLE}'"
 
 
 def timestamp(seconds: float, separator: str) -> str:
@@ -144,16 +171,21 @@ def run(capsule_path: Path, lang: str, out: Path) -> int:
     voice = json.loads((folder / "voice.json").read_text(encoding="utf-8"))
     work = folder / "clips"
     work.mkdir(parents=True, exist_ok=True)
+    short = capsule.get("format") == "short"
     clips, marks, all_cues, t = [], [], [], 0.0
     for n, chapter in enumerate(capsule["chapters"]):
         name = f"{n:02d}-{chapter['id']}"
         video = folder / "video" / f"{name}.webm"
         spans = json.loads((folder / "video" / f"{name}.spans.json").read_text(encoding="utf-8"))
         clip = work / f"{name}.mp4"
-        length = chapter_clip(video, spans, folder / "voice" / f"{chapter['id']}.m4a", clip)
+        timing = voice["chapters"][chapter["id"]]
+        if short:
+            length = chapter_clip(video, spans, None, clip, timing["duration"])
+        else:
+            length = chapter_clip(video, spans, folder / "voice" / f"{chapter['id']}.m4a", clip)
         clips.append(clip)
         marks.append((chapter["title"][lang], t, t + length))
-        all_cues += [{**c, "start": c["start"] + t, "end": c["end"] + t} for c in voice["chapters"][chapter["id"]]["cues"]]
+        all_cues += [{**c, "start": c["start"] + t, "end": c["end"] + t} for c in timing["cues"]]
         print(f"{name}: {length:.1f} s")
         t += length
 
@@ -163,6 +195,14 @@ def run(capsule_path: Path, lang: str, out: Path) -> int:
     base = folder / f"{capsule['id']}-{lang}"
     base.with_suffix(".vtt").write_text(vtt, encoding="utf-8")
     base.with_suffix(".srt").write_text(srt, encoding="utf-8")
+    if short:
+        # Vidéo muette pour le site : sous-titres incrustés (ffmpeg lancé dans le dossier, pour un nom de fichier simple).
+        subprocess.run([tool("ffmpeg"), "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(listing.resolve()),
+                        "-vf", burn_filter(base.with_suffix(".srt").name), "-an", "-c:v", "libx264", "-preset", "medium",
+                        "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS), "-metadata", f"title={capsule['title'][lang]}",
+                        "-movflags", "+faststart", base.with_suffix(".mp4").name], check=True, cwd=folder)
+        print(f"{base.with_suffix('.mp4')} : {t:.1f} s, sans son, {len(all_cues)} sous-titres incrustés")
+        return 0
     metadata = work / "chapters.txt"
     metadata.write_text(ffmetadata(capsule["title"][lang], marks), encoding="utf-8")
     language = {"fr": "fre", "en": "eng"}[lang]

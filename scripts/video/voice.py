@@ -13,6 +13,10 @@ courte pause) et écrit ses repères de sous-titres :
 
 Le tournage lit voice.json pour tenir chaque chapitre au moins le temps de sa voix ; le montage y prend les sous-titres.
 
+Capsule courte ("format": "short", TODO §140, D-VIDEO-SHORT) : pas de voix ni d'appel à edge-tts. Chaque sous-titre
+(`captions`) reste à l'écran le temps de le lire (READ_CPS caractères par seconde, au moins MIN_READ) ; voice.json a la
+même forme, sans fichier audio.
+
     uv run scripts/video/voice.py scripts/video/capsules/l1-mailroom.json --lang fr
 
 <out> vaut par défaut frontend/capture/out/film/<id de la capsule> (TODO §136), le dossier que lit le tournage.
@@ -30,6 +34,9 @@ from pathlib import Path
 
 PAUSE = 0.45  # silence entre deux phrases (s)
 LEAD = 0.6  # silence avant la première phrase d'un chapitre (s)
+READ_CPS = 15.0  # capsule courte : vitesse de lecture d'un sous-titre (caractères par seconde)
+MIN_READ = 2.2  # capsule courte : durée minimale d'un sous-titre (s)
+TAIL = 0.4  # capsule courte : respiration après le dernier sous-titre d'un plan (s)
 
 
 def tool(name: str) -> str:
@@ -54,6 +61,21 @@ def cues(sentences: list[str], durations: list[float]) -> list[dict]:
     return result
 
 
+def reading_cues(sentences: list[str]) -> list[dict]:
+    """Capsule courte : un repère par sous-titre, tenu le temps de le lire."""
+    return cues(sentences, [round(max(MIN_READ, len(text) / READ_CPS), 3) for text in sentences])
+
+
+def short_report(capsule: dict, lang: str) -> dict:
+    """Capsule courte : le minutage de chaque plan, d'après la lecture de ses sous-titres."""
+    report: dict = {"capsule": capsule["id"], "lang": lang, "voice": None, "chapters": {}}
+    for chapter in capsule["chapters"]:
+        timed = reading_cues(chapter["captions"][lang])
+        end = timed[-1]["end"] if timed else LEAD
+        report["chapters"][chapter["id"]] = {"duration": round(end + TAIL, 3), "cues": timed}
+    return report
+
+
 def concat_command(parts: list[Path], target: Path) -> list[str]:
     """ffmpeg : silence de tête, puis chaque phrase suivie d'une pause, en AAC."""
     inputs, filters, labels = [], [], []
@@ -76,6 +98,13 @@ async def speak(text: str, voice: str, target: Path) -> None:
 
 async def run(capsule_path: Path, lang: str, out: Path) -> int:
     capsule = json.loads(capsule_path.read_text(encoding="utf-8"))
+    if capsule.get("format") == "short":
+        report = short_report(capsule, lang)
+        (out / lang).mkdir(parents=True, exist_ok=True)
+        (out / lang / "voice.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        total = sum(c["duration"] for c in report["chapters"].values())
+        print(f"sous-titres {lang} (sans voix) : {total:.0f} s au total")
+        return 0
     voice = capsule["voices"][lang]
     folder = out / lang / "voice"
     folder.mkdir(parents=True, exist_ok=True)

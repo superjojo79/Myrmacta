@@ -71,6 +71,30 @@ describe('CreateDossierView', () => {
     expect(push).toHaveBeenCalledWith('/dossiers/d1')
   })
 
+  it('sends only the fields of the type chosen last, never a default of the type shown before', async () => {
+    // Démo, capsule C1 (#58) : passer de « Courrier » à « Arrivée » envoyait encore `canal` → 400 « Unknown field ».
+    vi.mocked(typesApi.listAllDossierTypes).mockResolvedValue([
+      { id: 't1', tenantId: 't', code: 'MAIL', label: 'Courrier', workflowKey: 'wf', active: true, allowUnknownFields: false,
+        fieldDefinitions: [{ name: 'canal', label: 'Canal', type: 'STRING', required: true, defaultValue: 'EMAIL' }] },
+      { id: 't2', tenantId: 't', code: 'HIRE', label: 'Arrivée', workflowKey: 'wf', active: true, allowUnknownFields: false,
+        fieldDefinitions: [{ name: 'nom', label: 'Nom', type: 'STRING', required: false }] },
+    ])
+    vi.mocked(dossiersApi.createDossier).mockRejectedValue(new Error('stop after the call'))
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/dossiers/new')
+    await router.isReady()
+    const wrapper = mount(CreateDossierView, { global: { plugins: [router] } })
+    await flushPromises()
+    await wrapper.get('select').setValue('HIRE')
+    await flushPromises()
+    await wrapper.get('#dossier-label').setValue('Arrivée')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    const sent = vi.mocked(dossiersApi.createDossier).mock.calls[0]![0] as { dossierTypeCode: string; fields: Record<string, unknown> }
+    expect(sent.dossierTypeCode).toBe('HIRE')
+    expect(sent.fields).not.toHaveProperty('canal')
+  })
+
   it('shows a UNIQUE refusal under the field', async () => {
     vi.mocked(dossiersApi.createDossier).mockRejectedValue({
       response: {

@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C8 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c08-panne.film.ts, sur la démo complète (incident semé par le paquet « états » : l'arrivée de Nadia Claes, dont l'appel au SIRH tombe sur une coupure).",
+  "id": "c08-panne",
+  "format": "short",
+  "title": { "fr": "Une panne n'arrête pas le dossier", "en": "An outage does not stop the case" },
+  "underTheHood": {
+    "fr": ["Étape en échec mise de côté, rattachée à son dossier", "Rejeu de la seule étape en échec, une fois la cause corrigée"],
+    "en": ["Failed step set aside, attached to its case", "Replay of the failed step only, once the cause is fixed"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "incident",
+      "title": { "fr": "L'incident", "en": "The incident" },
+      "captions": {
+        "fr": ["Le SIRH ne répond pas : l'étape est mise de côté.", "L'incident est listé avec son étape et son message, et signalé sur la fiche."],
+        "en": ["The HR system does not answer: the step is set aside.", "The incident is listed with its step and message, and flagged on the case."]
+      }
+    },
+    {
+      "id": "rejeu",
+      "title": { "fr": "Le rejeu", "en": "The replay" },
+      "captions": {
+        "fr": ["L'adresse e-mail était fautive : on la corrige sur la fiche.", "Un clic rejoue l'étape. Le processus reprend où il s'était arrêté.", "Fiche SIRH, compte et matériel : le dossier va jusqu'au bout."],
+        "en": ["The e-mail address was wrong: it is fixed on the case.", "One click replays the step. The process resumes where it stopped.", "HR record, account and equipment: the case goes all the way."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

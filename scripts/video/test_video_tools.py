@@ -124,3 +124,70 @@ def test_without_out_each_capsule_writes_to_its_own_folder():
     for module in (voice, assemble):
         assert module.default_out(capsules / "l2-onboarding.json") == Path("frontend/capture/out/film/l2-onboarding")
         assert module.default_out(capsules / "l1-mailroom.json") == Path("frontend/capture/out/film/l1-mailroom")
+
+
+# ------------------------------------------------------------------ Capsules courtes (TODO §140, D-VIDEO-SHORT, #58)
+
+
+def test_a_caption_stays_on_screen_for_its_reading_time_never_less_than_the_minimum():
+    long_text = "x" * 60
+    cues = voice.reading_cues(["Court.", long_text])
+    assert cues[0] == {"start": voice.LEAD, "end": round(voice.LEAD + voice.MIN_READ, 3), "text": "Court."}
+    assert cues[1]["start"] == round(cues[0]["end"] + voice.PAUSE, 3)
+    assert cues[1]["end"] - cues[1]["start"] == round(60 / voice.READ_CPS, 3)
+
+
+def test_a_short_capsule_is_timed_without_speaking(tmp_path, monkeypatch):
+    import asyncio
+    import json
+
+    async def no_speech(*_args):
+        raise AssertionError("a short capsule must not call edge-tts")
+
+    monkeypatch.setattr(voice, "speak", no_speech)
+    capsule = tmp_path / "c0-test.json"
+    capsule.write_text(json.dumps({
+        "id": "c0-test", "format": "short", "title": {"fr": "T", "en": "T"},
+        "chapters": [{"id": "plan", "title": {"fr": "P", "en": "P"}, "captions": {"fr": ["Un sous-titre."], "en": ["A caption."]}}],
+    }), encoding="utf-8")
+    assert asyncio.run(voice.run(capsule, "en", tmp_path / "out")) == 0
+    report = json.loads((tmp_path / "out" / "en" / "voice.json").read_text(encoding="utf-8"))
+    chapter = report["chapters"]["plan"]
+    assert chapter["cues"][0]["text"] == "A caption."
+    assert chapter["duration"] == round(chapter["cues"][-1]["end"] + voice.TAIL, 3)
+    assert not (tmp_path / "out" / "en" / "voice").exists()
+
+
+def test_burned_subtitles_read_a_plain_file_name_never_a_path_to_escape():
+    import pytest
+
+    burn = assemble.burn_filter("c1-dossier-fr.srt")
+    assert burn.startswith("subtitles=filename=c1-dossier-fr.srt:force_style='")
+    assert "Fontsize=" in burn and "BorderStyle=" in burn
+    for unsafe in ("C:/films/c1.srt", "a'b.srt", "x.srt,drawtext=text=1"):
+        with pytest.raises(ValueError):
+            assemble.burn_filter(unsafe)
+
+
+def test_a_short_chapter_has_no_audio_and_lasts_at_least_its_captions():
+    command = assemble.chapter_command(Path("v.webm"), [(0.0, 4.0, 1.0)], None, 6.5, Path("c.mp4"))
+    assert "-an" in command and "[a]" not in " ".join(command)
+    assert command[command.index("-t") + 1] == "6.500"
+    assert "tpad=stop_mode=clone:stop_duration=2.500" in command[command.index("-filter_complex") + 1]
+    spoken = assemble.chapter_command(Path("v.webm"), [(0.0, 4.0, 1.0)], Path("v.m4a"), 6.5, Path("c.mp4"))
+    assert "-c:a" in spoken and "-an" not in spoken
+
+
+def test_the_capsules_are_well_formed():
+    import json
+
+    for path in sorted((Path(__file__).parent / "capsules").glob("*.json")):
+        capsule = json.loads(path.read_text(encoding="utf-8"))
+        assert capsule["id"] == path.stem
+        key = "captions" if capsule.get("format") == "short" else "narration"
+        if key == "narration":
+            assert set(capsule["voices"]) == {"fr", "en"}
+        else:
+            assert set(capsule["underTheHood"]) == {"fr", "en"}, path.name
+        for chapter in capsule["chapters"]:
+            assert len(chapter[key]["fr"]) == len(chapter[key]["en"]), f"{path.name} {chapter['id']}"

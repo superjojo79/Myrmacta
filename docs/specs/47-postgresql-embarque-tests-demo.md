@@ -76,7 +76,7 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   et en `.vtt`/`.srt`). Texte de la capsule : `scripts/video/capsules/l1-mailroom.json` ; cartons :
   `frontend/capture/panel/card.html`. La scène propose aussi le brouillon de la table de routage (règle « imprimerie »,
   DMN 1.3) que montre la conclusion.
-  Commandes : `scripts/video.sh build | mail-servers | start [capsule] | mail <scénario> | capsule [capsule] | reset` ;
+  Commandes : `scripts/video.sh build | mail-servers | start [capsule] | mail <scénario> | capsule [capsule] | shorts | reset` ;
   capsule `l1-mailroom` par défaut. Sorties par capsule : `frontend/capture/out/film/<capsule>/<langue>/` (§136).
 - **Capsule vidéo L2 « onboarding »** (§136) : profil `demo-video-onboarding`. `OnboardingDemoPack` installe l'exemple
   sans arrivée (D-VIDEO-OFFSCREEN-PREP) ; le paquet est installé dès que le processus est déployé. Les faux SIRH, IAM et
@@ -89,6 +89,13 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   `frontend/capture/film/l2-onboarding.film.ts`. La partie 1 est jouée dans l'interface ; le metteur en scène pose le
   diagramme de l'instance (`BpmnViewer`) en vignette, réduit dans le coin inférieur droit, nœuds parcourus et en cours
   remplis. Les arrivées de la partie 2 sont encodées et approuvées par l'API après la commande de panne, hors champ.
+- **Capsules courtes du site** (§140, D-VIDEO-SHORT) : scène = démo complète (`scripts/video.sh start cNN-…`, profil
+  `demo`). Une capsule `"format": "short"` n'a pas de voix. `voice.py` minute ses sous-titres à la lecture et écrit le
+  même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).
+  Tournage : `frontend/capture/film/cNN-*.film.ts`, avec les aides de `short.ts` : carton d'ouverture avec le bénéfice,
+  carte « Sous le capot » tenue 4,5 s, toutes deux avec le logo. `scripts/video.sh shorts` enchaîne les capsules
+  courtes dans l'ordre. Livrées : C1 `c01-dossier` (création, puis suivi d'une arrivée en cours) et C8 `c08-panne`
+  (incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning).
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

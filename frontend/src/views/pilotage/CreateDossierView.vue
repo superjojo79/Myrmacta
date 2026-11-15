@@ -30,6 +30,15 @@ function onUndisplayed(errors: FieldError[]) {
   error.value = errors.length > 0 ? errors.map((item) => describeDetachedFieldError(item, labels.get(item.field))).join(' ') : null
 }
 
+/**
+ * Les valeurs des seuls champs du type choisi : celles d'un type affiché avant (valeur par défaut comprise) restent dans
+ * le modèle du formulaire et seraient refusées par le serveur (« Unknown field »).
+ */
+function ownFields(): Record<string, unknown> {
+  const names = new Set((selectedType()?.fieldDefinitions ?? []).map((def) => def.name))
+  return Object.fromEntries(Object.entries(fields.value).filter(([name]) => names.has(name)))
+}
+
 watch(dossierTypeCode, () => {
   error.value = null
   serverErrors.value = []
@@ -52,7 +61,7 @@ async function submit() {
     const created = await store.create({
       dossierTypeCode: dossierTypeCode.value,
       label: label.value.trim(),
-      fields: cleanStructuredFields(selectedType()?.fieldDefinitions ?? [], fields.value),
+      fields: cleanStructuredFields(selectedType()?.fieldDefinitions ?? [], ownFields()),
     })
     await router.push(`/dossiers/${created.id}`)
   } catch (err) {

@@ -675,6 +675,20 @@ conteneur en plus). Keycloak, `.env`, jar de démo et `ffmpeg` : comme pour la c
    texte : `scripts/video/capsules/l2-onboarding.json`.
 4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
 
+### Capsules courtes du site (TODO §140)
+
+Vidéos de 30 à 60 s pour les pages « Fonctionnalités » : sans son, sous-titres incrustés, en boucle. Pas de voix, donc
+pas d'appel à edge-tts. Keycloak, `.env`, jar de démo et `ffmpeg` (avec libass) : comme pour la capsule L1.
+
+1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
+   c01-dossier`. C'est la démo complète (`demo`) ; le journal se termine par `demo: pack 'etats' installed`.
+2. **Une capsule** : `APP_DEMO_LOCALE=fr scripts/video.sh capsule c08-panne`. Sortie :
+   `frontend/capture/out/film/<capsule>/<langue>/<capsule>-<langue>.mp4` (1920×1080, sans piste audio), avec `.vtt` et
+   `.srt` à côté. Texte : `scripts/video/capsules/<capsule>.json` (`captions` par plan, carte `underTheHood`).
+   Certaines capsules modifient la démo (C8 rejoue l'incident) : pour en refaire une, repartir d'une base vide.
+3. **Toutes les capsules courtes**, dans l'ordre de leur numéro : `APP_DEMO_LOCALE=fr scripts/video.sh shorts`.
+4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :

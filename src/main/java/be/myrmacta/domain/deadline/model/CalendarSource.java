@@ -71,6 +71,7 @@ public record CalendarSource(UUID id, String name, Kind kind, List<CalendarEntry
         return new CalendarSource(id, name, kind, closedDays, loadedAt, loadedBy, contentSha256, lastError, masked);
     }
 
+    /** Clef d'unicité, casse ignorée ({@link Locale#ROOT}). L'index SQL fait de même sans dépendre de la locale de la base (TODO §139). */
     public String nameKey() {
         return name.toLowerCase(Locale.ROOT);
     }

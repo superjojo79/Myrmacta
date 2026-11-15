@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 052-tenant-calendar-source-name-case
+      author: myrmacta
+      comment: >-
+        TODO §139 (D-CAL-SOURCE-CASE) — le nom de source est unique par tenant en ignorant la casse
+        Unicode, quelle que soit la locale de la base. lower() sans collation suit LC_CTYPE : avec la
+        locale C, lower('É') reste 'É', et « Fériés » n'entre pas en conflit avec « FÉRIÉS ».
+        pg_c_utf8 (PostgreSQL 17, fournisseur intégré) applique le casse simple Unicode. Les accents
+        restent distincts. Si deux noms ne diffèrent que par cette casse, la création de l'index échoue :
+        il faut les départager avant de migrer.
+      changes:
+        - sql:
+            sql: drop index uq_tenant_calendar_source_name
+        - sql:
+            sql: >-
+              create unique index uq_tenant_calendar_source_name
+              on tenant_calendar_source (tenant_id, lower(name collate "pg_c_utf8"))

@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import be.myrmacta.support.EmbeddedPostgresSupport;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * TODO §121 (D-CAL-BE-SOURCE) — le changeset 047 reprend les dates de {@code tenant_calendar.holidays} (046) en
@@ -107,6 +111,49 @@ class TenantCalendarEntriesMigrationIT {
         insertSource("t2", "Fériés");
     }
 
+    /**
+     * TODO §139 — sous une locale qui plie déjà les accents ({@code C.utf8} en CI, {@code en_US.utf8} sur un poste),
+     * l'index du changeset 047 suffit. Une base en locale {@code C} (encodage UTF-8) ne plie pas {@code É} :
+     * « Fériés » et « FÉRIÉS » coexistent. Le changeset 052 doit les refuser, et laisser « Feries » libre.
+     */
+    @Test
+    void sourceNameUniquenessIgnoresUnicodeCase_evenWhenTheDatabaseLocaleIsC() throws Exception {
+        String database = "c_cal_" + UUID.randomUUID().toString().replace("-", "");
+        createCLocaleDatabase(database);
+        try {
+            String url = urlFor(database);
+            try (Connection connection = DriverManager.getConnection(url,
+                    EmbeddedPostgresSupport.adminUsername(), EmbeddedPostgresSupport.adminPassword())) {
+                Database liquibaseDatabase = DatabaseFactory.getInstance()
+                        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+                new Liquibase(CHANGELOG, new ClassLoaderResourceAccessor(), liquibaseDatabase).update("");
+            }
+            JdbcTemplate local = new JdbcTemplate(new DriverManagerDataSource(url,
+                    EmbeddedPostgresSupport.adminUsername(), EmbeddedPostgresSupport.adminPassword()));
+            assertThat(local.queryForObject(
+                    "select datcollate from pg_database where datname = current_database()", String.class)).isEqualTo("C");
+            assertThat(local.queryForObject("select lower('É')", String.class)).isEqualTo("É");
+
+            local.update(
+                    "insert into tenant_calendar_source (id, tenant_id, name, kind) values (?, 't1', 'Fériés', 'ICS_FILE')",
+                    UUID.randomUUID());
+            assertThatThrownBy(() -> local.update(
+                    "insert into tenant_calendar_source (id, tenant_id, name, kind) values (?, 't1', 'FÉRIÉS', 'ICS_FILE')",
+                    UUID.randomUUID())).isInstanceOf(DataIntegrityViolationException.class);
+            local.update(
+                    "insert into tenant_calendar_source (id, tenant_id, name, kind) values (?, 't2', 'Fériés', 'ICS_FILE')",
+                    UUID.randomUUID());
+            local.update(
+                    "insert into tenant_calendar_source (id, tenant_id, name, kind) values (?, 't1', 'Feries', 'ICS_FILE')",
+                    UUID.randomUUID());
+            assertThat(local.queryForObject(
+                    "select pg_get_indexdef(oid) from pg_class where relname = 'uq_tenant_calendar_source_name'",
+                    String.class)).contains("pg_c_utf8");
+        } finally {
+            dropDatabase(database);
+        }
+    }
+
     @Test
     void anEntryCannotEndBeforeItStarts_norHaveAnUnknownNature() {
         assertThatThrownBy(() -> jdbc.update("""
@@ -141,6 +188,28 @@ class TenantCalendarEntriesMigrationIT {
                 """, Integer.class, SCHEMA)).isEqualTo(1);
         UUID id = insertSource("t1", "Fériés");
         assertThat(jdbc.queryForObject("select masked_url from tenant_calendar_source where id = ?", String.class, id)).isNull();
+    }
+
+    private static void createCLocaleDatabase(String database) throws SQLException {
+        try (Connection connection = DriverManager.getConnection(EmbeddedPostgresSupport.jdbcUrl(),
+                EmbeddedPostgresSupport.adminUsername(), EmbeddedPostgresSupport.adminPassword());
+                Statement statement = connection.createStatement()) {
+            statement.execute("create database " + statement.enquoteIdentifier(database, true)
+                    + " with locale 'C' encoding 'UTF8' template template0");
+        }
+    }
+
+    private static void dropDatabase(String database) throws SQLException {
+        try (Connection connection = DriverManager.getConnection(EmbeddedPostgresSupport.jdbcUrl(),
+                EmbeddedPostgresSupport.adminUsername(), EmbeddedPostgresSupport.adminPassword());
+                Statement statement = connection.createStatement()) {
+            statement.execute("drop database if exists " + statement.enquoteIdentifier(database, true) + " with (force)");
+        }
+    }
+
+    private static String urlFor(String database) {
+        String adminUrl = EmbeddedPostgresSupport.jdbcUrl();
+        return adminUrl.substring(0, adminUrl.lastIndexOf('/') + 1) + database;
     }
 
     private UUID insertSource(String tenant, String name) {

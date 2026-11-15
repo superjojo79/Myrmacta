@@ -18,7 +18,8 @@ calendrier déroule au plus 200 000 jours en mémoire (`TenantCalendar.MAX_EXPAN
 dimanche), manuel `CLOSED`, jour fermé d'une source, motif de week-end. Un rechargement ne touche jamais aux saisies
 manuelles. Un jour de source recouvert par un `OPEN` est signalé à l'écran.
 
-**D-CAL-SOURCE** — une source est nommée (unique par tenant en ignorant la casse, 80 caractères au plus), de type
+**D-CAL-SOURCE** — une source est nommée (unique par tenant en ignorant la casse, 80 caractères au plus ; cette
+unicité ne dépend pas de la locale de la base, §139), de type
 `ICS_FILE`, `ICS_URL` ou `BE_FEDERAL`. Elle ne produit que des jours `CLOSED`. Au plus 10 sources par tenant et, ajout
 du lot 1, 10 000 périodes par source. On garde la date, l'auteur, le SHA-256 du contenu et l'erreur du dernier
 chargement. Recharger remplace atomiquement toutes les périodes de la source. Une source en échec garde les jours de

@@ -1096,11 +1096,12 @@ D-DEADLINE-ESCALATE).
     - `FlowableBpmnParserAdapterUelSurfaceTest` (formes admises et refusées) ;
     - `MailRoomExampleIT` (le minuteur `${echeanceDepassee}` du process `traiterReponse` clôture la réponse échue).
 
-## Implémentation — calendrier du tenant : saisies, sources et surcharges (TODO §120, §121, §124, issues #33 et #34)
+## Implémentation — calendrier du tenant : saisies, sources et surcharges (TODO §120, §121, §124, §139, issues #33 et #34)
 
 Décisions : [§120](../decisions/120-calendrier-jours-ouvrables.md) (fuseau, week-end, comptage),
 [§121](../decisions/121-calendrier-saisie-sources-ics.md) (D-CAL-ENTRY, D-CAL-OVERRIDE, D-CAL-SOURCE, D-CAL-BE-SOURCE,
-D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-revue-33.md) (cache, FK, en-têtes, journaux).
+D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-revue-33.md) (cache, FK, en-têtes, journaux),
+[§139](../decisions/139-unicite-du-nom-de-source-independante-de-la-locale.md) (D-CAL-SOURCE-CASE, casse indépendante de la locale).
 
 - **Modèle.** `TenantCalendar` = fuseau, week-end, saisies manuelles (`CalendarEntry` : début, fin, nature `CLOSED`
   ou `OPEN`, libellé) et sources (`CalendarSource` : jours `CLOSED` seulement). `toCalendar()` déroule les périodes en
@@ -1112,6 +1113,11 @@ D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-rev
   (changesets 047–050 : `masked_url`, FK composite `(tenant_id, source_id)`). Une saisie manuelle a `source_id` nul ;
   supprimer une source supprime ses jours. Les dates de l'ancienne colonne `holidays` sont reprises en saisies
   manuelles `CLOSED`.
+  - Le nom de source est unique par tenant en ignorant la casse, y compris celle des lettres accentuées, et quelle que
+    soit la locale de la base (TODO §139, D-CAL-SOURCE-CASE, changeset 052). L'index est
+    `(tenant_id, lower(name COLLATE "pg_c_utf8"))` : `lower()` sans collation suit `LC_CTYPE`, et sous la locale `C`
+    `lower('É')` reste `É`. Les accents restent distincts (« Feries » et « Fériés » coexistent). Le domaine compare
+    avec `CalendarSource.nameKey` (`Locale.ROOT`).
 - **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié en entrée ;
   la réponse porte `entries`, `sources` et `holidays` toujours vide — D-CAL-API-HOLIDAYS) ;
   `POST /api/tenant/calendar/belgian-federal-holidays` crée ou recharge la source `BE_FEDERAL` (années courante et

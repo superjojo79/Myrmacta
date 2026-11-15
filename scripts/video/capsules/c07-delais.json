@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C7 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c07-delais.film.ts, sur la démo complète (factures antidatées du paquet « états » : SLA dépassés). Les alertes et l'export BI partent à intervalle (au plus tôt une heure pour l'export) : la capsule montre leur réglage, pas un envoi.",
+  "id": "c07-delais",
+  "format": "short",
+  "title": { "fr": "Savoir où en sont les délais", "en": "Know where your deadlines stand" },
+  "underTheHood": {
+    "fr": ["SLA mesuré sur chaque dossier, par type de dossier", "Alertes par e-mail ou webhook, export BI planifié"],
+    "en": ["SLA measured on every case, per case type", "Alerts by e-mail or webhook, scheduled BI export"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "rapports",
+      "title": { "fr": "Le rapport", "en": "The report" },
+      "captions": {
+        "fr": ["Conformité SLA, délai moyen, charge : le pilotage tient sur un écran.", "Quatre dossiers sont hors délai : l'objectif de 95 % n'est pas atteint.", "Le détail par type montre où le retard se forme."],
+        "en": ["SLA compliance, average lead time, workload: steering fits on one screen.", "Four cases are overdue: the 95% target is missed.", "The breakdown per case type shows where the delay builds up."]
+      }
+    },
+    {
+      "id": "alertes",
+      "title": { "fr": "Les alertes", "en": "The alerts" },
+      "captions": {
+        "fr": ["Une alerte prévient les responsables quand un dossier dépasse son délai.", "Un export BI planifié alimente vos tableaux de bord."],
+        "en": ["An alert warns the managers when a case goes past its deadline.", "A scheduled BI export feeds your dashboards."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

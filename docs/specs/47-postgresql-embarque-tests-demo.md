@@ -101,7 +101,10 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   - C3 `c03-question` : schéma de question avec son aperçu, réponse « à corriger » du manager ;
   - C4 `c04-courrier` : modèle de document créé, aperçu PDF, activation puis nouvelle version ; tourné avec Edge
     (lecteur PDF) ;
-  - C8 `c08-panne` : incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning.
+  - C7 `c07-delais` : rapport SLA, réglage des alertes de franchissement et de l'export BI ;
+  - C8 `c08-panne` : incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning ;
+  - C9 `c09-connecteurs` : formulaires de plusieurs types de connecteurs, instance suspendue puis réactivée ;
+  - C10 `c10-brouillons` : brouillon MCP de la table de routage relu, publié, puis visible dans la table en ligne.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

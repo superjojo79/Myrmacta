@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import RapportsView from './RapportsView.vue'
+import { setLocale } from '@/i18n'
 import * as slaReport from '@/api/slaReport'
 import * as dossierTypes from '@/api/dossierTypes'
 import * as operations from '@/api/operations'
@@ -107,6 +108,19 @@ describe('RapportsView', () => {
     expect(wrapper.get('[data-testid="kpi-dead-letter"]').text()).toContain('2')
     expect(wrapper.get('[data-testid="kpi-unassigned"]').text()).toContain('4')
     expect(wrapper.get('[data-testid="rapports-bi-exports"]').text()).toContain('sla-report-2026.csv')
+  })
+
+  it('names the unassigned load row in the interface language, not with the server label', async () => {
+    // Démo, capsule C7 (#58) : en anglais, la ligne restait « Non assignés » (libellé du serveur).
+    setLocale('en')
+    try {
+      const wrapper = mount(RapportsView)
+      await flushPromises()
+      expect(wrapper.text()).toContain('Unassigned')
+      expect(wrapper.text()).not.toContain('Non assignés')
+    } finally {
+      setLocale('fr')
+    }
   })
 
   it('sends datetime-local bounds as UTC Instant and optional type filter', async () => {

@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C9 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c09-connecteurs.film.ts, sur la démo complète. Aucun connecteur n'est créé (un connecteur entrant se mettrait à relever) : les formulaires des types sont montrés, et une instance est suspendue puis réactivée. Les libellés du catalogue sont encore en anglais en FR (issue #106) : capsule à régénérer après.",
+  "id": "c09-connecteurs",
+  "format": "short",
+  "title": { "fr": "Brancher vos applications", "en": "Connect your applications" },
+  "underTheHood": {
+    "fr": ["REST, IMAP, SFTP, Kafka, Azure Service Bus, Microsoft Graph", "OAuth2 client credentials, secrets chiffrés au repos"],
+    "en": ["REST, IMAP, SFTP, Kafka, Azure Service Bus, Microsoft Graph", "OAuth2 client credentials, secrets encrypted at rest"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "catalogue",
+      "title": { "fr": "Le catalogue", "en": "The catalogue" },
+      "captions": {
+        "fr": ["Les applications se branchent par des connecteurs configurés, pas développés.", "Chaque type a son formulaire : une API REST, une boîte IMAP, un dépôt SFTP, Kafka…", "Pour une API protégée, OAuth2 ; les secrets sont chiffrés au repos."],
+        "en": ["Applications are connected through configured connectors, not code.", "Each type has its own form: a REST API, an IMAP mailbox, an SFTP drop, Kafka…", "For a protected API, OAuth2; secrets are encrypted at rest."]
+      }
+    },
+    {
+      "id": "instances",
+      "title": { "fr": "Les instances", "en": "The instances" },
+      "captions": {
+        "fr": ["SIRH, IAM, outil de tickets : les instances de la démo, chacune avec ses secrets.", "Une instance se suspend ou se réactive d'un clic."],
+        "en": ["HR system, IAM, ticketing tool: the demo instances, each with its own secrets.", "An instance is suspended or resumed in one click."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

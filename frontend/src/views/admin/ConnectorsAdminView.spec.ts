@@ -53,6 +53,18 @@ describe('ConnectorsAdminView generated config form', () => {
     expect(wrapper.get('[data-testid="connector-config-field-processKey"]').exists()).toBe(true)
   })
 
+  it('separates the catalogue types instead of running their names together', async () => {
+    // Démo, capsule C9 (#58) : « …(IMAP, interrogation)Kafka (consumer trigger)… ».
+    vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
+      { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },
+      { type: 'smtp', label: 'SMTP', configSchema: [] },
+      { type: 'kafka', label: '', configSchema: [] },
+    ])
+    const wrapper = await mountView()
+    await flushPromises()
+    expect(wrapper.get('.defs').text()).toMatch(/HTTP REST · SMTP · kafka$/)
+  })
+
   it('posts a typed config object from the generated form', async () => {
     vi.mocked(adminApi.listConnectorDefinitions).mockResolvedValue([
       { type: 'http-rest', label: 'HTTP REST', configSchema: httpRestSchema },

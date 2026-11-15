@@ -55,7 +55,9 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   du logiciel eID, hors de la page. BeIDConnect n'ouvre pas de fenêtre : sur un lecteur à clavier, le PIN est
   saisi sur le lecteur ; sur un lecteur ordinaire, la page doit le demander et le passer à l'extension, comme
   le fait le site fédéral de signature. La page le garde en mémoire le temps de l'appel. L'exploitant qui
-  refuse cette saisie dans la page retire `beidconnect` des ponts autorisés.
+  refuse cette saisie dans la page retire `beidconnect` des ponts autorisés. Confirmé par l'utilisateur le
+  2026-11-15 : les lecteurs ordinaires restent utilisables, la protection du PIN dans la page repose sur la
+  politique de sécurité du contenu de la page.
 - **D-EID-UPLOAD.** Signature apportée, en repli du pont. Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
   (Adobe Acrobat Reader et sa carte, ou le service fédéral de signature), puis téléverse le PDF signé.
   Myrmacta vérifie la signature. Aucun composant propre à Myrmacta n'est installé sur le poste. Fournisseur

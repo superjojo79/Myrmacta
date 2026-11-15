@@ -4,6 +4,11 @@ import { expect, type Page } from '@playwright/test'
 export type MockOpts = {
   roles?: string[]
   withActiveLink?: boolean
+  /**
+   * TODO §141 (D-VIZ-ENDED) — lien terminé dans l'historique, `currentWorkflowLinkId` null
+   * (comme après clôture du processus).
+   */
+  withEndedLink?: boolean
   dossierStatus?: string
   /** La tâche du lien n'a pas d'assigné (D-ASSIGN-CLAIM). */
   freeTask?: boolean
@@ -134,7 +139,10 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       lastError: 'S3 timeout',
     },
   ]
+  // withEndedLink : le dossier n'a plus de lien courant, mais l'historique liste encore le run.
   let linkId: string | null = opts.withActiveLink ? LINK_ID : null
+  const endedLinkId: string | null = opts.withEndedLink ? LINK_ID : null
+  const listedLinkId = (): string | null => linkId ?? endedLinkId
   let mineTasks = [
     {
       taskId: 'task-1',
@@ -162,23 +170,25 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       },
     ]
   }
-  let tasks = [
-    {
-      taskId: 'task-1',
-      name: 'Review',
-      assignee: opts.freeTask ? null : 'user-1',
-      taskDefinitionKey: 'review',
-      createTime: '2026-08-12T00:00:00Z',
-      candidateGroups: opts.freeTask ? ['COURRIER'] : [],
-    } as {
-      taskId: string
-      name: string
-      assignee: string | null
-      taskDefinitionKey: string
-      createTime: string
-      candidateGroups?: string[]
-    },
-  ]
+  let tasks = opts.withEndedLink
+    ? []
+    : [
+        {
+          taskId: 'task-1',
+          name: 'Review',
+          assignee: opts.freeTask ? null : 'user-1',
+          taskDefinitionKey: 'review',
+          createTime: '2026-08-12T00:00:00Z',
+          candidateGroups: opts.freeTask ? ['COURRIER'] : [],
+        } as {
+          taskId: string
+          name: string
+          assignee: string | null
+          taskDefinitionKey: string
+          createTime: string
+          candidateGroups?: string[]
+        },
+      ]
   let elements: Array<Record<string, unknown>> = []
 
   await page.route('**/api/workflow-start-variables**', async (route) => {
@@ -765,21 +775,28 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/workflows') && method === 'GET') {
+      const listed = listedLinkId()
+      const ended = !!endedLinkId && !linkId
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(
           envelope(
-            linkId
+            listed
               ? [
                   {
-                    id: linkId,
+                    id: listed,
                     dossierId: DOSSIER_ID,
                     tenantId: 'tenant_dev',
                     processInstanceId: 'pi-1',
                     processDefinitionKey: 'claimWorkflow',
                     sequence: 1,
-                    status: 'ACTIVE',
+                    status: ended ? 'PROVISIONNE' : 'ACTIVE',
+                    triggerRef: null,
+                    startedAt: '2026-08-12T00:00:00Z',
+                    endedAt: ended ? '2026-08-12T02:00:00Z' : null,
+                    endReason: ended ? 'COMPLETED' : null,
+                    startedBy: 'user-1',
                   },
                 ]
               : [],
@@ -926,14 +943,15 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
       return
     }
     if (url.includes('/diagram')) {
+      const ended = !!endedLinkId && !linkId
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           bpmnXml:
-            '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/></process></definitions>',
-          activeIds: ['start'],
-          completedIds: [],
+            '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/><endEvent id="end"/></process></definitions>',
+          activeIds: ended ? [] : ['start'],
+          completedIds: ended ? ['start', 'end'] : [],
           failedIds: incidents.length > 0 ? ['start'] : [],
         }),
       })
@@ -941,6 +959,7 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
     }
     if (url.includes('/history')) {
       // Miroir D-HISTORY-SIGNIFICANT (TODO §131) : l'API ne renvoie déjà plus les sequenceFlow / passerelles.
+      const ended = !!endedLinkId && !linkId
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -959,8 +978,8 @@ export async function mockSession(page: Page, opts: MockOpts = {}) {
               name: 'Smoke Task',
               assignee: 'user-1',
               startTime: '2026-11-12T10:00:01Z',
-              endTime: null,
-              durationMs: null,
+              endTime: ended ? '2026-11-12T10:05:00Z' : null,
+              durationMs: ended ? 299_000 : null,
             },
           ]),
         ),

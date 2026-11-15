@@ -48,6 +48,109 @@ test('E2E-4 start workflow sends Idempotency-Key', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
 })
 
+/** TODO §141 (D-VIZ-ENDED) — fiche d'un dossier clôturé : diagramme + historique du lien terminé. */
+test('E2E-VIZ-ENDED-1 completed process still shows diagram and history', async ({ page }) => {
+  await mockSession(page, { dossierStatus: 'CLOTURE', withEndedLink: true })
+  await openApp(page)
+  await page.goto(`./dossiers/${DOSSIER_ID}`)
+  await expect(page.getByRole('heading', { name: 'Claim A' })).toBeVisible()
+  await expect(page.getByText('PROVISIONNE')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Diagramme' })).toBeVisible()
+  await expect(page.getByText('Diagramme indisponible')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Historique' })).toBeVisible()
+  await expect(page.locator('.history-timeline')).toContainText('Smoke Task')
+  await expect(page.getByText(/Pas encore d.activité/)).toHaveCount(0)
+})
+
+/** TODO §141 — le sélecteur de run recharge diagramme et historique du lien choisi. */
+test('E2E-VIZ-ENDED-2 selecting another workflow link reloads its history', async ({ page }) => {
+  const otherLinkId = '33333333-3333-3333-3333-333333333333'
+  await mockSession(page, { dossierStatus: 'CLOTURE', withEndedLink: true })
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/workflows**`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            id: LINK_ID,
+            dossierId: DOSSIER_ID,
+            tenantId: 'tenant_dev',
+            processInstanceId: 'pi-1',
+            processDefinitionKey: 'claimWorkflow',
+            sequence: 1,
+            status: 'PROVISIONNE',
+            triggerRef: null,
+            startedAt: '2026-08-12T00:00:00Z',
+            endedAt: '2026-08-12T02:00:00Z',
+            endReason: 'COMPLETED',
+            startedBy: 'user-1',
+          },
+          {
+            id: otherLinkId,
+            dossierId: DOSSIER_ID,
+            tenantId: 'tenant_dev',
+            processInstanceId: 'pi-2',
+            processDefinitionKey: 'claimWorkflow',
+            sequence: 2,
+            status: 'COMPLETED',
+            triggerRef: null,
+            startedAt: '2026-08-13T00:00:00Z',
+            endedAt: '2026-08-13T03:00:00Z',
+            endReason: 'COMPLETED',
+            startedBy: 'user-1',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/history**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            activityId: 'otherTask',
+            name: 'Other Run Task',
+            assignee: null,
+            startTime: '2026-08-13T00:00:00Z',
+            endTime: '2026-08-13T00:01:00Z',
+            durationMs: 60_000,
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/diagram**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        bpmnXml:
+          '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/></process></definitions>',
+        activeIds: [],
+        completedIds: ['start'],
+        failedIds: [],
+      }),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/tasks**`, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/incidents**`, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  })
+  await openApp(page)
+  await page.goto(`./dossiers/${DOSSIER_ID}`)
+  // Fallback = plus récent (sequence 2) → Other Run Task ; clic sur #1 recharge Smoke Task.
+  await expect(page.locator('.history-timeline')).toContainText('Other Run Task')
+  await page.getByTestId(`workflow-link-${LINK_ID}`).click()
+  await expect(page.locator('.history-timeline')).toContainText('Smoke Task')
+  await expect(page.getByText('Diagramme indisponible')).toHaveCount(0)
+})
+
 /** TODO §131 (D-HISTORY-SIGNIFICANT) — frise : noms métier, pas d'ids techniques flow_… (contrat API filtré). */
 test('E2E-HISTORY-1 timeline shows named significant steps only', async ({ page }) => {
   await mockSession(page)

@@ -347,6 +347,14 @@ une entrée recharge le diagramme BPMN correspondant via
 de l'entrée choisie. Par défaut, l'entrée sans `endedAt` (le workflow actif) est
 sélectionnée ; s'il n'y en a pas, c'est la plus récente.
 
+> **Implémentation — D-VIZ-ENDED (TODO §141, issue #103).** À la fin du processus,
+> `dossier.currentWorkflowLinkId` repasse à `null` (nouveau démarrage possible). Le SPA
+> (`resolveVisualizationLinkId` dans le store `dossier`) retombe alors sur le lien le plus
+> récent ayant un `processInstanceId`. L'adaptateur Flowable lit déjà l'historique pour une
+> PI terminée : `activeIds` vide, `completedIds` = chemin parcouru ; `/history` reste filtré
+> (§131). Preuves : `FlowableWorkflowVisualizationAdapterTest#getDiagram_finishedProcess_*`,
+> assertions post-`complete` dans `WorkflowApiTest`, Playwright `E2E-VIZ-ENDED-1`.
+
 ```
 Historique des workflows — Dossier DOS-SINISTRE-2024-000042
 ┌───────────────────────────────────────────────────────────────┐

@@ -17,7 +17,6 @@ import org.springframework.web.servlet.resource.ResourceTransformerChain;
 /** TODO §68 T-SEC-5 — le repli d'une route /portal/** ne sert jamais le SPA interne. */
 class SpaFallbackConfigTest {
 
-    private final SpaFallbackConfig.SpaResourceResolver resolver = new SpaFallbackConfig.SpaResourceResolver();
     private final Resource staticRoot = new ClassPathResource("/does-not-exist/");
 
     private static String fallbackFor(String path) {
@@ -46,6 +45,17 @@ class SpaFallbackConfigTest {
         assertThat(missing.getResource("dossiers/123", staticRoot)).isNull();
         assertThat(missing.getResource("portal/some/deep/route", staticRoot)).isNull();
         assertThat(missing.getResource("api/portal/unknown", staticRoot)).isNull();
+    }
+
+    /** Une ressource lisible est servie ; {@code api/} ne replie jamais, même si le chargeur en fournirait une. */
+    @Test
+    void readableEntryPoint_isServed_andApiIsNeverFallenBack() throws IOException {
+        Resource readable = new ByteArrayResource("ok".getBytes(StandardCharsets.UTF_8));
+        SpaFallbackConfig.SpaResourceResolver resolver =
+                new SpaFallbackConfig.SpaResourceResolver(path -> readable);
+        assertThat(resolver.getResource("dossiers/123", staticRoot)).isSameAs(readable);
+        assertThat(resolver.getResource("portal/some/deep/route", staticRoot)).isSameAs(readable);
+        assertThat(resolver.getResource("api/portal/unknown", staticRoot)).isNull();
     }
 
     // --- DD-BASE : <base href> du SPA = context-path de l'instance ---

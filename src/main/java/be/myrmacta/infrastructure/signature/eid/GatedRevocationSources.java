@@ -47,6 +47,7 @@ final class GatedRevocationSources {
     private final RevocationTransport transport;
     private final AtomicInteger remainingCalls;
     private final AtomicInteger refusedByGate = new AtomicInteger();
+    private final java.util.Set<String> fetched = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     GatedRevocationSources(TrustedChainGate gate, RevocationTransport transport, int maxCalls) {
         this.gate = Objects.requireNonNull(gate, "gate");
@@ -60,6 +61,14 @@ final class GatedRevocationSources {
 
     CRLSource crl() {
         return new Crl();
+    }
+
+    /**
+     * Identifiants DSS des données de révocation obtenues en ligne par cette instance. Une donnée embarquée dans le PDF
+     * identique octet pour octet à celle obtenue en ligne a le même identifiant (DSS n'en garde qu'une).
+     */
+    java.util.Set<String> fetchedTokenIds() {
+        return java.util.Set.copyOf(fetched);
     }
 
     /** Nombre de demandes écartées par le garde (chaîne non vérifiée), pour les tests. */
@@ -154,6 +163,7 @@ final class GatedRevocationSources {
                     OCSPToken token = new OCSPToken(basic, single, certificate, issuer);
                     token.setSourceURL(url.toString());
                     token.setExternalOrigin(RevocationOrigin.EXTERNAL);
+                    fetched.add(token.getDSSIdAsString());
                     return token;
                 } catch (Exception ex) {
                     log.warn("OCSP responder {} cannot be used ({})", hostOf(url), ex.getClass().getSimpleName());
@@ -185,6 +195,7 @@ final class GatedRevocationSources {
                     CRLToken token = new CRLToken(certificate, validity);
                     token.setSourceURL(url.toString());
                     token.setExternalOrigin(RevocationOrigin.EXTERNAL);
+                    fetched.add(token.getDSSIdAsString());
                     return token;
                 } catch (Exception ex) {
                     log.warn("CRL distribution point {} cannot be used ({})", hostOf(url), ex.getClass().getSimpleName());

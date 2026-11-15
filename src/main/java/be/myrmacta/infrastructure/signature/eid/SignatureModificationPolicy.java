@@ -43,7 +43,14 @@ final class SignatureModificationPolicy {
     }
 
     private static final Set<String> ACROFORM_SIGNATURE_KEYS = Set.of("Fields", "SigFlags", "DA", "DR", "NeedAppearances", "Type");
-    private static final Set<String> FORBIDDEN_FIELD_KEYS = Set.of("A", "AA", "JS");
+    /**
+     * Revue de clôture (HAUT 3) : clés admises d'un champ ou widget de signature ajouté, liste fermée. Rien qui joue un
+     * média, joigne un fichier ou déclenche une action ({@code /A}, {@code /AA}, {@code /FS}, {@code /RichMedia},
+     * {@code /Movie}, {@code /Sound}, {@code /Contents}…).
+     */
+    private static final Set<String> SIGNATURE_FIELD_KEYS = Set.of("Type", "Subtype", "FT", "T", "TU", "TM", "V", "F",
+            "Ff", "P", "Rect", "AP", "AS", "MK", "DA", "Q", "Parent", "Kids", "Lock", "SV", "StructParent", "NM", "M",
+            "Border", "BS", "C");
     private static final int MAX_PARENT_WALK = 16;
 
     private SignatureModificationPolicy() {}
@@ -78,10 +85,15 @@ final class SignatureModificationPolicy {
         if (creation && "AcroForm".equals(last) && "Catalog".equals(parent) && finalObject instanceof PdfDict acroForm) {
             return isSignatureAcroForm(acroForm);
         }
-        // Clés de signature d'une /AcroForm existante.
-        if (chain.contains("AcroForm") && !chain.contains("Fields")
-                && (isOneOf(last, "SigFlags", "DA", "DR") || chain.contains("DR"))) {
-            return true;
+        // Clés de signature d'une /AcroForm existante : /SigFlags change ; sous /DR et pour /DA, seulement des
+        // créations (revue de clôture, BAS), jamais la modification ou la suppression d'une ressource existante.
+        if (chain.contains("AcroForm") && !chain.contains("Fields")) {
+            if ("SigFlags".equals(last) && !chain.contains("DR")) {
+                return true;
+            }
+            if (chain.contains("DR") || "DA".equals(last)) {
+                return action == PdfObjectModificationType.CREATION;
+            }
         }
         // Tableau /Annots ou /Fields créé : seulement des champs de signature.
         if (creation && isOneOf(last, "Annots", "Fields") && finalObject instanceof PdfArray array) {
@@ -133,9 +145,17 @@ final class SignatureModificationPolicy {
             return false;
         }
         for (String key : field.list()) {
-            if (FORBIDDEN_FIELD_KEYS.contains(key)) {
+            if (!SIGNATURE_FIELD_KEYS.contains(key)) {
                 return false;
             }
+        }
+        // Une annotation n'est un champ de signature que sous forme de widget (pas de tampon, texte libre, pièce jointe).
+        String subtype = field.getNameValue("Subtype");
+        if (subtype != null && !"Widget".equals(subtype)) {
+            return false;
+        }
+        if (subtype == null && field.getObject("Rect") != null) {
+            return false;
         }
         PdfObject value = field.getObject("V");
         return value == null || isSignatureValue(value);

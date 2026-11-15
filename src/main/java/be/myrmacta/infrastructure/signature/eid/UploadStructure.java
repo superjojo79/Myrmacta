@@ -47,20 +47,20 @@ final class UploadStructure {
         if (signed == null || signed.length < PDF_HEADER.length || !startsWith(signed, PDF_HEADER)) {
             return Result.refuse(SignedUploadRejection.NOT_A_PDF);
         }
+        // D-EID-BINDING : le prolongement se compare sur les octets, avant toute analyse du fichier (moins cher, et un
+        // fichier étranger n'est jamais analysé).
+        if (Arrays.equals(base, signed)) {
+            // Le document remis renvoyé tel quel : le signataire n'a pas signé.
+            return Result.refuse(SignedUploadRejection.NO_NEW_SIGNATURE);
+        }
+        if (!extendsBase(base, signed)) {
+            return Result.refuse(SignedUploadRejection.DOCUMENT_MISMATCH);
+        }
         List<int[]> newSignatureRanges = new ArrayList<>();
         List<String> newSubFilters = new ArrayList<>();
         try (PDDocument document = Loader.loadPDF(signed)) {
             if (document.isEncrypted()) {
                 return Result.refuse(SignedUploadRejection.NOT_A_PDF);
-            }
-            // D-EID-BINDING : le prolongement se vérifie après la lecture, pour qu'un fichier qui n'est pas un PDF
-            // reçoive le motif juste.
-            if (Arrays.equals(base, signed)) {
-                // Le document remis renvoyé tel quel : le signataire n'a pas signé.
-                return Result.refuse(SignedUploadRejection.NO_NEW_SIGNATURE);
-            }
-            if (!extendsBase(base, signed)) {
-                return Result.refuse(SignedUploadRejection.DOCUMENT_MISMATCH);
             }
             if (countMarkers(signed, base.length) > limits.maxAddedRevisions()) {
                 return Result.refuse(SignedUploadRejection.CONTENT_MODIFIED);

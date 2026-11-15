@@ -78,7 +78,16 @@ public final class EidTestPdfs {
 
     /** Options d'une signature faite avec DSS. */
     public record SignOptions(String subFilter, SignatureLevel level, boolean visible, Instant signingTime,
-            EidTestPki pkiForExtension) {
+            EidTestPki pkiForExtension, EidTestPki.FakeTransport revocationForExtension) {
+        public SignOptions(String subFilter, SignatureLevel level, boolean visible, Instant signingTime, EidTestPki pkiForExtension) {
+            this(subFilter, level, visible, signingTime, pkiForExtension, null);
+        }
+
+        /** Révocation embarquée par l'extension LT/LTA, servie par ce transport (par défaut celui de la hiérarchie). */
+        public SignOptions embeddingRevocationFrom(EidTestPki.FakeTransport transport) {
+            return new SignOptions(subFilter, level, visible, signingTime, pkiForExtension, transport);
+        }
+
         public static SignOptions defaults() {
             return new SignOptions("ETSI.CAdES.detached", SignatureLevel.PAdES_BASELINE_B, false, EidTestPki.NOW.minusSeconds(120), null);
         }
@@ -148,7 +157,8 @@ public final class EidTestPdfs {
             CommonTrustedCertificateSource trusted = new CommonTrustedCertificateSource();
             trusted.addCertificate(new CertificateToken(pki.root()));
             verifier.setTrustedCertSources(trusted);
-            GatedRevocationSources sources = new GatedRevocationSources(new TrustedChainGate(pki.trustedFile()), pki.transport(), 16);
+            GatedRevocationSources sources = new GatedRevocationSources(new TrustedChainGate(pki.trustedFile()),
+                    options.revocationForExtension() == null ? pki.transport() : options.revocationForExtension(), 16);
             verifier.setOcspSource(sources.ocsp());
             verifier.setCrlSource(sources.crl());
         }
@@ -221,6 +231,11 @@ public final class EidTestPdfs {
      * la même révision que la signature (avant qu'elle ne soit calculée).
      */
     public static byte[] signWithPdfBox(byte[] pdf, Signer signer, String subFilter, PdfTamper tamper) {
+        return signWithPdfBox(pdf, signer, subFilter, tamper, null);
+    }
+
+    /** Comme ci-dessus ; {@code widget}, s'il n'est pas nul, retouche le champ de signature créé avant le calcul. */
+    public static byte[] signWithPdfBox(byte[] pdf, Signer signer, String subFilter, PdfTamper tamper, WidgetTamper widget) {
         try (PDDocument document = Loader.loadPDF(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Set<COSDictionary> changed = new HashSet<>();
             if (tamper != null) {
@@ -234,6 +249,10 @@ public final class EidTestPdfs {
             signature.setSignDate(date);
             SignatureInterface cms = content -> cmsSignature(signer, content.readAllBytes());
             document.addSignature(signature, cms);
+            if (widget != null) {
+                List<org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField> fields = document.getSignatureFields();
+                widget.apply(document, fields.get(fields.size() - 1));
+            }
             for (COSDictionary dictionary : changed) {
                 dictionary.setNeedToBeUpdated(true);
             }
@@ -243,6 +262,117 @@ public final class EidTestPdfs {
             throw new IllegalStateException(ex);
         }
     }
+
+    /** Retouche du champ de signature que PDFBox vient de créer (même révision que la signature). */
+    @FunctionalInterface
+    public interface WidgetTamper {
+        void apply(PDDocument document, org.apache.pdfbox.pdmodel.interactive.form.PDSignatureField field) throws IOException;
+    }
+
+    /** Widget pleine page, apparence opaque qui affiche d'autres clauses. */
+    public static final WidgetTamper FULL_PAGE_APPEARANCE = (document, field) -> {
+        org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationWidget widget = field.getWidgets().get(0);
+        PDRectangle page = document.getPage(0).getMediaBox();
+        widget.setRectangle(new PDRectangle(0, 0, page.getWidth(), page.getHeight()));
+        org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream stream =
+                new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream(document);
+        stream.setBBox(new PDRectangle(0, 0, page.getWidth(), page.getHeight()));
+        stream.setResources(new org.apache.pdfbox.pdmodel.PDResources());
+        try (PDPageContentStream content = new PDPageContentStream(document, stream)) {
+            content.setNonStrokingColor(java.awt.Color.WHITE);
+            content.addRect(0, 0, page.getWidth(), page.getHeight());
+            content.fill();
+            content.beginText();
+            content.setNonStrokingColor(java.awt.Color.BLACK);
+            content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+            content.newLineAtOffset(72, 760);
+            content.showText("Autres clauses : le signataire cede tous ses biens");
+            content.endText();
+        }
+        org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary appearance =
+                new org.apache.pdfbox.pdmodel.interactive.annotation.PDAppearanceDictionary();
+        appearance.setNormalAppearance(stream);
+        widget.setAppearance(appearance);
+    };
+
+    /** Le champ de signature devient une annotation d'un autre sous-type (tampon, texte libre, pièce jointe). */
+    public static WidgetTamper subtype(String subtype) {
+        return (document, field) -> {
+            COSDictionary dictionary = field.getWidgets().get(0).getCOSObject();
+            dictionary.setName(COSName.SUBTYPE, subtype);
+            dictionary.setItem(COSName.RECT, new PDRectangle(50, 50, 40, 40).getCOSArray());
+            if ("FileAttachment".equals(subtype)) {
+                COSDictionary fileSpec = new COSDictionary();
+                fileSpec.setName(COSName.TYPE, "Filespec");
+                fileSpec.setString(COSName.F, "annexe.txt");
+                dictionary.setItem(COSName.FS, fileSpec);
+            }
+        };
+    }
+
+    /** Document de {@code pages} pages dont toutes les pages partagent la même police ({@code /F1}, un seul objet). */
+    public static byte[] basePdfSharedFont(int pages) {
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+            for (int i = 1; i <= pages; i++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                    content.beginText();
+                    content.setFont(font, 12);
+                    content.newLineAtOffset(72, 760);
+                    content.showText("Clause " + i + " : montant 1 000 EUR");
+                    content.endText();
+                }
+            }
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Remplace, sur la page {@code index}, la police partagée {@code /F1} par une autre (nouvel objet). */
+    public static PdfTamper replacePageFont(int index) {
+        return (document, changed) -> {
+            PDPage page = document.getPage(index);
+            org.apache.pdfbox.pdmodel.PDResources resources = page.getResources();
+            COSName name = resources.getFontNames().iterator().next();
+            resources.put(name, new PDType1Font(Standard14Fonts.FontName.COURIER));
+            page.getCOSObject().setNeedToBeUpdated(true);
+            resources.getCOSObject().setNeedToBeUpdated(true);
+            changed.add(page.getCOSObject());
+            changed.add(resources.getCOSObject());
+        };
+    }
+
+    /** Document avec une {@code /AcroForm} dont les ressources {@code /DR} déclarent une police {@code /Helv}. */
+    public static byte[] basePdfWithAcroFormResources() {
+        try (PDDocument document = Loader.loadPDF(basePdf()); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm form =
+                    new org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm(document);
+            org.apache.pdfbox.pdmodel.PDResources resources = new org.apache.pdfbox.pdmodel.PDResources();
+            resources.put(COSName.getPDFName("Helv"), new PDType1Font(Standard14Fonts.FontName.HELVETICA));
+            form.setDefaultResources(resources);
+            document.getDocumentCatalog().setAcroForm(form);
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Remplace, dans {@code /AcroForm /DR}, la police existante {@code /Helv} (modification, pas création). */
+    public static final PdfTamper REPLACE_ACROFORM_FONT = (document, changed) -> {
+        org.apache.pdfbox.pdmodel.interactive.form.PDAcroForm form = document.getDocumentCatalog().getAcroForm();
+        org.apache.pdfbox.pdmodel.PDResources resources = form.getDefaultResources();
+        resources.put(COSName.getPDFName("Helv"), new PDType1Font(Standard14Fonts.FontName.TIMES_ROMAN));
+        resources.getCOSObject().setNeedToBeUpdated(true);
+        form.getCOSObject().setNeedToBeUpdated(true);
+        changed.add(resources.getCOSObject());
+        changed.add(form.getCOSObject());
+        changed.add(document.getDocumentCatalog().getCOSObject());
+    };
 
     /** Altération d'un document ouvert ; les dictionnaires modifiés vont dans {@code changed}. */
     @FunctionalInterface

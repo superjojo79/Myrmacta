@@ -13,6 +13,8 @@ import eu.europa.esig.dss.enumerations.CertificationPermission;
 import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
 import eu.europa.esig.dss.enumerations.Indication;
+import eu.europa.esig.dss.enumerations.KeyUsageBit;
+import eu.europa.esig.dss.enumerations.RevocationOrigin;
 import eu.europa.esig.dss.enumerations.RevocationType;
 import eu.europa.esig.dss.enumerations.SubIndication;
 import eu.europa.esig.dss.model.InMemoryDocument;
@@ -91,8 +93,13 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
      * est sautée par DSS ; les contrôles d'objets restent faits. 0 la coupe.
      */
     record Limits(int maxAddedRevisions, int maxSignatures, int maxRevocationCalls, int visualComparisonMaxPages,
-            Duration revocationMaxAge) {
-        static final Limits DEFAULT = new Limits(8, 32, 8, 10, Duration.ofHours(24));
+            Duration revocationMaxAge, double maxSignatureAreaFraction) {
+        /**
+         * {@code maxSignatureAreaFraction} : aire maximale du {@code /Rect} d'un widget de signature ajouté, en part de
+         * la page (revue de clôture, HAUT 3). 5 % : un cadre de signature Acrobat ordinaire (200 × 60 pt) en fait 2,4 %
+         * sur A4 ; une apparence qui masquerait une clause ou la page est refusée.
+         */
+        static final Limits DEFAULT = new Limits(8, 32, 8, 10, Duration.ofHours(24), 0.05);
     }
 
     private enum Stage {
@@ -170,6 +177,18 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
             }
             if (!refused.isEmpty()) {
                 log.info("eID signed upload refused: {} object change(s) beyond the signature", refused.size());
+                return true;
+            }
+            // Revue de clôture (HAUT 1, HAUT 3) : redéfinitions lues dans les tables de références croisées, et aire des
+            // widgets de signature neufs, indépendamment du parcours d'objets de DSS.
+            String refusal = IncrementalUpdateCheck.refusal(baseReader.getPDDocument(), finalReader.getPDDocument(),
+                    limits.maxSignatureAreaFraction());
+            if (refusal == null && signedRevision != signed) {
+                refusal = IncrementalUpdateCheck.refusal(revisionReader.getPDDocument(), finalReader.getPDDocument(),
+                        limits.maxSignatureAreaFraction());
+            }
+            if (refusal != null) {
+                log.info("eID signed upload refused: {}", refusal);
                 return true;
             }
             DefaultPdfDifferencesFinder differences = new DefaultPdfDifferencesFinder();
@@ -279,11 +298,17 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
         }
         // 9. Révocation (D-EID-REVOCATION), pour le signataire et chaque intermédiaire qui n'est pas une ancre.
         CertificateRevocationWrapper signerRevocation = null;
-        for (CertificateWrapper certificate : signature.getCertificateChain()) {
+        List<CertificateWrapper> revocationChain = signature.getCertificateChain();
+        for (int index = 0; index < revocationChain.size(); index++) {
+            CertificateWrapper certificate = revocationChain.get(index);
             if (certificate.isTrusted()) {
                 break;
             }
-            RevocationOutcome outcome = revocationOf(certificate, now);
+            if (index + 1 >= revocationChain.size()) {
+                return SignedUploadVerdict.rejected(SignedUploadRejection.REVOCATION_UNAVAILABLE);
+            }
+            RevocationOutcome outcome = revocationOf(certificate, revocationChain.get(index + 1), now, index == 0,
+                    sources.fetchedTokenIds());
             if (outcome.revoked()) {
                 return SignedUploadVerdict.rejected(SignedUploadRejection.CERTIFICATE_REVOKED);
             }
@@ -332,16 +357,37 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
     }
 
     private RevocationDataVerifier revocationDataVerifier() {
-        RevocationDataVerifier verifier = RevocationDataVerifier.createDefaultRevocationDataVerifier();
-        // D-EID-REVOCATION : aucune extension (noRevAvail, certificats courts) ne dispense de révocation.
-        verifier.setRevocationSkipCertificateExtensions(List.of());
-        verifier.setRevocationSkipCertificatePolicies(List.of());
-        // Une révocation embarquée plus vieille que la borne est redemandée en ligne.
-        long maxAge = limits.revocationMaxAge().toMillis();
-        verifier.setSignatureMaximumRevocationFreshness(maxAge);
-        verifier.setRevocationMaximumRevocationFreshness(maxAge);
-        verifier.setTimestampMaximumRevocationFreshness(maxAge);
-        return verifier;
+        return new OnlineOnlyRevocationDataVerifier();
+    }
+
+    /**
+     * Réglages de DSS par défaut (algorithmes acceptés), avec trois différences (D-EID-REVOCATION, revue de clôture) :
+     * aucune extension ne dispense de révocation sauf {@code id-pkix-ocsp-nocheck} (réservée aux répondeurs OCSP,
+     * RFC 6960) ; une donnée de révocation n'est « fraîche » que si elle a été obtenue en ligne pendant cette
+     * vérification, si bien que DSS redemande toujours la révocation au transport même quand le PDF en embarque une.
+     */
+    private static final class OnlineOnlyRevocationDataVerifier extends RevocationDataVerifier {
+        OnlineOnlyRevocationDataVerifier() {
+            setAcceptableDigestAlgorithms(List.of(DigestAlgorithm.SHA224, DigestAlgorithm.SHA256, DigestAlgorithm.SHA384,
+                    DigestAlgorithm.SHA512, DigestAlgorithm.SHA3_256, DigestAlgorithm.SHA3_384, DigestAlgorithm.SHA3_512));
+            java.util.Map<EncryptionAlgorithm, Integer> keyLengths = new java.util.EnumMap<>(EncryptionAlgorithm.class);
+            keyLengths.put(EncryptionAlgorithm.RSA, 1900);
+            keyLengths.put(EncryptionAlgorithm.RSASSA_PSS, 1900);
+            keyLengths.put(EncryptionAlgorithm.ECDSA, 256);
+            keyLengths.put(EncryptionAlgorithm.PLAIN_ECDSA, 256);
+            setAcceptableEncryptionAlgorithmKeyLength(keyLengths);
+            setRevocationSkipCertificateExtensions(List.of("1.3.6.1.5.5.7.48.1.5"));
+            setRevocationSkipCertificatePolicies(List.of());
+            setSignatureMaximumRevocationFreshness(0L);
+            setRevocationMaximumRevocationFreshness(0L);
+            setTimestampMaximumRevocationFreshness(0L);
+        }
+
+        @Override
+        public boolean isRevocationDataFresh(eu.europa.esig.dss.spi.x509.revocation.RevocationToken<?> token, Date validationTime,
+                eu.europa.esig.dss.enumerations.Context context) {
+            return token.getExternalOrigin() == RevocationOrigin.EXTERNAL && super.isRevocationDataFresh(token, validationTime, context);
+        }
     }
 
     private static long revisionEnd(SignatureWrapper signature) {
@@ -418,7 +464,13 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
             return false;
         }
         Date at = Date.from(now);
-        for (CertificateWrapper certificate : chain) {
+        for (int index = 0; index < chain.size(); index++) {
+            CertificateWrapper certificate = chain.get(index);
+            // Revue de clôture (MOYEN 5) : tout émetteur est une autorité (CA, keyCertSign) dont la longueur de chemin
+            // admet les autorités intermédiaires placées sous elle ; sans dépendre du seul verdict de DSS.
+            if (index > 0 && !isAuthority(certificate, index - 1)) {
+                return false;
+            }
             if (certificate.getNotBefore() == null || certificate.getNotAfter() == null
                     || at.before(certificate.getNotBefore()) || at.after(certificate.getNotAfter())) {
                 return false;
@@ -435,15 +487,41 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
 
     private record RevocationOutcome(boolean revoked, CertificateRevocationWrapper good) {}
 
+    private static boolean isAuthority(CertificateWrapper certificate, int authoritiesBelow) {
+        int pathLength = certificate.getPathLenConstraint();
+        return certificate.isCA()
+                && certificate.getKeyUsages().contains(KeyUsageBit.KEY_CERT_SIGN)
+                && (pathLength < 0 || pathLength >= authoritiesBelow);
+    }
+
     /**
-     * Révocation d'un certificat : révoqué si une donnée valide d'une source de confiance le dit ; bon si une donnée
-     * valide, de confiance et assez fraîche le dit ; sinon indisponible.
+     * Révocation d'un certificat (D-EID-REVOCATION, revue de clôture HAUT 2 et MOYEN 4).
+     *
+     * <ul>
+     *   <li>Seules les données obtenues <b>en ligne</b>, par le transport et à la vérification, comptent : une donnée
+     *       embarquée dans le PDF (PAdES-LT, LTA) n'est pas crue, quoi qu'en pense DSS. Un PDF d'outil tiers reste
+     *       accepté, puisque la révocation est redemandée (fraîcheur maximale nulle).
+     *   <li>Le signataire de la donnée doit avoir autorité sur le certificat : pour une CRL, l'émetteur du certificat
+     *       (usage {@code cRLSign}) ; pour une réponse OCSP, l'émetteur lui-même ou un répondeur délégué émis
+     *       directement par lui avec l'usage étendu {@code id-kp-OCSPSigning}. Une autre carte de la même hiérarchie ne
+     *       l'a pas.
+     *   <li>Fraîcheur : une CRL vaut tant que son {@code nextUpdate} n'est pas passé (une CRL d'autorité est publiée à
+     *       plusieurs mois d'intervalle) ; une réponse OCSP pour le certificat du signataire a au plus
+     *       {@code revocationMaxAge}. Aucune date n'est dans le futur au-delà de cinq minutes.
+     * </ul>
      */
-    private RevocationOutcome revocationOf(CertificateWrapper certificate, Instant now) {
+    private RevocationOutcome revocationOf(CertificateWrapper certificate, CertificateWrapper issuer, Instant now,
+            boolean signerCertificate, Set<String> fetchedOnline) {
         CertificateRevocationWrapper good = null;
         Instant oldest = now.minus(limits.revocationMaxAge());
+        Instant skew = now.plus(Duration.ofMinutes(5));
         for (CertificateRevocationWrapper revocation : certificate.getCertificateRevocationData()) {
-            if (!revocation.isSignatureIntact() || !revocation.isSignatureValid() || !revocation.isTrustedChain()) {
+            // Obtenue en ligne pendant cette vérification (une copie embarquée identique a le même identifiant).
+            if (!fetchedOnline.contains(revocation.getId())) {
+                continue;
+            }
+            if (!revocation.isSignatureIntact() || !revocation.isSignatureValid() || !revocation.isTrustedChain()
+                    || !signedWithAuthority(revocation, issuer)) {
                 continue;
             }
             if (revocation.getStatus() != null && revocation.getStatus().isRevoked()) {
@@ -451,9 +529,16 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
             }
             Date thisUpdate = revocation.getThisUpdate();
             Date nextUpdate = revocation.getNextUpdate();
-            boolean fresh = thisUpdate != null && !thisUpdate.toInstant().isBefore(oldest)
-                    && !thisUpdate.toInstant().isAfter(now.plus(Duration.ofMinutes(5)))
-                    && (nextUpdate == null || !nextUpdate.toInstant().isBefore(now));
+            if (thisUpdate == null || thisUpdate.toInstant().isAfter(skew)) {
+                continue;
+            }
+            boolean fresh;
+            if (revocation.getRevocationType() == RevocationType.CRL) {
+                fresh = nextUpdate != null && nextUpdate.toInstant().isAfter(now);
+            } else {
+                fresh = (!signerCertificate || !thisUpdate.toInstant().isBefore(oldest))
+                        && (nextUpdate == null || nextUpdate.toInstant().isAfter(now));
+            }
             if (revocation.getStatus() != null && revocation.getStatus().isGood() && fresh) {
                 if (good == null || revocation.getProductionDate().after(good.getProductionDate())) {
                     good = revocation;
@@ -462,6 +547,26 @@ public final class DssSignedPdfVerifier implements SignedPdfVerifier {
         }
         return new RevocationOutcome(false, good);
     }
+
+    /** Le signataire de la donnée de révocation a autorité sur le certificat contrôlé (voir {@link #revocationOf}). */
+    private static boolean signedWithAuthority(CertificateRevocationWrapper revocation, CertificateWrapper issuer) {
+        CertificateWrapper signer = revocation.getSigningCertificate();
+        if (signer == null || issuer == null) {
+            return false;
+        }
+        if (signer.getId().equals(issuer.getId())) {
+            return revocation.getRevocationType() != RevocationType.CRL
+                    || issuer.getKeyUsages().contains(KeyUsageBit.CRL_SIGN);
+        }
+        if (revocation.getRevocationType() != RevocationType.OCSP) {
+            return false;
+        }
+        CertificateWrapper signerIssuer = signer.getSigningCertificate();
+        return signerIssuer != null && signerIssuer.getId().equals(issuer.getId())
+                && signer.getExtendedKeyUsages().stream().anyMatch(oid -> OCSP_SIGNING.equals(oid.getValue()));
+    }
+
+    private static final String OCSP_SIGNING = "1.3.6.1.5.5.7.3.9";
 
     private static Instant toInstant(Date date) {
         return date == null ? null : date.toInstant();

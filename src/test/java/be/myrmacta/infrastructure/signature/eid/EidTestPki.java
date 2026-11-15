@@ -190,19 +190,26 @@ public final class EidTestPki {
 
     /** Réponse OCSP signée par l'autorité émettrice pour la requête donnée. */
     byte[] ocspResponse(byte[] requestBytes, Instant producedAt) throws IOException {
+        return ocspResponse(requestBytes, producedAt, null, false);
+    }
+
+    /** {@code responder} nul : l'autorité émettrice signe. {@code forceGood} : « good » quel que soit l'état réel. */
+    byte[] ocspResponse(byte[] requestBytes, Instant producedAt, Issued responder, boolean forceGood) throws IOException {
         try {
             OCSPReq request = new OCSPReq(requestBytes);
-            X509CertificateHolder issuerHolder = new JcaX509CertificateHolder(intermediate.certificate());
+            Issued signerOfResponse = responder == null ? intermediate : responder;
+            X509CertificateHolder issuerHolder = new JcaX509CertificateHolder(signerOfResponse.certificate());
             BasicOCSPRespBuilder builder = new BasicOCSPRespBuilder(new RespID(issuerHolder.getSubject()));
             for (Req single : request.getRequestList()) {
                 CertificateID id = single.getCertID();
-                Instant revokedAt = revoked.get(id.getSerialNumber());
+                Instant revokedAt = forceGood ? null : revoked.get(id.getSerialNumber());
                 CertificateStatus status = revokedAt == null
                         ? CertificateStatus.GOOD
                         : new RevokedStatus(Date.from(revokedAt), CRLReason.keyCompromise);
                 builder.addResponse(id, status, Date.from(producedAt.minusSeconds(60)), Date.from(producedAt.plus(Duration.ofHours(12))));
             }
-            ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(intermediate.key());
+            String algorithm = signerOfResponse.key().getAlgorithm().equals("EC") ? "SHA384withECDSA" : "SHA256withRSA";
+            ContentSigner signer = new JcaContentSignerBuilder(algorithm).build(signerOfResponse.key());
             BasicOCSPResp basic = builder.build(signer, new X509CertificateHolder[] {issuerHolder}, Date.from(producedAt));
             OCSPResp response = new OCSPRespBuilder().build(OCSPRespBuilder.SUCCESSFUL, basic);
             return response.getEncoded();
@@ -213,11 +220,15 @@ public final class EidTestPki {
 
     /** Liste de révocation de l'autorité intermédiaire ({@code root} faux) ou de la racine ({@code root} vrai). */
     byte[] crl(boolean ofRoot, Instant thisUpdate) throws IOException {
+        return crl(ofRoot, thisUpdate.minusSeconds(60), thisUpdate.plus(Duration.ofDays(1)));
+    }
+
+    byte[] crl(boolean ofRoot, Instant thisUpdate, Instant nextUpdate) throws IOException {
         try {
             Issued issuer = ofRoot ? root : intermediate;
             X509CertificateHolder issuerHolder = new JcaX509CertificateHolder(issuer.certificate());
-            X509v2CRLBuilder builder = new X509v2CRLBuilder(issuerHolder.getSubject(), Date.from(thisUpdate.minusSeconds(60)));
-            builder.setNextUpdate(Date.from(thisUpdate.plus(Duration.ofDays(1))));
+            X509v2CRLBuilder builder = new X509v2CRLBuilder(issuerHolder.getSubject(), Date.from(thisUpdate));
+            builder.setNextUpdate(Date.from(nextUpdate));
             for (Map.Entry<BigInteger, Instant> entry : revoked.entrySet()) {
                 builder.addCRLEntry(entry.getKey(), Date.from(entry.getValue()), CRLReason.keyCompromise);
             }
@@ -368,6 +379,24 @@ public final class EidTestPki {
         private volatile boolean available = true;
         private volatile boolean ocspAvailable = true;
         private volatile Clock clock = CLOCK;
+        private volatile Issued ocspResponder;
+        private volatile boolean ocspForceGood;
+        private volatile Instant rootCrlThisUpdate;
+        private volatile Instant rootCrlNextUpdate;
+
+        /** Réponses OCSP signées par {@code responder} (par exemple une autre carte) et toujours « good ». */
+        public FakeTransport ocspSignedBy(Issued responder) {
+            this.ocspResponder = responder;
+            this.ocspForceGood = true;
+            return this;
+        }
+
+        /** Dates de la CRL de la racine (révocation des autorités intermédiaires). */
+        public FakeTransport rootCrl(Instant thisUpdate, Instant nextUpdate) {
+            this.rootCrlThisUpdate = thisUpdate;
+            this.rootCrlNextUpdate = nextUpdate;
+            return this;
+        }
 
         public FakeTransport serve(EidTestPki pki) {
             ocsp.put(pki.ocspUrl, pki);
@@ -412,7 +441,7 @@ public final class EidTestPki {
             if (pki == null) {
                 throw new IOException("unknown responder");
             }
-            return pki.ocspResponse(request, clock.instant());
+            return pki.ocspResponse(request, clock.instant(), ocspResponder, ocspForceGood);
         }
 
         @Override
@@ -427,7 +456,8 @@ public final class EidTestPki {
             }
             pki = rootCrl.get(distributionPoint.toString());
             if (pki != null) {
-                return pki.crl(true, clock.instant());
+                return rootCrlThisUpdate == null ? pki.crl(true, clock.instant())
+                        : pki.crl(true, rootCrlThisUpdate, rootCrlNextUpdate);
             }
             throw new IOException("unknown distribution point");
         }
@@ -644,6 +674,40 @@ public final class EidTestPki {
                 throw new IOException("test TSA failed", ex);
             }
         }
+    }
+
+    /**
+     * « Certificat » fabriqué par le porteur d'une carte avec la clé de sa carte (MOYEN 5 de la revue) : signé par
+     * un certificat de signataire, donc valide par signatures, et portant l'adresse OCSP de son choix.
+     */
+    public static Signer forgedBelow(Signer holder, String ocspUrl) {
+        try {
+            KeyPair keys = rsa(2048);
+            X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(holder.certificate(),
+                    BigInteger.valueOf(SERIALS.incrementAndGet()), Date.from(NOW.minus(Duration.ofDays(10))),
+                    Date.from(NOW.plus(Duration.ofDays(300))),
+                    new X500Name("C=BE, CN=Forged (Signature), SURNAME=Forged, GIVENNAME=Eve"), keys.getPublic());
+            builder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.nonRepudiation));
+            builder.addExtension(Extension.authorityInfoAccess, false, new AuthorityInformationAccess(new AccessDescription(
+                    AccessDescription.id_ad_ocsp, new GeneralName(GeneralName.uniformResourceIdentifier, ocspUrl))));
+            ASN1EncodableVector statements = new ASN1EncodableVector();
+            statements.add(new QCStatement(ETSIQCObjectIdentifiers.id_etsi_qcs_QcCompliance));
+            statements.add(new QCStatement(ETSIQCObjectIdentifiers.id_etsi_qcs_QcSSCD));
+            builder.addExtension(Extension.qCStatements, false, new DERSequence(statements));
+            String algorithm = holder.keyType() == KeyType.RSA_2048 ? "SHA256withRSA" : "SHA384withECDSA";
+            X509Certificate certificate = toX509(builder.build(new JcaContentSignerBuilder(algorithm).build(holder.key())));
+            List<X509Certificate> chain = new ArrayList<>();
+            chain.add(holder.certificate());
+            chain.addAll(holder.chain());
+            return new Signer(certificate, keys.getPrivate(), KeyType.RSA_2048, chain);
+        } catch (Exception ex) {
+            throw new IllegalStateException("cannot forge certificate", ex);
+        }
+    }
+
+    /** Le certificat et la clé d'un signataire, pour s'en servir comme répondeur OCSP détourné. */
+    public static Issued asIssued(Signer signer) {
+        return new Issued(signer.certificate(), signer.key());
     }
 
     @Override

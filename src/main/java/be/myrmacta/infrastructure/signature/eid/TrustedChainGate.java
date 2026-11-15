@@ -81,17 +81,33 @@ final class TrustedChainGate {
      * viennent alors d'une autorité choisie par l'exploitant.
      */
     boolean allowsOnlineRevocation(CertificateToken certificate, CertificateToken issuer) {
-        if (certificate == null || issuer == null || !certificate.isSignedBy(issuer)) {
+        if (certificate == null || issuer == null || !certificate.isSignedBy(issuer) || !isAuthority(issuer, 0)) {
             return false;
         }
         if (provided.contains(issuer)) {
             return true;
         }
         for (CertificateToken authority : provided) {
-            if (issuer.isSignedBy(authority)) {
+            // L'émetteur est une autorité intermédiaire sous une autorité fournie : celle-ci doit l'autoriser
+            // (autorité, keyCertSign, longueur de chemin d'au moins une autorité en dessous d'elle).
+            if (issuer.isSignedBy(authority) && isAuthority(authority, 1)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Revue de clôture (MOYEN 5) : un certificat ne peut émettre que s'il est une autorité ({@code basicConstraints}
+     * CA), porte l'usage {@code keyCertSign} et que sa longueur de chemin admet {@code authoritiesBelow} autorités
+     * intermédiaires sous lui. Une signature valide ne suffit pas : le porteur d'une carte peut signer un « certificat »
+     * avec la clé de sa carte.
+     */
+    static boolean isAuthority(CertificateToken token, int authoritiesBelow) {
+        X509Certificate certificate = token.getCertificate();
+        int pathLength = certificate.getBasicConstraints();
+        boolean[] keyUsage = certificate.getKeyUsage();
+        return pathLength >= 0 && pathLength >= authoritiesBelow
+                && keyUsage != null && keyUsage.length > 5 && keyUsage[5];
     }
 }

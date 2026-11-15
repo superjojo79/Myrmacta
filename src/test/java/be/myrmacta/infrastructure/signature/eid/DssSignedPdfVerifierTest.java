@@ -188,7 +188,9 @@ class DssSignedPdfVerifierTest {
         void encrypted() {
             byte[] encrypted = EidTestPdfs.encryptedPdf();
 
-            assertRejected(verify(base, encrypted), SignedUploadRejection.NOT_A_PDF);
+            // Ne prolonge pas le document remis : refusé avant toute analyse (le cas chiffré qui prolonge est dans
+            // DssSignedPdfVerifierReviewTest.Low#encryptedExtension).
+            assertRejected(verify(base, encrypted), SignedUploadRejection.DOCUMENT_MISMATCH);
         }
 
         @Test

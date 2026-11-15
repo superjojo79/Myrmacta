@@ -191,6 +191,16 @@ npm install -D vue-tsc
   `2 d 23 h` / `3 h 12 min` (EN) ; jamais le double brut.
 - **Tests :** Vitest `src/i18n/index.spec.ts` (FR/EN) et `MobileTasksView.spec.ts` ; Playwright `E2E-SLA-5`.
 
+## Implémentation — E2E-BASE-2 déconnexion depuis une route imbriquée (issue #97)
+
+- **Comportement testé (DD-BASE) :** depuis `/dossiers/new`, le bouton « Déconnexion » soumet un
+  `<form method="POST">` vers `/api/auth/logout` (pathname absolu au context-path, pas
+  `/dossiers/api/…`). Voir `useAuthStore().logout()` et `E2E-BASE-1` / `E2E-BASE-2` dans
+  `frontend/e2e/pilotage-dossiers.spec.ts`.
+- **Garde-fou Playwright :** le clic utilise `noWaitAfter: true` et le test attend explicitement la
+  requête `POST` au pathname `/api/auth/logout`. Sans cela, Playwright attend la navigation du
+  `form.submit()` vers la réponse mockée et peut timeout sous charge (issue #97).
+
 ## Implémentation — tests de mutation StrykerJS (issue #245, TODO §108)
 
 - **Outil :** StrykerJS et son lanceur Vitest, dépendances de développement (hors SPA livré). Configuration

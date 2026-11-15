@@ -66,6 +66,7 @@
 | `D-CAL-PROMO-2` | Artefact CALENDAR = instantané complet (saisies et sources déroulées, sans URL) ; ancien bundle plat importé en saisies | [121-calendrier-saisie-sources-ics.md](121-calendrier-saisie-sources-ics.md) |
 | `D-CAL-SITES` | Mode ouvrable choisi à chaque délai (DMN, brique, réglage du type), calendaire par défaut | [120-calendrier-jours-ouvrables.md](120-calendrier-jours-ouvrables.md) |
 | `D-CAL-SOURCE` | Source nommée (`ICS_FILE`, `ICS_URL`, `BE_FEDERAL`), 10 au plus, jours `CLOSED` seulement ; rechargement atomique | [121-calendrier-saisie-sources-ics.md](121-calendrier-saisie-sources-ics.md) |
+| `D-CAL-SOURCE-CASE` | Unicité du nom de source : casse Unicode simple (`pg_c_utf8`), indépendante de la locale de la base ; les accents restent distincts | [139-unicite-du-nom-de-source-independante-de-la-locale.md](139-unicite-du-nom-de-source-independante-de-la-locale.md) |
 | `D-CAL-THISANDFUTURE` | `RECURRENCE-ID;RANGE=THISANDFUTURE` retire la série à partir de cette date | [124-calendrier-durcissements-revue-33.md](124-calendrier-durcissements-revue-33.md) |
 | `D-CAL-TIMER` | echeanceDepassee reste le lendemain calendaire à minuit dans le fuseau du tenant | [120-calendrier-jours-ouvrables.md](120-calendrier-jours-ouvrables.md) |
 | `D-CAL-URL-PURGE` | URL illisible : effacer `url_ciphertext` et `masked_url` sous verrou | [124-calendrier-durcissements-revue-33.md](124-calendrier-durcissements-revue-33.md) |

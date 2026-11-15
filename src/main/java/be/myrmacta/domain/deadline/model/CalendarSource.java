@@ -71,6 +71,11 @@ public record CalendarSource(UUID id, String name, Kind kind, List<CalendarEntry
         return new CalendarSource(id, name, kind, closedDays, loadedAt, loadedBy, contentSha256, lastError, masked);
     }
 
+    /**
+     * Clef d'unicité du domaine : casse pleine Unicode ({@link Locale#ROOT}). L'index SQL (TODO §139) ignore la locale
+     * de la base avec la casse simple {@code pg_c_utf8}. Les deux coïncident pour les lettres latines ; elles divergent
+     * sur quelques lettres hors latin courant.
+     */
     public String nameKey() {
         return name.toLowerCase(Locale.ROOT);
     }

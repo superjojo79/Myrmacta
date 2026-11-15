@@ -134,7 +134,8 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   supprimé. Non corrigé. Le pont n'est pas exposé à ce cas : le serveur assemble lui-même le PDF.
 - **(b)** Un même champ de signature peut être inscrit sur plusieurs pages alors qu'une seule est contrôlée. Une
   apparence peut alors être posée sur du texte. Non corrigé. Même remarque sur le pont.
-- La recette avec une vraie carte et de vraies extensions reste due.
+- La recette avec une vraie carte et de vraies extensions reste due : issue
+  [#98](https://github.com/superjojo79/Myrmacta/issues/98). Ce point se clôt avec elle.
 
 ## Revues de clôture
 

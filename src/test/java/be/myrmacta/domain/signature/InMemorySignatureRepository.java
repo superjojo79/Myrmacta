@@ -40,6 +40,11 @@ public class InMemorySignatureRepository implements SignatureRequestRepository {
     }
 
     @Override
+    public synchronized Optional<SignatureRequest> findByIdForUpdate(UUID id) {
+        return findById(id);
+    }
+
+    @Override
     public synchronized Optional<SignatureRequest> findByProviderReference(String providerReference) {
         return requests.values().stream()
                 .filter(r -> providerReference != null && providerReference.equals(r.providerReference()))

@@ -90,6 +90,7 @@ class SignaturePortalApiTest extends AbstractSignatureEngineTest {
                 .andExpect(jsonPath("$.required").value(true))
                 .andExpect(jsonPath("$.simulated").value(true))
                 .andExpect(jsonPath("$.hosted").value(false))
+                .andExpect(jsonPath("$.signedUpload").value(false))
                 .andExpect(jsonPath("$.signingUrl").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.documentLabel").value("Contrat"))
                 .andReturn().getResponse().getContentAsString();
@@ -97,7 +98,7 @@ class SignaturePortalApiTest extends AbstractSignatureEngineTest {
         JsonNode json = objectMapper.readTree(body);
         assertThat(new ArrayList<>(json.propertyNames()))
                 .containsExactlyInAnyOrder("dossierReference", "documentLabel", "signerName", "required",
-                        "deadlineAt", "simulated", "hosted", "signingUrl");
+                        "deadlineAt", "simulated", "hosted", "signedUpload", "cardBridges", "signingUrl");
         assertThat(body).doesNotContain("@example.org").doesNotContain(request.id().toString());
     }
 

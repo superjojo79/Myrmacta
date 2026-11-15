@@ -201,6 +201,41 @@ class SignatureOutcomeHandlerTest {
     }
 
     @Test
+    void signedUploadProviderAlsoLeavesTheArtifactsAndTheResumeToTheDispatcher() {
+        // TODO §138 : artifactsDeferred() couvre le PDF apporté, sans être hébergé
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+
+        handler.afterClosed(request, SignatureOutcome.SIGNED);
+
+        verify(port, never()).fetchArtifacts(any());
+        verify(addElement, never()).add(any(), any());
+        verify(listener, never()).outcomeRecorded(any());
+    }
+
+    @Test
+    void signedUploadProviderArtifactsAreProducedByTheDispatcherOnce() {
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        when(port.fetchArtifacts("stub:x")).thenReturn(new SignaturePort.SignedArtifacts(
+                "S".getBytes(), "application/pdf", "P".getBytes(), "application/pdf", false));
+        SignatureRequest signed = request.closed(SignatureOutcome.SIGNED, null, NOW);
+
+        handler.ensureSignedArtifacts(signed);
+
+        verify(addElement, times(2)).add(any(), any());
+    }
+
+    @Test
+    void signedUploadDeclineDoesNotCancelAtTheProvider() {
+        // cancelAtProvider reste propre aux fournisseurs hébergés
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+
+        handler.afterClosed(request, SignatureOutcome.DECLINED);
+
+        verify(port, never()).cancel(any());
+        verify(listener).outcomeRecorded(request.id());
+    }
+
+    @Test
     void hostedDeclineCancelsTheProviderCeremony() {
         when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));
 

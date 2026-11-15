@@ -34,7 +34,9 @@
 >
 > **Fournisseurs livrés le 2026-10-28** ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247),
 > TODO §109, issue #191) : Yousign et DocuSign, un seul actif par instance. Le niveau eIDAS reste
-> celui du compte chez le fournisseur. Le parcours eID n'est pas dans ce lot. Détail en fin de spec.
+> celui du compte chez le fournisseur. Le fournisseur `eid` (signature par carte eID, TODO §138) n'en fait pas
+> partie : il reste ouvert (TODO §138) ; son pont navigateur est le parcours principal, le téléversement un repli
+> désactivé par défaut. Détail en fin de spec.
 
 ---
 
@@ -217,3 +219,68 @@ profil de production sans le second drapeau.
   garde-fous d'une URL libre de `http-rest`.
 - **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le
   fournisseur, pas un niveau choisi par Myrmacta.
+
+## Implémentation — fournisseur eid (TODO §138)
+
+Statut : §138 ouvert. Le fournisseur `eid` (`app.signature.provider=eid`) signe avec une carte eID belge, sans agent
+propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 (D-EID-TRANSPORT).
+
+- **Pont navigateur, parcours principal.** Dans la page, Web eID puis BeIDConnect signent, selon
+  `app.signature.eid.bridges` (défaut `web-eid,beidconnect`). Le serveur calcule le condensé, la carte signe, et le
+  serveur assemble lui-même le PDF à partir de la valeur de signature rendue (signature invisible, mise à jour
+  incrémentale). Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
+- **Téléversement, repli désactivé par défaut.** Le signataire signe hors de Myrmacta puis téléverse le PDF. Le
+  parcours n'existe que si `app.signature.eid.upload-enabled` (`APP_SIGNATURE_EID_UPLOAD_ENABLED`) vaut `true`.
+  Désactivé, les points `signed-document` répondent 409, `code` = `SIGNED_UPLOAD_DISABLED`, après le contrôle d'accès ;
+  le champ `signedUpload` des lectures vaut `false`. Activé, un avertissement est journalisé au démarrage (D-EID-UPLOAD).
+- **Contrôles du PDF téléversé.** Le fichier commence, octet pour octet, par le document remis ; il ajoute une seule
+  signature, sur un champ neuf ; aucun objet du document remis n'est redéfini hors d'une liste fermée ; le parcours
+  du document final part de sa racine ; une signature visible exige une zone vide. Le contrôle des objets ajoutés
+  reste incomplet (voir Limites) (D-EID-BINDING).
+- **Certificat et révocation.** Il doit remonter à une autorité de l'exploitant, être valide, porter la
+  non-répudiation et se déclarer qualifié (D-EID-QUALIFIED) ; le niveau enregistré est `QES`. La révocation est
+  obtenue en ligne seulement (OCSP, sinon CRL), signée par l'émetteur ou son répondeur délégué. Injoignable : refus
+  (D-EID-REVOCATION).
+- **Document de travail unique.** La demande garde une version : la source, puis les signatures acceptées. Un envoi
+  fait sur une version dépassée est refusé (`STALE_DOCUMENT`). Le PDF final porte toutes les signatures (D-EID-CHAIN).
+- **Constats et preuve.** Chaque signature acceptée garde le nom du signataire, l'émetteur, le numéro et l'empreinte
+  du certificat, l'heure déclarée, l'heure de vérification, le format et la source de révocation. La preuve PDF
+  les reprend (D-EID-EVIDENCE).
+- **Horodatage facultatif.** Avec `app.signature.eid.timestamp.url`, le document final est étendu au niveau long
+  terme quand les données de validation sont complètes, sinon il reçoit un horodatage de document. Une TSA
+  injoignable est reprise par le répartiteur, puis le document est livré sans horodatage, dit dans la preuve
+  (D-EID-TIMESTAMP).
+- **Garde-fous.** Démarrage refusé sans fichier d'autorités (`app.signature.eid.trust-anchors-file`), et refusé si
+  ni pont ni téléversement n'est actif. Aucun appel sortant vers une adresse venue d'un certificat dont la chaîne
+  n'est pas vérifiée. Le PIN n'est jamais envoyé au serveur ni conservé (D-EID-PIN). Le numéro de registre national
+  n'est ni extrait ni conservé à part (D-EID-NRN). Le clic « Signer » est refusé : 409, `SIGNED_UPLOAD_REQUIRED`.
+  Une préparation datée de plus de quinze minutes, ou dans le futur au-delà d'une minute de décalage, est refusée :
+  422, `SIGNING_SESSION_EXPIRED`.
+- **Routes.** Portail : `GET /api/portal/signature` (champs `signedUpload`, `cardBridges`),
+  `GET /api/portal/signature/document`, `POST /api/portal/signature/signed-document`,
+  `POST /api/portal/signature/card-signature/prepare` et `…/complete`. « Mes signatures » : `GET /api/signatures/mine`
+  (mêmes champs), `GET …/{signerId}/document`, `POST …/{signerId}/signed-document`, `POST …/{signerId}/card-signature/prepare`
+  et `…/complete`. Prepare : requête `{certificate, certificateChain}` ; réponse `digest`, `hashFunction`,
+  `signingTime`, `documentDigest`. Complete : `certificate`, `certificateChain`, `signingTime`, `documentDigest`,
+  `signature`.
+- **Motifs de refus d'un téléversement.** 422 `application/problem+json`, `code` = `NOT_A_PDF`, `DOCUMENT_MISMATCH`,
+  `STALE_DOCUMENT`, `NO_NEW_SIGNATURE`, `SEVERAL_SIGNATURES`, `CONTENT_MODIFIED`, `SIGNATURE_INVALID`,
+  `CERTIFICATE_UNTRUSTED`, `CERTIFICATE_NOT_QUALIFIED`, `CERTIFICATE_REVOKED`, `REVOCATION_UNAVAILABLE`,
+  `DUPLICATE_SIGNER`. Accès refusé : 404 uniforme (portail).
+- **Critères de succès.** Un PDF signé par un certificat qualifié d'une autorité configurée, qui prolonge le document
+  remis, est accepté et clôt la décision ; la demande passe `SIGNED` quand tous les requis ont signé. Chaque motif
+  ci-dessus refuse avec son motif. Le clic « Signer » est refusé. Le document final porte toutes les signatures, et
+  la preuve reprend les constats. Sans fichier d'autorités, l'instance refuse de démarrer. Aucun appel sortant vers
+  une adresse non vérifiée. Avec un pont détecté, la page signe sans quitter Myrmacta ; sans pont, elle ne propose le
+  téléversement que si l'exploitant l'a activé.
+- **Tests de référence.** `CardSignatureUploadDisabledRealApiTest`, `CardSignatureUploadEnabledRealApiTest`,
+  `CardSignatureUseCaseImplTest`, `DssCardSignatureAssemblerTest`, `DssSignedPdfVerifierTest`,
+  `DssSignedPdfVerifierReviewTest`, `DssSignedPdfVerifierCounterReviewTest`, `EidSignatureAdapterTest`,
+  `EidTrustAnchorsTest`, `PinnedRevocationTransportTest`, `DssDocumentTimestamperTest`, `MySignaturesEidApiTest`,
+  `SignaturePortalEidApiTest`, `SignaturePropertiesTest`.
+- **Limites.** Aucun PDF signé avec une vraie carte n'a encore été vérifié, et aucun pont n'a été essayé avec une
+  vraie extension : les tests fabriquent leur hiérarchie de certificats et simulent l'extension. Le profil exact des
+  certificats eID n'a pas été relu sur les sites officiels. Le téléversement, désactivé par défaut, a deux
+  contournements connus non corrigés et peut refuser à tort des PDF d'outils réels (voir §138, « Limites connues »).
+- **Hors lot.** Pilotage de la carte depuis le navigateur (D-EID-TRANSPORT), liste de confiance européenne,
+  rapprochement du nom du certificat avec le signataire attendu, signature par téléphone.

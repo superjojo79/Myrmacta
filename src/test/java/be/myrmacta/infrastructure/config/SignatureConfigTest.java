@@ -8,6 +8,9 @@ import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
+import be.myrmacta.infrastructure.signature.eid.EidTrustAnchors;
+import be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -99,5 +102,71 @@ class SignatureConfigTest {
                     assertThat(port.capabilities().hostedSigningUrl()).isTrue();
                     assertThat(port.capabilities().optionalSigners()).isFalse();
                 });
+    }
+
+    @Test
+    void eidProviderExposesTheUploadAdapterAndTheTrustAnchors() {
+        // TODO §138 (D-EID-UPLOAD, D-EID-TRUST)
+        runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class))
+                .withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    SignaturePort port = ctx.getBean(SignaturePort.class);
+                    assertThat(port.code()).isEqualTo("eid");
+                    assertThat(port.capabilities().signedUpload()).isTrue();
+                    assertThat(ctx.getBean(EidTrustAnchors.class).certificates()).hasSize(2);
+                    assertThat(ctx.getBean(SignatureAvailabilityPort.class).maxSignedUploadBytes())
+                            .isGreaterThan(ctx.getBean(SignatureAvailabilityPort.class).maxDocumentBytes());
+                });
+    }
+
+    @Test
+    void eidRevocationTransportHonoursTheOperatorSettingsAndNoTimestampAuthorityIsWiredByDefault() {
+        // TODO §138 (D-EID-REVOCATION, D-EID-TIMESTAMP)
+        runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class))
+                .withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
+                        "app.signature.eid.revocation.timeout=4s",
+                        "app.signature.eid.revocation.max-response-bytes=4096")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    var transport = ctx.getBean(be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport.class);
+                    assertThat(transport.totalTimeout()).isEqualTo(java.time.Duration.ofSeconds(4));
+                    assertThat(transport.maxOcspBytes()).isEqualTo(4096);
+                    assertThat(SignatureConfig.eidTimestamper(ctx.getBean(SignatureProperties.class),
+                            ctx.getBean(EidTrustAnchors.class), transport)).isNull();
+                });
+        runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class))
+                .withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
+                        "app.signature.eid.timestamp.url=https://tsa.example.test/tsp")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(SignatureConfig.eidTimestamper(ctx.getBean(SignatureProperties.class),
+                            ctx.getBean(EidTrustAnchors.class),
+                            ctx.getBean(be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport.class)))
+                            .isNotNull();
+                });
+    }
+
+    @Test
+    void eidProviderRefusesToStartWithoutAUsableTrustAnchorsFile() {
+        // D-EID-TRUST : sans fichier d'autorités, l'instance ne démarre pas
+        var base = runner.withBean(SignedUploadRepository.class, () -> mock(SignedUploadRepository.class))
+                .withBean(SignedPdfVerifier.class, () -> mock(SignedPdfVerifier.class));
+        base.withPropertyValues("app.signature.provider=eid").run(ctx -> {
+            assertThat(ctx).hasFailed();
+            assertThat(ctx.getStartupFailure()).rootCause().hasMessageContaining("trust-anchors-file");
+        });
+        base.withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/absent.pem")
+                .run(ctx -> assertThat(ctx).hasFailed());
+        base.withPropertyValues("app.signature.provider=eid",
+                        "app.signature.eid.trust-anchors-file=src/test/resources/eid/empty.pem")
+                .run(ctx -> assertThat(ctx).hasFailed());
     }
 }

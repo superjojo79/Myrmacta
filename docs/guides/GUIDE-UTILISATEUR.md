@@ -1102,6 +1102,58 @@ Droit **EDIT** sur le type du dossier (ou `TENANT_ADMIN` / `WORKFLOW_ADMIN`) : *
 lien, l'ancien cesse de fonctionner) et **Annuler la demande** (le workflow reprend avec le résultat
 *Annulée*). Une fois signée, le **document signé** et la **preuve** apparaissent dans les pièces du dossier.
 
+### Signer avec votre carte eID (TODO §138)
+
+Avec le fournisseur `eid`, vous signez avec votre carte d'identité électronique belge. La signature est proposée
+sur la page de la demande (lien du portail) et dans « Mes signatures ». C'est le parcours par défaut : vous signez
+dans la page, avec un logiciel installé sur votre ordinateur. Le téléversement (signer hors de la page) n'apparaît
+que si l'exploitant l'a activé.
+
+**Avant de commencer.** Insérez votre carte dans le lecteur. Installez ce que la page demande : une extension du
+navigateur et une application, Web eID ou BeIDConnect (Web eID demande en plus le logiciel eID belge). La page
+doit s'ouvrir en connexion sécurisée (https). Si rien n'est détecté, la page vous le dit : installez le logiciel
+demandé, puis réessayez. Sans logiciel, vous ne pouvez signer que si l'exploitant a activé le téléversement (voir
+ci-dessous).
+
+**Signer dans la page.** Cliquez sur « Signer avec ma carte eID ».
+
+- Si plusieurs certificats ou lecteurs sont disponibles, la page vous demande de choisir. Prenez le **certificat
+  de signature**, et non le certificat d'authentification. Chaque choix indique sa date de fin de validité et son
+  lecteur.
+- Avec Web eID, une fenêtre du logiciel eID s'ouvre. Choisissez le certificat et saisissez votre code PIN **dans
+  cette fenêtre**.
+- Avec BeIDConnect sur un lecteur à clavier, tapez le PIN sur le lecteur. Sur un autre lecteur, la page vous
+  demande le PIN (4 à 12 caractères). Il est transmis à la carte et n'est jamais envoyé à Myrmacta.
+- Si le PIN est faux, la page indique combien d'essais restent. Une carte bloquée se débloque avec votre code PUK
+  ou auprès de votre commune.
+
+**Signer hors de la page (si l'exploitant l'a activé).** Si la signature dans la page ne fonctionne pas et que ce
+choix vous est proposé, cliquez sur « Télécharger le document
+à signer ». Signez-le avec votre carte, par exemple avec Adobe Acrobat Reader ou le service fédéral de signature,
+sans le modifier. Puis choisissez le PDF signé et cliquez sur « Envoyer le document signé ».
+
+**Messages de refus.**
+
+| Message (en résumé) | Que faire |
+|---|---|
+| Ce fichier n'est pas un PDF | Choisissez le PDF que vous avez signé. |
+| Ce PDF n'est pas le document à signer | Téléchargez le document depuis cette page, signez-le, puis envoyez-le. |
+| Quelqu'un a signé entre-temps, le document a été rechargé | Téléchargez-le de nouveau, signez-le, puis envoyez-le. |
+| Ce PDF ne contient pas votre signature | Signez le document avec votre carte, enregistrez-le, puis envoyez-le. |
+| Plusieurs nouvelles signatures | Repartez du document téléchargé et n'y ajoutez que la vôtre. |
+| Le document a été modifié en plus de votre signature | Téléchargez-le de nouveau, signez-le sans rien changer. |
+| Votre signature n'a pas pu être validée | Signez de nouveau le document téléchargé sur cette page. |
+| Certificat non reconnu | Signez avec le certificat de signature de votre carte eID belge. |
+| Certificat non valable pour signer | Choisissez le certificat de signature, et non celui d'authentification. |
+| Certificat révoqué (perte, remplacement) | Contactez la personne qui vous a demandé de signer. |
+| Vérification de la carte impossible | Réessayez dans quelques minutes. |
+| Cette carte a déjà servi à signer ce document | Chaque signataire utilise sa propre carte. |
+| La préparation de la signature a expiré | Cliquez de nouveau sur « Signer avec ma carte eID ». |
+
+Les autres messages (logiciel eID absent ou qui ne répond pas, lecteur ou carte non trouvés, signature annulée,
+délai dépassé) indiquent ce qu'il faut vérifier : logiciel démarré, lecteur branché, carte insérée. Cliquez
+ensuite de nouveau pour recommencer.
+
 ## 13. Assistant de conception IA (TODO §86)
 
 Écran **Admin → Assistant** (`/admin/assistant`, `TENANT_ADMIN` ou `WORKFLOW_ADMIN`). Si l'écran indique que l'assistant n'est pas activé, un

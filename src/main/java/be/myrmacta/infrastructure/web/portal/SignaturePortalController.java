@@ -1,9 +1,18 @@
 package be.myrmacta.infrastructure.web.portal;
 
+import be.myrmacta.domain.signature.port.in.CardSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.DecideSignatureUseCase;
 import be.myrmacta.domain.signature.port.in.GetSignatureUseCase;
+import be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase;
+import be.myrmacta.infrastructure.web.signature.CardSignatureWire;
+import be.myrmacta.infrastructure.web.signature.MultipartSignedUpload;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.CacheControl;
@@ -17,7 +26,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * TODO §72 — API publique de signature, servie par la même chaîne anonyme que le portail
@@ -26,6 +37,11 @@ import org.springframework.web.bind.annotation.RestController;
  * signataire ni de dossier n'est accepté en entrée (anti-IDOR). La limite par IP passe avant toute
  * requête en base ({@link PortalPreAuthInterceptor}). Tout refus produit le même 404
  * ({@link PortalExceptionHandler}).
+ *
+ * <p>TODO §138 — {@code POST /signed-document} : le signataire téléverse le PDF signé hors de Myrmacta
+ * (multipart, partie {@code file}). Comme le dépôt de pièce du portail ({@link PortalController}), il n'est
+ * pas transactionnel (la vérification joint le réseau), et {@link PortalPreAuthInterceptor} exige un jeton
+ * vivant avant que Spring ne lise le corps.
  */
 @RestController
 @RequestMapping("/api/portal/signature")
@@ -35,10 +51,18 @@ class SignaturePortalController {
 
     private final GetSignatureUseCase getUseCase;
     private final DecideSignatureUseCase decideUseCase;
+    private final SubmitSignedDocumentUseCase submitUseCase;
+    private final CardSignatureUseCase cardUseCase;
 
-    SignaturePortalController(GetSignatureUseCase getUseCase, DecideSignatureUseCase decideUseCase) {
+    SignaturePortalController(
+            GetSignatureUseCase getUseCase,
+            DecideSignatureUseCase decideUseCase,
+            SubmitSignedDocumentUseCase submitUseCase,
+            CardSignatureUseCase cardUseCase) {
+        this.cardUseCase = Objects.requireNonNull(cardUseCase, "cardUseCase");
         this.getUseCase = Objects.requireNonNull(getUseCase, "getUseCase");
         this.decideUseCase = Objects.requireNonNull(decideUseCase, "decideUseCase");
+        this.submitUseCase = Objects.requireNonNull(submitUseCase, "submitUseCase");
     }
 
     @GetMapping
@@ -67,6 +91,33 @@ class SignaturePortalController {
         return SignatureDecisionResponse.from(decideUseCase.decideByToken(token, DecideSignatureUseCase.Choice.SIGN, null));
     }
 
+    /** Aucune transaction : la vérification peut joindre le réseau, le use case ouvre la sienne pour enregistrer. */
+    @TokenCheckedBeforeBody
+    @PostMapping(path = "/signed-document", consumes = "multipart/form-data")
+    SignatureDecisionResponse signedDocument(
+            @RequestHeader(name = PortalController.TOKEN_HEADER, required = false) String token,
+            @RequestParam("file") MultipartFile file) {
+        return SignatureDecisionResponse.from(submitUseCase.submitByToken(token, new MultipartSignedUpload(file)));
+    }
+
+    /** Signature dans la page (TODO §138, D-EID-BRIDGE) : condensé à faire signer par la carte, aucune écriture. */
+    @PostMapping(path = "/card-signature/prepare", consumes = "application/json")
+    CardSignatureWire.PrepareResponse cardPrepare(
+            @RequestHeader(name = PortalController.TOKEN_HEADER, required = false) String token,
+            @RequestBody(required = false) CardSignatureWire.PrepareRequest body) {
+        return CardSignatureWire.PrepareResponse.from(
+                cardUseCase.prepareByToken(token, CardSignatureWire.input(body)));
+    }
+
+    /** Valeur de signature rendue par la carte : assemblage puis chemin du téléversement. Pas de transaction. */
+    @PostMapping(path = "/card-signature/complete", consumes = "application/json")
+    SignatureDecisionResponse cardComplete(
+            @RequestHeader(name = PortalController.TOKEN_HEADER, required = false) String token,
+            @RequestBody(required = false) CardSignatureWire.CompleteRequest body) {
+        return SignatureDecisionResponse.from(
+                cardUseCase.completeByToken(token, CardSignatureWire.completion(body)));
+    }
+
     @PostMapping("/decline")
     @Transactional
     SignatureDecisionResponse decline(
@@ -75,6 +126,14 @@ class SignaturePortalController {
         return SignatureDecisionResponse.from(decideUseCase.decideByToken(
                 token, DecideSignatureUseCase.Choice.DECLINE, body == null ? null : body.reason()));
     }
+
+    /**
+     * TODO §138 — route dont le corps peut être volumineux : {@link PortalPreAuthInterceptor} exige un jeton de
+     * signature vivant avant que Spring ne lise le corps (la limite par IP s'applique, elle, à toutes les routes).
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface TokenCheckedBeforeBody {}
 
     record SignatureDeclineRequest(String reason) {}
 
@@ -93,10 +152,13 @@ class SignaturePortalController {
             Instant deadlineAt,
             boolean simulated,
             boolean hosted,
+            boolean signedUpload,
+            List<String> cardBridges,
             @Schema(nullable = true) String signingUrl) {
         static SignatureContextResponse from(GetSignatureUseCase.Context context) {
             return new SignatureContextResponse(context.dossierReference(), context.documentLabel(), context.signerName(),
-                    context.required(), context.deadlineAt(), context.simulated(), context.hosted(), context.signingUrl());
+                    context.required(), context.deadlineAt(), context.simulated(), context.hosted(),
+                    context.signedUpload(), context.cardBridges(), context.signingUrl());
         }
     }
 }

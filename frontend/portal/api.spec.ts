@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiBase, fetchTask, PortalApiError, startIdentity, submitAnswers, uploadAttachment } from './api'
+import {
+  apiBase,
+  completeCardSignature,
+  prepareCardSignature,
+  fetchSignatureDocument,
+  fetchTask,
+  PortalApiError,
+  startIdentity,
+  submitAnswers,
+  uploadAttachment,
+  uploadSignedDocument,
+} from './api'
 
 const TOKEN = 't'.repeat(43)
 
@@ -88,5 +99,79 @@ describe('portal api client', () => {
     expect((init.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
     expect(JSON.parse(init.body)).toEqual({ provider: 'fas' })
     expect(init.credentials).toBe('omit')
+  })
+
+  /** Issue #10 — le PDF signé part en multipart (partie `file`), jeton en en-tête, sans cookie. */
+  it('uploads the signed document as multipart with the token in the header', async () => {
+    const fetchMock = mockFetch(200, { status: 'SIGNED' })
+    window.history.replaceState(null, '', '/tenant-a/portal/')
+    const file = new File(['%PDF signed'], 'Contrat.pdf', { type: 'application/pdf' })
+
+    await expect(uploadSignedDocument(TOKEN, file)).resolves.toEqual({ status: 'SIGNED' })
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(String(url)).toBe('/tenant-a/api/portal/signature/signed-document')
+    expect(String(url)).not.toContain(TOKEN)
+    expect(init.method).toBe('POST')
+    expect((init.body as FormData).get('file')).toBe(file)
+    expect((init.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
+    expect((init.headers as Headers).has('Content-Type')).toBe(false)
+    expect(init.credentials).toBe('omit')
+  })
+
+  it('reads the rejection code of a problem+json body, with or without a detail', async () => {
+    mockFetch(422, { type: 'about:blank', status: 422, code: 'NO_NEW_SIGNATURE', detail: 'x' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toEqual(
+      new PortalApiError(422, 'x', 'NO_NEW_SIGNATURE'),
+    )
+
+    mockFetch(422, { code: 'STALE_DOCUMENT' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toMatchObject({
+      status: 422,
+      detail: '',
+      code: 'STALE_DOCUMENT',
+    })
+
+    mockFetch(413, { detail: 'trop gros' })
+    await expect(uploadSignedDocument(TOKEN, new File(['%PDF'], 'a.pdf'))).rejects.toMatchObject({ status: 413, code: undefined })
+  })
+
+  it('reads the code on the other portal calls too and ignores a non-text code', async () => {
+    mockFetch(409, { code: 'SIGNED_UPLOAD_REQUIRED' })
+    await expect(fetchSignatureDocument(TOKEN)).rejects.toMatchObject({ status: 409, code: 'SIGNED_UPLOAD_REQUIRED' })
+    mockFetch(500, { code: 42 })
+    await expect(fetchTask(TOKEN)).rejects.toMatchObject({ status: 500, code: undefined })
+  })
+
+  /** Lot 3b — signature dans la page : JSON, jeton en en-tête, sans cookie ; le PIN n'a aucune place dans ces échanges. */
+  it('prepares and completes a card signature with JSON bodies, the token in the header and no cookie', async () => {
+    window.history.replaceState(null, '', '/tenant-a/portal/')
+    const prepared = { digest: 'RElH', hashFunction: 'SHA-256', signingTime: '2026-11-14T10:00:00Z', documentDigest: 'abc' }
+    const prepare = mockFetch(200, prepared)
+    await expect(prepareCardSignature(TOKEN, { certificate: 'Q0VSVA==', certificateChain: ['SU5U'] })).resolves.toEqual(prepared)
+    const [prepareUrl, prepareInit] = prepare.mock.calls[0]!
+    expect(String(prepareUrl)).toBe('/tenant-a/api/portal/signature/card-signature/prepare')
+    expect(String(prepareUrl)).not.toContain(TOKEN)
+    expect(prepareInit.method).toBe('POST')
+    expect(JSON.parse(prepareInit.body)).toEqual({ certificate: 'Q0VSVA==', certificateChain: ['SU5U'] })
+    expect((prepareInit.headers as Headers).get('Content-Type')).toBe('application/json')
+    expect((prepareInit.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
+    expect(prepareInit.credentials).toBe('omit')
+
+    const complete = mockFetch(200, { status: 'SIGNED' })
+    const body = { certificate: 'Q0VSVA==', certificateChain: [], signingTime: prepared.signingTime, documentDigest: 'abc', signature: 'U0lH' }
+    await expect(completeCardSignature(TOKEN, body)).resolves.toEqual({ status: 'SIGNED' })
+    const [completeUrl, completeInit] = complete.mock.calls[0]!
+    expect(String(completeUrl)).toBe('/tenant-a/api/portal/signature/card-signature/complete')
+    expect(JSON.parse(completeInit.body)).toEqual(body)
+    expect((completeInit.headers as Headers).get('X-Portal-Token')).toBe(TOKEN)
+    expect(completeInit.credentials).toBe('omit')
+  })
+
+  it('exposes the rejection code of a card signature refusal', async () => {
+    mockFetch(422, { code: 'SIGNING_SESSION_EXPIRED' })
+    await expect(
+      completeCardSignature(TOKEN, { certificate: 'c', certificateChain: [], signingTime: 't', documentDigest: 'd', signature: 's' }),
+    ).rejects.toMatchObject({ status: 422, code: 'SIGNING_SESSION_EXPIRED' })
   })
 })

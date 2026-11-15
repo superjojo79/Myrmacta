@@ -6,6 +6,8 @@ export type ProblemDetail = {
   title?: string
   status?: number
   detail?: string
+  /** Code métier stable (ex. motif de refus d'un document signé), quand le serveur en donne un. */
+  code?: string
   errors?: unknown
   duplicates?: unknown
 }

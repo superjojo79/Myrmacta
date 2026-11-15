@@ -5,10 +5,17 @@ import be.myrmacta.domain.document.port.out.DocumentStoragePort;
 import be.myrmacta.domain.signature.port.out.SignatureAvailabilityPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
+import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
 import be.myrmacta.infrastructure.signature.DocusignSignatureAdapter;
 import be.myrmacta.infrastructure.signature.SignatureStubGuard;
 import be.myrmacta.infrastructure.signature.StubSignatureAdapter;
 import be.myrmacta.infrastructure.signature.YousignSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.CardSignatureAssembler;
+import be.myrmacta.infrastructure.signature.eid.DssDocumentTimestamper;
+import be.myrmacta.infrastructure.signature.eid.EidSignatureAdapter;
+import be.myrmacta.infrastructure.signature.eid.EidTrustAnchors;
+import be.myrmacta.infrastructure.signature.eid.PinnedRevocationTransport;
+import be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Set;
@@ -76,6 +83,89 @@ public class SignatureConfig {
         return new DocusignSignatureAdapter(tenantProperties.id(), instances, portal.publicBaseUrl());
     }
 
+    /**
+     * TODO §138 (D-EID-VALIDATION) — vérificateur réel, fondé sur DSS. Les autorités sont celles de
+     * l'exploitant (D-EID-TRUST) ; la révocation passe par un transport borné (D-EID-REVOCATION).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(
+            be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier.class)
+    be.myrmacta.infrastructure.signature.eid.SignedPdfVerifier eidSignedPdfVerifier(
+            EidTrustAnchors trustAnchors, PinnedRevocationTransport eidRevocationTransport) {
+        return new be.myrmacta.infrastructure.signature.eid.DssSignedPdfVerifier(
+                trustAnchors.certificates(), java.time.Clock.systemUTC(), eidRevocationTransport);
+    }
+
+    /** TODO §138 (D-EID-REVOCATION) — transport de révocation aux réglages {@code app.signature.eid.revocation.*}. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    PinnedRevocationTransport eidRevocationTransport(SignatureProperties properties) {
+        SignatureProperties.Revocation revocation = properties.eid().revocation();
+        return new PinnedRevocationTransport(revocation.timeout(), revocation.maxResponseBytes());
+    }
+
+    /**
+     * TODO §138 (D-EID-TIMESTAMP) — horodatage du document final, seulement si l'exploitant a configuré
+     * {@code app.signature.eid.timestamp.url} ; sinon {@code null} (aucune TSA par défaut).
+     */
+    static DssDocumentTimestamper eidTimestamper(
+            SignatureProperties properties, EidTrustAnchors trustAnchors, PinnedRevocationTransport revocation) {
+        SignatureProperties.Timestamp timestamp = properties.eid().timestamp();
+        if (!timestamp.enabled()) {
+            return null;
+        }
+        return new DssDocumentTimestamper(timestamp.url(), trustAnchors.certificates(), revocation,
+                timestamp.timeout(), timestamp.maxResponseBytes());
+    }
+
+    /** TODO §138 (D-EID-BRIDGE) — signature par carte en deux temps, avec les mêmes autorités de confiance. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(CardSignatureAssembler.class)
+    CardSignatureAssembler eidCardSignatureAssembler(EidTrustAnchors trustAnchors) {
+        return new be.myrmacta.infrastructure.signature.eid.DssCardSignatureAssembler(trustAnchors.certificates());
+    }
+
+    /**
+     * TODO §138 (D-EID-TRUST) — autorités de confiance du fournisseur {@code eid}, lues au démarrage : un
+     * fichier absent, illisible ou sans certificat fait échouer le contexte avec un message explicite. Le
+     * vérificateur ({@link SignedPdfVerifier}) les prend en paramètre.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    EidTrustAnchors eidTrustAnchors(SignatureProperties properties) {
+        return EidTrustAnchors.load(properties.eid().trustAnchorsFile());
+    }
+
+    /**
+     * TODO §138 (D-EID-UPLOAD) — signature par carte eID : le signataire téléverse le PDF qu'il a signé, que le
+     * {@link SignedPdfVerifier} vérifie. Le vérificateur est un bean à part (bibliothèque de validation).
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "eid")
+    SignaturePort eidSignaturePort(
+            TenantProperties tenantProperties,
+            SignatureRequestRepository repository,
+            SignedUploadRepository uploads,
+            DocumentStoragePort storage,
+            SignedPdfVerifier verifier,
+            CardSignatureAssembler cardAssembler,
+            EidTrustAnchors trustAnchors,
+            SignatureProperties properties,
+            PinnedRevocationTransport eidRevocationTransport) {
+        DssDocumentTimestamper timestamper = eidTimestamper(properties, trustAnchors, eidRevocationTransport);
+        if (properties.eid().uploadEnabled()) {
+            LOG.warn("Signature upload of externally signed PDFs is ENABLED (app.signature.eid.upload-enabled=true): "
+                    + "this path is not considered safe against a malicious signer until its verification has been "
+                    + "reviewed and tested.");
+        }
+        LOG.info("Signature provider eid active: {} trusted certificate authorities, document timestamp {}.",
+                trustAnchors.certificates().size(), timestamper == null ? "off" : "on");
+        return new EidSignatureAdapter(tenantProperties.id(), repository, uploads, storage, verifier, cardAssembler,
+                timestamper, properties.dispatch().maxAttempts());
+    }
+
     @Bean
     SignatureAvailabilityPort signatureAvailabilityPort(SignatureProperties properties, PortalProperties portal) {
         return new SignatureAvailabilityPort() {
@@ -107,6 +197,21 @@ public class SignatureConfig {
             @Override
             public long maxDocumentBytes() {
                 return properties.maxDocumentBytes();
+            }
+
+            @Override
+            public long maxSignedUploadBytes() {
+                return properties.eid().maxUploadBytes();
+            }
+
+            @Override
+            public boolean signedUploadEnabled() {
+                return properties.eid().uploadEnabled();
+            }
+
+            @Override
+            public java.util.List<String> cardBridges() {
+                return properties.eid().bridges();
             }
         };
     }

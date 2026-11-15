@@ -51,6 +51,7 @@ class ProcessPurgeOutboxUseCaseImplTest {
     private be.myrmacta.domain.workflow.port.out.TaskQuestionAnswerRepository answers;
     private be.myrmacta.domain.workflow.portal.port.out.PortalLinkRepository portalLinks;
     private be.myrmacta.domain.signature.port.out.SignatureRequestRepository signatures;
+    private be.myrmacta.domain.signature.port.out.SignedUploadRepository signedUploads;
 
     @BeforeEach
     void setUp() {
@@ -63,9 +64,11 @@ class ProcessPurgeOutboxUseCaseImplTest {
         engine = mock(WorkflowEnginePort.class);
         answers = mock(be.myrmacta.domain.workflow.port.out.TaskQuestionAnswerRepository.class);
         signatures = mock(be.myrmacta.domain.signature.port.out.SignatureRequestRepository.class);
+        signedUploads = mock(be.myrmacta.domain.signature.port.out.SignedUploadRepository.class);
         portalLinks = mock(be.myrmacta.domain.workflow.portal.port.out.PortalLinkRepository.class);
         useCase = new ProcessPurgeOutboxUseCaseImpl(
-                outbox, dossiers, elements, relations, links, storage, engine, answers, portalLinks, signatures);
+                outbox, dossiers, elements, relations, links, storage, engine, answers, portalLinks, signatures,
+                signedUploads);
         when(outbox.claim(any())).thenReturn(true);
         when(elements.findByDossierIdOrderByAddedAtAsc(any())).thenReturn(List.of());
         when(links.findByDossierIdOrderBySequence(any())).thenReturn(List.of());
@@ -101,6 +104,26 @@ class ProcessPurgeOutboxUseCaseImplTest {
         verify(dossiers).deleteById(dossierId);
         verify(outbox).markCompleted(record.id());
         verify(outbox, never()).markFailed(any(), any());
+    }
+
+    @Test
+    void processBatch_deletesTheWorkingDocumentsOfSignedUploadsThenTheirRowsBeforeTheRequests() {
+        // TODO §138 : les PDF téléversés ne sont pas des éléments du dossier, la purge les supprime elle-même
+        UUID dossierId = UUID.randomUUID();
+        PurgeOutboxRecord record = pending(dossierId, PurgeOutboxOrigin.ADMIN, NOW);
+        when(outbox.findRetryable(50)).thenReturn(List.of(record));
+        when(dossiers.findById(dossierId)).thenReturn(Optional.of(archived(dossierId)));
+        when(signedUploads.findStorageRefsByDossierId(dossierId))
+                .thenReturn(List.of(TENANT + "/work-1.pdf", TENANT + "/work-2.pdf"));
+
+        useCase.processBatch(NOW, 50, NO_OP);
+
+        verify(storage).delete(TENANT, TENANT + "/work-1.pdf");
+        verify(storage).delete(TENANT, TENANT + "/work-2.pdf");
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(signedUploads, signatures);
+        order.verify(signedUploads).deleteAllByDossierId(dossierId);
+        order.verify(signatures).deleteAllByDossierId(dossierId);
+        verify(outbox).markCompleted(record.id());
     }
 
     @SuppressWarnings("unchecked")

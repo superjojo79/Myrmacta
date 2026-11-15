@@ -1,5 +1,7 @@
 // E2E « pilotage » — En-têtes de sécurité, portail externe, signature, langue (TODO §95 : découpage de pilotage.spec.ts par écran).
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { SIGNING_CERT, SIGNING_CERT_BOB } from '../src/lib/cardBridge/fixtures'
+import { beidLog, CERTIFICATE, installBeidConnect, installWebEid, recordRequests, SIGNATURE } from './support/cardBridges'
 import {
   DOSSIER_ID,
   mockSession,
@@ -220,9 +222,9 @@ test('E2E-SIG-2 internal signer signs from « Mes signatures » (S-PW-1)', async
   await mockSession(page)
   let items = [
     { signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
-      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true, hosted: false, signingUrl: null },
+      required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: true, hosted: false, signingUrl: null, signedUpload: false, cardBridges: [] },
     { signerId: 'sg-2', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Avenant',
-      required: true, myTurn: false, deadlineAt: null, simulated: true, hosted: false, signingUrl: null },
+      required: true, myTurn: false, deadlineAt: null, simulated: true, hosted: false, signingUrl: null, signedUpload: false, cardBridges: [] },
   ]
   await page.route('**/api/signatures/mine**', async (route) => {
     const request = route.request()
@@ -274,7 +276,7 @@ test('E2E-SIG-9 internal signer continues on the provider', async ({ page }) => 
       body: JSON.stringify([{
         signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
         required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
-        hosted: true, signingUrl: null,
+        hosted: true, signingUrl: null, signedUpload: false, cardBridges: [],
       }]),
     })
   })
@@ -301,7 +303,7 @@ test('E2E-SIG-10 internal signer waits when the provider link is not ready', asy
       body: JSON.stringify([{
         signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
         required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
-        hosted: true, signingUrl: null,
+        hosted: true, signingUrl: null, signedUpload: false, cardBridges: [],
       }]),
     })
   })
@@ -460,4 +462,232 @@ test('E2E-PORTAL-7 a refused identity shows the neutral screen without any API c
   await expect(page.getByTestId('portal-identity-refused')).toContainText('Identification non reconnue')
   await expect(page).toHaveURL(/\/portal\/$/)
   expect(portalCalls).toEqual([])
+})
+
+/** Issue #10 — signature apportée : télécharger, signer hors de l'application avec la carte eID, téléverser. */
+test('E2E-SIG-15 internal signer downloads, uploads the signed PDF and the request leaves the list', async ({ page }) => {
+  await mockSession(page)
+  let items = [{
+    signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+    required: true, myTurn: true, deadlineAt: '2026-10-30T10:00:00Z', simulated: false,
+    hosted: false, signingUrl: null, signedUpload: true, cardBridges: [],
+  }]
+  const uploads: string[] = []
+  await page.route('**/api/signatures/mine**', async (route) => {
+    const request = route.request()
+    const url = request.url()
+    if (url.endsWith('/sg-1/document')) {
+      await route.fulfill({ status: 200, contentType: 'application/pdf', body: Buffer.from('%PDF-1.4 stub') })
+    } else if (url.endsWith('/sg-1/signed-document')) {
+      uploads.push(/name="file"; filename="([^"]*)"/.exec(request.postDataBuffer()?.toString('utf8') ?? '')?.[1] ?? '?')
+      items = []
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'SIGNED' }) })
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(items) })
+    }
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  const active = page.getByTestId('signatures-active')
+  await expect(active.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  const send = active.getByRole('button', { name: 'Envoyer le document signé' })
+  await expect(send).toBeDisabled()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    active.getByRole('button', { name: 'Télécharger le document à signer' }).click(),
+  ])
+  expect(download.suggestedFilename()).toBe('Contrat.pdf')
+
+  await active.getByLabel('Document signé (PDF)').setInputFiles({
+    name: 'Contrat signé.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 signed'),
+  })
+  await send.click()
+
+  await expect(page.getByTestId('signature-upload-done')).toContainText('bien été enregistrée')
+  await expect(page.getByTestId('signatures-empty')).toBeVisible()
+  expect(uploads).toEqual(['Contrat signé.pdf'])
+})
+
+test('E2E-SIG-16 internal signer sees why the signed PDF was refused', async ({ page }) => {
+  await mockSession(page)
+  await page.route('**/api/signatures/mine**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'about:blank', status: 422, code: 'CERTIFICATE_NOT_QUALIFIED' }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+        required: true, myTurn: true, deadlineAt: null, simulated: false,
+        hosted: false, signingUrl: null, signedUpload: true, cardBridges: [],
+      }]),
+    })
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByLabel('Document signé (PDF)').setInputFiles({
+    name: 'Contrat signé.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 signed'),
+  })
+  await page.getByRole('button', { name: 'Envoyer le document signé' }).click()
+
+  await expect(page.getByTestId('signature-error')).toContainText('pas valable pour signer')
+  await expect(page.getByTestId('signatures-active')).toContainText('Contrat')
+})
+
+/** Lot 3b — signature dans la page par un pont de carte, depuis « Mes signatures » (extensions simulées dans la page). */
+async function mockCardSignatures(page: Page, opts: { bridges: string[]; signedUpload?: boolean; complete?: { status: number; body: unknown } }) {
+  const calls: string[] = []
+  const bodies: Record<string, unknown> = {}
+  await page.route('**/api/signatures/mine**', async (route) => {
+    const request = route.request()
+    const url = request.url()
+    if (url.endsWith('/card-signature/prepare')) {
+      calls.push('prepare')
+      bodies.prepare = request.postDataJSON()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ digest: 'RElHRVNUX1NFUlZFVVI=', hashFunction: 'SHA-256', signingTime: '2026-11-14T10:00:00Z', documentDigest: 'abc123' }),
+      })
+    } else if (url.endsWith('/card-signature/complete')) {
+      calls.push('complete')
+      bodies.complete = request.postDataJSON()
+      const reply = opts.complete ?? { status: 200, body: { status: 'SIGNED' } }
+      await route.fulfill({ status: reply.status, contentType: 'application/json', body: JSON.stringify(reply.body) })
+    } else {
+      const done = calls.includes('complete') && !opts.complete
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(done ? [] : [{
+          signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
+          required: true, myTurn: true, deadlineAt: null, simulated: false,
+          hosted: false, signingUrl: null, signedUpload: opts.signedUpload ?? true, cardBridges: opts.bridges,
+        }]),
+      })
+    }
+  })
+  return Object.defineProperty(calls, 'bodies', { value: bodies }) as string[] & { bodies: Record<string, unknown> }
+}
+
+test('E2E-SIG-17b internal signer signs in the page with Web eID', async ({ page }) => {
+  await mockSession(page)
+  await installWebEid(page)
+  const calls = await mockCardSignatures(page, { bridges: ['web-eid', 'beidconnect'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  const active = page.getByTestId('signatures-active')
+  await expect(active.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  await expect(active).toContainText('Autre moyen : signer hors de cette page')
+  await active.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+
+  await expect(page.getByTestId('signature-upload-done')).toContainText('bien été enregistrée')
+  await expect(page.getByTestId('signatures-empty')).toBeVisible()
+  expect(calls).toEqual(['prepare', 'complete'])
+  expect(calls.bodies.complete).toMatchObject({ certificate: CERTIFICATE, signature: SIGNATURE, documentDigest: 'abc123' })
+})
+
+test('E2E-SIG-18b internal signer types the PIN for BeIDConnect and it never reaches the network', async ({ page }) => {
+  const PIN = '135790'
+  await mockSession(page)
+  await installBeidConnect(page)
+  const allRequests = recordRequests(page)
+  const calls = await mockCardSignatures(page, { bridges: ['beidconnect'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const pin = page.getByLabel(/Code PIN de votre carte/)
+  await expect(pin).toHaveAttribute('type', 'password')
+  await expect(pin).toHaveAttribute('autocomplete', 'off')
+  await pin.fill(PIN)
+  await page.getByRole('button', { name: 'Valider le PIN' }).click()
+
+  await expect(page.getByTestId('signature-upload-done')).toBeVisible()
+  expect((await beidLog(page)).signCalls[0]![5]).toBe(PIN)
+  expect(calls).toEqual(['prepare', 'complete'])
+  expect(allRequests()).not.toContain(PIN)
+  expect(JSON.stringify(calls.bodies)).not.toContain(PIN)
+})
+
+test('E2E-SIG-21b internal signer without any bridge is told so and keeps the upload', async ({ page }) => {
+  await mockSession(page)
+  const calls = await mockCardSignatures(page, { bridges: ['web-eid', 'beidconnect'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  await expect(page.getByTestId('signature-error')).toContainText('Aucun logiciel eID')
+  await expect(page.getByRole('button', { name: 'Télécharger le document à signer' })).toBeVisible()
+  expect(calls).toEqual([])
+})
+
+test('E2E-SIG-22b internal signer sees why the server refused the card signature', async ({ page }) => {
+  await mockSession(page)
+  await installWebEid(page)
+  await mockCardSignatures(page, { bridges: ['web-eid'], complete: { status: 422, body: { status: 422, code: 'SIGNING_SESSION_EXPIRED' } } })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  await expect(page.getByTestId('signature-error')).toContainText('préparation de la signature a expiré')
+  await expect(page.getByTestId('signatures-active')).toContainText('Contrat')
+})
+
+test('E2E-SIG-24b internal signer picks the second reader with the keyboard and types the PIN for that certificate', async ({ page }) => {
+  const PIN = '112233'
+  await mockSession(page)
+  await installBeidConnect(page, {
+    readers: [
+      { name: 'Lecteur A', type: 'pinpad', certificates: [SIGNING_CERT] },
+      { name: 'Lecteur B', type: 'standard', certificates: [SIGNING_CERT_BOB] },
+    ],
+  })
+  const allRequests = recordRequests(page)
+  const calls = await mockCardSignatures(page, { bridges: ['beidconnect'] })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const first = page.getByRole('radio', { name: /Alice Martin/ })
+  await expect(first).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('radio', { name: /Bob Janssens/ })).toBeChecked()
+  await page.getByRole('button', { name: 'Continuer' }).click()
+
+  // Le certificat retenu est sur un lecteur ordinaire : la page demande le PIN.
+  await page.getByLabel(/Code PIN de votre carte/).fill(PIN)
+  await page.getByRole('button', { name: 'Valider le PIN' }).click()
+
+  await expect(page.getByTestId('signature-upload-done')).toBeVisible()
+  expect((calls.bodies.prepare as { certificate: string }).certificate).toBe(SIGNING_CERT_BOB)
+  const log = await beidLog(page)
+  expect(log.signCalls[0]![2]).toBe(SIGNING_CERT_BOB)
+  expect(log.signCalls[0]![5]).toBe(PIN)
+  expect(allRequests()).not.toContain(PIN)
+})
+
+test('E2E-SIG-26b internal default case: card only, no upload block, message without bridge without another way', async ({ page }) => {
+  await mockSession(page)
+  const calls = await mockCardSignatures(page, { bridges: ['web-eid', 'beidconnect'], signedUpload: false })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await expect(page.getByTestId('signature-upload')).toHaveCount(0)
+  await expect(page.getByText('Autre moyen')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const alert = page.getByTestId('signature-error')
+  await expect(alert).toContainText('Installez Web eID ou BeIDConnect')
+  await expect(alert).not.toContainText('autre moyen')
+  expect(calls).toEqual([])
 })

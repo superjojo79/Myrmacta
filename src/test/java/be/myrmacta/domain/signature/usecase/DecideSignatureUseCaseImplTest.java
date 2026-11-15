@@ -291,4 +291,21 @@ class DecideSignatureUseCaseImplTest {
         assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.DECLINED);
         verify(port).cancel("yousign:1");
     }
+
+    @Test
+    void signedUploadProviderRefusesTheClickForTokenAndIdentityButAcceptsADecline() {
+        // TODO §138 : signer = téléverser le PDF signé
+        when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
+        List<Signer> signers = seed(SignatureMode.PARALLEL, ext(0, true), internal(UUID.randomUUID(), 1, false, "bob"));
+
+        assertThatThrownBy(() -> useCase.decideByToken("tok-0", Choice.SIGN, null))
+                .isInstanceOf(be.myrmacta.domain.signature.model.SignedUploadRequiredException.class);
+        assertThatThrownBy(() -> useCase.decideInternal("bob", signers.get(1).id(), Choice.SIGN, null))
+                .isInstanceOf(be.myrmacta.domain.signature.model.SignedUploadRequiredException.class);
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.PENDING);
+
+        useCase.decideInternal("bob", signers.get(1).id(), Choice.DECLINE, "non");
+
+        assertThat(repository.findSigners(request.id()).get(1).status()).isEqualTo(SignerStatus.DECLINED);
+    }
 }

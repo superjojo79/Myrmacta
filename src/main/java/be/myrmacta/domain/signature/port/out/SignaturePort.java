@@ -4,6 +4,7 @@ import be.myrmacta.domain.signature.model.SignatureMode;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignerKind;
 import be.myrmacta.domain.signature.model.SignerStatus;
+import be.myrmacta.domain.signature.model.SignedUploadVerdict;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,72 @@ public interface SignaturePort {
     }
 
     /**
+     * Vérifie le PDF qu'un signataire a signé hors de Myrmacta puis téléversé (TODO §138,
+     * D-EID-UPLOAD). Aucune écriture : l'appel peut joindre le réseau (révocation) et se fait hors
+     * transaction. Un fichier refusé donne un verdict, pas une exception.
+     *
+     * @throws UnsupportedOperationException si {@code capabilities().signedUpload()} est faux
+     */
+    default SignedUploadVerdict verifySignedUpload(SignedUploadCheck check) {
+        throw new UnsupportedOperationException("provider " + code() + " does not take signed uploads");
+    }
+
+    /**
+     * Condensé que la carte du signataire doit signer pour ajouter sa signature au document remis
+     * (TODO §138, D-EID-BRIDGE) : la page le transmet au pont navigateur, qui demande le PIN. Aucune
+     * écriture, aucun appel réseau.
+     *
+     * @throws UnsupportedOperationException si {@code capabilities().signedUpload()} est faux
+     * @throws IllegalArgumentException si le certificat est illisible ou d'un type de clé non pris en charge
+     */
+    default CardSignatureDigest prepareCardSignature(CardSignatureInput input) {
+        throw new UnsupportedOperationException("provider " + code() + " does not sign with a card");
+    }
+
+    /**
+     * PDF signé, assemblé avec la valeur de signature rendue par la carte (D-EID-BRIDGE). Le résultat
+     * n'est pas tenu pour valide : il passe ensuite par {@link #verifySignedUpload}, comme un
+     * téléversement.
+     *
+     * @throws UnsupportedOperationException si {@code capabilities().signedUpload()} est faux
+     * @throws IllegalArgumentException si le certificat ou la valeur de signature est illisible
+     */
+    default byte[] assembleCardSignature(CardSignatureInput input, byte[] signatureValue) {
+        throw new UnsupportedOperationException("provider " + code() + " does not sign with a card");
+    }
+
+    /**
+     * Les deux appels d'une même signature reçoivent les mêmes valeurs : le condensé en dépend.
+     *
+     * @param baseDocument le PDF remis au signataire
+     * @param certificate certificat de signature lu sur la carte, en DER
+     * @param certificateChain autorités lues sur la carte, en DER ; vide si le pont ne les donne pas
+     * @param signingTime heure de signature déclarée, fixée par le serveur à la préparation
+     */
+    record CardSignatureInput(
+            byte[] baseDocument, byte[] certificate, List<byte[]> certificateChain, Instant signingTime) {
+        public CardSignatureInput {
+            certificateChain = certificateChain == null ? List.of() : List.copyOf(certificateChain);
+        }
+    }
+
+    /** @param hashFunction fonction de condensé à annoncer au pont : {@code SHA-256} ou {@code SHA-384} */
+    record CardSignatureDigest(byte[] digest, String hashFunction) {}
+
+    /**
+     * @param baseDocument le PDF remis au signataire : la source, suivie des signatures déjà acceptées
+     * @param signedDocument le PDF téléversé
+     * @param usedCertificateFingerprints SHA-256 (hexadécimal minuscule) des certificats qui ont déjà
+     *     signé pour un autre signataire de la demande
+     */
+    record SignedUploadCheck(byte[] baseDocument, byte[] signedDocument, Set<String> usedCertificateFingerprints) {
+        public SignedUploadCheck {
+            usedCertificateFingerprints =
+                    usedCertificateFingerprints == null ? Set.of() : Set.copyOf(usedCertificateFingerprints);
+        }
+    }
+
+    /**
      * @param requestId corrélation Myrmacta de la demande
      * @param document contenu à signer (borné par {@code app.signature.max-document-bytes})
      */
@@ -109,15 +176,36 @@ public interface SignaturePort {
      * @param optionalSigners le fournisseur sait distinguer requis et facultatifs
      * @param hostedSigningUrl le signataire signe chez le fournisseur (redirection)
      * @param proofProvided le fournisseur fournit une preuve
+     * @param signedUpload le signataire signe hors de Myrmacta et téléverse le PDF signé, que
+     *     l'adaptateur vérifie (TODO §138, D-EID-UPLOAD)
      */
     record SignatureProviderCapabilities(
             boolean orderedSigning,
             boolean optionalSigners,
             boolean hostedSigningUrl,
             boolean proofProvided,
+            boolean signedUpload,
             Set<String> assuranceLevels) {
         public SignatureProviderCapabilities {
             assuranceLevels = assuranceLevels == null ? Set.of() : Set.copyOf(assuranceLevels);
+        }
+
+        /** Fournisseur sans téléversement : la forme d'avant le TODO §138. */
+        public SignatureProviderCapabilities(
+                boolean orderedSigning,
+                boolean optionalSigners,
+                boolean hostedSigningUrl,
+                boolean proofProvided,
+                Set<String> assuranceLevels) {
+            this(orderedSigning, optionalSigners, hostedSigningUrl, proofProvided, false, assuranceLevels);
+        }
+
+        /**
+         * Le document signé et la preuve sont produits par le répartiteur, hors de la décision du
+         * signataire : téléchargement chez un fournisseur hébergé, ou horodatage d'un téléversement.
+         */
+        public boolean artifactsDeferred() {
+            return hostedSigningUrl || signedUpload;
         }
     }
 }

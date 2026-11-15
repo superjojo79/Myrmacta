@@ -48,6 +48,12 @@ import be.myrmacta.domain.signature.port.out.SignatureInviteSenderPort;
 import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.domain.signature.port.out.SignatureRequestRepository;
 import be.myrmacta.domain.signature.port.out.SignedArtifactDownload;
+import be.myrmacta.domain.signature.port.out.SignatureTransaction;
+import be.myrmacta.domain.signature.port.out.SignedUploadRepository;
+import be.myrmacta.domain.signature.port.in.CardSignatureUseCase;
+import be.myrmacta.domain.signature.port.in.SubmitSignedDocumentUseCase;
+import be.myrmacta.domain.signature.usecase.CardSignatureUseCaseImpl;
+import be.myrmacta.domain.signature.usecase.SubmitSignedDocumentUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.RequestSignatureUseCaseImpl;
 import be.myrmacta.domain.signature.usecase.SendSignatureInvitesUseCaseImpl;
 import be.myrmacta.domain.workflow.portal.port.out.PortalRecipientResolverPort;
@@ -197,9 +203,53 @@ public class SignatureUseCaseConfig {
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
             DecideSignatureUseCase decideUseCase,
-            SignaturePort port) {
+            SignaturePort port,
+            SignedUploadRepository uploads,
+            SubmitSignedDocumentUseCase submitUseCase,
+            CardSignatureUseCase cardUseCase,
+            SignatureAvailabilityPort availability) {
         return new MySignaturesUseCaseImpl(tenantProperties.id(), repository, dossierRepository, accessPolicy,
-                elementRepository, storage, decideUseCase, port, CLOCK);
+                elementRepository, storage, decideUseCase, port, CLOCK, uploads, submitUseCase, cardUseCase,
+                availability);
+    }
+
+    @Bean
+    CardSignatureUseCase cardSignatureUseCase(
+            TenantProperties tenantProperties,
+            SignatureAccessResolver accessResolver,
+            SignaturePort port,
+            DocumentStoragePort storage,
+            SignedUploadRepository uploads,
+            SubmitSignedDocumentUseCase submitUseCase) {
+        return new CardSignatureUseCaseImpl(tenantProperties.id(), accessResolver, port, storage, uploads,
+                submitUseCase, CLOCK);
+    }
+
+    /** Transaction courte du téléversement (TODO §138) : la vérification, elle, se fait hors transaction. */
+    @Bean
+    SignatureTransaction signatureTransaction(PlatformTransactionManager transactionManager) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        return new SignatureTransaction() {
+            @Override
+            public <T> T execute(java.util.function.Supplier<T> action) {
+                return template.execute(status -> action.get());
+            }
+        };
+    }
+
+    @Bean
+    SubmitSignedDocumentUseCase submitSignedDocumentUseCase(
+            TenantProperties tenantProperties,
+            SignatureRequestRepository repository,
+            SignedUploadRepository uploads,
+            SignatureAccessResolver accessResolver,
+            SignatureOutcomeHandler outcomeHandler,
+            SignaturePort port,
+            SignatureAvailabilityPort availability,
+            DocumentStoragePort storage,
+            SignatureTransaction transaction) {
+        return new SubmitSignedDocumentUseCaseImpl(tenantProperties.id(), repository, uploads, accessResolver,
+                outcomeHandler, port, availability, storage, transaction, CLOCK);
     }
 
     @Bean
@@ -249,8 +299,11 @@ public class SignatureUseCaseConfig {
             SignatureAccessResolver accessResolver,
             DossierElementRepository elementRepository,
             DocumentStoragePort storage,
-            SignaturePort port) {
-        return new GetSignatureUseCaseImpl(tenantProperties.id(), accessResolver, elementRepository, storage, port);
+            SignaturePort port,
+            SignedUploadRepository uploads,
+            SignatureAvailabilityPort availability) {
+        return new GetSignatureUseCaseImpl(tenantProperties.id(), accessResolver, elementRepository, storage, port,
+                uploads, availability);
     }
 
     @Bean

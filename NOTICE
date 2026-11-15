@@ -21,6 +21,8 @@ Notices à conserver en particulier :
 
 - Flying Saucer : LGPL-2.1 or later.
 - OpenPDF : MPL-2.0 OU LGPL-2.1+.
+- DSS (Commission européenne, `eu.europa.ec.joinup.sd-dss` 6.5.1) : LGPL-2.1, bibliothèque non modifiée
+  (signature eID, TODO §138).
 - Liquibase 4.33.0 : Apache-2.0. Les versions 5.x (FSL) ne sont pas embarquées.
 - Logback : EPL-2.0 OU LGPL-2.1-only. AspectJ weaver : EPL-2.0.
 - Police Liberation Sans : SIL OFL-1.1. Noms réservés : Liberation, Arimo, Tinos, Cousine.

@@ -57,6 +57,12 @@ class JpaSignatureRequestRepositoryAdapter implements SignatureRequestRepository
     }
 
     @Override
+    @Transactional
+    public Optional<SignatureRequest> findByIdForUpdate(UUID id) {
+        return requests.lockById(id).map(SignatureRequestJpaEntity::toDomain);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<SignatureRequest> findByProviderReference(String providerReference) {
         if (providerReference == null || providerReference.isBlank()) {

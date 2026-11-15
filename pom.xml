@@ -48,6 +48,11 @@
         <commons-csv.version>1.14.1</commons-csv.version>
         <!-- TODO §121 (D-CAL-ICS) — lecture des calendriers ICS (BSD-3-Clause), en infrastructure seulement. -->
         <ical4j.version>4.4.0</ical4j.version>
+        <!-- TODO §138 (D-EID-VALIDATION) — validation PAdES de la signature apportée par carte eID : DSS de la
+             Commission européenne (LGPL-2.1). Son POM parent déclare PDFBox 3.0.8, HttpClient 5.6.5 et BouncyCastle
+             1.86 : BouncyCastle est aligné ci-dessous pour tout le projet (sshj compris). -->
+        <dss.version>6.5.1</dss.version>
+        <bouncycastle.version>1.86</bouncycastle.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.2</spring-ai.version>
         <skip.frontend>false</skip.frontend>
@@ -78,6 +83,15 @@
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- TODO §138 — une seule version de BouncyCastle : sshj 0.41.2 tire 1.84, DSS 6.5.1 est construit sur 1.86.
+                 Le BOM aligne bcprov, bcpkix et bcutil (MIT). -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bc-jdk18on-bom</artifactId>
+                <version>${bouncycastle.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -249,6 +263,47 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.8</version>
+        </dependency>
+
+        <!-- TODO §138 (D-EID-VALIDATION) — vérification d'un PDF signé par carte eID (LGPL-2.1, bibliothèque non
+             modifiée, liée dynamiquement : NOTICE). PAdES sur PDFBox, utilitaires Apache Commons, analyse des CRL
+             par flux (mémoire bornée), CMS sur le modèle objet de BouncyCastle (dss-cms-object, imposé par DSS), politique de validation et suite cryptographique par défaut (JAXB, XML). Pas de dss-service : le
+             transport de révocation est celui de Myrmacta (D-EID-REVOCATION). Pas de dss-bom : il hérite du POM
+             parent sd-dss, dont la gestion de versions (OpenPDF 1.3, Jackson 2, JAXB 3) écraserait celle du projet. -->
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-pades-pdfbox</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-validation</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-utils-apache-commons</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-crl-parser-stream</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-cms-object</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-policy-jaxb</artifactId>
+            <version>${dss.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-policy-crypto-xml</artifactId>
+            <version>${dss.version}</version>
         </dependency>
 
         <!-- connecteurs-cible (lot B1) — kafka : consumer TRIGGER (D-KAFKA-ROLE=A, requirements) -->

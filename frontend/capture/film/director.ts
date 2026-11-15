@@ -130,20 +130,7 @@ export class Director {
     await target.waitFor()
     // Le diagramme garde le cadrage calculé à son affichage : on réduit l'élément entier plutôt que de le redimensionner.
     // Réduits, les contours du chemin parcouru (vert) et de l'étape en cours (bleu) s'effacent : on les remplit.
-    await this.page.evaluate(() => {
-      if (document.getElementById('film-pip-style')) return
-      const style = document.createElement('style')
-      style.id = 'film-pip-style'
-      style.textContent = [
-        '.highlight-completed:not(.djs-connection) .djs-visual > :nth-child(1)',
-        '{ fill: #b2f2bb !important; stroke-width: 5px !important; }',
-        '.highlight-active:not(.djs-connection) .djs-visual > :nth-child(1)',
-        '{ fill: #a5d8ff !important; stroke-width: 6px !important; }',
-        '.highlight-failed:not(.djs-connection) .djs-visual > :nth-child(1)',
-        '{ fill: #ffc9c9 !important; stroke-width: 6px !important; }',
-      ].join(' ')
-      document.head.appendChild(style)
-    })
+    await highlightPath(this.page)
     await target.evaluate((el) => {
       const width = (el as HTMLElement).getBoundingClientRect().width
       Object.assign((el as HTMLElement).style, {
@@ -181,6 +168,27 @@ export class Director {
     await this.page.close()
     await video!.saveAs(resolve(dir, `${name}.webm`))
   }
+}
+
+/**
+ * TODO §136 (D-VIDEO-PIP), §140 — style posé au tournage seulement : les nœuds du chemin parcouru (vert), de l'étape en
+ * cours (bleu) et en échec (rouge) sont remplis, lisibles une fois le diagramme réduit dans la vidéo.
+ */
+export async function highlightPath(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    if (document.getElementById('film-pip-style')) return
+    const style = document.createElement('style')
+    style.id = 'film-pip-style'
+    style.textContent = [
+      '.highlight-completed:not(.djs-connection) .djs-visual > :nth-child(1)',
+      '{ fill: #b2f2bb !important; stroke-width: 5px !important; }',
+      '.highlight-active:not(.djs-connection) .djs-visual > :nth-child(1)',
+      '{ fill: #a5d8ff !important; stroke-width: 6px !important; }',
+      '.highlight-failed:not(.djs-connection) .djs-visual > :nth-child(1)',
+      '{ fill: #ffc9c9 !important; stroke-width: 6px !important; }',
+    ].join(' ')
+    document.head.appendChild(style)
+  })
 }
 
 /** Interroge `probe` jusqu'à ce qu'il rende une valeur (relève IMAP : jusqu'à 45 s). */

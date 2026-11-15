@@ -1,0 +1,38 @@
+{
+  "_commentaire": "Capsule courte C2 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site, 60 à 90 s. Tournage : frontend/capture/film/c02-flux.film.ts, sur la démo complète. Préparés hors champ par l'API : le parcours « demandeAcces » et la table « delaiTraitement » (version 1, puis une version 2 au délai fautif). La capsule a sa propre table : déployer une table retire son brouillon, et le brouillon MCP de la table de routage (paquet « états ») est publié par C10.",
+  "id": "c02-flux",
+  "format": "short",
+  "title": { "fr": "Concevoir un flux sans développer", "en": "Design a flow without writing code" },
+  "underTheHood": {
+    "fr": ["Parcours compilé en BPMN, déposé en brouillon", "Palette de briques métier dans l'éditeur BPMN", "Table DMN versionnée : testée, puis restaurée"],
+    "en": ["Journey compiled into BPMN, saved as a draft", "Business building blocks in the BPMN editor", "Versioned DMN table: tested, then restored"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "parcours",
+      "title": { "fr": "Le parcours", "en": "The journey" },
+      "captions": {
+        "fr": ["Un parcours se décrit étape par étape, avec les mots du métier.", "Questions, décisions, statuts : chaque étape se choisit dans une liste.", "Myrmacta le compile en processus BPMN, à relire avant publication."],
+        "en": ["A journey is described step by step, in business words.", "Questions, decisions, statuses: each step is picked from a list.", "Myrmacta compiles it into a BPMN process, to review before publishing."]
+      }
+    },
+    {
+      "id": "bpmn",
+      "title": { "fr": "L'éditeur BPMN", "en": "The BPMN editor" },
+      "captions": {
+        "fr": ["Le processus reste ouvert : l'éditeur propose une palette de briques métier.", "Une brique se règle dans son panneau, sans écrire de code."],
+        "en": ["The process stays open: the editor offers a palette of business blocks.", "A block is set up in its panel, without writing code."]
+      }
+    },
+    {
+      "id": "dmn",
+      "title": { "fr": "La table de décision", "en": "The decision table" },
+      "captions": {
+        "fr": ["Les règles métier vivent dans une table de décision.", "Une nouvelle version se teste sur un cas : le délai n'est pas le bon.", "Un clic restaure la version précédente, et le test le confirme."],
+        "en": ["Business rules live in a decision table.", "A new version is tested on a case: the deadline is wrong.", "One click restores the previous version, and the test confirms it."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

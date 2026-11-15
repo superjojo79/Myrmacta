@@ -678,7 +678,8 @@ conteneur en plus). Keycloak, `.env`, jar de démo et `ffmpeg` : comme pour la c
 ### Capsules courtes du site (TODO §140)
 
 Vidéos de 30 à 60 s pour les pages « Fonctionnalités » : sans son, sous-titres incrustés, en boucle. Pas de voix, donc
-pas d'appel à edge-tts. Keycloak, `.env`, jar de démo et `ffmpeg` (avec libass) : comme pour la capsule L1.
+pas d'appel à edge-tts. Keycloak, `.env`, jar de démo et `ffmpeg` (avec libass) : comme pour la capsule L1. C4 (aperçu
+PDF) se tourne avec Microsoft Edge, présent sur tout poste Windows ; ailleurs, l'installer (`npx playwright install msedge`).
 
 1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
    c01-dossier`. C'est la démo complète (`demo`) ; le journal se termine par `demo: pack 'etats' installed`.

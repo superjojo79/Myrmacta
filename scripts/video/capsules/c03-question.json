@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C3 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c03-question.film.ts, sur la démo complète (l'arrivée de Thomas Peeters attend la validation du manager ; le manager demande une correction, ce qui garde le processus en cours).",
+  "id": "c03-question",
+  "format": "short",
+  "title": { "fr": "La bonne question, au bon moment", "en": "The right question, at the right time" },
+  "underTheHood": {
+    "fr": ["Formulaire de tâche déclaré en configuration", "La réponse devient une variable qui oriente le processus"],
+    "en": ["Task form declared in configuration", "The answer becomes a variable that steers the process"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "schema",
+      "title": { "fr": "La question", "en": "The question" },
+      "captions": {
+        "fr": ["Une question se déclare : champs, choix, aide, champs obligatoires.", "L'aperçu montre le formulaire tel que le verra la personne."],
+        "en": ["A question is declared: fields, choices, help, required fields.", "The preview shows the form as the person will see it."]
+      }
+    },
+    {
+      "id": "tache",
+      "title": { "fr": "La réponse", "en": "The answer" },
+      "captions": {
+        "fr": ["Au bon moment, la tâche pose la question au manager.", "Sa réponse oriente le flux : à corriger, la fiche revient aux RH."],
+        "en": ["At the right time, the task asks the manager the question.", "The answer steers the flow: to be corrected, the record goes back to HR."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

@@ -92,6 +92,11 @@ Conséquences actées : pas de configuration CORS ; cookie de session et CSRF en
 (décision n° 15) ; N instances embarquent le même artefact front (acceptable — simplicité
 opérationnelle prioritaire).
 
+`SpaFallbackConfig` ne sert `static/index.html` ou `static/portal/index.html` que si le fichier
+est présent sur le classpath. S'il est absent (build frontend sauté, `-Dskip.frontend=true`), la
+route répond 404 : réécrire `<base href>` ouvrait le fichier et levait `FileNotFoundException`
+(issue #95). Quand le frontend est construit, le repli sert toujours le point d'entrée.
+
 ### Alternatives écartées
 
 - **React** — viable, mais Vue 3 plus adapté aux apps métier formulaires/tableaux avec moins de verbosité

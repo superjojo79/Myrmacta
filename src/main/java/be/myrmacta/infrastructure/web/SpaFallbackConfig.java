@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.web;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.context.annotation.Configuration;
@@ -40,8 +41,20 @@ public class SpaFallbackConfig implements WebMvcConfigurer {
      * Fichier statique s'il existe ; sinon repli sur le point d'entrée de l'application concernée.
      * {@code /portal/**} (TODO §68) a son propre build : ne jamais le replier sur le SPA interne
      * authentifié (D-PORTAL-UI-BUILD). {@code /api/**} n'est jamais replié (404 JSON).
+     * Un point d'entrée absent du classpath n'est pas renvoyé : le réécrire ouvrirait le fichier
+     * et lèverait {@code FileNotFoundException} (issue #95, build frontend sauté).
      */
     static final class SpaResourceResolver extends PathResourceResolver {
+
+        private final Function<String, Resource> entryPoints;
+
+        SpaResourceResolver() {
+            this(ClassPathResource::new);
+        }
+
+        SpaResourceResolver(Function<String, Resource> entryPoints) {
+            this.entryPoints = entryPoints;
+        }
 
         @Override
         protected Resource getResource(String resourcePath, Resource location) throws IOException {
@@ -49,13 +62,23 @@ public class SpaFallbackConfig implements WebMvcConfigurer {
             if (requested.exists() && requested.isReadable()) {
                 return requested;
             }
+            String entry = entryPoint(resourcePath);
+            if (entry == null) {
+                return null;
+            }
+            Resource fallback = entryPoints.apply(entry);
+            return fallback.exists() && fallback.isReadable() ? fallback : null;
+        }
+
+        /** Chemin de repli, ou {@code null} pour un chemin {@code api/}. Indépendant de la présence du fichier. */
+        static String entryPoint(String resourcePath) {
             if (resourcePath.startsWith("api/")) {
                 return null;
             }
             if (resourcePath.equals("portal") || resourcePath.startsWith("portal/")) {
-                return new ClassPathResource("/static/portal/index.html");
+                return "static/portal/index.html";
             }
-            return new ClassPathResource("/static/index.html");
+            return "static/index.html";
         }
     }
 

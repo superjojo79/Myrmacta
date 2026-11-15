@@ -473,6 +473,17 @@ APP_SIGNATURE_PROVIDER=eid
 APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obligatoire avec eid
 ```
 
+> **Téléversement : désactivé par défaut, à n'activer qu'en connaissance de cause.**
+> `APP_SIGNATURE_EID_UPLOAD_ENABLED` vaut `false`. Tant qu'il est faux, les points `signed-document` répondent 409
+> (`SIGNED_UPLOAD_DISABLED`) et **un signataire sans pont ne peut pas signer** : la signature dans la page est alors le
+> seul parcours. Une instance qui n'a ni pont autorisé ni téléversement activé refuse de démarrer.
+>
+> Activé, le téléversement n'est pas tenu pour sûr face à un signataire malveillant : des revues de clôture ont trouvé
+> deux contournements non corrigés (voir le §138, « Limites connues »). L'exploitant qui l'active accepte donc qu'un PDF
+> téléversé ne soit pas vérifié de façon garantie, et doit le faire recetter avec de vrais outils de signature avant tout
+> usage. Le contrôle peut aussi refuser à tort des PDF d'outils réels (signature visible sur une zone non vide, page
+> tournée, PDF balisé, champ vide ajouté par l'outil). Un avertissement est journalisé au démarrage.
+
 - **Autorités de confiance (obligatoire).** Le fichier PEM contient, à la suite, les racines belges et les
   autorités intermédiaires (« Citizen CA ») que l'exploitant accepte. Myrmacta n'embarque aucun certificat et ne
   télécharge aucune autorité depuis une URL de certificat. Les intermédiaires doivent figurer dans ce fichier :
@@ -480,7 +491,8 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
   certificats eID ; l'adresse de ce dépôt n'a pas été vérifiée pendant le développement. Sans fichier lisible
   qui contient au moins un certificat, l'instance refuse de démarrer.
 - **Ponts navigateur.** `APP_SIGNATURE_EID_BRIDGES` (défaut `web-eid,beidconnect`) donne les ponts proposés dans
-  la page, dans cet ordre. Liste vide : seul le téléversement est offert. Valeur inconnue : démarrage refusé.
+  la page, dans cet ordre. Liste vide : signature dans la page non offerte. Valeur inconnue : démarrage refusé. Sans pont
+  autorisé, le téléversement doit être activé, sinon démarrage refusé.
   Ce que chaque pont exige sur le poste du signataire :
 
   | | Web eID | BeIDConnect |
@@ -501,7 +513,8 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
   `APP_SIGNATURE_EID_REVOCATION_TIMEOUT` (la connexion est bornée à 5 s). La même taille maximale,
   `APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES` (1 Mio par défaut), s'applique à une réponse OCSP et à une
   CRL : une CRL plus grosse est refusée. La taille réelle des CRL des autorités belges n'a pas été vérifiée ;
-  relevez le plafond si besoin. Révocation injoignable : le téléversement est refusé, le signataire réessaie.
+  relevez le plafond si besoin. La révocation est obtenue en ligne seulement. Révocation injoignable : la signature
+  est refusée, le signataire réessaie.
 - **Horodatage (facultatif).** Par défaut, ni horodatage ni TSA. Pour en activer un, renseignez
   `APP_SIGNATURE_EID_TSA_URL` (http ou https) : le document final reçoit un horodatage RFC 3161 et, quand les
   données de validation sont complètes, une extension au niveau long terme. TSA injoignable ou réponse refusée :
@@ -511,17 +524,19 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
   d'horodatage élargit donc la confiance accordée aux certificats des signataires. La TSA fédérale réserve son
   service à un usage non commercial, sans engagement de disponibilité : elle n'est pas une valeur par défaut, et
   son usage doit être validé avant toute mise en production.
-- **Taille.** `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES` vaut par défaut `app.signature.max-document-bytes` plus 2 Mio
+- **Taille (téléversement activé seulement).** `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES` vaut par défaut `app.signature.max-document-bytes` plus 2 Mio
   (22 Mio avec le défaut de 20 Mio). La limite multipart globale (`APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, 25 Mo)
   s'applique avant.
 - **Recette avant usage réel.** Aucun PDF signé avec une vraie carte n'a été vérifié pendant le développement, et
   aucun pont n'a été essayé avec une vraie extension. Avant tout usage réel, signez une demande de test avec une
-  vraie carte, par chaque pont et par téléversement, puis contrôlez la preuve produite.
+  vraie carte, par chaque pont et, si le téléversement est activé, par téléversement avec de vrais outils de signature,
+puis contrôlez la preuve produite.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `APP_SIGNATURE_EID_TRUST_ANCHORS_FILE` | vide (obligatoire avec `eid`) | fichier PEM des autorités de confiance |
 | `APP_SIGNATURE_EID_BRIDGES` | `web-eid,beidconnect` | ponts proposés dans la page, dans l'ordre d'essai |
+| `APP_SIGNATURE_EID_UPLOAD_ENABLED` | `false` | active le téléversement d'un PDF signé hors de Myrmacta (voir l'encadré) |
 | `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES` | 0 : `max-document-bytes` + 2 Mio | taille maximale d'un PDF signé téléversé |
 | `APP_SIGNATURE_EID_REVOCATION_TIMEOUT` | `10s` | délai total de l'appel de révocation |
 | `APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES` | `1048576` | taille maximale d'une réponse OCSP ou d'une CRL |

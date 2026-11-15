@@ -1,9 +1,9 @@
-# §138 — Signature par carte eID : pont navigateur et signature apportée, vérifiées par Myrmacta
+# §138 — Signature par carte eID : pont navigateur (parcours principal), téléversement en repli désactivé par défaut
 
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (2026-11-13, issue [#10](https://github.com/superjojo79/Myrmacta/issues/10)). Livraison par lots,
-document de travail dans `docs/ai/` jusqu'à la clôture. Le socle reste celui du
+[ ] ouvert (2026-11-13, issue [#10](https://github.com/superjojo79/Myrmacta/issues/10)). Livraison par lots.
+Le document de travail `docs/ai/` a été retiré pendant la livraison ; son contenu utile est repris dans la spec 30 et ici. Le socle reste celui du
 [§72](072-signature-electronique-socle-generique-et-stub.md) ; les fournisseurs hébergés restent ceux du
 [§109](109-fournisseurs-de-signature-yousign-et-docusign.md).
 
@@ -58,11 +58,24 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   refuse cette saisie dans la page retire `beidconnect` des ponts autorisés. Confirmé par l'utilisateur le
   2026-11-15 : les lecteurs ordinaires restent utilisables, la protection du PIN dans la page repose sur la
   politique de sécurité du contenu de la page.
-- **D-EID-UPLOAD.** Signature apportée, en repli du pont. Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
+- **D-EID-UPLOAD.** Signature apportée, en repli du pont, **désactivée par défaut** (`app.signature.eid.upload-enabled`,
+  `APP_SIGNATURE_EID_UPLOAD_ENABLED=false`). Le signataire télécharge le PDF, le signe avec l'outil qu'il a déjà
   (Adobe Acrobat Reader et sa carte, ou le service fédéral de signature), puis téléverse le PDF signé.
   Myrmacta vérifie la signature. Aucun composant propre à Myrmacta n'est installé sur le poste. Fournisseur
   `eid` de `app.signature.provider`, un seul actif par instance comme au §109. Le clic « Signer » du socle
   est refusé pour ce fournisseur.
+  *Pourquoi désactivé.* Trois revues de clôture indépendantes ont chacune trouvé des moyens de faire accepter un PDF
+  téléversé dont le contenu visible diffère du document remis. Deux séries de corrections ont été livrées ; la
+  troisième revue a trouvé deux contournements non corrigés (voir « Revues de clôture »). Le contrôle général ne
+  peut pas être rendu sûr à coût raisonnable : la suite proposée est une règle fermée. Tant qu'elle n'existe pas, le
+  téléversement n'est pas tenu pour sûr face à un signataire malveillant.
+  *Comment l'activer.* `APP_SIGNATURE_EID_UPLOAD_ENABLED=true`. Un avertissement est journalisé au démarrage.
+  *Ce qu'un exploitant accepte en l'activant :* que la vérification d'un PDF téléversé ne soit pas garantie face à un
+  signataire malveillant (limites (a) et (b)), et que le contrôle refuse parfois à tort des PDF d'outils réels. La
+  signature dans la page reste le parcours livré et le seul sans ces réserves.
+  *Conséquence sans téléversement.* Un signataire sans pont compatible ne peut pas signer, et une instance sans pont
+  autorisé ni téléversement activé refuse de démarrer. Les points `signed-document` répondent 409,
+  `SIGNED_UPLOAD_DISABLED`, après le contrôle d'accès.
 - **D-EID-VALIDATION.** La vérification passe par la bibliothèque DSS de la Commission européenne
   (`eu.europa.ec.joinup.sd-dss`, LGPL-2.1, version 6.5.1), implémentation de référence de la validation
   eIDAS. Elle s'aligne sur les versions déjà présentes (PDFBox 3.0.8, HttpClient 5.6.5). Écarté : une
@@ -111,6 +124,32 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   développement : le code client suit leurs sources publiques et ses tests simulent l'extension.
 - Web eID ne rend que le certificat du signataire : les autorités intermédiaires (Citizen CA) doivent alors
   figurer dans le fichier de l'exploitant (D-EID-TRUST). BeIDConnect rend la chaîne lue sur la carte.
+- Par défaut, téléversement désactivé : un poste sans pont compatible (Web eID ou BeIDConnect installé) ne peut pas
+  signer ce document.
+- Le durcissement du téléversement peut refuser à tort des PDF d'outils réels : signature visible posée sur une zone
+  non vide ou sur une page tournée, PDF balisé, champ vide ajouté par l'outil. Ces cas ne sont pas recettés avec les
+  outils réels.
+- **(a)** La lecture des tables d'objets ajoutées repère certaines clés par expression régulière
+  (`AddedXrefSections`) et peut être trompée par une clé imbriquée. Un objet du document remis peut alors être
+  supprimé. Non corrigé. Le pont n'est pas exposé à ce cas : le serveur assemble lui-même le PDF.
+- **(b)** Un même champ de signature peut être inscrit sur plusieurs pages alors qu'une seule est contrôlée. Une
+  apparence peut alors être posée sur du texte. Non corrigé. Même remarque sur le pont.
+- La recette avec une vraie carte et de vraies extensions reste due.
+
+## Revues de clôture
+
+Trois revues indépendantes ont été faites. La première, la plus complète, a été menée par le modèle le plus capable ;
+les deux contre-revues par un autre modèle, le premier ayant atteint sa limite d'usage.
+
+- Après les deux premières revues, des corrections ont été livrées : aucun objet du document remis n'est redéfini
+  hors d'une liste fermée ; le parcours du document final part de sa racine ; les tables d'objets ajoutées sont lues
+  strictement ; un seul champ de signature neuf ; une zone vide est exigée sous une signature visible ; la révocation
+  est obtenue en ligne seulement et signée par l'émetteur ou son répondeur délégué ; l'émetteur est vérifié comme
+  autorité.
+- La troisième revue a trouvé les limites (a) et (b), non corrigées. En conséquence, le téléversement est désactivé
+  par défaut.
+- Suite proposée par le réviseur : une règle fermée, signatures invisibles seulement et forme exacte de la partie
+  ajoutée, au lieu d'un contrôle général. Non réalisée.
 
 ## Ce que les sources des ponts établissent (lues le 2026-11-14)
 

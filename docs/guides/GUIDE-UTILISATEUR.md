@@ -1105,12 +1105,15 @@ lien, l'ancien cesse de fonctionner) et **Annuler la demande** (le workflow repr
 ### Signer avec votre carte eID (TODO §138)
 
 Avec le fournisseur `eid`, vous signez avec votre carte d'identité électronique belge. La signature est proposée
-sur la page de la demande (lien du portail) et dans « Mes signatures ».
+sur la page de la demande (lien du portail) et dans « Mes signatures ». C'est le parcours par défaut : vous signez
+dans la page, avec un logiciel installé sur votre ordinateur. Le téléversement (signer hors de la page) n'apparaît
+que si l'exploitant l'a activé.
 
 **Avant de commencer.** Insérez votre carte dans le lecteur. Installez ce que la page demande : une extension du
 navigateur et une application, Web eID ou BeIDConnect (Web eID demande en plus le logiciel eID belge). La page
-doit s'ouvrir en connexion sécurisée (https). Si rien n'est détecté, la page vous le dit et vous propose la
-signature par téléchargement.
+doit s'ouvrir en connexion sécurisée (https). Si rien n'est détecté, la page vous le dit : installez le logiciel
+demandé, puis réessayez. Sans logiciel, vous ne pouvez signer que si l'exploitant a activé le téléversement (voir
+ci-dessous).
 
 **Signer dans la page.** Cliquez sur « Signer avec ma carte eID ».
 
@@ -1124,7 +1127,8 @@ signature par téléchargement.
 - Si le PIN est faux, la page indique combien d'essais restent. Une carte bloquée se débloque avec votre code PUK
   ou auprès de votre commune.
 
-**Signer hors de la page.** Si la signature dans la page ne fonctionne pas, cliquez sur « Télécharger le document
+**Signer hors de la page (si l'exploitant l'a activé).** Si la signature dans la page ne fonctionne pas et que ce
+choix vous est proposé, cliquez sur « Télécharger le document
 à signer ». Signez-le avec votre carte, par exemple avec Adobe Acrobat Reader ou le service fédéral de signature,
 sans le modifier. Puis choisissez le PDF signé et cliquez sur « Envoyer le document signé ».
 

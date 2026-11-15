@@ -76,28 +76,12 @@ import tools.jackson.databind.json.JsonMapper;
  * téléversement d'un PDF signé par {@link EidTestPdfs}. La carte est simulée : le condensé reçu est signé avec la clé
  * de test, sans le recalculer.
  */
-@SpringBootTest(properties = {
-        "app.signature.provider=eid",
-        "app.signature.send.poll-delay=1h",
-        "app.signature.expiry.poll-delay=1h",
-        "app.signature.dispatch.poll-delay=1h",
-        "app.signature.send.resend-min-interval=0s",
-        "app.portal.enabled=true",
-        "app.portal.public-base-url=https://ff.example.org/tenant-a",
-        "app.portal.send.poll-delay=1h",
-        "app.portal.expiry.poll-delay=1h",
-        "flowable.async-executor-activate=false"
-})
-@ActiveProfiles("test")
-@AutoConfigureMockMvc
-@Import({OidcClientTestConfiguration.class, CardSignatureRealApiTest.RealVerifierConfig.class,
-        FixedClockPortalRateLimiterConfig.class})
-class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
+abstract class AbstractCardSignatureRealApiTest extends AbstractSignatureEngineTest {
 
-    private static final EidTestPki PKI = EidTestPki.create("Card Http");
+    protected static final EidTestPki PKI = EidTestPki.create("Card Http");
     private static final AtomicInteger IP_SEQUENCE = new AtomicInteger();
-    private static final String TOKEN = "X-Portal-Token";
-    private static final String PORTAL = "/api/portal/signature";
+    protected static final String TOKEN = "X-Portal-Token";
+    protected static final String PORTAL = "/api/portal/signature";
     private static Path anchors;
 
     static {
@@ -134,18 +118,21 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
     }
 
     @Autowired
-    private MockMvc mockMvc;
+    protected MockMvc mockMvc;
 
     @Autowired
     private JsonMapper json;
 
     @Autowired
-    private SignedUploadRepository uploads;
+    protected SignedUploadRepository uploads;
 
     @Autowired
     private DossierTypeAclRepository aclRepository;
 
-    private EidTestPki.Signer card;
+    protected EidTestPki.Signer card;
+
+    /** Le téléversement d'un PDF signé est offert dans ce contexte (propriété {@code upload-enabled}). */
+    protected abstract boolean uploadOffered();
 
     @BeforeEach
     void setUp() {
@@ -154,7 +141,7 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
 
     // ---------- outils ----------
 
-    private static RequestPostProcessor ip() {
+    protected static RequestPostProcessor ip() {
         int n = IP_SEQUENCE.getAndIncrement();
         String addr = "10.60." + (n / 250 % 250) + "." + (1 + n % 250);
         return req -> {
@@ -163,17 +150,17 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
         };
     }
 
-    private static RequestPostProcessor as(String userId) {
+    protected static RequestPostProcessor as(String userId) {
         return oidcLogin()
                 .idToken(t -> t.subject(userId).claim("tenant_id", "tenant_dev"))
                 .authorities(new SimpleGrantedAuthority("ROLE_DOSSIER_MANAGER"));
     }
 
-    private static String b64(byte[] bytes) {
+    protected static String b64(byte[] bytes) {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    private static String cert(EidTestPki.Signer signer) throws Exception {
+    protected static String cert(EidTestPki.Signer signer) throws Exception {
         return b64(signer.certificate().getEncoded());
     }
 
@@ -223,9 +210,26 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
                 "signature", b64(signature));
     }
 
-    private record Portal(UUID dossierId, SignatureRequest request, String tokenA, String tokenB, byte[] source) {}
+    /** Signature dans la page de bout en bout par le portail : prepare, signature par la « carte », complete. */
+    protected final void signInPage(String token, EidTestPki.Signer signer) throws Exception {
+        String certificate = cert(signer);
+        JsonNode prepared = json.readTree(mockMvc.perform(post(PORTAL + "/card-signature/prepare")
+                        .header(TOKEN, token).with(ip()).contentType(MediaType.APPLICATION_JSON)
+                        .content(body("certificate", certificate, "certificateChain", chain())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        byte[] signature = cardSign(signer, Base64.getDecoder().decode(prepared.get("digest").asString()));
+        mockMvc.perform(post(PORTAL + "/card-signature/complete").header(TOKEN, token).with(ip())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("certificate", certificate, "certificateChain", chain(),
+                                "signingTime", prepared.get("signingTime").asString(),
+                                "documentDigest", prepared.get("documentDigest").asString(),
+                                "signature", b64(signature))))
+                .andExpect(status().isOk());
+    }
 
-    private Portal portal() {
+    protected record Portal(UUID dossierId, SignatureRequest request, String tokenA, String tokenB, byte[] source) {}
+
+    protected Portal portal() {
         String mailA = "client-" + System.nanoTime() + "@example.org";
         String mailB = "garant-" + System.nanoTime() + "@example.org";
         UUID dossierId = dossier(Map.of("signerA", mailA, "signerB", mailB)).id();
@@ -243,7 +247,7 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
         Portal p = portal();
         mockMvc.perform(get(PORTAL).header(TOKEN, p.tokenA()).with(ip()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.signedUpload").value(true))
+                .andExpect(jsonPath("$.signedUpload").value(uploadOffered()))
                 .andExpect(jsonPath("$.cardBridges[0]").value("web-eid"))
                 .andExpect(jsonPath("$.cardBridges[1]").value("beidconnect"));
 
@@ -274,12 +278,8 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
     void theDocumentChangedBetweenPrepareAndCompleteIsRefusedWithStaleDocument() throws Exception {
         Portal p = portal();
         JsonNode prepared = prepare(post(PORTAL + "/card-signature/prepare").header(TOKEN, p.tokenA()).with(ip()));
-        // le garant (facultatif) signe entre-temps, avec un autre certificat : le document courant change
-        EidTestPki.Signer other = PKI.qualifiedSigner(KeyType.RSA_2048);
-        mockMvc.perform(multipart(PORTAL + "/signed-document")
-                        .file(new MockMultipartFile("file", "s.pdf", "application/pdf", EidTestPdfs.sign(p.source(), other)))
-                        .header(TOKEN, p.tokenB()).with(ip()))
-                .andExpect(status().isOk());
+        // le garant (facultatif) signe entre-temps dans la page, avec un autre certificat : le document courant change
+        signInPage(p.tokenB(), PKI.qualifiedSigner(KeyType.RSA_2048));
 
         byte[] signature = cardSign(card, Base64.getDecoder().decode(prepared.get("digest").asString()));
         mockMvc.perform(post(PORTAL + "/card-signature/complete").header(TOKEN, p.tokenA()).with(ip())
@@ -395,36 +395,11 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
         assertThat(request.getBytes(StandardCharsets.UTF_8).length).isLessThan(64 * 1024 / 2);
     }
 
-    // ---------- téléversement avec le vrai vérificateur ----------
-
-    @Test
-    void uploadOfARealSignedPdfIsAcceptedAndAnUnqualifiedOrUntrustedCertificateIsRefused() throws Exception {
-        Portal p = portal();
-        EidTestPki.Signer unqualified = PKI.signer().withoutQcSscd().issue();
-        EidTestPki.Signer stranger = EidTestPki.create("Stranger Http").qualifiedSigner(KeyType.RSA_2048);
-        for (Map.Entry<EidTestPki.Signer, String> refused : Map.of(
-                unqualified, "CERTIFICATE_NOT_QUALIFIED", stranger, "CERTIFICATE_UNTRUSTED").entrySet()) {
-            mockMvc.perform(multipart(PORTAL + "/signed-document")
-                            .file(new MockMultipartFile("file", "s.pdf", "application/pdf",
-                                    EidTestPdfs.sign(p.source(), refused.getKey())))
-                            .header(TOKEN, p.tokenA()).with(ip()))
-                    .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.code").value(refused.getValue()));
-        }
-
-        mockMvc.perform(multipart(PORTAL + "/signed-document")
-                        .file(new MockMultipartFile("file", "s.pdf", "application/pdf", EidTestPdfs.sign(p.source(), card)))
-                        .header(TOKEN, p.tokenA()).with(ip()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SIGNED"));
-        assertThat(uploads.findByRequestId(p.request().id())).hasSize(1);
-    }
-
     // ---------- « Mes signatures » ----------
 
-    private record Internal(Dossier dossier, SignatureRequest request, String reviewer, String approver, byte[] source) {}
+    protected record Internal(Dossier dossier, SignatureRequest request, String reviewer, String approver, byte[] source) {}
 
-    private Internal internal() {
+    protected Internal internal() {
         String reviewer = "reviewer-" + System.nanoTime();
         String approver = "approver-" + System.nanoTime();
         Dossier dossier = dossier(Map.of("reviewerId", reviewer, "approverId", approver));
@@ -437,7 +412,7 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
         return new Internal(dossier, request, reviewer, approver, storage.retrieve(TENANT, request.sourceStorageRef()));
     }
 
-    private Signer signerOf(Internal i, String userId) {
+    protected Signer signerOf(Internal i, String userId) {
         return signatureRepository.findSigners(i.request().id()).stream()
                 .filter(s -> userId.equals(s.userId())).findFirst().orElseThrow();
     }
@@ -449,7 +424,7 @@ class CardSignatureRealApiTest extends AbstractSignatureEngineTest {
         Signer app = signerOf(i, i.approver());
         String base = "/api/signatures/mine/" + rev.id() + "/card-signature";
         mockMvc.perform(get("/api/signatures/mine").with(as(i.reviewer())))
-                .andExpect(jsonPath("$[0].signedUpload").value(true))
+                .andExpect(jsonPath("$[0].signedUpload").value(uploadOffered()))
                 .andExpect(jsonPath("$[0].cardBridges[0]").value("web-eid"));
 
         JsonNode prepared = prepare(post(base + "/prepare").with(as(i.reviewer())).with(csrf()));

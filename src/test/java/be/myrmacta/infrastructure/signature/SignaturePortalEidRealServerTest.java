@@ -31,6 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "app.signature.provider=eid",
+        "app.signature.eid.upload-enabled=true",
         "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
         "app.signature.send.poll-delay=1h",
         "app.signature.expiry.poll-delay=1h",

@@ -99,6 +99,7 @@ class SubmitSignedDocumentUseCaseImplTest {
         when(dossiers.findById(any())).thenReturn(Optional.of(dossier));
         when(port.capabilities()).thenReturn(SignatureFixtures.eidCapabilities());
         when(availability.maxSignedUploadBytes()).thenReturn(MAX);
+        when(availability.signedUploadEnabled()).thenReturn(true);
         when(storage.store(eq(TENANT), anyString(), any())).thenAnswer(inv -> {
             String ref = "blob-" + (++stored);
             blobs.put(ref, inv.getArgument(2));
@@ -394,5 +395,48 @@ class SubmitSignedDocumentUseCaseImplTest {
 
         assertThat(result.requestStatus()).isEqualTo(SignatureStatus.SIGNED);
         assertThat(uploads.uploads).hasSize(1);
+    }
+
+    @Test
+    void whenTheUploadIsDisabledTheAccessDenialStillComesFirstAndNothingIsReadNorVerified() {
+        List<Signer> signers = seed(SignatureMode.PARALLEL, ext(0, true), internal(UUID.randomUUID(), 1, true, "bob"));
+        when(availability.signedUploadEnabled()).thenReturn(false);
+        Upload unreadable = new Upload() {
+            @Override
+            public long size() {
+                return 10;
+            }
+
+            @Override
+            public byte[] read() {
+                throw new AssertionError("the content must not be read");
+            }
+        };
+
+        // refus d'accès d'abord (jeton inconnu, autre utilisateur), puis seulement le refus du parcours
+        assertThatThrownBy(() -> useCase.submitByToken("unknown", unreadable)).isInstanceOf(PortalAccessDeniedException.class);
+        assertThatThrownBy(() -> useCase.submitInternal("mallory", signers.get(1).id(), unreadable))
+                .isInstanceOf(PortalAccessDeniedException.class);
+        assertThatThrownBy(() -> useCase.submitByToken("tok-0", unreadable))
+                .isInstanceOf(be.myrmacta.domain.signature.model.SignedUploadDisabledException.class);
+        assertThatThrownBy(() -> useCase.submitInternal("bob", signers.get(1).id(), unreadable))
+                .isInstanceOf(be.myrmacta.domain.signature.model.SignedUploadDisabledException.class);
+        verify(port, never()).verifySignedUpload(any());
+        assertThat(uploads.uploads).isEmpty();
+    }
+
+    @Test
+    void theInternalPathOfTheCardSignatureIgnoresTheSwitchAndStillVerifiesAndRecords() {
+        List<Signer> signers = seed(SignatureMode.PARALLEL, ext(0, true), internal(UUID.randomUUID(), 1, true, "bob"));
+        when(availability.signedUploadEnabled()).thenReturn(false);
+        accept("f1");
+
+        DecideSignatureUseCase.Result result = useCase.submitAssembledByToken("tok-0", Upload.of(SIGNED_1));
+
+        assertThat(result.signerStatus()).isEqualTo(SignerStatus.SIGNED);
+        accept("f2");
+        useCase.submitAssembledInternal("bob", signers.get(1).id(), Upload.of(SIGNED_2));
+        verify(port, org.mockito.Mockito.times(2)).verifySignedUpload(any());
+        assertThat(uploads.uploads).hasSize(2);
     }
 }

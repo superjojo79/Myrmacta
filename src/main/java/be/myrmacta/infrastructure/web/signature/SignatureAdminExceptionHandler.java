@@ -4,6 +4,7 @@ import be.myrmacta.domain.dossier.model.DossierNotFoundException;
 import be.myrmacta.domain.signature.model.HostedSignatureException;
 import be.myrmacta.domain.signature.model.InvalidCardSignatureInputException;
 import be.myrmacta.domain.signature.model.SigningSessionExpiredException;
+import be.myrmacta.domain.signature.model.SignedUploadDisabledException;
 import be.myrmacta.domain.signature.model.SignedUploadRejectedException;
 import be.myrmacta.domain.signature.model.SignedUploadRequiredException;
 import be.myrmacta.domain.signature.model.SignedUploadTooLargeException;
@@ -67,6 +68,15 @@ class SignatureAdminExceptionHandler {
         ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "Session de signature expirée",
                 "La session de signature a expiré, recommencez.");
         problem.setProperty("code", "SIGNING_SESSION_EXPIRED");
+        return problem;
+    }
+
+    /** Téléversement désactivé par l'exploitant : 409 avec son code (TODO §138). */
+    @ExceptionHandler(SignedUploadDisabledException.class)
+    ProblemDetail handleSignedUploadDisabled(SignedUploadDisabledException ex) {
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, "Téléversement désactivé",
+                "Le téléversement d'un PDF signé n'est pas offert.");
+        problem.setProperty("code", "SIGNED_UPLOAD_DISABLED");
         return problem;
     }
 

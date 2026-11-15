@@ -20,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest(properties = {
         "app.signature.provider=eid",
+        "app.signature.eid.upload-enabled=true",
         "app.signature.eid.trust-anchors-file=src/test/resources/eid/test-anchors.pem",
         "app.signature.max-document-bytes=100000",
         "app.signature.eid.max-upload-bytes=120000",

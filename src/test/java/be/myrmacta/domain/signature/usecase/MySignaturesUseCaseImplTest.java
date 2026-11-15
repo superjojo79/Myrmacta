@@ -126,8 +126,11 @@ class MySignaturesUseCaseImplTest {
     void signedUploadProviderFlagsItsItemsAndDelegatesTheUploadForTheSignerOnHisTurn() {
         when(port.capabilities()).thenReturn(be.myrmacta.domain.signature.SignatureFixtures.eidCapabilities());
         repository.insert(request, List.of(internal(request.id(), 0, true, "bob").withStatus(SignerStatus.PENDING)));
+        when(availability.signedUploadEnabled()).thenReturn(true);
         MySignaturesUseCase.Item item = useCase.list(bob).getFirst();
         assertThat(item.signedUpload()).isTrue();
+        when(availability.signedUploadEnabled()).thenReturn(false);
+        assertThat(useCase.list(bob).getFirst().signedUpload()).isFalse();
         when(availability.cardBridges()).thenReturn(List.of("web-eid"));
         assertThat(useCase.list(bob).getFirst().cardBridges()).containsExactly("web-eid");
         assertThat(item.hosted()).isFalse();

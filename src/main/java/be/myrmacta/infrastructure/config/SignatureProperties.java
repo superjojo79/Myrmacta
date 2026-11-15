@@ -75,11 +75,16 @@ public record SignatureProperties(
             dispatch = new Dispatch(null, 0, 0);
         }
         if (eid == null) {
-            eid = new Eid(null, 0, null, null, null);
+            eid = new Eid(null, 0, null, null, null, false);
         }
         if (eid.maxUploadBytes() <= 0) {
             eid = new Eid(eid.trustAnchorsFile(), maxDocumentBytes + SIGNED_UPLOAD_MARGIN_BYTES, eid.revocation(),
-                    eid.timestamp(), eid.bridges());
+                    eid.timestamp(), eid.bridges(), eid.uploadEnabled());
+        }
+        if (PROVIDER_EID.equals(provider) && !eid.uploadEnabled() && eid.bridges().isEmpty()) {
+            throw new IllegalStateException("app.signature.provider=eid offers no way to sign: "
+                    + "app.signature.eid.upload-enabled is false and app.signature.eid.bridges is empty "
+                    + "(enable at least one bridge, or knowingly enable the upload)");
         }
         if (eid.maxUploadBytes() < maxDocumentBytes) {
             throw new IllegalStateException(
@@ -160,14 +165,17 @@ public record SignatureProperties(
      * l'exploitant, obligatoire avec {@code provider=eid} (D-EID-TRUST). {@code maxUploadBytes} : taille maximale
      * d'un PDF signé téléversé, par défaut {@code max-document-bytes} plus 2 Mio ; la limite multipart globale
      * ({@code spring.servlet.multipart}, 25 Mo par défaut) s'applique avant elle. {@code revocation} : appel
-     * sortant vers l'état de révocation d'un certificat (D-EID-REVOCATION).
+     * sortant vers l'état de révocation d'un certificat (D-EID-REVOCATION). {@code uploadEnabled} : le téléversement
+     * d'un PDF signé hors de l'application est offert ; faux par défaut (la vérification d'un fichier apporté par un
+     * signataire malveillant n'est pas tenue pour sûre), la signature dans la page par pont restant offerte.
      */
     public record Eid(
             String trustAnchorsFile,
             long maxUploadBytes,
             Revocation revocation,
             Timestamp timestamp,
-            List<String> bridges) {
+            List<String> bridges,
+            boolean uploadEnabled) {
 
         /** Ponts navigateur reconnus (D-EID-BRIDGE), dans l'ordre d'essai par défaut. */
         static final List<String> KNOWN_BRIDGES = List.of("web-eid", "beidconnect");

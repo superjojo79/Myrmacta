@@ -22,6 +22,14 @@ public interface SubmitSignedDocumentUseCase {
     DecideSignatureUseCase.Result submitInternal(String userId, UUID signerId, Upload upload);
 
     /**
+     * Chemin interne de la signature dans la page (TODO §138, D-EID-BRIDGE) : le PDF a été assemblé par le serveur, il
+     * suit le chemin du téléversement sans la garde {@code upload-enabled}. Jamais exposé à un signataire.
+     */
+    DecideSignatureUseCase.Result submitAssembledByToken(String token, Upload upload);
+
+    DecideSignatureUseCase.Result submitAssembledInternal(String userId, UUID signerId, Upload upload);
+
+    /**
      * Fichier téléversé, lu à la demande : l'accès et la taille sont contrôlés avant que le contenu soit lu en
      * mémoire.
      */

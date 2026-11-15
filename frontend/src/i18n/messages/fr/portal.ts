@@ -78,8 +78,10 @@ export default {
         submit: 'Valider le PIN',
         cancel: 'Annuler',
       },
+      noBridgeAlone: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID ou BeIDConnect (extension du navigateur et logiciel eID), puis réessayez. Si le problème persiste, contactez la personne qui vous a envoyé le lien.',
       noBridge: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID ou BeIDConnect (extension du navigateur et logiciel eID), puis réessayez, ou utilisez l’autre moyen ci-dessous.',
       errors: {
+        unavailableAlone: 'Le logiciel eID ne répond pas. Vérifiez qu’il est installé et démarré, puis réessayez. Si le problème persiste, contactez la personne qui vous a envoyé le lien.',
         unavailable: 'Le logiciel eID ne répond pas. Vérifiez qu’il est installé et démarré, puis réessayez, ou utilisez l’autre moyen ci-dessous.',
         updateRequired: 'Votre logiciel eID n’est pas compatible avec cette page. Mettez-le à jour, puis réessayez.',
         noReader: 'Aucun lecteur de carte n’a été trouvé. Branchez votre lecteur, puis réessayez.',
@@ -90,10 +92,12 @@ export default {
         pinIncorrectLeft: 'Le code PIN est incorrect. Il vous reste {count} essai(s) avant le blocage de la carte.',
         cardBlocked: 'Votre carte est bloquée. Débloquez-la avec votre code PUK ou auprès de votre commune, puis réessayez.',
         insecureContext: 'Cette page doit être ouverte en connexion sécurisée (https) pour utiliser la carte. Contactez la personne qui vous a envoyé le lien.',
+        failedAlone: 'La signature avec la carte a échoué. Réessayez, ou contactez la personne qui vous a envoyé le lien.',
         failed: 'La signature avec la carte a échoué. Réessayez, ou utilisez l’autre moyen ci-dessous.',
       },
     },
     upload: {
+      disabled: 'Ce moyen n’est pas disponible. Signez avec votre carte eID depuis cette page.',
       stepsAlt: 'Autre moyen : signer hors de cette page',
       steps: 'Pour signer',
       download: 'Télécharger le document à signer',

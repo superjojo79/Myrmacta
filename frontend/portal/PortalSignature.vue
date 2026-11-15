@@ -106,6 +106,9 @@ async function loadDocument() {
 
 /** Message d'un refus du serveur (téléversement ou signature dans la page) ; un 404 bascule sur l'écran neutre. */
 async function describeApiError(e: unknown): Promise<string> {
+  if (e instanceof PortalApiError && e.status === 409 && e.code === 'SIGNED_UPLOAD_DISABLED') {
+    return t('portal.signature.upload.disabled')
+  }
   if (e instanceof PortalApiError && e.status === 422) {
     if (e.code === 'STALE_DOCUMENT') await refreshAfterStale()
     return t(rejectionMessageKey('portal.signature.upload', e.code))
@@ -141,10 +144,10 @@ const card = useCardSignature({
     state.value = 'signed'
   },
   onError: async (e) => {
-    error.value = e instanceof CardBridgeError ? bridgeMessage(cardErrorMessage('portal.signature.card', e)) : await describeApiError(e)
+    error.value = e instanceof CardBridgeError ? bridgeMessage(cardErrorMessage('portal.signature.card', e, !signedUpload.value)) : await describeApiError(e)
   },
   onNoBridge: (e) => {
-    error.value = bridgeMessage(noBridgeMessage('portal.signature.card', e))
+    error.value = bridgeMessage(noBridgeMessage('portal.signature.card', e, !signedUpload.value))
   },
 })
 const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive, bridgeId: cardBridgeId, choices: cardChoices, selectedChoice: cardSelected } = card

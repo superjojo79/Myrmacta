@@ -87,7 +87,9 @@ async function downloadDocument(item: MySignatureItem) {
 async function reportUploadError(item: MySignatureItem, e: unknown) {
   uploadErrorId.value = item.signerId
   const problem = toProblemDetail(e)
-  if (problem.status === 422) {
+  if (problem.status === 409 && problem.code === 'SIGNED_UPLOAD_DISABLED') {
+    uploadError.value = t('mySignatures.upload.disabled')
+  } else if (problem.status === 422) {
     uploadError.value = t(rejectionMessageKey('mySignatures.upload', problem.code))
   } else if (problem.status === 413) {
     uploadError.value = t('mySignatures.errors.tooLarge')
@@ -142,14 +144,14 @@ const card = useCardSignature({
     const item = cardItem.value!
     if (e instanceof CardBridgeError) {
       uploadErrorId.value = item.signerId
-      uploadError.value = bridgeMessage(cardErrorMessage('mySignatures.card', e))
+      uploadError.value = bridgeMessage(cardErrorMessage('mySignatures.card', e, !item.signedUpload))
     } else {
       await reportUploadError(item, e)
     }
   },
   onNoBridge: (e) => {
     uploadErrorId.value = cardItem.value!.signerId
-    uploadError.value = bridgeMessage(noBridgeMessage('mySignatures.card', e))
+    uploadError.value = bridgeMessage(noBridgeMessage('mySignatures.card', e, !cardItem.value!.signedUpload))
   },
 })
 const { phase: cardPhase, pin: cardPin, pinValid: cardPinValid, active: cardActive, bridgeId: cardBridgeId, choices: cardChoices, selectedChoice: cardSelected } = card

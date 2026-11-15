@@ -268,6 +268,14 @@ describe('card error messages', () => {
     expect(key('pin-incorrect', 1)).toEqual({ key: 'p.card.errors.pinIncorrectLeft', named: { count: 1 } })
   })
 
+  it('uses messages without a pointer to the upload when the upload is not offered', () => {
+    const e = (kind: ConstructorParameters<typeof CardBridgeError>[0]) => new CardBridgeError(kind)
+    expect(noBridgeMessage('p.card', e('unavailable'), true)).toEqual({ key: 'p.card.noBridgeAlone' })
+    expect(cardErrorMessage('p.card', e('unavailable'), true)).toEqual({ key: 'p.card.errors.unavailableAlone' })
+    expect(cardErrorMessage('p.card', e('failed'), true)).toEqual({ key: 'p.card.errors.failedAlone' })
+    expect(cardErrorMessage('p.card', e('no-card'), true)).toEqual({ key: 'p.card.errors.noCard' })
+  })
+
   it('says « no software detected » only when nothing answered', () => {
     expect(noBridgeMessage('p.card', new CardBridgeError('unavailable'))).toEqual({ key: 'p.card.noBridge' })
     expect(noBridgeMessage('p.card', new CardBridgeError('update-required'))).toEqual({ key: 'p.card.errors.updateRequired' })

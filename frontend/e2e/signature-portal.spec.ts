@@ -397,3 +397,32 @@ test('E2E-SIG-25 cancelling the choice step sends nothing', async ({ page }) => 
   expect(calls).toEqual([])
   expect((await beidLog(page)).signCalls).toHaveLength(0)
 })
+
+test('E2E-SIG-26 default case: card only, no upload block, and the message without bridge does not point to another way', async ({ page }) => {
+  const calls = await mockSignatureApi(page, { context: { ...CARD_CONTEXT, signedUpload: false } })
+  await page.goto(LINK)
+
+  await expect(page.getByRole('button', { name: 'Signer avec ma carte eID' })).toBeVisible()
+  await expect(page.getByTestId('signature-upload')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Télécharger le document à signer' })).toHaveCount(0)
+  await expect(page.getByText('Autre moyen')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Refuser' })).toBeVisible()
+  await expect(page.getByTestId('signature-document')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Installez Web eID ou BeIDConnect')
+  await expect(alert).toContainText('contactez la personne qui vous a envoyé le lien')
+  await expect(alert).not.toContainText('autre moyen')
+  expect(calls).toEqual([])
+})
+
+test('E2E-SIG-27 default case: signing with the card still works without the upload', async ({ page }) => {
+  await installWebEid(page)
+  const calls = await mockSignatureApi(page, { context: { ...CARD_CONTEXT, signedUpload: false } })
+  await page.goto(LINK)
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  await expect(page.getByTestId('signature-signed')).toBeVisible()
+  expect(calls).toEqual(['prepare', 'complete'])
+})

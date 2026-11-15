@@ -115,8 +115,10 @@ const pilotage: typeof fr = {
         submit: 'Confirm the PIN',
         cancel: 'Cancel',
       },
+      noBridgeAlone: 'No eID software was detected on your computer. Install Web eID or BeIDConnect (browser extension and eID software), then try again. If the problem persists, contact the person who sent you the link.',
       noBridge: 'No eID software was detected on your computer. Install Web eID or BeIDConnect (browser extension and eID software), then try again, or use the other way below.',
       errors: {
+        unavailableAlone: 'The eID software does not respond. Check that it is installed and running, then try again. If the problem persists, contact the person who sent you the link.',
         unavailable: 'The eID software does not respond. Check that it is installed and running, then try again, or use the other way below.',
         updateRequired: 'Your eID software is not compatible with this page. Update it, then try again.',
         noReader: 'No card reader was found. Plug in your reader, then try again.',
@@ -127,10 +129,12 @@ const pilotage: typeof fr = {
         pinIncorrectLeft: 'The PIN is incorrect. You have {count} attempt(s) left before the card is blocked.',
         cardBlocked: 'Your card is blocked. Unblock it with your PUK code or at your municipality, then try again.',
         insecureContext: 'This page must be opened over a secure connection (https) to use the card. Contact the person who sent you the link.',
+        failedAlone: 'Signing with the card failed. Try again, or contact the person who sent you the link.',
         failed: 'Signing with the card failed. Try again, or use the other way below.',
       },
     },
     upload: {
+      disabled: 'This way is not available. Sign with your eID card from this page.',
       stepsAlt: 'Other way: sign outside this page',
       steps: 'To sign {document}',
       download: 'Download the document to sign',

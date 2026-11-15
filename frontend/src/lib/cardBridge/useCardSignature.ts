@@ -160,7 +160,9 @@ export function useCardSignature(options: CardSignatureOptions) {
 }
 
 /** Clé et paramètre du message d'une erreur du pont, sous `prefix` (`….card`). */
-export function cardErrorMessage(prefix: string, e: CardBridgeError): { key: string; named?: { count: number } } {
+export function cardErrorMessage(prefix: string, e: CardBridgeError, alone = false): { key: string; named?: { count: number } } {
+  // `alone` : le téléversement n'est pas offert, le message ne renvoie pas à « l'autre moyen ».
+  const suffix = alone ? 'Alone' : ''
   switch (e.kind) {
     case 'update-required':
       return { key: `${prefix}.errors.updateRequired` }
@@ -178,14 +180,15 @@ export function cardErrorMessage(prefix: string, e: CardBridgeError): { key: str
         : { key: `${prefix}.errors.pinIncorrect` }
     case 'cancelled':
     case 'timeout':
-    case 'failed':
       return { key: `${prefix}.errors.${e.kind}` }
+    case 'failed':
+      return { key: `${prefix}.errors.failed${suffix}` }
     default:
-      return { key: `${prefix}.errors.unavailable` }
+      return { key: `${prefix}.errors.unavailable${suffix}` }
   }
 }
 
 /** Aucun pont ne répond : « aucun logiciel détecté », ou l'erreur plus précise (mise à jour, contexte non sécurisé). */
-export function noBridgeMessage(prefix: string, e: CardBridgeError): { key: string; named?: { count: number } } {
-  return e.kind === 'unavailable' ? { key: `${prefix}.noBridge` } : cardErrorMessage(prefix, e)
+export function noBridgeMessage(prefix: string, e: CardBridgeError, alone = false): { key: string; named?: { count: number } } {
+  return e.kind === 'unavailable' ? { key: `${prefix}.noBridge${alone ? 'Alone' : ''}` } : cardErrorMessage(prefix, e, alone)
 }

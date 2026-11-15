@@ -764,3 +764,80 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     })
   })
 })
+
+/** Lot 3d — les quatre combinaisons `cardBridges` / `signedUpload` ; la carte ne dépend que de `cardBridges`. */
+describe('PortalSignature, combinaisons cardBridges × signedUpload (lot 3d)', () => {
+  const base: api.SignatureContext = { ...context, simulated: false }
+
+  async function mountWith(ctx: Partial<api.SignatureContext>) {
+    vi.restoreAllMocks()
+    URL.createObjectURL = vi.fn(() => 'blob:doc')
+    URL.revokeObjectURL = vi.fn()
+    vi.spyOn(api, 'fetchSignatureDocument').mockResolvedValue(new Blob(['pdf']))
+    vi.spyOn(api, 'fetchSignatureContext').mockResolvedValue({ ...base, ...ctx })
+    const wrapper = mount(PortalSignature, { props: { token: TOKEN } })
+    await flushPromises()
+    return wrapper
+  }
+  const labels = (w: Awaited<ReturnType<typeof mountWith>>) => w.findAll('button').map((b) => b.text())
+
+  it('default case: card only, no upload block, no click signature, document and decline kept', async () => {
+    const w = await mountWith({ cardBridges: ['web-eid'], signedUpload: false })
+    expect(w.find('[data-testid="signature-card"]').exists()).toBe(true)
+    expect(w.find('[data-testid="signature-upload"]').exists()).toBe(false)
+    expect(w.find('[data-testid="signature-download"]').exists()).toBe(false)
+    expect(labels(w)).not.toContain('Signer')
+    expect(labels(w)).toContain('Refuser')
+    expect(w.find('[data-testid="signature-document"]').exists()).toBe(true)
+  })
+
+  it('without a bridge, the message does not point to another way', async () => {
+    const w = await mountWith({ cardBridges: ['web-eid', 'beidconnect'], signedUpload: false })
+    vi.spyOn(bridges, 'detectCardBridge').mockResolvedValue({ bridge: null, errors: [new CardBridgeError('unavailable')] })
+    await w.get('[data-testid="signature-card-sign"]').trigger('click')
+    await flushPromises()
+    const text = w.get('[data-testid="signature-error"]').text()
+    expect(text).toContain('Installez Web eID ou BeIDConnect')
+    expect(text).toContain('contactez la personne qui vous a envoyé le lien')
+    expect(text).not.toContain('autre moyen')
+  })
+
+  it('after a bridge error, the messages do not point to another way either', async () => {
+    const w = await mountWith({ cardBridges: ['web-eid'], signedUpload: false })
+    const bridge = { id: 'web-eid' as const, detect: () => Promise.resolve(), listChoices: () => Promise.reject(new CardBridgeError('failed')), certificateOf: vi.fn(), sign: vi.fn() }
+    vi.spyOn(bridges, 'detectCardBridge').mockResolvedValue({ bridge, errors: [] })
+    await w.get('[data-testid="signature-card-sign"]').trigger('click')
+    await flushPromises()
+    expect(w.get('[data-testid="signature-error"]').text()).not.toContain('autre moyen')
+    expect(w.get('[data-testid="signature-error"]').text()).toContain('contactez la personne')
+  })
+
+  it('card and upload both offered: card first, upload as another way', async () => {
+    const w = await mountWith({ cardBridges: ['web-eid'], signedUpload: true })
+    expect(w.find('[data-testid="signature-card"]').exists()).toBe(true)
+    expect(w.get('[data-testid="signature-upload"] h2').text()).toBe('Autre moyen : signer hors de cette page')
+  })
+
+  it('upload only (lot 3) and neither (unrelated providers) are unchanged', async () => {
+    const upload = await mountWith({ cardBridges: [], signedUpload: true })
+    expect(upload.find('[data-testid="signature-card"]').exists()).toBe(false)
+    expect(upload.find('[data-testid="signature-upload"]').exists()).toBe(true)
+    expect(labels(upload)).not.toContain('Signer')
+
+    const neither = await mountWith({ cardBridges: [], signedUpload: false })
+    expect(neither.find('[data-testid="signature-card"]').exists()).toBe(false)
+    expect(neither.find('[data-testid="signature-upload"]').exists()).toBe(false)
+    expect(labels(neither)).toContain('Signer')
+  })
+
+  it('explains a 409 SIGNED_UPLOAD_DISABLED on upload', async () => {
+    const w = await mountWith({ cardBridges: [], signedUpload: true })
+    vi.spyOn(api, 'uploadSignedDocument').mockRejectedValue(new api.PortalApiError(409, '', 'SIGNED_UPLOAD_DISABLED'))
+    const input = w.get('[data-testid="signature-file"]')
+    Object.defineProperty(input.element, 'files', { value: [new File(['%PDF'], 'a.pdf')], configurable: true })
+    await input.trigger('change')
+    await w.get('[data-testid="signature-send"]').trigger('click')
+    await flushPromises()
+    expect(w.get('[data-testid="signature-error"]').text()).toBe('Ce moyen n’est pas disponible. Signez avec votre carte eID depuis cette page.')
+  })
+})

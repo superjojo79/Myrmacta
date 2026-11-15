@@ -543,7 +543,7 @@ test('E2E-SIG-16 internal signer sees why the signed PDF was refused', async ({ 
 })
 
 /** Lot 3b — signature dans la page par un pont de carte, depuis « Mes signatures » (extensions simulées dans la page). */
-async function mockCardSignatures(page: Page, opts: { bridges: string[]; complete?: { status: number; body: unknown } }) {
+async function mockCardSignatures(page: Page, opts: { bridges: string[]; signedUpload?: boolean; complete?: { status: number; body: unknown } }) {
   const calls: string[] = []
   const bodies: Record<string, unknown> = {}
   await page.route('**/api/signatures/mine**', async (route) => {
@@ -570,7 +570,7 @@ async function mockCardSignatures(page: Page, opts: { bridges: string[]; complet
         body: JSON.stringify(done ? [] : [{
           signerId: 'sg-1', dossierId: DOSSIER_ID, dossierReference: 'DOS-1', documentLabel: 'Contrat',
           required: true, myTurn: true, deadlineAt: null, simulated: false,
-          hosted: false, signingUrl: null, signedUpload: true, cardBridges: opts.bridges,
+          hosted: false, signingUrl: null, signedUpload: opts.signedUpload ?? true, cardBridges: opts.bridges,
         }]),
       })
     }
@@ -674,4 +674,20 @@ test('E2E-SIG-24b internal signer picks the second reader with the keyboard and 
   expect(log.signCalls[0]![2]).toBe(SIGNING_CERT_BOB)
   expect(log.signCalls[0]![5]).toBe(PIN)
   expect(allRequests()).not.toContain(PIN)
+})
+
+test('E2E-SIG-26b internal default case: card only, no upload block, message without bridge without another way', async ({ page }) => {
+  await mockSession(page)
+  const calls = await mockCardSignatures(page, { bridges: ['web-eid', 'beidconnect'], signedUpload: false })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Mes signatures' }).click()
+
+  await expect(page.getByTestId('signature-upload')).toHaveCount(0)
+  await expect(page.getByText('Autre moyen')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
+  const alert = page.getByTestId('signature-error')
+  await expect(alert).toContainText('Installez Web eID ou BeIDConnect')
+  await expect(alert).not.toContainText('autre moyen')
+  expect(calls).toEqual([])
 })

@@ -1117,7 +1117,8 @@ D-CAL-API, D-CAL-PROMO-2), [§124](../decisions/124-calendrier-durcissements-rev
     soit la locale de la base (TODO §139, D-CAL-SOURCE-CASE, changeset 052). L'index est
     `(tenant_id, lower(name COLLATE "pg_c_utf8"))` : `lower()` sans collation suit `LC_CTYPE`, et sous la locale `C`
     `lower('É')` reste `É`. Les accents restent distincts (« Feries » et « Fériés » coexistent). Le domaine compare
-    avec `CalendarSource.nameKey` (`Locale.ROOT`).
+    avec `CalendarSource.nameKey` (`Locale.ROOT`, casse pleine). L'index applique la casse simple : les deux
+    coïncident pour les lettres latines accentuées, et divergent sur quelques lettres hors latin courant (`İ`).
 - **API** (`TENANT_ADMIN`) : `GET` et `PUT /api/tenant/calendar` (`entries`, ou l'ancien `holidays` déprécié en entrée ;
   la réponse porte `entries`, `sources` et `holidays` toujours vide — D-CAL-API-HOLIDAYS) ;
   `POST /api/tenant/calendar/belgian-federal-holidays` crée ou recharge la source `BE_FEDERAL` (années courante et

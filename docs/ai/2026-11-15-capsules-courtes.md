@@ -84,7 +84,7 @@ Issue : #58 · Spec du domaine : docs/specs/47-postgresql-embarque-tests-demo.md
 | 3 | C7 (délais, SLA, export BI), C9 (connecteurs), C10 (brouillons MCP) | à faire | |
 | 4 | C11 (groupes, mobile), C12 (promotion), screenshots S1 à S15 sans S13, issue C5/C6/S13, clôture | à faire | |
 
-Prochaine action : PR du lot 1, puis lot 2 (C2, C3, C4). C5, C6 et S13 : issue #101. Défaut relevé, non corrigé : sur un processus terminé, la fiche n'affiche plus ni le diagramme ni l'historique (issue à ouvrir si l'utilisateur l'accepte).
+Prochaine action : PR du lot 1, puis lot 2 (C2, C3, C4). C5, C6 et S13 : issue #101. Défaut relevé, non corrigé : sur un processus terminé, la fiche n'affiche plus ni le diagramme ni l'historique (issue #103).
 
 ## Preuves
 

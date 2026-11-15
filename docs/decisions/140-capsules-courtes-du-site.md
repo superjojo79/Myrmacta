@@ -48,3 +48,7 @@ Les capsules longues L1 et L2 ont une voix off qui minute chaque plan, des sous-
 formulaire les valeurs du type affiché avant (par exemple le canal par défaut du courrier). La création était alors
 refusée (400, « Unknown field »). Le formulaire n'envoie plus que les champs du type choisi
 (`CreateDossierView.vue`, test Vitest).
+
+**Défaut relevé, non corrigé ici.** Quand le processus d'un dossier est terminé, la fiche n'affiche plus ni le diagramme
+ni l'historique : issue [#103](https://github.com/superjojo79/Myrmacta/issues/103). Les capsules suivent donc un dossier
+en cours ; C8 cadre sur les champs « Provisioning » après le rejeu.

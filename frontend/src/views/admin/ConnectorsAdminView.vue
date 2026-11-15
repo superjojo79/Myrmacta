@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
+import { useLocale } from '@/i18n'
 import {
   createConnector,
   deleteConnector,
@@ -23,6 +24,8 @@ import {
 } from '@/components/connectors/connectorConfig'
 import { useAdminListQuery } from '@/composables/useAdminListQuery'
 
+const { t } = useI18n()
+const { locale } = useLocale()
 const { page, size } = useAdminListQuery()
 const connectors = ref<Connector[]>([])
 const totalPages = ref(0)
@@ -63,7 +66,7 @@ async function refresh() {
 }
 
 watch(
-  [page, size],
+  [page, size, locale],
   () => {
     void refresh().catch((err) => {
       error.value = toProblemDetail(err).detail ?? t('admin.connectors.errors.load')
@@ -121,7 +124,6 @@ const listedConnectors = computed(() =>
   })),
 )
 
-const { t } = useI18n()
 </script>
 
 <template>

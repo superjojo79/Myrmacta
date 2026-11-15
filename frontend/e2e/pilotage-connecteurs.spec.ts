@@ -214,3 +214,24 @@ test('E2E-CONN-BATCH-IMPORT-KEY admin configures batch-import with a private key
     .toBe(privateKey)
   await expect(page.getByText('Import nightly')).toBeVisible()
 })
+
+test('E2E-CONN-I18N catalogue labels are French and Accept-Language is sent (#106)', async ({ page }) => {
+  let acceptLanguage: string | null = null
+  await mockSession(page)
+  await page.route('**/api/connector-definitions*', async (route) => {
+    acceptLanguage = route.request().headers()['accept-language'] ?? null
+    await route.fallback()
+  })
+  await openApp(page)
+  await page.getByRole('link', { name: 'Connecteurs' }).click()
+  const typeSelect = page.getByTestId('connector-type')
+  await expect(typeSelect.locator('option[value="smtp"]')).toHaveText("SMTP (envoi d'e-mail ad hoc)")
+  await expect(typeSelect.locator('option[value="batch-import"]')).toHaveText(
+    'Import par lot (SFTP, CSV/Excel, déclenchement cron)',
+  )
+  await typeSelect.selectOption('http-rest')
+  await expect(page.getByTestId('connector-config-field-processKey').locator('..')).toContainText(
+    'Clé de processus',
+  )
+  await expect.poll(() => acceptLanguage).toMatch(/^fr\b/)
+})

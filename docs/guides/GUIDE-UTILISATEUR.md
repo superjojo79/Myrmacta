@@ -516,7 +516,10 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
 ### Catalogue des types disponibles
 
 La partie haute de l'écran liste les **types de connecteurs** installés sur l'instance (pas les
-connecteurs eux-mêmes — leurs instances configurées). Types fournis de base :
+connecteurs eux-mêmes — leurs instances configurées). Les **noms de types** et les **libellés /
+aides des champs** du formulaire suivent la langue de l'interface (français ou anglais) ; changer
+de langue dans le sélecteur recharge le catalogue. Les codes techniques des champs (`webhookSecret`,
+`processKey`…) ne changent pas. Types fournis de base :
 
 | Type | Rôle (`capability`) | Champs de config (formulaire généré) |
 |---|---|---|

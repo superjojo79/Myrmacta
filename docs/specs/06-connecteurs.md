@@ -82,6 +82,22 @@ reste côté serveur. Un textarea JSON n'est conservé qu'en repli si le catalog
 au partenaire (`POST …/api/webhooks/{id}` ou `POST …/api/callbacks/{id}`, préfixe tenant
 inclus) avec un bouton Copier.
 
+### Implémentation — catalogue i18n (TODO §142, issue #106)
+
+Les libellés de type et les libellés / aides des champs du schéma sont des **textes déjà
+traduits** dans la réponse API et l'outil MCP `list_connector_definitions`
+(D-CONNECTOR-CATALOG-I18N) :
+
+- clés structurelles dans `i18n/connector-catalog*.properties`
+  (`connector.{type}.label`, `connector.{type}.field.{name}.label|help`) ;
+- résolution selon `Accept-Language` (SPA : locale vue-i18n), anglais par défaut ; MCP : langue
+  par défaut du tenant (`app.i18n.default-locale`) ;
+- le `name` des champs et les valeurs SELECT restent des codes stables ;
+- le SPA recharge le catalogue au changement de langue.
+
+Tests : `ConnectorCatalogI18nCoverageTest`, `ConnectorAdminApiTest` (Accept-Language),
+`E2E-CONN-I18N`.
+
 ### Catalogue de connecteurs fournis
 
 La colonne **Cible** est le catalogue d'analyse (cible produit). La colonne

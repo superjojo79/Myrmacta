@@ -50,6 +50,32 @@ class ConnectorAdminApiTest {
     }
 
     @Test
+    void listDefinitions_acceptLanguageFr_returnsFrenchLabels_en_returnsEnglish() throws Exception {
+        // D-CONNECTOR-CATALOG-I18N / #106 — textes déjà traduits selon Accept-Language.
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("size", "50")
+                        .header("Accept-Language", "fr")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.type=='smtp')].label").value(hasItem("SMTP (envoi d'e-mail ad hoc)")))
+                .andExpect(jsonPath("$.content[?(@.type=='batch-import')].label")
+                        .value(hasItem("Import par lot (SFTP, CSV/Excel, déclenchement cron)")))
+                .andExpect(jsonPath("$.content[?(@.type=='http-rest')].configSchema[?(@.name=='oauthTokenUrl')].label")
+                        .value(hasItem("URL du jeton OAuth2")));
+
+        mockMvc.perform(get("/api/connector-definitions")
+                        .param("size", "50")
+                        .header("Accept-Language", "en")
+                        .with(user("connector-admin", "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.type=='smtp')].label").value(hasItem("SMTP (ad hoc email send)")))
+                .andExpect(jsonPath("$.content[?(@.type=='batch-import')].label")
+                        .value(hasItem("Batch import (SFTP, CSV/Excel, cron trigger)")))
+                .andExpect(jsonPath("$.content[?(@.type=='http-rest')].configSchema[?(@.name=='oauthTokenUrl')].label")
+                        .value(hasItem("OAuth2 token URL")));
+    }
+
+    @Test
     void listDefinitions_sizeRespectedAndSortRejectsUnsupportedValue() throws Exception {
         mockMvc.perform(get("/api/connector-definitions")
                         .param("page", "0")

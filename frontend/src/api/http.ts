@@ -1,5 +1,6 @@
-import axios, { type AxiosError } from 'axios'
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { FieldError, SchemaDuplicate } from '@/api/types'
+import { currentLocale } from '@/i18n'
 
 export type ProblemDetail = {
   type?: string
@@ -76,6 +77,14 @@ export function apiContextPath(): string {
   return fromClient.replace(/\/$/, '')
 }
 
+let acceptLanguageInterceptorId: number | undefined
+
+/** D-CONNECTOR-CATALOG-I18N — le serveur traduit le catalogue selon Accept-Language. */
+function attachAcceptLanguage(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+  config.headers.set('Accept-Language', currentLocale())
+  return config
+}
+
 export function configureHttpClient(): void {
   axios.defaults.withCredentials = true
   axios.defaults.xsrfCookieName = 'XSRF-TOKEN'
@@ -84,6 +93,10 @@ export function configureHttpClient(): void {
   if (prefix) {
     axios.defaults.baseURL = prefix
   }
+  if (acceptLanguageInterceptorId !== undefined) {
+    axios.interceptors.request.eject(acceptLanguageInterceptorId)
+  }
+  acceptLanguageInterceptorId = axios.interceptors.request.use(attachAcceptLanguage)
 }
 
 export function toProblemDetail(error: unknown): ProblemDetail {

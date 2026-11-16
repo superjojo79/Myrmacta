@@ -29,9 +29,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 class RiverainDemoPackIT {
 
-    private static ConfigurableApplicationContext run(Path baseDir, String locale) {
+    private static ConfigurableApplicationContext run(Path baseDir, String locale, String... extra) {
         SpringApplication application = new SpringApplication(MyrmactaApplication.class, OidcClientTestConfiguration.class);
-        return application.run(
+        return application.run(java.util.stream.Stream.concat(java.util.stream.Stream.of(
                 "--spring.profiles.active=test,embedded-db," + RiverainDemoPack.PROFILE,
                 "--test.embedded-postgres.enabled=false",
                 "--app.embedded-db.data-dir=" + baseDir,
@@ -39,7 +39,7 @@ class RiverainDemoPackIT {
                 "--app.portal.enabled=true",
                 "--app.portal.public-base-url=http://localhost:8080",
                 "--app.demo.locale=" + locale,
-                "--server.port=0");
+                "--server.port=0"), java.util.stream.Stream.of(extra)).toArray(String[]::new));
     }
 
     @Test
@@ -75,6 +75,18 @@ class RiverainDemoPackIT {
                     .list("tenant_dev", "decision-autorisation-riverain", true, PageQuery.of(0, 1)).content())
                     .singleElement().extracting(DocumentTemplate::htmlContent).asString()
                     .contains("Resident parking permit request — decision");
+        }
+    }
+
+    @Test
+    void forTheCapsuleC6TheSceneDeploysThePrecheckVariant_translatedInEnglish(@TempDir Path baseDir) throws IOException {
+        // Revue de clôture de #101 : la capsule publiait elle-même le BPMN brut, donc en français dans la version anglaise.
+        try (ConfigurableApplicationContext context = run(baseDir, "en", "--app.demo.riverain.variant=preverification",
+                "--app.precheck.enabled=true", "--app.precheck.base-url=http://localhost:11434/v1",
+                "--app.precheck.model=test-model")) {
+            assertThat(deployedProcess(context)).as("la variante avec pré-vérification, traduite")
+                    .contains("name=\"AI pre-check\"").contains("name=\"Review the request\"")
+                    .doesNotContain("flowable:portalRecipient").doesNotContain("Instruire la demande");
         }
     }
 

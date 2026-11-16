@@ -23,7 +23,8 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
     - le type, avec ses types de pièces ;
     - les questionnaires et la configuration du workflow ;
     - le modèle de décision et le gabarit de demande d'informations, activés ;
-    - en dernier, la variante du processus avec portail.
+    - en dernier, la variante du processus que demande la capsule (`app.demo.riverain.variant`) : avec portail pour C5
+      et S13, avec pré-vérification pour C6 (voir la revue de clôture).
   - La scène active le portail (liens envoyés à Mailpit). Elle active aussi la pré-vérification IA, avec le modèle
     local d'Ollama (`gemma4:12b` par défaut) : aucune donnée ne part chez un tiers.
   - Le riverain ne revient pas dans la démo complète, et `scripts/video.sh shorts` saute C5 et C6.
@@ -36,8 +37,9 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
 
 **Hypothèses validées (2026-11-16).**
 
-- Les trois BPMN de l'exemple partagent la clé `autorisationRiverain`. La scène déploie la variante avec portail, et
-  C6 publie elle-même, hors champ, la variante avec pré-vérification. L'exemple n'est pas modifié.
+- Les trois BPMN de l'exemple partagent la clé `autorisationRiverain`. Chaque capsule déploie la variante dont elle a
+  besoin ; l'exemple n'est pas modifié. (Au lot 3, C6 publiait elle-même sa variante ; la revue de clôture a reporté ce
+  choix sur la scène.)
 - En anglais, les pièces de C6 restent en français : ce sont des documents bruxellois réalistes, et seuls l'interface
   et les sous-titres sont traduits.
 
@@ -70,7 +72,6 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
 **Lot 3 (C6).**
 
 - C6 se prépare hors champ, sous une attente coupée au montage :
-  - la variante du processus avec pré-vérification est publiée (même clé que celle de la scène) ;
   - trois demandes du jeu d'évaluation sont créées : conforme, preuve au nom d'un autre, consigne injectée. Chacune
     a sa plaque (`1-RIV-101` à `103`), car une seule demande peut être ouverte par plaque ; leurs pièces la reprennent.
 - Le film montre la pré-vérification de chaque fiche, puis l'agent accepte le constat du troisième cas.
@@ -82,3 +83,17 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
   décrit dans DEPLOIEMENT, § pré-vérification.
 - En anglais, les pièces et donc les constats du modèle restent en français (hypothèse validée) ; les sous-titres et
   l'interface sont en anglais.
+
+**Revue de clôture (indépendante).**
+
+- **Moyen, corrigé** : C6 publiait par l'API le BPMN brut de la variante avec pré-vérification ; en anglais, ses noms
+  de tâches et ses consignes restaient en français. La scène déploie désormais la variante voulue
+  (`app.demo.riverain.variant`, `APP_DEMO_RIVERAIN_VARIANT`), traduite par `DemoExample` ; `scripts/video.sh start
+  c06-…` la demande, et le film ne publie plus rien. Test : `RiverainDemoPackIT`, variante de C6 en anglais.
+- **Bas, corrigés** :
+  - la garde du film de C6 vise le constat attendu par le jeu d'évaluation (question `domicileAuNom`) ;
+  - `scripts/video.sh` lit `.env` avant les valeurs par défaut de la scène, qui ne l'écrasent plus ;
+  - le gabarit de demande d'informations reprend un brouillon laissé par une installation interrompue ;
+  - `DemoTranslationsTest` exige les mêmes expressions `${…}` dans `en/names.json` et dans les modèles HTML anglais ;
+  - l'en-tête du portail ne passe à la ligne que sur un écran étroit : à 1280 px, une référence longue le faisait
+    passer sur deux lignes (`E2E-PORTAL-9`).

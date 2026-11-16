@@ -1,6 +1,6 @@
 // TODO §143 (D-VIDEO-SHORT, D-VIDEO-RIVERAIN-SCENE, issue #101) — capsule courte C6 « Les pièces incohérentes repérées
 // avant l'agent », sur la scène riverain (`scripts/video.sh start c06-preverification`), avec le modèle local d'Ollama.
-// Hors champ : la variante du processus avec pré-vérification est publiée (même clé que la variante de la scène), puis
+// La scène de C6 déploie la variante du processus avec pré-vérification, traduite (app.demo.riverain.variant). Hors champ,
 // trois demandes du jeu d'évaluation (conforme, preuve au nom d'un autre, consigne injectée) reçoivent leurs pièces et
 // démarrent. Chaque demande a sa plaque (une seule demande ouverte par plaque) ; les pièces la reprennent.
 // Le tournage échoue si le modèle ne signale pas l'écart des deux derniers cas : les sous-titres l'affirment.
@@ -16,7 +16,6 @@ const capsule = shortCapsule('c06-preverification')
 test.describe.configure({ timeout: 20 * 60_000 })
 const TYPE = 'AUTORISATION_RIVERAIN'
 const PROCESS = 'autorisationRiverain'
-const VARIANT = 'autorisation-riverain-preverification.bpmn20.xml'
 const example = resolve(REPO, 'exemples/autorisation-riverain')
 const sample = JSON.parse(readFileSync(resolve(example, 'config/exemple-dossier.json'), 'utf-8')) as {
   fields: Record<string, string>
@@ -35,21 +34,11 @@ const SCENES = [
 const label = (plate: string) => (en ? 'Resident parking permit — Dupont — ' : 'Autorisation riverain — Dupont — ') + plate
 
 type Dossier = { id: string; label: string; version: number }
-type Finding = { id: string; kind: string; origin: string; message: string }
+type Finding = { id: string; kind: string; origin: string; sourceRef: string; message: string }
 type Run = { id: string; status: string; findings: Finding[] }
 
 async function xsrf(page: Page): Promise<string> {
   return (await page.context().cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? ''
-}
-
-/** Hors champ : la variante avec pré-vérification, publiée par l'API de déploiement (la scène a la variante portail). */
-async function deployPrecheckVariant(page: Page): Promise<void> {
-  const xml = readFileSync(resolve(example, VARIANT))
-  const response = await page.request.post('/api/workflow-bpmn-deployments', {
-    headers: { 'X-XSRF-TOKEN': await xsrf(page) },
-    multipart: { file: { name: VARIANT, mimeType: 'application/xml', buffer: xml } },
-  })
-  expect(response.ok(), `BPMN deploy → ${response.status()} ${await response.text()}`).toBeTruthy()
 }
 
 /** Hors champ : une demande du cas `id`, ses pièces jointes, puis le workflow (la pré-vérification part aussitôt). */
@@ -92,8 +81,9 @@ async function run(page: Page, id: string): Promise<Run> {
 
 /** Les sous-titres affirment que l'écart est signalé : sinon, le tournage échoue plutôt que de mentir. */
 function expectFlagged(found: Run): void {
-  expect(found.findings.some((f) => f.origin === 'MODEL' && f.kind === 'INCONSISTENT'),
-    `model did not flag the gap: ${JSON.stringify(found.findings.map((f) => [f.origin, f.kind, f.message]))}`).toBe(true)
+  // La question attendue par le jeu d'évaluation : la preuve de domicile au nom du demandeur.
+  expect(found.findings.some((f) => f.origin === 'MODEL' && f.kind === 'INCONSISTENT' && f.sourceRef.includes('domicileAuNom')),
+    `model did not flag the gap: ${JSON.stringify(found.findings.map((f) => [f.origin, f.kind, f.sourceRef, f.message]))}`).toBe(true)
 }
 
 async function showPanel(page: Page): Promise<void> {
@@ -108,9 +98,8 @@ test('ouverture', async ({ page }) => {
 test('conforme', async ({ page }) => {
   const { director: d, order } = plan(capsule, page, 'conforme')
   await d.goto('/supervision')
-  // Hors champ (coupé au montage) : la variante, puis les trois demandes, qui se pré-vérifient en parallèle.
+  // Hors champ (coupé au montage) : les trois demandes, que le modèle local pré-vérifie une à une.
   const id = await d.offscreen(async () => {
-    await deployPrecheckVariant(page)
     for (const scene of SCENES) await submit(page, scene.id, scene.plate)
     const first = await dossierId(page, SCENES[0].plate)
     await run(page, first)

@@ -707,3 +707,21 @@ test('E2E-PORTAL-8 on a phone, the portal never scrolls sideways, even with a lo
   const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
   expect(widths.scroll).toBeLessThanOrEqual(widths.client)
 })
+
+test('E2E-PORTAL-9 on a desktop screen, the portal header stays on one line', async ({ page }) => {
+  // Contrepartie de E2E-PORTAL-8 : le retour à la ligne de l'en-tête ne vaut que pour un écran étroit (#101).
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.route('**/api/portal/task', async (route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ...PORTAL_TASK, dossierReference: 'DOS-AUTORISATION_RIVERAIN-2026-000001' }),
+    })
+  })
+  await page.goto(`./portal/#${PORTAL_TOKEN}`)
+  await expect(page.getByText('Dossier DOS-AUTORISATION_RIVERAIN-2026-000001')).toBeVisible()
+  const rows = await page.locator('.portal__header > *').evaluateAll((items) =>
+    items.map((item) => { const box = item.getBoundingClientRect(); return { top: box.top, bottom: box.bottom } }))
+  expect(rows).toHaveLength(3)
+  // Sur une seule ligne : chaque élément chevauche verticalement tous les autres.
+  for (const a of rows) for (const b of rows) expect(a.top).toBeLessThan(b.bottom)
+})

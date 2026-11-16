@@ -1222,7 +1222,9 @@ votre instruction ; **il ne décide rien**.
   - **IA** : proposé par un modèle de langage à partir des champs et pièces désignés, avec sa confiance. **À vérifier
     vous-même** : le modèle peut se tromper ou être trompé par le contenu d'une pièce.
 - **Décider** (droit de modification, dossier non clos) : **Accepter** ou **Écarter** chaque constat ; **Annuler la
-  décision** revient en arrière. Votre nom et l'heure sont enregistrés. Un lecteur voit le panneau sans boutons.
+  décision** revient en arrière. Votre **nom** (annuaire local) et l'heure sont affichés et enregistrés ; si le compte
+  n'est pas encore dans l'annuaire, l'identifiant technique apparaît en repli (TODO §146). Un lecteur voit le panneau
+  sans boutons.
 - **Relancer** après l'ajout d'une pièce : la pré-vérification repart en tâche de fond avec les mêmes contrôles ; le
   panneau se met à jour seul. L'exécution précédente reste consultable dans la liste en tête du panneau. Au plus 5
   relances par dossier sur 24 heures ; quand le plafond du jour est presque atteint, les relances sont suspendues

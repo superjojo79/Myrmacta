@@ -16,6 +16,7 @@ function finding(overrides: Partial<api.PrecheckFinding>): api.PrecheckFinding {
     confidence: null,
     decision: null,
     decidedBy: null,
+    decidedByDisplayName: null,
     decidedAt: null,
     ...overrides,
   }
@@ -108,7 +109,14 @@ describe('PrecheckPanel (TODO §106, lot C)', () => {
     const decided = run({
       findings: [
         finding({}),
-        finding({ id: 'f2', origin: 'MODEL', decision: 'DISMISSED', decidedBy: 'agent', decidedAt: '2026-10-26T09:10:00Z' }),
+        finding({
+          id: 'f2',
+          origin: 'MODEL',
+          decision: 'DISMISSED',
+          decidedBy: '0ff88b55-6d18-4e2a-9c01-abcdef012345',
+          decidedByDisplayName: 'Alice Dupont',
+          decidedAt: '2026-10-26T09:10:00Z',
+        }),
       ],
     })
     vi.mocked(api.listPrechecks).mockResolvedValueOnce([run({})]).mockResolvedValue([decided])
@@ -122,7 +130,10 @@ describe('PrecheckPanel (TODO §106, lot C)', () => {
     expect(api.decidePrecheckFinding).toHaveBeenCalledWith('d1', 'r1', 'f2', 'DISMISSED')
     const model = wrapper.findAll('[data-testid="precheck-finding"]')[1]!
     expect(model.attributes('data-decision')).toBe('DISMISSED')
-    expect(model.get('[data-testid="precheck-decision"]').text()).toContain('Écarté par agent')
+    expect(model.get('[data-testid="precheck-decision"]').text()).toContain('Écarté par Alice Dupont')
+    expect(model.get('[data-testid="precheck-decision"]').text()).not.toMatch(
+      /0ff88b55-6d18-4e2a-9c01-abcdef012345/,
+    )
     expect(model.findAll('button').map((b) => b.text())).toEqual(['Accepter', 'Annuler la décision'])
 
     await model.get('button[aria-label^="Annuler la décision"]').trigger('click')

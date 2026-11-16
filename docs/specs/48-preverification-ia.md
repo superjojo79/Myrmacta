@@ -107,7 +107,7 @@ peut s'appuyer sur ces comptes, jamais sur l'avis du modèle (C5).
 |---|---|---|
 | `GET /api/dossiers/{id}/prechecks` | lecture du type | 20 dernières exécutions, la plus récente d'abord |
 | `POST /api/dossiers/{id}/prechecks` | EDIT, dossier non clos | relance, 202 ; 409 si déjà en file ou sans exécution précédente ; 429 au-delà des limites |
-| `PUT …/{runId}/findings/{findingId}/decision` | EDIT, dossier non clos | `{"decision":"ACCEPTED"\|"DISMISSED"\|null}` ; qui et quand tracés |
+| `PUT …/{runId}/findings/{findingId}/decision` | EDIT, dossier non clos | `{"decision":"ACCEPTED"\|"DISMISSED"\|null}` ; qui et quand tracés ; la réponse et la liste exposent `decidedBy` (sujet) et `decidedByDisplayName` (annuaire, TODO §146) |
 | `GET …/{runId}/export` | `TENANT_ADMIN` | journal complet de l'exécution, spécification et empreinte comprises |
 
 - **MCP** (mode opération, [15](15-serveur-mcp.md)) : `run_dossier_precheck`, `get_dossier_precheck`. L'assistant de
@@ -118,9 +118,10 @@ peut s'appuyer sur ces comptes, jamais sur l'avis du modèle (C5).
 
 Après les pièces : statut, comptes, synthèse et constats, chacun avec son type, sa source et son origine — **« IA »** et
 la confiance pour ce que propose le modèle, **« Contrôle »** pour le déterministe — et la mention que les constats sont
-indicatifs. Avec EDIT : accepter, écarter, annuler, relancer (rafraîchissement toutes les 5 s, 5 minutes au plus).
-Exécutions précédentes consultables ; export du journal pour `TENANT_ADMIN`. Masqué si la fonction est désactivée ou
-si aucune exécution n'existe.
+indicatifs. Une décision déjà prise affiche le **nom** de l'agent (`decidedByDisplayName`, annuaire D-ASSIGN-DIR ;
+repli sur le sujet si inconnu, TODO §146 / D-PRECHECK-DECIDER-NAME). Avec EDIT : accepter, écarter, annuler, relancer
+(rafraîchissement toutes les 5 s, 5 minutes au plus). Exécutions précédentes consultables ; export du journal pour
+`TENANT_ADMIN`. Masqué si la fonction est désactivée ou si aucune exécution n'existe.
 
 ## 6. Configuration et conformité
 

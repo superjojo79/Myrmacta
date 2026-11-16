@@ -98,7 +98,8 @@ function decisionText(finding: PrecheckFinding): string {
   if (!finding.decision) return ''
   return t('dossier.prechecks.decidedBy', {
     decision: label('decision', finding.decision),
-    by: finding.decidedBy ?? '—',
+    // TODO §146 / #118 — nom d'annuaire, pas le sujet OIDC.
+    by: finding.decidedByDisplayName || finding.decidedBy || '—',
     at: formatDateTime(finding.decidedAt),
   })
 }

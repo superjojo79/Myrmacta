@@ -20,6 +20,8 @@ export interface PrecheckFinding {
   confidence: number | null
   decision: FindingDecision | null
   decidedBy: string | null
+  /** Nom issu de l'annuaire (D-ASSIGN-DIR) ; repli sur le sujet si inconnu (TODO §146). */
+  decidedByDisplayName: string | null
   decidedAt: string | null
 }
 

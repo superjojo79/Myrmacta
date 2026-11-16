@@ -2,6 +2,8 @@ package be.myrmacta.infrastructure.web.precheck;
 
 import be.myrmacta.domain.precheck.model.PrecheckRun;
 import be.myrmacta.domain.precheck.model.PrecheckSpec;
+import be.myrmacta.infrastructure.web.user.UserDisplayNames;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -11,8 +13,8 @@ import java.util.UUID;
 record PrecheckExportResponse(UUID dossierId, UUID workflowLinkId, String inputSha256, PrecheckSpec spec,
                               PrecheckRunResponse run) {
 
-    static PrecheckExportResponse from(PrecheckRun run) {
+    static PrecheckExportResponse from(PrecheckRun run, UserDisplayNames directory, Map<String, String> names) {
         return new PrecheckExportResponse(run.dossierId(), run.workflowLinkId(), run.inputSha256(), run.spec(),
-                PrecheckRunResponse.from(run));
+                PrecheckRunResponse.from(run, directory, names));
     }
 }

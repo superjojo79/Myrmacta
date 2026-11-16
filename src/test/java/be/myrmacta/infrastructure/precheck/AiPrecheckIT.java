@@ -24,6 +24,7 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
 import be.myrmacta.domain.precheck.model.PrecheckRun;
 import be.myrmacta.domain.precheck.port.out.PrecheckRunRepository;
+import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
 import be.myrmacta.domain.workflow.model.InvalidBpmnException;
 import be.myrmacta.domain.workflow.port.in.DeployBpmnProcessUseCase;
 import be.myrmacta.domain.workflow.port.out.BpmnParserPort;
@@ -38,6 +39,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
@@ -108,6 +110,7 @@ class AiPrecheckIT {
     @Autowired private DocumentStoragePort storage;
     @Autowired private PrecheckRunRepository runs;
     @Autowired private PrecheckRunRelay relay;
+    @Autowired private RecordUserLoginUseCase recordUserLogin;
 
     private String type;
 
@@ -249,7 +252,9 @@ class AiPrecheckIT {
                             .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"ACCEPTED\"}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.decision").value("ACCEPTED"))
-                    .andExpect(jsonPath("$.decidedBy").value("agent-" + type));
+                    .andExpect(jsonPath("$.decidedBy").value("agent-" + type))
+                    // Absent de l'annuaire : repli sur le sujet (D-PRECHECK-DECIDER-NAME).
+                    .andExpect(jsonPath("$.decidedByDisplayName").value("agent-" + type));
 
             mockMvc.perform(get("/api/dossiers/{id}/prechecks/{runId}/export", dossier.id(), runId)
                             .with(user("agent-" + type)))
@@ -258,7 +263,9 @@ class AiPrecheckIT {
                             .with(user("admin-" + type, "TENANT_ADMIN")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.inputSha256").value(run.inputSha256()))
-                    .andExpect(jsonPath("$.spec.fields[0]").value("commune"));
+                    .andExpect(jsonPath("$.spec.fields[0]").value("commune"))
+                    .andExpect(jsonPath("$.run.findings[?(@.id=='%s')].decidedByDisplayName".formatted(modelFinding))
+                            .value("agent-" + type));
 
             // Relance : mise en file (202), une seule à la fois, traitée par le relais.
             mockMvc.perform(post("/api/dossiers/{id}/prechecks", dossier.id()).with(user("reader-" + type, "DOSSIER_VIEWER"))
@@ -291,6 +298,49 @@ class AiPrecheckIT {
                     .andExpect(jsonPath("$[1].trigger").value("WORKFLOW"));
         } finally {
             root.detachAppender(logs);
+            repositoryService.deleteDeployment(deployment, true);
+        }
+    }
+
+    @Test
+    void decisionShowsDisplayNameFromDirectoryWithSubjectFallback() throws Exception {
+        // D-PRECHECK-DECIDER-NAME / issue #118 — annuaire D-ASSIGN-DIR, repli sur le sujet si inconnu.
+        PROVIDER.respond(ANSWER);
+        String deployment = deploy();
+        try {
+            String knownSubject = "0ff88b55-6d18-4e2a-9c01-abcdef012345";
+            String unknownSubject = "deadbeef-0000-4000-8000-ffffffffffff";
+            recordUserLogin.record(knownSubject, "Alice Dupont", "alice.dupont@example.com", Set.of("DOSSIER_MANAGER"));
+            grant(knownSubject, "EDIT");
+            grant(unknownSubject, "EDIT");
+
+            Dossier dossier = dossierWithPieces();
+            ProcessInstance instance = start(dossier);
+            managementService.executeJob(job(instance).getId());
+            PrecheckRun run = runs.listByDossier(dossier.id(), 1).getFirst();
+            String modelFinding = run.findings().stream()
+                    .filter(f -> f.origin().name().equals("MODEL")).findFirst().orElseThrow().id().toString();
+            String decision = "/api/dossiers/{id}/prechecks/{runId}/findings/{findingId}/decision";
+
+            mockMvc.perform(put(decision, dossier.id(), run.id(), modelFinding).with(user(knownSubject))
+                            .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"ACCEPTED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.decidedBy").value(knownSubject))
+                    .andExpect(jsonPath("$.decidedByDisplayName").value("Alice Dupont"));
+
+            mockMvc.perform(get("/api/dossiers/{id}/prechecks", dossier.id()).with(user(knownSubject)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].findings[?(@.id=='%s')].decidedBy".formatted(modelFinding))
+                            .value(knownSubject))
+                    .andExpect(jsonPath("$[0].findings[?(@.id=='%s')].decidedByDisplayName".formatted(modelFinding))
+                            .value("Alice Dupont"));
+
+            mockMvc.perform(put(decision, dossier.id(), run.id(), modelFinding).with(user(unknownSubject))
+                            .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"decision\":\"DISMISSED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.decidedBy").value(unknownSubject))
+                    .andExpect(jsonPath("$.decidedByDisplayName").value(unknownSubject));
+        } finally {
             repositoryService.deleteDeployment(deployment, true);
         }
     }

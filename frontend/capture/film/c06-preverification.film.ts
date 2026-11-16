@@ -137,7 +137,10 @@ test('injection', async ({ page }) => {
   await d.beat(2.5)
   // Son nom accessible reprend le message du constat ; on le vise par son texte.
   await flagged.locator('button', { hasText: /^\s*(Accepter|Accept)\s*$/ }).click()
-  await expect(flagged.getByTestId('precheck-decision')).toBeVisible()
+  const decision = flagged.getByTestId('precheck-decision')
+  await expect(decision).toBeVisible()
+  // TODO §146 / #118 — la décision montre le nom (annuaire), pas le sujet OIDC.
+  await expect(decision).not.toContainText(/(par|by) [0-9a-f]{8}-[0-9a-f]{4}-/i)
   await d.beat(1)
   await d.holdForVoice(0.6)
   await d.wrap(order)

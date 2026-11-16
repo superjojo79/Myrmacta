@@ -1,0 +1,206 @@
+{
+  "code": "AUTORISATION_RIVERAIN",
+  "label": "Resident parking permit (vehicle)",
+  "workflowKey": "autorisationRiverain",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    {
+      "name": "nom",
+      "label": "Last name",
+      "type": "STRING",
+      "required": true,
+      "group": "Applicant",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "prenom",
+      "label": "First name",
+      "type": "STRING",
+      "required": true,
+      "group": "Applicant",
+      "width": "HALF"
+    },
+    {
+      "name": "email",
+      "label": "E-mail address",
+      "type": "STRING",
+      "required": true,
+      "group": "Applicant",
+      "width": "HALF",
+      "helpText": "Address to which the decision and any requests for more information are sent."
+    },
+    {
+      "name": "telephone",
+      "label": "Phone",
+      "type": "STRING",
+      "required": false,
+      "group": "Applicant",
+      "width": "HALF"
+    },
+    {
+      "name": "adresseRue",
+      "label": "Street",
+      "type": "STRING",
+      "required": true,
+      "group": "Home address",
+      "width": "HALF"
+    },
+    {
+      "name": "adresseNumero",
+      "label": "Number / box",
+      "type": "STRING",
+      "required": true,
+      "group": "Home address",
+      "width": "HALF"
+    },
+    {
+      "name": "codePostal",
+      "label": "Postcode",
+      "type": "STRING",
+      "required": true,
+      "group": "Home address",
+      "width": "HALF"
+    },
+    {
+      "name": "commune",
+      "label": "Municipality",
+      "type": "STRING",
+      "required": true,
+      "group": "Home address",
+      "width": "HALF"
+    },
+    {
+      "name": "paysImmatriculation",
+      "label": "Country of registration",
+      "type": "SELECT",
+      "required": true,
+      "defaultValue": "BE",
+      "options": [
+        "BE",
+        "FR",
+        "NL",
+        "LU",
+        "DE",
+        "AUTRE"
+      ],
+      "group": "Vehicle",
+      "width": "HALF"
+    },
+    {
+      "name": "plaque",
+      "label": "Number plate",
+      "type": "STRING",
+      "required": true,
+      "group": "Vehicle",
+      "width": "HALF",
+      "helpText": "As shown on the registration certificate."
+    },
+    {
+      "name": "plaqueNormalisee",
+      "label": "Vehicle uniqueness key",
+      "type": "STRING",
+      "required": false,
+      "group": "Vehicle",
+      "searchable": true,
+      "unique": true,
+      "formula": "dossier.fields.paysImmatriculation & \"-\" & $uppercase($replace($replace($replace($replace(dossier.fields.plaque, \" \", \"\"), \"-\", \"\"), \".\", \"\"), \"/\", \"\"))",
+      "helpText": "Computed: country + plate without spaces, dashes, dots or slashes, in capitals. Only one open request can carry this key."
+    },
+    {
+      "name": "marque",
+      "label": "Make",
+      "type": "STRING",
+      "required": true,
+      "group": "Vehicle",
+      "width": "HALF"
+    },
+    {
+      "name": "modele",
+      "label": "Model",
+      "type": "STRING",
+      "required": true,
+      "group": "Vehicle",
+      "width": "HALF"
+    },
+    {
+      "name": "zoneRiverain",
+      "label": "Requested resident zone or street",
+      "type": "STRING",
+      "required": true,
+      "group": "Permit"
+    },
+    {
+      "name": "dateDebutSouhaitee",
+      "label": "Requested start date",
+      "type": "DATE",
+      "required": true,
+      "group": "Permit",
+      "width": "HALF"
+    },
+    {
+      "name": "certificatImmatriculation",
+      "label": "Registration certificate",
+      "type": "FILE",
+      "required": false,
+      "group": "Supporting documents",
+      "width": "HALF"
+    },
+    {
+      "name": "preuveDomicile",
+      "label": "Proof of address",
+      "type": "FILE",
+      "required": false,
+      "group": "Supporting documents",
+      "width": "HALF"
+    },
+    {
+      "name": "decision",
+      "label": "Decision",
+      "type": "SELECT",
+      "required": false,
+      "options": [
+        "AUTORISEE",
+        "AUTORISEE_TACITEMENT",
+        "REFUSEE",
+        "REFUSEE_SANS_REPONSE"
+      ],
+      "group": "Decision (filled in by the workflow)",
+      "width": "HALF",
+      "searchable": true
+    },
+    {
+      "name": "dateDecision",
+      "label": "Decision date",
+      "type": "DATE",
+      "required": false,
+      "group": "Decision (filled in by the workflow)",
+      "width": "HALF"
+    },
+    {
+      "name": "motifDecision",
+      "label": "Grounds",
+      "type": "STRING",
+      "required": false,
+      "group": "Decision (filled in by the workflow)"
+    }
+  ],
+  "pieceTypes": [
+    {
+      "key": "preuveDomicile",
+      "label": "Proof of address",
+      "sensitive": false
+    },
+    {
+      "key": "certificatImmatriculation",
+      "label": "Registration certificate",
+      "sensitive": false
+    },
+    {
+      "key": "pieceIdentite",
+      "label": "Identity document",
+      "sensitive": true
+    }
+  ]
+}

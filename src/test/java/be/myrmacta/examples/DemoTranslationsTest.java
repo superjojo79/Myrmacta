@@ -45,10 +45,14 @@ class DemoTranslationsTest {
                     "config/workflow-config-reponse.json", "config/gabarit-accuse-reception.json",
                     "config/connecteur-depot.exemple.json"),
             "onboarding-collaborateur", List.of("config/type-dossier.json", "config/questions.json",
-                    "config/workflow-config.json"));
+                    "config/workflow-config.json"),
+            // TODO §143 (issue #101) : scène de tournage riverain (capsules C5, C6, screenshot S13).
+            "autorisation-riverain", List.of("config/type-dossier.json", "config/questions.json",
+                    "config/workflow-config.json", "config/modele-document.json",
+                    "config/gabarit-demande-informations.json"));
 
     @ParameterizedTest
-    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur"})
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
     void eachEnglishCopyKeepsTheStructureAndTheCodesOfItsOriginal(String name) throws IOException {
         Path example = Path.of("exemples", name);
         for (String file : REQUIRED.get(name)) {
@@ -69,7 +73,7 @@ class DemoTranslationsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur"})
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
     void theNameTableTranslatesEveryNameOfTheProcessesAndTables_andNothingElse(String name) throws IOException {
         Path example = Path.of("exemples", name);
         Map<String, String> names = JSON.readValue(example.resolve("en/names.json").toFile(),

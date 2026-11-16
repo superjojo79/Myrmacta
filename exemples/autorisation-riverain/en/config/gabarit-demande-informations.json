@@ -1,0 +1,7 @@
+{
+  "templateKey": "demande-informations-riverain",
+  "label": "Request for additional information — resident parking permit",
+  "subject": "Your resident parking permit request [[${dossier.reference}]]: additional information",
+  "textBody": "Hello,\n\nTo review your resident parking permit request [[${dossier.reference}]], our department needs the following information:\n\n[[${variables.motivation}]]\n\nWithout a reply within 30 days, the request will be refused.\n\nKind regards,\nThe resident parking permits department",
+  "htmlBody": "<p>Hello,</p>\n<p>To review your resident parking permit request <b th:text=\"${dossier.reference}\">reference</b>, our department needs the following information:</p>\n<blockquote style=\"white-space: pre-line\" th:text=\"${variables.motivation}\">reasons</blockquote>\n<p>Without a reply within 30 days, the request will be refused.</p>\n<p>Kind regards,<br/>The resident parking permits department</p>"
+}

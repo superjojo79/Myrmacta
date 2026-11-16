@@ -114,7 +114,9 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   d'usage : type et types de pièces, questionnaires, configuration, modèle de décision et gabarit activés, puis la
   variante du processus avec portail. La scène active le portail (`APP_PORTAL_ENABLED`, liens vers Mailpit) et la
   pré-vérification IA par le modèle local d'Ollama (`APP_PRECHECK_MODEL`, défaut `gemma4:12b`). L'exemple a sa variante
-  anglaise (`en/`). Tests : `RiverainDemoPackIT` (FR et EN), `DemoTranslationsTest`.
+  anglaise (`en/`), y compris les consignes (`<documentation>`) des BPMN. Tests : `RiverainDemoPackIT` (FR et EN),
+  `DemoTranslationsTest`, `DemoExampleTest`. Capsule C5 `c05-portail` : demande d'informations, lien dans Mailpit,
+  réponse sur le portail mobile sans session, retour sur la fiche ; son tournage produit aussi le screenshot S13.
 - **Screenshots** (§127, §140) : S1 à S15 sans S13 (issue #101). S3 pose l'éditeur BPMN en vignette sur le concepteur de
   parcours. S5 (`capture/screenshots-pdf.capture.ts`, Edge) montre le modèle de lettre `accuse-facture` du paquet
   « états » à côté de son aperçu PDF.

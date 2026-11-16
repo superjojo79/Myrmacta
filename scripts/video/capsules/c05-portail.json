@@ -1,0 +1,47 @@
+{
+  "_commentaire": "Capsule courte C5 (TODO §143, D-VIDEO-SHORT, issue #101) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c05-portail.film.ts, sur la scène riverain (scripts/video.sh start c05-portail). Le plan « portail » est filmé à la taille d'un téléphone, sans session : c'est aussi lui qui produit le screenshot S13.",
+  "id": "c05-portail",
+  "format": "short",
+  "title": { "fr": "L'usager complète sa demande sans compte", "en": "Applicants complete their request without an account" },
+  "underTheHood": {
+    "fr": ["Lien personnel à jeton, valable 30 jours, sans compte", "Réponse et pièces versées au dossier, le délai repart"],
+    "en": ["Personal tokenised link, valid for 30 days, no account", "Answer and documents filed on the case, the deadline restarts"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "instruction",
+      "title": { "fr": "La demande", "en": "The request" },
+      "captions": {
+        "fr": ["La demande d'autorisation riverain est incomplète.", "L'agent demande une preuve de domicile récente."],
+        "en": ["The resident parking permit request is incomplete.", "The officer asks for a recent proof of address."]
+      }
+    },
+    {
+      "id": "lien",
+      "title": { "fr": "Le lien", "en": "The link" },
+      "captions": {
+        "fr": ["Le demandeur reçoit un lien personnel par e-mail.", "Pas de compte à créer, pas de mot de passe."],
+        "en": ["The applicant receives a personal link by e-mail.", "No account to create, no password."]
+      }
+    },
+    {
+      "id": "portail",
+      "device": "mobile",
+      "title": { "fr": "Le portail", "en": "The portal" },
+      "captions": {
+        "fr": ["Sur son téléphone, il répond et joint sa pièce.", "Un envoi, et c'est fait."],
+        "en": ["On their phone, they answer and attach the document.", "One tap to send, and it is done."]
+      }
+    },
+    {
+      "id": "retour",
+      "title": { "fr": "Le retour", "en": "Back on the case" },
+      "captions": {
+        "fr": ["La réponse et la pièce arrivent au dossier.", "L'instruction reprend, avec un nouveau délai."],
+        "en": ["The answer and the document land on the case.", "The review resumes, with a fresh deadline."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

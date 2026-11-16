@@ -27,9 +27,11 @@ class DemoExampleTest {
         Files.writeString(dir.resolve("en/config/type.json"), "{\"label\":\"Incoming mail\"}");
         Files.writeString(dir.resolve("process.bpmn20.xml"),
                 "<userTask id=\"trier\" name=\"Trier le courrier\"/><description>Sans règle</description>"
+                        + "<documentation>Lire puis classer.</documentation>"
                         + "<flowable:field name=\"groupeTri\"/>");
         Files.writeString(dir.resolve("en/names.json"),
-                "{\"Trier le courrier\":\"Sort the mail\",\"Sans règle\":\"No rule\",\"groupeTri\":\"groupeTri\"}");
+                "{\"Trier le courrier\":\"Sort the mail\",\"Sans règle\":\"No rule\",\"groupeTri\":\"groupeTri\","
+                        + "\"Lire puis classer.\":\"Read, then file.\"}");
     }
 
     private DemoExample example(String locale) {
@@ -53,7 +55,9 @@ class DemoExampleTest {
     void inEnglish_namesAndDescriptionsOfAProcessAreTranslated() {
         String xml = example("en").xml("process.bpmn20.xml");
 
+        // La consigne (documentation) s'affiche sur la fiche et sur le portail (TODO §143).
         assertThat(xml).contains("name=\"Sort the mail\"").contains("<description>No rule</description>")
+                .contains("<documentation>Read, then file.</documentation>")
                 .contains("<flowable:field name=\"groupeTri\"/>");
         assertThat(new String(example("en").bytes("process.bpmn20.xml"), StandardCharsets.UTF_8)).isEqualTo(xml);
     }

@@ -35,7 +35,8 @@ class DemoTranslationsTest {
     /** Comme {@code DemoExample} : le {@code name} de ces éléments est un code, jamais traduit. */
     private static final Set<String> CODE_NAMED =
             Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");
-    private static final Pattern DESCRIPTION = Pattern.compile("<description>([^<]*)</description>");
+    /** Descriptions et consignes ({@code documentation}, montrée sur la fiche et le portail, TODO §143). */
+    private static final Pattern DESCRIPTION = Pattern.compile("<(?:description|documentation)>([^<]*)</(?:description|documentation)>");
     private static final Pattern EXPRESSION = Pattern.compile("\\$\\{[^}]*}");
 
     /** Les fichiers qu'un paquet de la démo lit et qui portent du texte visible. */

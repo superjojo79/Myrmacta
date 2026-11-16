@@ -1,6 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 import { apiContextPath, configureHttpClient, fieldErrorsOf, resolveApiBaseUrl, routerBase, schemaDuplicatesOf } from './http'
+
+vi.mock('@/i18n', () => ({
+  currentLocale: vi.fn(() => 'fr'),
+}))
+
+import { currentLocale } from '@/i18n'
 
 describe('http client', () => {
   let previousBaseUrl: string | undefined
@@ -18,6 +24,28 @@ describe('http client', () => {
     expect(axios.defaults.withCredentials).toBe(true)
     expect(axios.defaults.xsrfCookieName).toBe('XSRF-TOKEN')
     expect(axios.defaults.xsrfHeaderName).toBe('X-XSRF-TOKEN')
+  })
+
+  it('sends Accept-Language from the current UI locale (D-CONNECTOR-CATALOG-I18N)', async () => {
+    vi.mocked(currentLocale).mockReturnValue('en')
+    configureHttpClient()
+    const headers = new Map<string, string>()
+    const config = {
+      headers: {
+        set: (key: string, value: string) => {
+          headers.set(key, value)
+        },
+      },
+    }
+    // Intercepteur enregistré par configureHttpClient : on le rejoue hors réseau.
+    const interceptor = (
+      axios.interceptors.request as unknown as {
+        handlers: Array<{ fulfilled?: (value: typeof config) => unknown }>
+      }
+    ).handlers.find((handler) => handler?.fulfilled)
+    expect(interceptor?.fulfilled).toBeTypeOf('function')
+    await interceptor!.fulfilled!(config)
+    expect(headers.get('Accept-Language')).toBe('en')
   })
 
   it('resolves API base from document baseURI under a context-path', () => {

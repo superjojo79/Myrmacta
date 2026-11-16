@@ -2,10 +2,10 @@ package be.myrmacta.infrastructure.web.connector;
 
 import be.myrmacta.domain.connector.model.ConfigField;
 import be.myrmacta.domain.connector.model.ConnectorCapability;
-import be.myrmacta.domain.connector.model.ConnectorDefinition;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.port.out.ConnectorCatalog;
 import be.myrmacta.domain.connector.usecase.ManageConnectorInstanceUseCaseImpl;
+import be.myrmacta.infrastructure.connector.i18n.ConnectorCatalogLocalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,11 +124,8 @@ record ConnectorResponse(
 record ConnectorDefinitionResponse(
         String type, String label, ConnectorCapability capability, List<ConfigField> configSchema) {
 
-    static ConnectorDefinitionResponse from(ConnectorDefinition definition) {
+    static ConnectorDefinitionResponse from(ConnectorCatalogLocalizer.LocalizedDefinition localized) {
         return new ConnectorDefinitionResponse(
-                definition.getType(),
-                definition.getLabel(),
-                definition.getCapability(),
-                definition.getConfigSchema());
+                localized.type(), localized.label(), localized.capability(), localized.configSchema());
     }
 }

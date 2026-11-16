@@ -160,6 +160,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 139 | [Unicité du nom de source de calendrier indépendante de la locale](139-unicite-du-nom-de-source-independante-de-la-locale.md) | clos | — |
 | 140 | [Capsules courtes du site : vidéos muettes, sous-titres incrustés](140-capsules-courtes-du-site.md) | ouvert | — |
 | 141 | [Visualisation après fin de processus : chemin parcouru et lien le plus récent](141-visualisation-apres-fin-de-processus.md) | clos | — |
+| 142 | [Catalogue des connecteurs : libellés et aides traduits (FR/EN)](142-catalogue-connecteurs-libelles-traduits.md) | clos | — |
 
 ## Sections de l'ancien registre
 

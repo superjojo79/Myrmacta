@@ -1,0 +1,66 @@
+[
+  {
+    "schemaKey": "instruction-autorisation-riverain",
+    "label": "Review of the resident parking permit request",
+    "fields": [
+      {
+        "name": "decisionAgent",
+        "label": "Decision",
+        "type": "SELECT",
+        "required": true,
+        "options": [
+          "AUTORISER",
+          "REFUSER",
+          "DEMANDER_INFOS"
+        ],
+        "group": "Decision",
+        "width": "HALF",
+        "helpText": "DEMANDER_INFOS puts the case on hold and sends the applicant a link to complete the request; the 30-day deadline restarts on their reply."
+      },
+      {
+        "name": "motivation",
+        "label": "Reasons",
+        "type": "STRING",
+        "required": true,
+        "group": "Decision",
+        "helpText": "AUTORISER / REFUSER: reasons copied as is into the decision document. DEMANDER_INFOS: list of the expected information or documents (kept on the case; to be sent to the applicant, see the flow note)."
+      }
+    ]
+  },
+  {
+    "schemaKey": "complement-autorisation-riverain",
+    "label": "Complete your resident parking permit request",
+    "_usage": "variant with portal (external task filled in by the applicant)",
+    "fields": [
+      {
+        "name": "reponseComplement",
+        "label": "Additional information",
+        "type": "STRING",
+        "required": true,
+        "helpText": "Answer the case officer's request. Supporting documents (registration certificate, proof of address…) are uploaded with the add-document button on this page."
+      }
+    ]
+  },
+  {
+    "schemaKey": "complement-recu-autorisation-riverain",
+    "label": "Additional information received from the applicant",
+    "_usage": "variant without portal (entered by the officer)",
+    "fields": [
+      {
+        "name": "reponseComplement",
+        "label": "Additional information received",
+        "type": "STRING",
+        "required": true,
+        "helpText": "Summary of the applicant's reply, copied into the decision document. Add the documents received to the case items."
+      },
+      {
+        "name": "dateReceptionComplement",
+        "label": "Date received",
+        "type": "DATE",
+        "required": true,
+        "width": "HALF",
+        "helpText": "The 30-day review deadline restarts when this task is completed."
+      }
+    ]
+  }
+]

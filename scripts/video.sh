@@ -12,14 +12,18 @@
 #                                             échéance proche (mail-servers d'abord) ;
 #                                           l2-onboarding — profil demo-video-onboarding : exemple onboarding sans arrivée,
 #                                             faux SIRH, IAM et ITSM pilotables (http://localhost:18090/_demo/faults) ;
-#                                           cNN-… (capsules courtes) — profil demo : la démo complète de scripts/demo.sh
+#                                           c05-…, c06-… (capsules courtes riverain) — profil demo-video-riverain :
+#                                             exemple autorisation riverain, portail activé, pré-vérification IA par le
+#                                             modèle local d'Ollama (APP_PRECHECK_MODEL, défaut gemma4:12b) ;
+#                                           autres cNN-… (capsules courtes) — profil demo : la démo complète de
+#                                             scripts/demo.sh
 #   scripts/video.sh mail <scénario>      envoie un e-mail du tournage L1 : facture | inconnu | reponse
 #   scripts/video.sh capsule [capsule]    sur une scène fraîche (start) : voix off (edge-tts), tournage (Playwright), montage
 #                                         (ffmpeg) → frontend/capture/out/film/<capsule>/<langue>/<capsule>-<langue>.mp4,
 #                                         .vtt, .srt ; capsule courte (cNN-…) : sans voix, sous-titres incrustés, sans son
-#   scripts/video.sh shorts               sur une démo fraîche (start c01-dossier) : toutes les capsules courtes, dans
-#                                         l'ordre de leur numéro (certaines modifient la démo : on ne les rejoue pas seules
-#                                         sans reset)
+#   scripts/video.sh shorts               sur une démo fraîche (start c01-dossier) : les capsules courtes de la démo
+#                                         complète, dans l'ordre de leur numéro (certaines modifient la démo : on ne les
+#                                         rejoue pas seules sans reset) ; C5 et C6 se tournent sur leur scène, à part
 #   scripts/video.sh reset [--yes]        vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
 #
 # Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues ou deux scènes, reset. Connexion : comme
@@ -49,9 +53,18 @@ case "${1:-}" in
     case "$capsule" in
       l1-mailroom) profile=demo-video-mailroom ;;
       l2-onboarding) profile=demo-video-onboarding ;;
+      c05-*|c06-*) profile=demo-video-riverain ;;
       c[0-9][0-9]-*) profile=demo ;;
       *) echo "pas de scène pour la capsule $capsule" >&2; exit 2 ;;
     esac
+    # Scène riverain (TODO §143) : portail (liens envoyés à Mailpit) et pré-vérification par le modèle local d'Ollama.
+    scene_env=()
+    if [[ "$profile" == demo-video-riverain ]]; then
+      scene_env=(APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
+        APP_PRECHECK_ENABLED=true APP_PRECHECK_PROVIDER=openai-compatible
+        APP_PRECHECK_BASE_URL="${APP_PRECHECK_BASE_URL:-http://localhost:11434/v1}"
+        APP_PRECHECK_MODEL="${APP_PRECHECK_MODEL:-gemma4:12b}")
+    fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }
     # Variables locales (OIDC, clé maîtresse des connecteurs) : .env s'il existe ; celles qui suivent priment.
@@ -64,9 +77,11 @@ case "${1:-}" in
       SPRING_PROFILES_ACTIVE="local,embedded-db,$profile" \
       APP_DEMO_MAILROOM_DIR="${APP_DEMO_MAILROOM_DIR:-exemples/digital-mail-room}" \
       APP_DEMO_ONBOARDING_DIR="${APP_DEMO_ONBOARDING_DIR:-exemples/onboarding-collaborateur}" \
+      APP_DEMO_RIVERAIN_DIR="${APP_DEMO_RIVERAIN_DIR:-exemples/autorisation-riverain}" \
       APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \
       APP_I18N_DEFAULT_LOCALE="${APP_I18N_DEFAULT_LOCALE:-${APP_DEMO_LOCALE:-fr}}" \
       MAIL_HOST=localhost MAIL_PORT="${MAILPIT_SMTP_PORT:-1025}" MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false \
+      "${scene_env[@]}" \
       java -jar "$jar" --app.deadlines.initial-delay-ms=30000 --app.inbound.initial-delay=10s
     ;;
   mail)
@@ -86,6 +101,7 @@ case "${1:-}" in
     ;;
   shorts)
     for file in scripts/video/capsules/c[0-9][0-9]-*.json; do
+      case "$(basename "$file")" in c05-*|c06-*) continue ;; esac
       "$0" capsule "$(basename "$file" .json)"
     done
     ;;
@@ -94,7 +110,7 @@ case "${1:-}" in
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,28p' "$0"
+    sed -n '2,33p' "$0"
     exit 2
     ;;
 esac

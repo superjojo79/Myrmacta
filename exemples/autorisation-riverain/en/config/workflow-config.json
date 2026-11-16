@@ -1,0 +1,50 @@
+{
+  "processDefinitionKey": "autorisationRiverain",
+  "label": "Resident parking permit (vehicle)",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "SUSPENDU",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    {
+      "code": "DEPOSEE",
+      "label": "Request submitted",
+      "initial": true,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_INSTRUCTION",
+      "label": "Under review",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "EN_ATTENTE_INFOS",
+      "label": "Awaiting information from the applicant",
+      "initial": false,
+      "outcome": "NONE"
+    },
+    {
+      "code": "AUTORISEE",
+      "label": "Granted",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "AUTORISEE_TACITEMENT",
+      "label": "Granted (30-day deadline passed)",
+      "initial": false,
+      "outcome": "COMPLETED"
+    },
+    {
+      "code": "REFUSEE",
+      "label": "Refused",
+      "initial": false,
+      "outcome": "COMPLETED"
+    }
+  ],
+  "_xml": "autorisation-riverain-sans-portail.bpmn20.xml (instance without portal) or autorisation-riverain.bpmn20.xml (portal enabled)"
+}

@@ -1,0 +1,87 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Decision — resident parking permit</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #222; }
+    h1 { font-size: 15pt; margin: 0 0 4pt 0; }
+    h2 { font-size: 11.5pt; margin: 16pt 0 6pt 0; border-bottom: 1px solid #999; padding-bottom: 2pt; }
+    .entete { color: #555; font-size: 9pt; margin-bottom: 18pt; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3pt 4pt; vertical-align: top; }
+    td.libelle { width: 38%; color: #555; }
+    .decision { margin-top: 10pt; padding: 8pt 10pt; border: 1.5pt solid #333; font-size: 12pt; font-weight: bold; }
+    .mention { margin-top: 14pt; font-size: 9pt; color: #555; }
+  </style>
+</head>
+<body>
+  <!--
+    Variables read (all must exist and be non-null, otherwise rendering fails):
+    - dossierFields.*: REQUIRED fields of the AUTORISATION_RIVERAIN type (snapshot at start);
+    - referenceDossier, dateDecision, issueDecision, docTelephone, docPieces, docComplements, docMotivation:
+      set by the autorisationRiverain workflow just before generation.
+  -->
+
+  <h1>Resident parking permit request — decision</h1>
+  <div class="entete">
+    Case <span th:text="${referenceDossier}">DOS-0000</span>
+    — decision of <span th:text="${dateDecision}">2026-01-01</span>
+  </div>
+
+  <h2>Applicant</h2>
+  <table>
+    <tr><td class="libelle">Name</td>
+        <td><span th:text="${dossierFields.nom}">Nom</span> <span th:text="${dossierFields.prenom}">Prénom</span></td></tr>
+    <tr><td class="libelle">E-mail address</td><td th:text="${dossierFields.email}">email</td></tr>
+    <tr><td class="libelle">Phone</td><td th:text="${docTelephone}">-</td></tr>
+    <tr><td class="libelle">Home address</td>
+        <td><span th:text="${dossierFields.adresseRue}">Rue</span> <span th:text="${dossierFields.adresseNumero}">1</span>,
+            <span th:text="${dossierFields.codePostal}">0000</span> <span th:text="${dossierFields.commune}">Commune</span></td></tr>
+  </table>
+
+  <h2>Vehicle</h2>
+  <table>
+    <tr><td class="libelle">Number plate</td>
+        <td><span th:text="${dossierFields.plaque}">1-ABC-123</span> (<span th:text="${dossierFields.paysImmatriculation}">BE</span>)</td></tr>
+    <tr><td class="libelle">Make and model</td>
+        <td><span th:text="${dossierFields.marque}">Marque</span> <span th:text="${dossierFields.modele}">Modèle</span></td></tr>
+  </table>
+
+  <h2>Permit requested</h2>
+  <table>
+    <tr><td class="libelle">Resident zone or street</td><td th:text="${dossierFields.zoneRiverain}">Zone</td></tr>
+    <tr><td class="libelle">Requested start date</td><td th:text="${dossierFields.dateDebutSouhaitee}">-</td></tr>
+    <tr><td class="libelle">Supporting documents attached to the request</td><td th:text="${docPieces}">-</td></tr>
+    <tr><td class="libelle">Additional information from the applicant</td><td th:text="${docComplements}">-</td></tr>
+  </table>
+
+  <h2>Decision</h2>
+
+  <div th:if="${#strings.equals(issueDecision, 'AUTORISEE')}">
+    <div class="decision">The resident parking permit is granted for the vehicle above.</div>
+    <p><strong>Reasons:</strong> <span th:text="${docMotivation}">-</span></p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'AUTORISEE_TACITEMENT')}">
+    <div class="decision">The resident parking permit is granted for the vehicle above.</div>
+    <p>As no decision was taken within 30 days of the request being submitted
+       (or of the last additional information being received), the permit is deemed granted.</p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'REFUSEE')}">
+    <div class="decision">The resident parking permit is refused.</div>
+    <p><strong>Grounds:</strong> <span th:text="${docMotivation}">-</span></p>
+    <p class="mention">You may submit a new request or lodge an appeal with the competent authority within
+       the legal time limits. [Appeal notice to be adapted by the administration.]</p>
+  </div>
+
+  <div th:if="${#strings.equals(issueDecision, 'REFUSEE_SANS_REPONSE')}">
+    <div class="decision">The resident parking permit is refused.</div>
+    <p><strong>Grounds:</strong> the additional information requested was not provided within
+       30 days.</p>
+    <p class="mention">You may submit a new request or lodge an appeal with the competent authority within
+       the legal time limits. [Appeal notice to be adapted by the administration.]</p>
+  </div>
+
+</body>
+</html>

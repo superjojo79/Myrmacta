@@ -159,6 +159,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 138 | [Signature par carte eID : pont navigateur (parcours principal), téléversement en repli désactivé par défaut](138-signature-eid-sans-agent-signature-apportee.md) | ouvert | — |
 | 139 | [Unicité du nom de source de calendrier indépendante de la locale](139-unicite-du-nom-de-source-independante-de-la-locale.md) | clos | — |
 | 140 | [Capsules courtes du site : vidéos muettes, sous-titres incrustés](140-capsules-courtes-du-site.md) | ouvert | — |
+| 141 | [Visualisation après fin de processus : chemin parcouru et lien le plus récent](141-visualisation-apres-fin-de-processus.md) | clos | — |
 
 ## Sections de l'ancien registre
 

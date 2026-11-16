@@ -49,6 +49,7 @@ const {
   loading,
   error,
   diagramUnavailable,
+  currentLinkId,
   assignableUsers,
   incidents,
 } = storeToRefs(store)
@@ -73,7 +74,8 @@ const fieldsLocked = computed(
   () => dossier.value?.status === 'CLOTURE' || dossier.value?.status === 'ARCHIVE',
 )
 const canLink = canEditDossier
-const linkId = computed(() => dossier.value?.currentWorkflowLinkId)
+// D-VIZ-ENDED (§141) : lien visualisé (actif ou plus récent), pas seulement currentWorkflowLinkId.
+const linkId = computed(() => currentLinkId.value ?? dossier.value?.currentWorkflowLinkId)
 // D-ASSIGN-CLAIM : prendre une tâche libre exige le même droit que la terminer (EDIT).
 const canClaim = canEditDossier
 /** TODO §114 — groupes vers lesquels un éditeur peut réaffecter une tâche ; chargés une fois, s'il peut modifier le dossier. */
@@ -335,9 +337,11 @@ async function confirmReassign() {
     />
     <WorkflowLinksList
       :workflows="workflows"
+      :selected-id="linkId"
       :page="workflowsPage"
       :total-pages="workflowsTotalPages"
       @update:page="store.loadWorkflowsPage($event)"
+      @select="store.loadVisualization($event)"
     />
     <AddElementDialog
       :open="addElementOpen"

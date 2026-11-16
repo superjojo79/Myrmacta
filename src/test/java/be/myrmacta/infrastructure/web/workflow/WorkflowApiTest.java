@@ -239,6 +239,26 @@ class WorkflowApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].status").value("COMPLETED"))
                 .andExpect(jsonPath("$.content[0].endReason").value("COMPLETED"));
+
+        // D-VIZ-ENDED (TODO §141) : après clôture, currentWorkflowLinkId est null mais diagramme
+        // et historique restent lisibles via le linkId (chemin parcouru, étapes significatives).
+        mockMvc.perform(get("/api/dossiers/{id}", dossierId).with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentWorkflowLinkId").value(org.hamcrest.Matchers.nullValue()));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/diagram", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bpmnXml", containsString("<process id=\"smokeProcess\"")))
+                .andExpect(jsonPath("$.activeIds", hasSize(0)))
+                .andExpect(jsonPath("$.completedIds", hasItem("smokeTask")));
+
+        mockMvc.perform(get("/api/workflow-links/{id}/history", linkId)
+                        .with(user("workflow-editor")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].activityId", hasItem("startEvent")))
+                .andExpect(jsonPath("$.content[*].activityId", hasItem("smokeTask")))
+                .andExpect(jsonPath("$.content[*].activityId", not(hasItem("flow_start_task"))));
     }
 
     @Test

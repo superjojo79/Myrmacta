@@ -46,6 +46,25 @@ import type {
 
 const DEFAULT_SIZE = 20
 
+/**
+ * D-VIZ-ENDED (TODO §141) — lien à visualiser : actif (`currentWorkflowLinkId` ou sans
+ * `endedAt`), sinon le plus récent (plus grand `sequence` avec une instance).
+ */
+export function resolveVisualizationLinkId(
+  currentWorkflowLinkId: string | null | undefined,
+  links: WorkflowLink[],
+): string | null {
+  if (currentWorkflowLinkId) return currentWorkflowLinkId
+  const active = links.find((link) => !link.endedAt && !!link.processInstanceId)
+  if (active) return active.id
+  let latest: WorkflowLink | null = null
+  for (const link of links) {
+    if (!link.processInstanceId) continue
+    if (!latest || link.sequence > latest.sequence) latest = link
+  }
+  return latest?.id ?? null
+}
+
 export const useDossierStore = defineStore('dossier', () => {
   const dossier = ref<Dossier | null>(null)
   const dossierType = ref<DossierType | null>(null)
@@ -119,9 +138,32 @@ export const useDossierStore = defineStore('dossier', () => {
     tasksTotalPages.value = 0
     currentLinkId.value = null
     diagramUnavailable.value = false
-    if (dossier.value.currentWorkflowLinkId) {
-      await loadVisualization(dossier.value.currentWorkflowLinkId)
+    const vizLinkId = await resolveVisualizationLinkIdForDossier()
+    if (vizLinkId) {
+      await loadVisualization(vizLinkId)
     }
+  }
+
+  /**
+   * D-VIZ-ENDED (§141) — lien à afficher. Si `currentWorkflowLinkId` est null et qu'il y a
+   * plusieurs pages (ordre sequence ASC), le plus récent est sur la dernière page : on la lit
+   * sans remplacer la page 0 affichée dans la liste.
+   */
+  async function resolveVisualizationLinkIdForDossier(): Promise<string | null> {
+    if (!dossier.value) return null
+    const current = dossier.value.currentWorkflowLinkId
+    if (current) return current
+    const onPage = resolveVisualizationLinkId(null, workflows.value)
+    const activeOnPage = workflows.value.find((link) => link.id === onPage && !link.endedAt)
+    if (activeOnPage) return activeOnPage.id
+    if (workflowsTotalPages.value > 1) {
+      const last = await listDossierWorkflows(dossier.value.id, {
+        page: workflowsTotalPages.value - 1,
+        size: DEFAULT_SIZE,
+      })
+      return resolveVisualizationLinkId(null, last.content)
+    }
+    return onPage
   }
 
   async function loadElementsPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
@@ -335,6 +377,7 @@ export const useDossierStore = defineStore('dossier', () => {
     loading,
     error,
     diagramUnavailable,
+    currentLinkId,
     loadById,
     loadByRef,
     loadElementsPage,

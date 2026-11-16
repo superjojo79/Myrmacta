@@ -60,6 +60,240 @@ describe('dossier store', () => {
     expect(store.dossierType?.workflowKey).toBe('wf')
   })
 
+  /** TODO §141 — table de résolution du lien à visualiser. */
+  it('resolveVisualizationLinkId prefers current, then active, then highest sequence with PI', async () => {
+    const { resolveVisualizationLinkId } = await import('./dossier')
+    const base = {
+      dossierId: 'd1',
+      tenantId: 't',
+      processDefinitionKey: 'wf',
+      triggerRef: null,
+      startedAt: '2026-11-01T10:00:00Z',
+      endReason: null as string | null,
+      startedBy: 'u',
+    }
+    const ended1 = {
+      ...base,
+      id: 'l1',
+      processInstanceId: 'pi-1',
+      sequence: 1,
+      status: 'COMPLETED',
+      endedAt: '2026-11-01T11:00:00Z',
+      endReason: 'COMPLETED',
+    }
+    const ended2 = {
+      ...base,
+      id: 'l2',
+      processInstanceId: 'pi-2',
+      sequence: 2,
+      status: 'PROVISIONNE',
+      endedAt: '2026-11-02T11:00:00Z',
+      endReason: 'COMPLETED',
+    }
+    const active = {
+      ...base,
+      id: 'l3',
+      processInstanceId: 'pi-3',
+      sequence: 3,
+      status: 'ACTIVE',
+      endedAt: null,
+    }
+    const reserved = {
+      ...base,
+      id: 'l0',
+      processInstanceId: null,
+      sequence: 99,
+      status: 'RESERVED',
+      endedAt: null,
+    }
+    expect(resolveVisualizationLinkId('l1', [ended1, ended2])).toBe('l1')
+    expect(resolveVisualizationLinkId(null, [ended1, active, ended2])).toBe('l3')
+    expect(resolveVisualizationLinkId(null, [ended1, ended2, reserved])).toBe('l2')
+    expect(resolveVisualizationLinkId(null, [reserved])).toBeNull()
+  })
+
+  /** TODO §141 (D-VIZ-ENDED) — après clôture, currentWorkflowLinkId est null : charger le lien le plus récent. */
+  it('loadById falls back to the most recent ended workflow for visualization', async () => {
+    vi.mocked(dossiersApi.getDossierById).mockResolvedValue({
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'CLOTURE',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: 'u',
+      closedAt: '2026-11-15T12:00:00Z',
+      canEdit: false,
+    })
+    vi.mocked(typesApi.getDossierType).mockResolvedValue({
+      id: 't1',
+      tenantId: 't',
+      code: 'CLAIM',
+      label: 'Claim',
+      workflowKey: 'wf',
+      active: true,
+      allowUnknownFields: false,
+      fieldDefinitions: [],
+    })
+    vi.mocked(dossiersApi.listDossierWorkflows).mockResolvedValue(
+      asPage([
+        {
+          id: 'link-old',
+          dossierId: 'd1',
+          tenantId: 't',
+          processInstanceId: 'pi-1',
+          processDefinitionKey: 'wf',
+          sequence: 1,
+          status: 'COMPLETED',
+          triggerRef: null,
+          startedAt: '2026-11-01T10:00:00Z',
+          endedAt: '2026-11-01T11:00:00Z',
+          endReason: 'COMPLETED',
+          startedBy: 'u',
+        },
+        {
+          id: 'link-latest',
+          dossierId: 'd1',
+          tenantId: 't',
+          processInstanceId: 'pi-2',
+          processDefinitionKey: 'wf',
+          sequence: 2,
+          status: 'PROVISIONNE',
+          triggerRef: null,
+          startedAt: '2026-11-10T10:00:00Z',
+          endedAt: '2026-11-10T12:00:00Z',
+          endReason: 'COMPLETED',
+          startedBy: 'u',
+        },
+      ]),
+    )
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(asPage([]))
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+      bpmnXml: '<xml/>',
+      activeIds: [],
+      completedIds: ['start', 'end'],
+      failedIds: [],
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(
+      asPage([
+        {
+          activityId: 'start',
+          name: 'Start',
+          assignee: null,
+          startTime: '2026-11-10T10:00:00Z',
+          endTime: '2026-11-10T10:00:01Z',
+          durationMs: 1000,
+        },
+      ]),
+    )
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([]))
+    vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+
+    const store = useDossierStore()
+    await store.loadById('d1')
+
+    expect(workflowsApi.getWorkflowDiagram).toHaveBeenCalledWith('link-latest')
+    expect(store.currentLinkId).toBe('link-latest')
+    expect(store.diagramUnavailable).toBe(false)
+    expect(store.diagram?.completedIds).toEqual(['start', 'end'])
+    expect(store.history).toHaveLength(1)
+  })
+
+  /** TODO §141 — le plus récent peut être hors page 0 (sequence ASC). */
+  it('loadById fetches the last workflows page when falling back without a current link', async () => {
+    vi.mocked(dossiersApi.getDossierById).mockResolvedValue({
+      id: 'd1',
+      tenantId: 't',
+      reference: 'DOS-1',
+      dossierTypeCode: 'CLAIM',
+      label: 'L',
+      status: 'CLOTURE',
+      fields: {},
+      currentWorkflowLinkId: null,
+      version: 1,
+      createdBy: 'u',
+      createdAt: '',
+      updatedBy: 'u',
+      updatedAt: '',
+      closedBy: 'u',
+      closedAt: '2026-11-15T12:00:00Z',
+      canEdit: false,
+    })
+    vi.mocked(typesApi.getDossierType).mockResolvedValue({
+      id: 't1',
+      tenantId: 't',
+      code: 'CLAIM',
+      label: 'Claim',
+      workflowKey: 'wf',
+      active: true,
+      allowUnknownFields: false,
+      fieldDefinitions: [],
+    })
+    const page0 = Array.from({ length: 20 }, (_, i) => ({
+      id: `link-${i + 1}`,
+      dossierId: 'd1',
+      tenantId: 't',
+      processInstanceId: `pi-${i + 1}`,
+      processDefinitionKey: 'wf',
+      sequence: i + 1,
+      status: 'COMPLETED',
+      triggerRef: null,
+      startedAt: '2026-11-01T10:00:00Z',
+      endedAt: '2026-11-01T11:00:00Z',
+      endReason: 'COMPLETED',
+      startedBy: 'u',
+    }))
+    const page1 = [
+      {
+        id: 'link-21',
+        dossierId: 'd1',
+        tenantId: 't',
+        processInstanceId: 'pi-21',
+        processDefinitionKey: 'wf',
+        sequence: 21,
+        status: 'PROVISIONNE',
+        triggerRef: null,
+        startedAt: '2026-11-10T10:00:00Z',
+        endedAt: '2026-11-10T12:00:00Z',
+        endReason: 'COMPLETED',
+        startedBy: 'u',
+      },
+    ]
+    vi.mocked(dossiersApi.listDossierWorkflows)
+      .mockResolvedValueOnce(asPage(page0, { page: 0, totalPages: 2, totalElements: 21 }))
+      .mockResolvedValueOnce(asPage(page1, { page: 1, totalPages: 2, totalElements: 21 }))
+    vi.mocked(dossiersApi.listDossierElements).mockResolvedValue(asPage([]))
+    vi.mocked(dossiersApi.listDossierRelations).mockResolvedValue([])
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockResolvedValue({
+      bpmnXml: '<xml/>',
+      activeIds: [],
+      completedIds: ['end'],
+      failedIds: [],
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(asPage([]))
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(asPage([]))
+    vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+
+    const store = useDossierStore()
+    await store.loadById('d1')
+
+    expect(dossiersApi.listDossierWorkflows).toHaveBeenCalledWith('d1', { page: 0, size: 20 })
+    expect(dossiersApi.listDossierWorkflows).toHaveBeenCalledWith('d1', { page: 1, size: 20 })
+    expect(workflowsApi.getWorkflowDiagram).toHaveBeenCalledWith('link-21')
+    expect(store.currentLinkId).toBe('link-21')
+    // La liste affichée reste la page 0 (historique chronologique).
+    expect(store.workflowsPage).toBe(0)
+    expect(store.workflows[0]?.id).toBe('link-1')
+  })
+
   it('linkDossier prepends the created relation without reload', async () => {
     const store = useDossierStore()
     store.dossier = {

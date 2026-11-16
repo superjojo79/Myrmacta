@@ -135,6 +135,10 @@ import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.
 - Domaine : `domain.promotion.artifact` (`UserGroupArtifacts`, `TypeSettingsArtifacts`, `DocumentTemplateArtifacts`,
   `ParcoursArtifacts`, `GroupReferenceCheck`, `EnvironmentParameters`, regroupés par `AdditionalArtifacts`), appelés
   par `ExportConfigurationUseCaseImpl` et `ImportConfigurationUseCaseImpl`.
+- Détail du plan et du rapport (D-PROMO-DETAIL-I18N, §144) : le domaine, le journal et le MCP gardent les phrases
+  anglaises (y compris les préfixes `WARNING:` et `joined to the BPMN draft`, lus par le moteur). L'écran
+  *Admin → Promotion* reçoit ces phrases déjà traduites selon `Accept-Language` (`fr`, sinon l'anglais d'origine).
+  Une phrase inconnue du catalogue reste telle quelle.
 
 | Lot | PR | Contenu |
 |---|---|---|
@@ -146,6 +150,7 @@ import), `docs/guides/GETTING-STARTED.md` si une CLI est fournie.
 
 **Tests de référence :**
 
+- `PromotionDetailTextsTest` (un exemple de chaque détail, en français et en anglais) ;
 - `ConfigurationPromotionUseCaseTest` (règles du plan et de l'application) ;
 - `ConfigurationPromotionApiTest` (chaîne HTTP pour chaque artefact, canal MCP des templates, parcours compilé puis
   publié) ;

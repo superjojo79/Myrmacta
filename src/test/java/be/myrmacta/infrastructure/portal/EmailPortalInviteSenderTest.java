@@ -69,7 +69,18 @@ class EmailPortalInviteSenderTest {
         verify(emailPort).send(eq("alice@example.org"), subject.capture(), body.capture());
         assertThat(subject.getValue()).isEqualTo("Third-party opinion — dossier DOS-42");
         assertThat(body.getValue()).contains("Hello,").contains("1 October 2026").contains("(dossier DOS-42)")
-                .contains("https://ff.example.org/tenant-a/portal/?lang=en#TOKEN123").doesNotContain("Bonjour");
+                .contains("https://ff.example.org/tenant-a/portal/?lang=en#TOKEN123").doesNotContain("Bonjour")
+                // Issue #119 — guillemets anglais dans le corps anglais, pas « ».
+                .contains("A reply from you is expected: \"Third-party opinion\"")
+                .doesNotContain("«").doesNotContain("»");
+    }
+
+    @Test
+    void theFrenchInvitationKeepsFrenchGuillemetsAroundTheTaskName() {
+        sender.send(link, "T", new InviteContext("Avis du tiers", "DOS-42", NOW));
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(emailPort).send(eq("alice@example.org"), org.mockito.ArgumentMatchers.anyString(), body.capture());
+        assertThat(body.getValue()).contains("« Avis du tiers »").doesNotContain("\"Avis du tiers\"");
     }
 
     @Test

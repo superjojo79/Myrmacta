@@ -59,7 +59,7 @@ class EmailPortalInviteSender implements PortalInviteSenderPort {
                 ? """
                 Hello,
 
-                A reply from you is expected: « %s »%s.
+                A reply from you is expected: "%s"%s.
 
                 Open the secure form with this personal link, valid until %s:
                 %s

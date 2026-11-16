@@ -15,17 +15,21 @@ import be.myrmacta.domain.workflow.portal.PortalParticipantNotifier;
 import be.myrmacta.domain.workflow.portal.model.PortalLink;
 import be.myrmacta.domain.workflow.portal.model.PortalLinkStatus;
 import be.myrmacta.domain.workflow.portal.model.PortalLinkStatusReason;
+import be.myrmacta.domain.workflow.portal.model.PortalRecipientSource;
+import be.myrmacta.domain.workflow.portal.model.PortalTaskDefinition;
 import be.myrmacta.domain.workflow.portal.port.out.PortalInviteSenderPort;
 import be.myrmacta.domain.workflow.portal.port.out.PortalTaskLookupPort;
 import be.myrmacta.domain.workflow.portal.port.out.PortalTokenPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class SendPortalInvitesUseCaseImplTest {
 
@@ -73,6 +77,22 @@ class SendPortalInvitesUseCaseImplTest {
         assertThat(stored.status()).isEqualTo(PortalLinkStatus.ACTIVE);
         assertThat(stored.tokenHash()).isEqualTo("hash-of-token-1");
         assertThat(stored.expiresAt()).isEqualTo(Instant.parse("2026-10-01T10:00:00Z"));
+    }
+
+    @Test
+    void inviteUsesPortalTitleWhenPresentOtherwiseTaskName() {
+        // TODO §147 / issue #120 — D-PORTAL-TITLE
+        when(taskLookup.findExternalTaskDefinition("task-1")).thenReturn(Optional.of(new PortalTaskDefinition(
+                "task-1", "avis",
+                new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email"), null, null, List.of(),
+                "Informations complémentaires")));
+
+        useCase.sendPending();
+
+        ArgumentCaptor<PortalInviteSenderPort.InviteContext> context =
+                ArgumentCaptor.forClass(PortalInviteSenderPort.InviteContext.class);
+        verify(sender).send(any(PortalLink.class), eq("token-1"), context.capture());
+        assertThat(context.getValue().taskName()).isEqualTo("Informations complémentaires");
     }
 
     @Test

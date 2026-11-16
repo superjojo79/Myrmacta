@@ -11,13 +11,18 @@ import java.util.Objects;
  * {@code flowable:portalLinkTtlDays} est absent (défaut tenant). {@code identityField} est {@code null} sauf pour une
  * tâche à authentification forte ({@code flowable:portalIdentityField}, TODO §104). {@code pieceTypeKeys} : types de
  * pièces proposés au tiers ({@code flowable:portalPieceTypes}, TODO §106), vide si l'attribut est absent.
+ * {@code portalTitle} : libellé citoyen ({@code flowable:portalTitle}, TODO §147), {@code null} si absent (repli sur
+ * le {@code name} BPMN).
  */
 public record PortalTaskDefinition(
         String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays,
-        PortalIdentityField identityField, List<String> pieceTypeKeys) {
+        PortalIdentityField identityField, List<String> pieceTypeKeys, String portalTitle) {
 
     /** TODO §106 — au plus 10 types de pièces proposés au tiers par tâche. */
     public static final int MAX_PIECE_TYPES = 10;
+
+    /** TODO §147 — borne du libellé citoyen (e-mail et portail). */
+    public static final int MAX_PORTAL_TITLE_LENGTH = 200;
 
     public PortalTaskDefinition {
         Objects.requireNonNull(taskDefinitionKey, "taskDefinitionKey");
@@ -27,17 +32,24 @@ public record PortalTaskDefinition(
             throw new IllegalArgumentException("ttlDays must be positive");
         }
         pieceTypeKeys = pieceTypeKeys == null ? List.of() : List.copyOf(pieceTypeKeys);
+        portalTitle = normalizeTitle(portalTitle);
     }
 
     public PortalTaskDefinition(
             String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays) {
-        this(taskDefinitionKey, schemaKey, recipientSource, ttlDays, null, List.of());
+        this(taskDefinitionKey, schemaKey, recipientSource, ttlDays, null, List.of(), null);
     }
 
     public PortalTaskDefinition(
             String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays,
             PortalIdentityField identityField) {
-        this(taskDefinitionKey, schemaKey, recipientSource, ttlDays, identityField, List.of());
+        this(taskDefinitionKey, schemaKey, recipientSource, ttlDays, identityField, List.of(), null);
+    }
+
+    public PortalTaskDefinition(
+            String taskDefinitionKey, String schemaKey, PortalRecipientSource recipientSource, Integer ttlDays,
+            PortalIdentityField identityField, List<String> pieceTypeKeys) {
+        this(taskDefinitionKey, schemaKey, recipientSource, ttlDays, identityField, pieceTypeKeys, null);
     }
 
     /**
@@ -66,8 +78,40 @@ public record PortalTaskDefinition(
         return List.copyOf(keys);
     }
 
+    /** TODO §147 — {@code flowable:portalTitle} : une ligne, {@value #MAX_PORTAL_TITLE_LENGTH} caractères au plus. */
+    public static String parsePortalTitle(String raw) {
+        String title = normalizeTitle(raw);
+        if (title == null) {
+            throw new IllegalArgumentException("portalTitle must not be blank");
+        }
+        return title;
+    }
+
+    /**
+     * Libellé montré au tiers (e-mail, portail) : {@code portalTitle} s'il est posé, sinon le nom BPMN
+     * (D-PORTAL-TITLE).
+     */
+    public String titleForCitizen(String taskName) {
+        return portalTitle != null ? portalTitle : taskName;
+    }
+
     /** Le tiers doit s'authentifier par FAS ou itsme avant de voir ou de soumettre la tâche (T1). */
     public boolean requiresStrongAuthentication() {
         return identityField != null;
+    }
+
+    private static String normalizeTitle(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String title = raw.replaceAll("[\\r\\n\\t]+", " ").strip();
+        if (title.isEmpty()) {
+            return null;
+        }
+        if (title.length() > MAX_PORTAL_TITLE_LENGTH) {
+            throw new IllegalArgumentException(
+                    "portalTitle must be at most " + MAX_PORTAL_TITLE_LENGTH + " characters");
+        }
+        return title;
     }
 }

@@ -114,9 +114,11 @@ public final class PortalAccessResolver {
             throw new PortalAccessDeniedException("link " + link.id() + " changed concurrently");
         }
         Optional<PortalTaskDefinition> definition = taskLookup.findExternalTaskDefinition(link.taskId());
+        // TODO §147 — libellé citoyen (portalTitle) pour l'e-mail et le portail ; repli sur le name BPMN.
+        String citizenTitle = definition.map(d -> d.titleForCitizen(task.name())).orElse(task.name());
         return new ResolvedAccess(accessed, task, dossier,
                 definition.map(PortalTaskDefinition::identityField).orElse(null), found.identity(),
-                definition.map(PortalTaskDefinition::pieceTypeKeys).orElse(List.of()));
+                definition.map(PortalTaskDefinition::pieceTypeKeys).orElse(List.of()), citizenTitle);
     }
 
     private record Credentialed(PortalLink link, PortalLinkIdentity identity) {}
@@ -160,22 +162,24 @@ public final class PortalAccessResolver {
      * {@code identityField} : champ d'identité de la tâche, nul sans authentification forte. {@code identity} : identité
      * vérifiée présentée par la preuve, nulle sur un accès par le jeton. {@code pieceTypeKeys} : types de pièces que la
      * tâche propose au tiers (TODO §106), vide sans {@code flowable:portalPieceTypes}.
+     * {@code citizenTaskTitle} : libellé montré au tiers (TODO §147), {@code portalTitle} ou le name BPMN.
      */
     public record ResolvedAccess(
             PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier, PortalIdentityField identityField,
-            PortalLinkIdentity identity, List<String> pieceTypeKeys) {
+            PortalLinkIdentity identity, List<String> pieceTypeKeys, String citizenTaskTitle) {
 
         public ResolvedAccess {
             pieceTypeKeys = pieceTypeKeys == null ? List.of() : List.copyOf(pieceTypeKeys);
+            citizenTaskTitle = citizenTaskTitle == null ? task.name() : citizenTaskTitle;
         }
 
         public ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier) {
-            this(link, task, dossier, null, null, List.of());
+            this(link, task, dossier, null, null, List.of(), task.name());
         }
 
         public ResolvedAccess(PortalLink link, PortalTaskLookupPort.OpenTask task, Dossier dossier,
                 PortalIdentityField identityField, PortalLinkIdentity identity) {
-            this(link, task, dossier, identityField, identity, List.of());
+            this(link, task, dossier, identityField, identity, List.of(), task.name());
         }
 
         public boolean identityRequired() {

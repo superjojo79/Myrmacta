@@ -124,3 +124,11 @@ séparées par des virgules, valides et distinctes, 10 au plus (forme vérifiée
   le propose pas ou si le type du dossier ne le déclare plus. Sans `pieceKey`, la pièce est non classée, comme avant.
 - **Preuves** : `PortalPieceTypesTest`, `FlowableBpmnParserAdapterPortalTest`, Vitest du portail.
 
+## 7. Libellé citoyen (TODO §147)
+
+Issue [#120](https://github.com/superjojo79/Myrmacta/issues/120), D-PORTAL-TITLE. `flowable:portalTitle` facultatif sur
+une tâche externe : libellé destiné au tiers (e-mail d'invitation et `taskName` de `GET /api/portal/task`), une ligne,
+200 caractères au plus. Absent : le `name` BPMN est repris. Le `name` reste le libellé interne (listes de tâches).
+Documenté dans [GUIDE-CONCEPTION-BPMN](../guides/GUIDE-CONCEPTION-BPMN.md) §3ter. **Preuves** :
+`FlowableBpmnParserAdapterPortalTest`, `SendPortalInvitesUseCaseImplTest`, film C5.
+

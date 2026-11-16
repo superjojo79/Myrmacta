@@ -129,6 +129,11 @@ test('portail', async ({ browser, locale }) => {
   const page = await context.newPage()
   const { director: d, order } = plan(capsule, page, 'portail')
   await d.goto(link)
+  // TODO §147 / #120 — le citoyen lit le portalTitle, pas le name interne « … (portail) ».
+  await expect(page.getByRole('heading', { level: 1 })).not.toContainText(/\(portail\)|\(portal\)/i)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    en ? 'Additional information' : 'Informations complémentaires',
+  )
   await d.beat(2)
   await page.locator('textarea, input[type="text"]').first().pressSequentially(ANSWER, { delay: 35 })
   await d.beat(0.8)

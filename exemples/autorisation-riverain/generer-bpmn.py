@@ -145,7 +145,8 @@ def build(portail, preverification=False):
         m.node("complement", "userTask", "Compléments du demandeur (portail)", c, "infos",
                {"flowable:formKey": "user-question:complement-autorisation-riverain",
                 "flowable:portalRecipient": "dossierField:email",
-                "flowable:portalLinkTtlDays": "30"},
+                "flowable:portalLinkTtlDays": "30",
+                "flowable:portalTitle": "Informations complémentaires"},
                body="<documentation>Le gestionnaire a besoin d'informations complémentaires pour instruire "
                     "votre demande d'autorisation riverain. Répondez ci-dessous et joignez les pièces utiles "
                     "(certificat d'immatriculation, preuve de domicile). Sans réponse dans les 30 jours, la "

@@ -163,6 +163,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 142 | [Catalogue des connecteurs : libellés et aides traduits (FR/EN)](142-catalogue-connecteurs-libelles-traduits.md) | clos | — |
 | 143 | [Scène riverain des capsules C5 et C6 et du screenshot S13](143-scene-riverain-capsules-c5-c6.md) | clos | — |
 | 144 | [Langue des détails du plan et du rapport de promotion](144-langue-des-details-de-promotion.md) | clos | — |
+| 145 | [Nom du publicateur dans le journal des brouillons](145-nom-du-publicateur-dans-le-journal-des-brouillons.md) | clos | — |
 
 ## Sections de l'ancien registre
 

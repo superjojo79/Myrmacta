@@ -39,6 +39,8 @@ export interface ConfigPublication {
   configProvenance?: Provenance | null
   configAuthor?: string | null
   publishedBy: string
+  /** Nom issu de l'annuaire (D-ASSIGN-DIR / D-DRAFT-PUB-NAME) ; repli sur publishedBy si inconnu (TODO §145). */
+  publishedByDisplayName: string
   publishedAt: string
   mode: 'MANUAL' | 'DIRECT'
 }

@@ -1,7 +1,9 @@
 // TODO §127 (D-DEMO-CAPTURE, lot 3 de #55) — les screenshots du site (#58), sur la démo complète (`scripts/demo.sh`).
-// S13 (portail usager) n'en fait plus partie : l'exemple autorisation riverain est retiré de la démo.
+// S13 (portail usager) n'en fait plus partie : l'exemple autorisation riverain est retiré de la démo (issue #101). S5
+// (modèle de document et aperçu PDF) est dans screenshots-pdf.capture.ts : il se prend avec Edge (TODO §140).
 import { expect, test, type Page } from '@playwright/test'
-import { captureLang, outDir } from './settings'
+import { api, DEMO_JOURNEY, demoJourney } from './film/short'
+import { outDir } from './settings'
 
 type DossierSummary = { id: string; label: string; dossierTypeCode: string; createdAt: string }
 
@@ -43,10 +45,34 @@ test('S2 instance de processus, chemin parcouru', async ({ page }) => {
   await shot(page, 'S02-instance-processus')
 })
 
-test('S3 éditeur BPMN et palette métier', async ({ page }) => {
+test('S3 concepteur de parcours, avec en vignette l’éditeur BPMN et sa palette', async ({ page }) => {
+  // TODO §140 (#58) : aligné sur l'issue. L'éditeur BPMN (palette métier) est photographié d'abord, puis posé en vignette
+  // sur le concepteur de parcours, dont le parcours d'exemple (capsule C2) montre son aperçu compilé en BPMN.
   await page.goto('/admin/bpmn-editor?processDefinitionKey=triCourrier')
-  await expect(page.locator('.djs-container')).toBeVisible()
-  await shot(page, 'S03-editeur-bpmn')
+  await expect(page.locator('.djs-palette')).toBeVisible()
+  await settle(page)
+  const editor = (await page.locator('main').screenshot()).toString('base64')
+  if (!(await page.request.get(`/api/parcours/${DEMO_JOURNEY}`)).ok()) {
+    await api(page, 'PUT', `/api/parcours/${DEMO_JOURNEY}`, { ...demoJourney(), expectedVersion: null })
+  }
+  await page.goto('/admin/parcours')
+  await page.getByTestId(`parcours-open-${DEMO_JOURNEY}`).click()
+  await page.getByTestId('parcours-preview').click()
+  await expect(page.getByTestId('parcours-diagram').locator('.djs-container')).toBeVisible()
+  await settle(page)
+  await page.getByTestId('parcours-editor').evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  // Vignette posée à la prise de vue seulement (produit inchangé), comme celle des capsules (D-VIDEO-PIP).
+  await page.evaluate((png) => {
+    const img = document.createElement('img')
+    img.src = `data:image/png;base64,${png}`
+    Object.assign(img.style, {
+      position: 'fixed', right: '24px', bottom: '24px', width: '46%', zIndex: '2147483647', borderRadius: '12px',
+      border: '3px solid #4cc9f0', boxShadow: '0 12px 36px rgba(0,0,0,.35)', background: '#fff',
+    })
+    document.body.appendChild(img)
+  }, editor)
+  await page.waitForTimeout(300)
+  await shot(page, 'S03-parcours-bpmn')
 })
 
 test('S4 table de décision de routage', async ({ page }) => {
@@ -54,19 +80,6 @@ test('S4 table de décision de routage', async ({ page }) => {
   await page.goto('/admin/dmn-editor?decisionKey=routageCourrier')
   await expect(page.locator('.dmn-decision-table-container, .dmn-drd-container').first()).toBeVisible()
   await shot(page, 'S04-table-routage')
-})
-
-test('S5 gabarit de notification', async ({ page }) => {
-  await page.goto('/admin/notification-templates')
-  // Le rendu est strict : le modèle d'exemple porte les variables du gabarit d'accusé de réception.
-  const en = captureLang() === 'en'
-  await page.locator('.nt-preview textarea').fill(JSON.stringify({
-    dossier: { reference: 'DOS-COURRIER-2026-000001', fields: {} },
-    variables: { accuseObjet: en ? 'Invoice 2026-117' : 'Facture 2026-117', dateReception: '11/11/2026' },
-  }, null, 2))
-  await page.getByTestId('nt-preview-row').first().click()
-  await expect(page.getByTestId('nt-preview-text')).toBeVisible()
-  await shot(page, 'S05-gabarit')
 })
 
 test('S6 registre du courrier', async ({ page }) => {

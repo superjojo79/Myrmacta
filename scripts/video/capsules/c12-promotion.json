@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C12 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c12-promotion.film.ts, sur la démo complète. La démo n'a qu'une instance : le film exporte sa configuration, scripts/video/recette_bundle.py la fait avancer hors champ comme une recette (groupe ACHATS, champ « Bon de commande » sur FACTURE), puis le film l'importe (décision de l'utilisateur, 2026-11-15).",
+  "id": "c12-promotion",
+  "format": "short",
+  "title": { "fr": "De la recette à la production sans recopier", "en": "From staging to production without retyping" },
+  "underTheHood": {
+    "fr": ["Paquet de configuration contrôlé par SHA-256, sans aucun secret", "Plan à blanc, puis application tracée"],
+    "en": ["Configuration bundle with SHA-256 checksums, no secrets", "Dry-run plan, then a logged apply"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "export",
+      "title": { "fr": "L'export", "en": "The export" },
+      "captions": {
+        "fr": ["La recette exporte sa configuration : types, processus, règles, connecteurs.", "Aucun secret ne quitte l'environnement."],
+        "en": ["Staging exports its configuration: types, processes, rules, connectors.", "No secret leaves the environment."]
+      }
+    },
+    {
+      "id": "import",
+      "title": { "fr": "L'import", "en": "The import" },
+      "captions": {
+        "fr": ["En production, le paquet venu de la recette passe d'abord à blanc.", "Le plan montre ce qui sera créé ou modifié : un groupe, un champ de plus.", "Relu, il s'applique : rien n'est recopié à la main."],
+        "en": ["In production, the package from staging first runs as a dry run.", "The plan shows what will be created or changed: one group, one more field.", "Once reviewed, it is applied: nothing is retyped by hand."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

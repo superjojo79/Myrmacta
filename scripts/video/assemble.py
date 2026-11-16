@@ -80,21 +80,29 @@ def screen_length(parts: list[tuple[float, float, float]]) -> float:
     return sum((end - start) / speed for start, end, speed in parts)
 
 
-def video_filter(parts: list[tuple[float, float, float]], pad: float) -> str:
+# Fond d'un plan mobile (TODO §140) : le bleu nuit des cartons, autour de l'écran du téléphone.
+PHONE_BACKGROUND = "0x0d1b2a"
+
+
+def video_filter(parts: list[tuple[float, float, float]], pad: float, mobile: bool = False) -> str:
+    """Les morceaux gardés bout à bout, en 1920×1080. Un plan mobile (portrait) n'est pas étiré : il est mis à la
+    hauteur de l'image et centré sur un fond sombre."""
+    fit = (f"scale=-2:1080:flags=lanczos,pad=1920:1080:(ow-iw)/2:0:color={PHONE_BACKGROUND}" if mobile
+           else f"scale={SIZE}:flags=lanczos")
     chains, labels = [], []
     for i, (start, end, speed) in enumerate(parts):
         chains.append(f"[0:v]trim=start={start:.3f}:end={end:.3f},setpts=(PTS-STARTPTS)/{speed},"
-                      f"fps={FPS},scale={SIZE}:flags=lanczos,setsar=1[v{i}]")
+                      f"fps={FPS},{fit},setsar=1[v{i}]")
         labels.append(f"[v{i}]")
     chains.append("".join(labels) + f"concat=n={len(labels)}:v=1:a=0,tpad=stop_mode=clone:stop_duration={pad:.3f}[v]")
     return ";".join(chains)
 
 
 def chapter_command(video: Path, parts: list[tuple[float, float, float]], voice: Path | None, length: float,
-                    target: Path) -> list[str]:
+                    target: Path, mobile: bool = False) -> list[str]:
     """ffmpeg pour un chapitre de `length` s : la dernière image est tenue ; avec une voix, prolongée de silence,
     sans voix (capsule courte), pas de piste audio."""
-    graph = video_filter(parts, length - screen_length(parts))
+    graph = video_filter(parts, length - screen_length(parts), mobile)
     inputs, audio = ["-i", str(video)], ["-an"]
     if voice is not None:
         inputs += ["-i", str(voice)]
@@ -105,12 +113,15 @@ def chapter_command(video: Path, parts: list[tuple[float, float, float]], voice:
             "-r", str(FPS), str(target)]
 
 
-def chapter_clip(video: Path, spans: list[dict], voice: Path | None, target: Path, minimum: float = 0.0) -> float:
-    """Un chapitre monté (MP4), au moins aussi long que sa voix ou que `minimum` ; rend sa durée."""
-    check_frame(*probe_size(video))
+def chapter_clip(video: Path, spans: list[dict], voice: Path | None, target: Path, minimum: float = 0.0,
+                 mobile: bool = False) -> float:
+    """Un chapitre monté (MP4), au moins aussi long que sa voix ou que `minimum` ; rend sa durée. Un plan mobile est
+    filmé à la taille du téléphone (portrait) ; les autres doivent l'être en 16:9."""
+    if not mobile:
+        check_frame(*probe_size(video))
     parts = segments(spans, probe_duration(video))
     length = max(screen_length(parts), probe_duration(voice) if voice is not None else 0.0, minimum)
-    subprocess.run(chapter_command(video, parts, voice, length, target), check=True)
+    subprocess.run(chapter_command(video, parts, voice, length, target, mobile), check=True)
     return probe_duration(target)
 
 
@@ -180,7 +191,7 @@ def run(capsule_path: Path, lang: str, out: Path) -> int:
         clip = work / f"{name}.mp4"
         timing = voice["chapters"][chapter["id"]]
         if short:
-            length = chapter_clip(video, spans, None, clip, timing["duration"])
+            length = chapter_clip(video, spans, None, clip, timing["duration"], chapter.get("device") == "mobile")
         else:
             length = chapter_clip(video, spans, folder / "voice" / f"{chapter['id']}.m4a", clip)
         clips.append(clip)

@@ -1,0 +1,31 @@
+{
+  "_commentaire": "Capsule courte C11 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c11-equipes.film.ts, sur la démo complète. Le plan « mobile » est filmé à la taille d'un téléphone (\"device\": \"mobile\"), puis centré sur un fond sombre au montage.",
+  "id": "c11-equipes",
+  "format": "short",
+  "title": { "fr": "La bonne tâche à la bonne équipe, même sur mobile", "en": "The right task for the right team, even on mobile" },
+  "underTheHood": {
+    "fr": ["Groupes et membres, ou groupes repris de votre IdP", "Tâches assignées à un groupe, prises par un membre"],
+    "en": ["Groups and members, or groups taken from your IdP", "Tasks assigned to a group, taken by a member"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "groupes",
+      "title": { "fr": "Les équipes", "en": "The teams" },
+      "captions": {
+        "fr": ["Un groupe, c'est une équipe : RH, comptabilité, courrier, support…", "Le processus confie chaque tâche à un groupe ; ses membres la voient."],
+        "en": ["A group is a team: HR, accounting, mail room, support…", "The process hands each task to a group; its members see it."]
+      }
+    },
+    {
+      "id": "mobile",
+      "device": "mobile",
+      "title": { "fr": "Sur mobile", "en": "On mobile" },
+      "captions": {
+        "fr": ["Sur mobile, chacun retrouve les tâches de ses équipes et leur délai.", "Un geste pour prendre une tâche : elle devient la sienne."],
+        "en": ["On mobile, everyone finds their teams' tasks and their deadlines.", "One tap to take a task: it becomes theirs."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

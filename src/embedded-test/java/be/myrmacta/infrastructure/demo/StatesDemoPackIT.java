@@ -61,6 +61,11 @@ class StatesDemoPackIT {
             assertThat(jdbc.queryForObject("select xml from dmn_draft where decision_key = 'routageCourrier'", String.class))
                     .as("en DMN 1.3, pour que l'éditeur l'ouvre ; avec la règle « imprimerie »")
                     .contains(StatesDemoPack.DMN_13).doesNotContain(StatesDemoPack.DMN_11).contains("regleFactureImprimerie");
+
+            // TODO §140 (screenshot S5 de #58) : un modèle de courrier actif, à montrer avec son aperçu PDF.
+            assertThat(count(jdbc, "select count(*) from document_template where template_key = '"
+                    + StatesDemoPack.LETTER + "' and status = 'ACTIVE'"))
+                    .as("un modèle de lettre actif").isEqualTo(1);
         }
     }
 

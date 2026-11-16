@@ -1,9 +1,12 @@
 # §140 — Capsules courtes du site : vidéos muettes, sous-titres incrustés
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (2026-11-15, issue [#58](https://github.com/superjojo79/Myrmacta/issues/58), vague `vague-vitrine`). Cadrage
-validé par l'utilisateur le 2026-11-15. Livraison en quatre lots. Lot 1 (PR #102) : mode court du pipeline, capsules C1 et C8. Lot 2 (PR #105) : C2, C3 et C4. Lot 3 : C7, C9 et C10.
+[x] clos (2026-11-16, issue [#58](https://github.com/superjojo79/Myrmacta/issues/58), vague `vague-vitrine`). Cadrage
+validé par l'utilisateur le 2026-11-15. Livré en quatre lots : lot 1 (PR #102), mode court du pipeline, C1 et C8 ; lot 2 (PR #105), C2, C3 et C4 ; lot 3
+(PR #109), C7, C9 et C10 ; lot 4 (PR de clôture), C11, C12 et les screenshots. Dix capsules et quatorze screenshots, en
+français et en anglais, tous régénérables (`scripts/video.sh shorts`, `npm run capture`). Reportés : C5, C6 et S13
+([#101](https://github.com/superjojo79/Myrmacta/issues/101)). Défauts relevés : #103, #106, #111, #112.
 Prolonge [§128](128-capsules-video-du-site.md) (outillage des capsules) et [§136](136-capsule-video-onboarding.md)
 (une capsule par fichier JSON, un dossier de sortie par capsule). Build `embedded-db` et outillage de développement
 seulement, jamais en production. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
@@ -80,9 +83,9 @@ Vitest couvre ce chargement.
   de l'export BI. Ces deux envois partent à intervalle, au plus tôt une heure après l'activation pour l'export
   (`RunBiExportUseCaseImpl.isDue`) : la capsule ne promet pas un envoi à l'écran.
 - **C9 ne crée aucun connecteur** : un connecteur entrant se mettrait à relever. Elle parcourt les formulaires de
-  plusieurs types (REST avec OAuth2, IMAP, SFTP, Kafka), puis suspend et réactive une instance. Dans l'interface en
-  français, le catalogue des connecteurs reste en anglais : issue [#106](https://github.com/superjojo79/Myrmacta/issues/106).
-  C9 et S12 seront régénérés après sa correction.
+  plusieurs types (REST avec OAuth2, IMAP, SFTP, Kafka), puis suspend et réactive une instance. Le catalogue des
+  connecteurs était en anglais dans l'interface française : issue [#106](https://github.com/superjojo79/Myrmacta/issues/106),
+  corrigée par #108 pendant la clôture. C9 et S12 ont été régénérés avec le catalogue traduit.
 - **C10** relit puis publie le brouillon MCP de la table de routage ; la confirmation native est acceptée par le
   tournage. Le journal des publications nomme la personne par son identifiant technique (sujet OIDC), pas par son nom.
 
@@ -94,3 +97,37 @@ Vitest couvre ce chargement.
   maintenant dans la langue de l'interface. Un test Vitest couvre ce cas.
 - Contrôle de mutation des PR : un test modifié fait aussi muter les sources qu'il importe. `src/api/workflows.ts`
   (28,57 %, seuil 53) a reçu ses propres tests : 98,41 %.
+
+**Lot 4 (C11, C12, screenshots).**
+
+- **C11** montre un groupe créé avec son membre, puis « Mes tâches » sur un téléphone. Un plan marqué
+  `"device": "mobile"` est filmé à la taille du téléphone (390×844, dans un contexte de navigateur à part : Playwright ne
+  règle pas la taille de la vidéo par groupe de tests). Le montage le met à la hauteur de l'image et le centre sur le bleu
+  nuit des cartons, sans l'étirer (`assemble.py`, `video_filter(mobile=True)`).
+- **C12** : `scripts/video/recette_bundle.py` fait avancer hors champ le paquet exporté, comme une recette : un groupe
+  ACHATS et un champ « Bon de commande » sur FACTURE. Il réécrit le SHA-256 de chaque artefact du manifeste. Le film
+  importe ce paquet (plan à blanc, puis application). Le détail du plan et du rapport vient du serveur, en anglais, dans
+  les deux langues.
+- **S3** : le concepteur de parcours, avec l'éditeur BPMN et sa palette en vignette. L'éditeur est photographié d'abord,
+  puis posé en image (produit inchangé, comme D-VIDEO-PIP).
+- **S5** : le paquet « états » ajoute un modèle de lettre actif, `accuse-facture` (`StatesDemoPack.LETTER`,
+  `StatesDemoPackIT`). Le screenshot ouvre une nouvelle version en édition, à côté de son aperçu.
+  - Il se prend avec Edge, dans un fichier à part, `screenshots-pdf.capture.ts`.
+  - Le lecteur PDF d'une iframe ne sort pas dans une capture d'écran. Le PDF est donc demandé au serveur avec le même
+    contenu et les mêmes valeurs, photographié seul (contexte à l'échelle 1), puis posé à la place de l'iframe.
+- Les anciennes sorties `S03-editeur-bpmn.png` et `S05-gabarit.png` ne sont plus produites.
+
+**Défaut corrigé au tournage (lot 4).** Sur « Mes tâches » (mobile), les étiquettes « À prendre » et « SLA dans… » se
+collaient. Une marge les sépare désormais (CSS, vérifié à l'image).
+
+**Revue de clôture (2026-11-16, revue indépendante).** Aucun constat critique, haut ni moyen.
+
+- Constats bas corrigés :
+  - un modèle de lettre laissé en brouillon par une installation interrompue est maintenant activé à la reprise
+    (`StatesDemoPackInstallTest`) ;
+  - une Javadoc était mal placée.
+- Constat bas hors périmètre, sur le sélecteur d'exécutions (§141) : issue
+  [#110](https://github.com/superjojo79/Myrmacta/issues/110).
+- Textes du serveur en anglais dans l'écran Promotion : [#111](https://github.com/superjojo79/Myrmacta/issues/111).
+- Le journal des publications de brouillons affiche un UUID au lieu du nom :
+  [#112](https://github.com/superjojo79/Myrmacta/issues/112).

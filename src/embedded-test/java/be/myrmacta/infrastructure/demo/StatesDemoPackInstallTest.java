@@ -10,6 +10,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import be.myrmacta.domain.document.model.DocumentTemplate;
+import be.myrmacta.domain.document.model.TemplateStatus;
+import be.myrmacta.domain.document.port.in.ActivateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.in.ListDocumentTemplateUseCase;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
 import be.myrmacta.domain.dossier.model.DossierType;
@@ -18,6 +23,7 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.shared.PageResult;
 import be.myrmacta.domain.workflow.model.DmnDraft;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.domain.workflow.port.out.DmnDraftRepository;
@@ -50,6 +56,9 @@ class StatesDemoPackInstallTest {
     private final ProposeDraftUseCase drafts = mock(ProposeDraftUseCase.class);
     private final DmnDraftRepository draftRepository = mock(DmnDraftRepository.class);
     private final OnboardingDemoPack onboarding = mock(OnboardingDemoPack.class);
+    private final CreateDocumentTemplateUseCase createTemplate = mock(CreateDocumentTemplateUseCase.class);
+    private final ListDocumentTemplateUseCase listTemplates = mock(ListDocumentTemplateUseCase.class);
+    private final ActivateDocumentTemplateUseCase activateTemplate = mock(ActivateDocumentTemplateUseCase.class);
     private final PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
     private final List<Dossier> factures = new ArrayList<>();
     private final AtomicReference<DossierType> facture = new AtomicReference<>(type("FACTURE", null));
@@ -81,7 +90,13 @@ class StatesDemoPackInstallTest {
         when(draftRepository.findByTenantIdAndDecisionKey(TENANT, StatesDemoPack.ROUTING)).thenReturn(Optional.empty());
         when(onboarding.incidentReady()).thenReturn(true);
         pack = new StatesDemoPack("exemples/digital-mail-room", "fr", JsonMapper.builder().build(), new TenantProperties(TENANT),
-                types, updateType, createDossier, updateStatus, dossiers, drafts, draftRepository, onboarding, transactions);
+                types, updateType, createDossier, updateStatus, dossiers, drafts, draftRepository, onboarding,
+                createTemplate, activateTemplate, listTemplates, transactions);
+        // Le modèle de lettre (TODO §140) est déjà là : une reprise ne le recrée pas.
+        DocumentTemplate active = mock(DocumentTemplate.class);
+        when(active.status()).thenReturn(TemplateStatus.ACTIVE);
+        when(listTemplates.list(eq(TENANT), eq(StatesDemoPack.LETTER), eq(false), any()))
+                .thenReturn(new PageResult<>(List.of(active), 0, 1, 1, 1));
     }
 
     @Test
@@ -97,6 +112,7 @@ class StatesDemoPackInstallTest {
         int created = factures.size();
         assertThatThrownBy(pack::install).hasMessageContaining("draft failed");
         assertThat(factures).as("rejouer ne duplique pas les factures déjà créées").hasSize(created);
+        verify(createTemplate, never()).create(any());
     }
 
     @Test
@@ -127,5 +143,23 @@ class StatesDemoPackInstallTest {
         Instant now = Instant.parse("2026-11-12T12:00:00Z");
         return new Dossier(UUID.randomUUID(), TENANT, "DOS-" + UUID.randomUUID().toString().substring(0, 8), "FACTURE", label,
                 DossierStatus.OUVERT, java.util.Map.of(), null, 0L, "demo", now, "demo", now, null, null, null);
+    }
+
+    @Test
+    void aLetterLeftAsADraftByAnInterruptedInstallIsActivatedOnTheNextRun() {
+        // Revue de clôture de #58 : créé puis interrompu avant l'activation, le modèle restait en brouillon.
+        UUID draftId = UUID.randomUUID();
+        DocumentTemplate draft = mock(DocumentTemplate.class);
+        when(draft.status()).thenReturn(TemplateStatus.DRAFT);
+        when(draft.id()).thenReturn(draftId);
+        when(listTemplates.list(eq(TENANT), eq(StatesDemoPack.LETTER), eq(false), any()))
+                .thenReturn(new PageResult<>(List.of(draft), 0, 20, 1, 1));
+        when(drafts.proposeDmn(any(), any(), any(), any(), any(), anyBoolean()))
+                .thenThrow(new IllegalStateException("draft failed"));
+
+        assertThatThrownBy(pack::install).hasMessageContaining("draft failed");
+
+        verify(createTemplate, never()).create(any());
+        verify(activateTemplate).activate(eq(draftId), eq(TENANT), any());
     }
 }

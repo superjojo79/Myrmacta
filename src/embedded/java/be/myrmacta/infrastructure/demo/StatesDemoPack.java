@@ -1,5 +1,10 @@
 package be.myrmacta.infrastructure.demo;
 
+import be.myrmacta.domain.document.model.DocumentTemplate;
+import be.myrmacta.domain.document.model.TemplateStatus;
+import be.myrmacta.domain.document.port.in.ActivateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.in.CreateDocumentTemplateUseCase;
+import be.myrmacta.domain.document.port.in.ListDocumentTemplateUseCase;
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.Dossier;
 import be.myrmacta.domain.dossier.model.DossierStatus;
@@ -9,6 +14,7 @@ import be.myrmacta.domain.dossier.port.in.UpdateDossierStatusUseCase;
 import be.myrmacta.domain.dossier.port.in.UpdateDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.dossier.port.out.DossierTypeRepository;
+import be.myrmacta.domain.shared.PageQuery;
 import be.myrmacta.domain.workflow.model.Provenance;
 import be.myrmacta.domain.workflow.port.in.ProposeDraftUseCase;
 import be.myrmacta.domain.workflow.port.out.DmnDraftRepository;
@@ -52,6 +58,8 @@ public class StatesDemoPack implements DemoPack {
     private static final String ACTOR = "demo-etats";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
     static final String ROUTING = "routageCourrier";
+    /** TODO §140 — clé du modèle de lettre du paquet (screenshot S5). */
+    static final String LETTER = "accuse-facture";
     /** Alias for assertions in embedded tests — source of truth : {@link be.myrmacta.domain.workflow.DmnXmlVersions}. */
     static final String DMN_11 = be.myrmacta.domain.workflow.DmnXmlVersions.DMN_11_NAMESPACE;
     static final String DMN_13 = be.myrmacta.domain.workflow.DmnXmlVersions.DMN_13_NAMESPACE;
@@ -83,6 +91,9 @@ public class StatesDemoPack implements DemoPack {
     private final ProposeDraftUseCase drafts;
     private final DmnDraftRepository draftRepository;
     private final OnboardingDemoPack onboarding;
+    private final CreateDocumentTemplateUseCase createTemplate;
+    private final ActivateDocumentTemplateUseCase activateTemplate;
+    private final ListDocumentTemplateUseCase listTemplates;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
@@ -90,7 +101,8 @@ public class StatesDemoPack implements DemoPack {
             @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, UpdateDossierTypeUseCase updateType,
             CreateDossierUseCase createDossier, UpdateDossierStatusUseCase updateStatus, DossierRepository dossiers,
             ProposeDraftUseCase drafts, DmnDraftRepository draftRepository, OnboardingDemoPack onboarding,
-            PlatformTransactionManager transactionManager) {
+            CreateDocumentTemplateUseCase createTemplate, ActivateDocumentTemplateUseCase activateTemplate,
+            ListDocumentTemplateUseCase listTemplates, PlatformTransactionManager transactionManager) {
         this.mailRoomExample = new DemoExample(Path.of(mailRoomDir), locale, json);
         this.tenant = tenant;
         this.types = types;
@@ -101,6 +113,9 @@ public class StatesDemoPack implements DemoPack {
         this.drafts = drafts;
         this.draftRepository = draftRepository;
         this.onboarding = onboarding;
+        this.createTemplate = createTemplate;
+        this.activateTemplate = activateTemplate;
+        this.listTemplates = listTemplates;
         this.transaction = new TransactionTemplate(transactionManager);
         this.clock = Clock.systemUTC();
     }
@@ -136,8 +151,10 @@ public class StatesDemoPack implements DemoPack {
         if (!onboarding.incidentReady()) {
             throw new IllegalStateException("demo: SIRH incident missing, routing draft not proposed");
         }
+        letterTemplate();
         proposeRoutingDraft();
-        log.info("demo: states installed ({} invoices over four weeks, 1 incident, 1 MCP draft)", HISTORY.size());
+        log.info("demo: states installed ({} invoices over four weeks, 1 incident, 1 letter template, 1 MCP draft)",
+                HISTORY.size());
     }
 
     private void slaTarget(String code, int hours) {
@@ -176,6 +193,45 @@ public class StatesDemoPack implements DemoPack {
     private void status(Dossier dossier, DossierStatus target) {
         transaction.executeWithoutResult(status -> updateStatus.update(
                 new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(dossier.id(), target, ACTOR, null), ADMIN));
+    }
+
+    /**
+     * TODO §140 (screenshot S5 de #58) — un modèle de lettre actif : l'accusé de réception d'une facture, avec ses
+     * variables Thymeleaf. Une installation reprise ne le recrée pas : si seul un brouillon existe (création réussie,
+     * activation interrompue), il est activé (revue de clôture de #58).
+     */
+    private void letterTemplate() {
+        List<DocumentTemplate> versions = listTemplates.list(tenant.id(), LETTER, false, PageQuery.of(0, 20)).content();
+        if (versions.stream().anyMatch(t -> t.status() == TemplateStatus.ACTIVE)) {
+            return;
+        }
+        DocumentTemplate letter = versions.stream().filter(t -> t.status() == TemplateStatus.DRAFT).findFirst()
+                .orElseGet(() -> createTemplate.create(new CreateDocumentTemplateUseCase.CreateCommand(LETTER, null, null,
+                        mailRoomExample.text("Accusé de réception de facture", "Invoice acknowledgement"), letterHtml(),
+                        ACTOR)));
+        if (letter.status() != TemplateStatus.ACTIVE) {
+            activateTemplate.activate(letter.id(), tenant.id(), ACTOR);
+        }
+    }
+
+    private String letterHtml() {
+        return mailRoomExample.english()
+                ? """
+                  <h1>Invoice acknowledgement</h1>
+                  <p>Dear Sir or Madam,</p>
+                  <p>We acknowledge receipt of your invoice <strong><span th:text="${numeroFacture}">2026-117</span></strong>
+                  received on <span th:text="${dateReception}">11/11/2026</span>, for <span th:text="${montant}">1,250.00 EUR</span>.</p>
+                  <p>It will be paid within <span th:text="${delaiJours}">30</span> days.</p>
+                  <p>Accounts department</p>
+                  """
+                : """
+                  <h1>Accusé de réception de facture</h1>
+                  <p>Madame, Monsieur,</p>
+                  <p>Nous accusons réception de votre facture <strong><span th:text="${numeroFacture}">2026-117</span></strong>
+                  reçue le <span th:text="${dateReception}">11/11/2026</span>, d'un montant de <span th:text="${montant}">1 250,00 EUR</span>.</p>
+                  <p>Elle sera réglée dans un délai de <span th:text="${delaiJours}">30</span> jours.</p>
+                  <p>Le service comptabilité</p>
+                  """;
     }
 
     /** Une règle de plus dans la table de routage : les factures de l'imprimerie vont aussi à la comptabilité. */

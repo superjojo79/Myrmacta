@@ -1,5 +1,5 @@
 {
-  "_commentaire": "Capsule courte C9 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c09-connecteurs.film.ts, sur la démo complète. Aucun connecteur n'est créé (un connecteur entrant se mettrait à relever) : les formulaires des types sont montrés, et une instance est suspendue puis réactivée. Les libellés du catalogue sont encore en anglais en FR (issue #106) : capsule à régénérer après.",
+  "_commentaire": "Capsule courte C9 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c09-connecteurs.film.ts, sur la démo complète. Aucun connecteur n'est créé (un connecteur entrant se mettrait à relever) : les formulaires des types sont montrés, et une instance est suspendue puis réactivée.",
   "id": "c09-connecteurs",
   "format": "short",
   "title": { "fr": "Brancher vos applications", "en": "Connect your applications" },

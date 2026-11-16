@@ -1,6 +1,6 @@
 // TODO §140 (D-VIDEO-SHORT, issue #58) — capsule courte C9 « Brancher vos applications », sur la démo complète. Aucun
 // connecteur n'est créé (un connecteur entrant se mettrait à relever) : on parcourt les formulaires de quelques types,
-// puis une instance de la démo est suspendue et réactivée. Libellés du catalogue en anglais en FR : issue #106.
+// puis une instance de la démo est suspendue et réactivée.
 import { expect, test } from '@playwright/test'
 import { opening, plan, scrollTo, shortCapsule, underTheHood } from './short'
 

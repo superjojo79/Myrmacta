@@ -3,10 +3,9 @@
 // restaurée. Préparés hors champ par l'API : le parcours « demandeAcces » et une version 2 de la table au délai fautif.
 // Le brouillon MCP de la table (paquet « états ») n'est pas touché : la capsule C10 le publie.
 import { expect, test, type Page } from '@playwright/test'
-import { api, en, opening, plan, scrollTo, shortCapsule, underTheHood } from './short'
+import { api, DEMO_JOURNEY as PARCOURS, demoJourney, en, opening, plan, scrollTo, shortCapsule, underTheHood } from './short'
 
 const capsule = shortCapsule('c02-flux')
-const PARCOURS = 'demandeAcces'
 const DECISION = 'delaiTraitement'
 const CASE = { typeDossier: 'FACTURE', montant: 450 }
 
@@ -69,35 +68,6 @@ async function evaluate(page: Page, deadline: number): Promise<void> {
 const RESULT_STYLE = '.dmn-editor__rows { white-space: pre-wrap; font-size: 22px; font-weight: 600; padding: 8px 12px; '
   + 'background: #e7f5ff; border-left: 5px solid #4cc9f0; }'
 
-/**
- * Un parcours d'exemple : validation du manager, décision, validation des accès. Sans type de dossier : celui des
- * arrivées lance déjà son propre processus, et le concepteur le signalerait par un avertissement.
- */
-function journey() {
-  const t = (fr: string, english: string) => (en ? english : fr)
-  return {
-    label: t("Demande d'accès", 'Access request'),
-    definition: {
-      statuses: [
-        { code: 'VALIDATION', label: t('En validation', 'Under review'), initial: true, outcome: 'NONE' },
-        { code: 'ACCORDE', label: t('Accordé', 'Granted'), initial: false, outcome: 'COMPLETED' },
-        { code: 'REFUSE', label: t('Refusé', 'Refused'), initial: false, outcome: 'CANCELLED' },
-      ],
-      allowedDossierStatuses: ['OUVERT', 'EN_COURS'],
-      onStartDossierStatus: 'EN_COURS',
-      steps: [
-        { id: 'validation', label: t('Le manager valide', 'The manager approves'), kind: 'QUESTION', params: { schemaKey: 'validation-manager-onboarding' }, next: 'decision' },
-        { id: 'decision', label: t('Approuvée ?', 'Approved?'), kind: 'DECISION', params: {},
-          branches: [{ variable: 'decisionManager', operator: 'EQ', value: 'APPROUVER', next: 'acces' }], defaultNext: 'refus' },
-        { id: 'acces', label: t("L'IT valide les accès", 'IT approves the access'), kind: 'QUESTION', params: { schemaKey: 'validation-acces-onboarding' }, next: 'accorde' },
-        { id: 'accorde', label: t('Accès accordés', 'Access granted'), kind: 'SET_WORKFLOW_STATUS', params: { targetWorkflowStatus: 'ACCORDE' }, next: 'cloture' },
-        { id: 'cloture', label: t('Clôturer le dossier', 'Close the case'), kind: 'SET_DOSSIER_STATUS', params: { targetDossierStatus: 'CLOTURE' } },
-        { id: 'refus', label: t('Demande refusée', 'Request refused'), kind: 'SET_WORKFLOW_STATUS', params: { targetWorkflowStatus: 'REFUSE' } },
-      ],
-    },
-  }
-}
-
 test('ouverture', async ({ page }) => {
   await opening(capsule, page)
 })
@@ -107,7 +77,7 @@ test('parcours', async ({ page }) => {
   await d.goto('/admin/parcours')
   const existing = await page.request.get(`/api/parcours/${PARCOURS}`)
   if (!existing.ok()) {
-    await api(page, 'PUT', `/api/parcours/${PARCOURS}`, { ...journey(), expectedVersion: null })
+    await api(page, 'PUT', `/api/parcours/${PARCOURS}`, { ...demoJourney(), expectedVersion: null })
     await d.reload()
   }
   await d.beat(1.2)

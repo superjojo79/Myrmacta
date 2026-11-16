@@ -3,7 +3,7 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] ouvert (2026-11-15, issue [#58](https://github.com/superjojo79/Myrmacta/issues/58), vague `vague-vitrine`). Cadrage
-validé par l'utilisateur le 2026-11-15. Livraison en quatre lots. Lot 1 (PR #102) : mode court du pipeline, capsules C1 et C8. Lot 2 : C2, C3 et C4.
+validé par l'utilisateur le 2026-11-15. Livraison en quatre lots. Lot 1 (PR #102) : mode court du pipeline, capsules C1 et C8. Lot 2 (PR #105) : C2, C3 et C4. Lot 3 : C7, C9 et C10.
 Prolonge [§128](128-capsules-video-du-site.md) (outillage des capsules) et [§136](136-capsule-video-onboarding.md)
 (une capsule par fichier JSON, un dossier de sortie par capsule). Build `embedded-db` et outillage de développement
 seulement, jamais en production. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
@@ -73,3 +73,24 @@ en cours ; C8 cadre sur les champs « Provisioning » après le rejeu.
 s'affichait sans grille ni contrôles, et la police d'icônes manquait (screenshot S4 compris). `DmnEditorCanvas.vue`
 charge désormais les feuilles de dmn-js avec le modeleur, comme le fait `BpmnEditorCanvas.vue` pour bpmn-js. Un test
 Vitest couvre ce chargement.
+
+**Lot 3 (C7, C9, C10).**
+
+- **C7** montre le rapport SLA (factures antidatées du paquet « états ») et le *réglage* des alertes de franchissement et
+  de l'export BI. Ces deux envois partent à intervalle, au plus tôt une heure après l'activation pour l'export
+  (`RunBiExportUseCaseImpl.isDue`) : la capsule ne promet pas un envoi à l'écran.
+- **C9 ne crée aucun connecteur** : un connecteur entrant se mettrait à relever. Elle parcourt les formulaires de
+  plusieurs types (REST avec OAuth2, IMAP, SFTP, Kafka), puis suspend et réactive une instance. Dans l'interface en
+  français, le catalogue des connecteurs reste en anglais : issue [#106](https://github.com/superjojo79/Myrmacta/issues/106).
+  C9 et S12 seront régénérés après sa correction.
+- **C10** relit puis publie le brouillon MCP de la table de routage ; la confirmation native est acceptée par le
+  tournage. Le journal des publications nomme la personne par son identifiant technique (sujet OIDC), pas par son nom.
+
+**Défauts corrigés au tournage (lot 3).**
+
+- Liste « Types catalogue » des connecteurs : les noms se collaient (« …interrogation)Kafka… »). Ils sont maintenant
+  séparés par « · ». Un test Vitest couvre ce cas.
+- Rapport SLA en anglais : la ligne sans gestionnaire gardait le libellé du serveur, « Non assignés ». L'écran la nomme
+  maintenant dans la langue de l'interface. Un test Vitest couvre ce cas.
+- Contrôle de mutation des PR : un test modifié fait aussi muter les sources qu'il importe. `src/api/workflows.ts`
+  (28,57 %, seuil 53) a reçu ses propres tests : 98,41 %.

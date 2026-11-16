@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C10 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c10-brouillons.film.ts, sur la démo complète : le brouillon MCP de la table de routage (paquet « états », agent « demo-etats ») est relu puis publié. C2 ne déploie jamais cette table : un déploiement retirerait le brouillon.",
+  "id": "c10-brouillons",
+  "format": "short",
+  "title": { "fr": "Un assistant IA qui travaille sous contrôle", "en": "An AI assistant that works under control" },
+  "underTheHood": {
+    "fr": ["MCP : l'agent propose un brouillon", "Provenance, auteur et écart visibles avant publication", "Publication par une personne, journalisée"],
+    "en": ["MCP: the agent proposes a draft", "Origin, author and diff visible before publishing", "Published by a person, logged"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "brouillon",
+      "title": { "fr": "Le brouillon", "en": "The draft" },
+      "captions": {
+        "fr": ["Un agent IA a proposé, par MCP, une règle de routage pour l'imprimerie.", "Sa proposition attend en brouillon : origine, auteur et écart avec la version en ligne."],
+        "en": ["An AI agent proposed, through MCP, a routing rule for the print shop.", "Its proposal waits as a draft: origin, author and diff with the live version."]
+      }
+    },
+    {
+      "id": "publication",
+      "title": { "fr": "La publication", "en": "Publishing" },
+      "captions": {
+        "fr": ["Une personne relit et publie : la publication est journalisée.", "La nouvelle règle est en ligne dans la table de décision."],
+        "en": ["A person reviews and publishes: the publication is logged.", "The new rule is live in the decision table."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

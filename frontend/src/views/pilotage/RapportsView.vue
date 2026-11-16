@@ -223,7 +223,7 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-for="row in report.managerLoads" :key="row.assigneeId ?? 'unassigned'">
-              <td>{{ row.displayName }}</td>
+              <td>{{ row.assigneeId == null ? t('reports.unassignedRow') : row.displayName }}</td>
               <td>{{ row.inProgress }}</td>
               <td>{{ row.overdue }}</td>
               <td>{{ row.slaPercent == null ? '—' : t('reports.percent', { n: row.slaPercent }) }}</td>

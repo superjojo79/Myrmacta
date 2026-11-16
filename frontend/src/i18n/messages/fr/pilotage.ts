@@ -36,6 +36,7 @@ export default {
     schedule: "Planifier l'envoi",
     soon: 'Bientôt',
     deadLetterJobs: 'Jobs en dead-letter',
+    unassignedRow: 'Non assignés',
     unassignedTasks: 'Tâches ouvertes sans assigné',
     biExports: 'Exports BI',
     noBiExport: "Aucun fichier pour l'instant.",

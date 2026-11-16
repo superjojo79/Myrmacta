@@ -37,6 +37,8 @@ const form = ref({
 const configValues = ref<FormValues>({})
 
 const catalogueLoaded = computed(() => definitions.value.length > 0)
+/** Les types du catalogue, séparés (sans séparateur, leurs noms se collaient). */
+const catalogueTypes = computed(() => definitions.value.map((def) => def.label || def.type).join(' · '))
 const activeSchema = computed(() => schemaOf(definitions.value, form.value.connectorType))
 
 watch(
@@ -130,7 +132,7 @@ const { t } = useI18n()
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="definitions.length" class="defs">
       {{ t('admin.connectors.catalogTypes') }}
-      <span v-for="def in definitions" :key="def.type">{{ def.label || def.type }} </span>
+      {{ catalogueTypes }}
     </p>
     <form class="admin-form" data-testid="connector-create-form" @submit.prevent="create">
       <input v-model="form.name" :placeholder="t('admin.connectors.namePlaceholder')" required />

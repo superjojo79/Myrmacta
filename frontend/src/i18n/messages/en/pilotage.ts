@@ -38,6 +38,7 @@ const pilotage: typeof fr = {
     schedule: 'Schedule delivery',
     soon: 'Coming soon',
     deadLetterJobs: 'Dead-letter jobs',
+    unassignedRow: 'Unassigned',
     unassignedTasks: 'Open tasks without assignee',
     biExports: 'BI exports',
     noBiExport: 'No file yet.',

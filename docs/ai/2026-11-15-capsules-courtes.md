@@ -80,11 +80,11 @@ Issue : #58 · Spec du domaine : docs/specs/47-postgresql-embarque-tests-demo.md
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1 | Mode court (voix, montage, video.sh), C1 « dossier de bout en bout », C8 « une panne n'arrête pas le dossier » ; défaut du changement de type dans « Nouveau dossier » corrigé | livré | #102 |
-| 2 | C2 (parcours, BPMN, DMN testé puis restauré), C3 (question au bon moment), C4 (courriers PDF) ; styles dmn-js chargés par l'éditeur DMN | livré | (cette PR) |
-| 3 | C7 (délais, SLA, export BI), C9 (connecteurs), C10 (brouillons MCP) | à faire | |
+| 2 | C2 (parcours, BPMN, DMN testé puis restauré), C3 (question au bon moment), C4 (courriers PDF) ; styles dmn-js chargés par l'éditeur DMN | livré | #105 |
+| 3 | C7 (délais, SLA, export BI), C9 (connecteurs), C10 (brouillons MCP) ; séparateur du catalogue, ligne « non assignés » traduite | livré | (cette PR) |
 | 4 | C11 (groupes, mobile), C12 (promotion), screenshots S1 à S15 sans S13, issue C5/C6/S13, clôture | à faire | |
 
-Prochaine action : PR du lot 2, puis lot 3 (C7, C9, C10). C10 publie le brouillon MCP de la table de routage : C2 ne doit jamais déployer cette table.
+Prochaine action : PR du lot 3, puis lot 4 (C11, C12, screenshots S1 à S15 sans S13 avec S3 et S5 alignés, revue, clôture). Issues ouvertes en route : #101 (C5, C6, S13), #103 (processus terminé), #106 (catalogue des connecteurs). À signaler à la clôture : le journal des publications nomme la personne par son UUID.
 
 ## Preuves
 
@@ -97,6 +97,8 @@ Prochaine action : PR du lot 2, puis lot 3 (C7, C9, C10). C10 publie le brouillo
 | 2026-11-15 | `scripts/video.sh capsule c01-dossier` et `c08-panne`, FR et EN, sur démo fraîche | 4/4 plans par capsule ; MP4 1920×1080 sans audio, 33,7 à 34,4 s ; contrôle image par image |
 | 2026-11-15 | Lot 2 : `./mvnw verify` ; `npm run lint && npm run test:all` ; pytest ; `check-docs` | 5209 tests, 0 échec ; Vitest 1133/1133, Playwright 201/201 ; 19 passed ; ok |
 | 2026-11-15 | `scripts/video.sh capsule c02-flux`, `c03-question` et `c04-courrier`, FR et EN, sur des démos fraîches | MP4 muets : C2 61,4/60,7 s, C3 31,7/30,6 s, C4 36,2/35,6 s ; contrôle image par image |
+| 2026-11-16 | Lot 3 : `./mvnw verify` ; `npm run lint && npm run test:all` ; pytest ; `check-docs` ; Stryker sur les 6 modules d'API visés | 5209 tests, 0 échec ; Vitest 1151/1151, Playwright 201/201 ; 19 passed ; ok ; 60,87 % (seuil 53) |
+| 2026-11-16 | `scripts/video.sh capsule c07-delais`, `c09-connecteurs` et `c10-brouillons`, FR et EN, sur des démos fraîches | MP4 muets : C7 34,6/32,7 s, C9 39,2/37,8 s, C10 33,2/31,2 s ; contrôle image par image |
 
 ## Revue de clôture
 

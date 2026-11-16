@@ -87,7 +87,9 @@ final class DemoExample {
     private static final Pattern DESCRIPTION_OR_TAG = Pattern.compile(
             "<(description|documentation)>([^<]*)</\\1>|<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)");
 
-    private static final Pattern ATTRIBUTE = Pattern.compile("(\\s)(name|label)(\\s*=\\s*)\"([^\"]*)\"");
+    /** TODO §147 — {@code flowable:portalTitle} se traduit comme {@code name}/{@code label} (libellé citoyen). */
+    private static final Pattern ATTRIBUTE =
+            Pattern.compile("(\\s)(name|label|flowable:portalTitle)(\\s*=\\s*)\"([^\"]*)\"");
 
     /** Éléments dont le {@code name} est un code lu par le moteur (nom local, sans préfixe d'espace de noms). */
     static final Set<String> CODE_NAMED = Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");

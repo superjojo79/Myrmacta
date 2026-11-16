@@ -38,7 +38,7 @@ flowchart LR
   D([Demande introduite]) --> I[Instruire la demande]
   I -- AUTORISER --> A[Autorisée]
   I -- REFUSER --> R[Refusée]
-  I -- DEMANDER_INFOS --> S[Dossier suspendu] --> C[Compléments du demandeur]
+  I -- DEMANDER_INFOS --> S[Dossier suspendu] --> C[Informations complémentaires / portail]
   C -- réponse : le délai repart --> I
   I -. 30 jours .-> T[Autorisée tacitement]
   C -. 30 jours .-> RS[Refusée sans réponse]

@@ -31,7 +31,8 @@ class DemoTranslationsTest {
     private static final ObjectMapper JSON = JsonMapper.builder().build();
     private static final Set<String> TEXT_KEYS = Set.of("label", "helpText", "group", "subject", "textBody", "htmlBody");
     private static final Pattern TAG = Pattern.compile("<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*\"[^\"]*\")*)");
-    private static final Pattern ATTRIBUTE = Pattern.compile("\\s(name|label)\\s*=\\s*\"([^\"]*)\"");
+    /** TODO §147 — {@code flowable:portalTitle} est un texte visible (comme name/label). */
+    private static final Pattern ATTRIBUTE = Pattern.compile("\\s(name|label|flowable:portalTitle)\\s*=\\s*\"([^\"]*)\"");
     /** Comme {@code DemoExample} : le {@code name} de ces éléments est un code, jamais traduit. */
     private static final Set<String> CODE_NAMED =
             Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");

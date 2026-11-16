@@ -66,14 +66,14 @@ public final class GetPortalTaskUseCaseImpl implements GetPortalTaskUseCase {
         PortalAccessResolver.ResolvedAccess access = accessResolver.resolveAllowingPendingIdentity(credential);
         if (access.identityRequired() && access.identity() == null) {
             // TODO §104 (T3b) — avant l'authentification : référence et nom de la tâche, rien d'autre.
-            return new PortalTaskView(access.dossier().reference(), access.task().name(), null, null, List.of(),
+            return new PortalTaskView(access.dossier().reference(), access.citizenTaskTitle(), null, null, List.of(),
                     access.link().expiresAt(), List.of(), true, identityProviders.providers(), null);
         }
         TaskQuestionSchema schema = schemaRepository.findByKey(tenantId, access.link().schemaKey())
                 .orElseThrow(() -> new PortalAccessDeniedException("schema gone for link " + access.link().id()));
         return new PortalTaskView(
                 access.dossier().reference(),
-                access.task().name(),
+                access.citizenTaskTitle(),
                 access.task().instructions(),
                 schema.label(),
                 schema.fields(),

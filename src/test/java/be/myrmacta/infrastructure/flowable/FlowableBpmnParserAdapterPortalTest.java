@@ -32,6 +32,35 @@ class FlowableBpmnParserAdapterPortalTest {
     }
 
     @Test
+    void portalTitle_isExtractedAndUsedAsCitizenTitle() {
+        // TODO §147 / issue #120 — D-PORTAL-TITLE
+        byte[] xml = bpmn("<userTask id=\"tiers\" name=\"Compléments du demandeur (portail)\""
+                + " flowable:formKey=\"user-question:avis\""
+                + " flowable:portalRecipient=\"dossierField:email\""
+                + " flowable:portalTitle=\"Informations complémentaires\"/>");
+
+        adapter.extractProcessDefinitionKey(xml);
+        PortalTaskDefinition task = adapter.extractPortalTasks(xml).getFirst();
+        assertThat(task.portalTitle()).isEqualTo("Informations complémentaires");
+        assertThat(task.titleForCitizen("Compléments du demandeur (portail)"))
+                .isEqualTo("Informations complémentaires");
+        assertThat(new PortalTaskDefinition(
+                        "tiers", "avis",
+                        new PortalRecipientSource(PortalRecipientSource.Kind.DOSSIER_FIELD, "email"), null)
+                .titleForCitizen("Avis du tiers"))
+                .isEqualTo("Avis du tiers");
+    }
+
+    @Test
+    void portalTitleWithoutRecipient_isRejected() {
+        byte[] xml = bpmn("<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\""
+                + " flowable:portalTitle=\"Titre\"/>");
+        assertThatThrownBy(() -> adapter.extractProcessDefinitionKey(xml))
+                .isInstanceOf(InvalidBpmnException.class)
+                .hasMessageContaining("portalTitle requires portalRecipient");
+    }
+
+    @Test
     void externalTaskInSubProcess_isExtracted_andTtlIsOptional() {
         byte[] xml = bpmn("<subProcess id=\"sub\"><startEvent id=\"s2\"/>"
                 + "<userTask id=\"tiers\" flowable:formKey=\"user-question:avis\" flowable:portalRecipient=\"variable:mail\"/>"

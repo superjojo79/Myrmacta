@@ -64,7 +64,7 @@ class PortalPieceTypesTest {
                 Map.of(), null, 0L, "u", NOW, null, null, null, null, null);
         when(resolver.resolve(PortalCredential.of("tok", null))).thenReturn(new PortalAccessResolver.ResolvedAccess(
                 link, new PortalTaskLookupPort.OpenTask("t", "pi", "T", null), dossier, null, null,
-                List.of("preuve", "retire")));
+                List.of("preuve", "retire"), "T"));
         when(typeRepository.findByCode("tenant_dev", "PERMIS")).thenReturn(Optional.of(new DossierType(
                 UUID.randomUUID(), "tenant_dev", "PERMIS", "Permis", "wf", true, false, List.of(), null, false, null,
                 List.of(), List.of(new PieceType("preuve", "Preuve", false), new PieceType("identite", "ID", true)),

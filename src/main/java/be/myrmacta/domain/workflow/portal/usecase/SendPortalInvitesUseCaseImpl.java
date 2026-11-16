@@ -87,12 +87,16 @@ public final class SendPortalInvitesUseCaseImpl implements SendPortalInvitesUseC
         String dossierReference = dossierRepository.findById(link.dossierId())
                 .map(d -> d.reference())
                 .orElse("");
+        // TODO §147 — titre citoyen (portalTitle) dans l'e-mail ; repli sur le name BPMN.
+        String citizenTitle = taskLookup.findExternalTaskDefinition(link.taskId())
+                .map(definition -> definition.titleForCitizen(task.get().name()))
+                .orElse(task.get().name());
         String token = tokenPort.newToken();
         java.time.Instant sentAt = clock.instant();
         PortalLink activated = link.activated(tokenPort.hash(token), sentAt);
         try {
             senderPort.send(link, token, new PortalInviteSenderPort.InviteContext(
-                    task.get().name(), dossierReference, activated.expiresAt()));
+                    citizenTitle, dossierReference, activated.expiresAt()));
         } catch (RuntimeException ex) {
             PortalLink failed = link.sendFailed(maxAttempts);
             if (repository.transition(link, failed) && failed.status() == PortalLinkStatus.NOT_SENT) {

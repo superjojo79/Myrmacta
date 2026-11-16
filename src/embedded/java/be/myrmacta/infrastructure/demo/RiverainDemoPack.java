@@ -46,8 +46,9 @@ import tools.jackson.databind.ObjectMapper;
  * TODO §143 (issue #101) — profil {@value #PROFILE} : la scène des capsules C5 (portail) et C6 (pré-vérification IA) et
  * du screenshot S13. L'exemple {@code exemples/autorisation-riverain} est installé par les vrais cas d'usage, dans l'ordre
  * de mise en service de son README : type (avec ses types de pièces), questionnaires, configuration du workflow, modèle de
- * décision et gabarit de demande d'informations, activés, puis la variante du processus <em>avec portail</em> (le profil
- * exige {@code app.portal.enabled}). La capsule C6 publie elle-même la variante avec pré-vérification (même clé). Hors de
+ * décision et gabarit de demande d'informations, activés, puis une variante du processus, traduite comme le reste :
+ * {@code app.demo.riverain.variant} vaut {@code portal} (C5, S13 ; exige {@code app.portal.enabled}) ou
+ * {@code preverification} (C6 ; exige {@code app.precheck.enabled}). Les deux partagent la même clé. Hors de
  * la démo complète (§127 : l'exemple en a été retiré) ; jamais dans le jar de production ({@code src/embedded}).
  */
 @Component
@@ -58,6 +59,7 @@ public class RiverainDemoPack implements DemoPack {
     static final String TYPE = "AUTORISATION_RIVERAIN";
     static final String PROCESS = "autorisationRiverain";
     static final String PORTAL_VARIANT = "autorisation-riverain.bpmn20.xml";
+    static final String PRECHECK_VARIANT = "autorisation-riverain-preverification.bpmn20.xml";
     private static final int ORDER = 40;
     private static final String ACTOR = "demo-riverain";
     private static final AccessContext.User ADMIN = AccessContext.user(ACTOR, Set.of("TENANT_ADMIN", "WORKFLOW_ADMIN"));
@@ -80,8 +82,10 @@ public class RiverainDemoPack implements DemoPack {
     private final ListNotificationTemplateUseCase listNotifications;
     private final DeployBpmnProcessUseCase deployBpmn;
     private final RepositoryService repository;
+    private final String variant;
 
     public RiverainDemoPack(@Value("${app.demo.riverain.dir:exemples/autorisation-riverain}") String dir,
+            @Value("${app.demo.riverain.variant:portal}") String variant,
             @Value("${app.demo.locale:fr}") String locale, ObjectMapper json, TenantProperties tenant,
             DossierTypeRepository types, CreateDossierTypeUseCase createType, SaveTaskQuestionSchemaUseCase saveQuestions,
             TaskQuestionSchemaRepository questionSchemas, SaveWorkflowTypeConfigUseCase saveConfig,
@@ -107,6 +111,12 @@ public class RiverainDemoPack implements DemoPack {
         this.listNotifications = listNotifications;
         this.deployBpmn = deployBpmn;
         this.repository = repository;
+        this.variant = switch (variant) {
+            case "portal" -> PORTAL_VARIANT;
+            case "preverification" -> PRECHECK_VARIANT;
+            default -> throw new IllegalArgumentException(
+                    "demo: unknown riverain variant '" + variant + "' (app.demo.riverain.variant: portal or preverification)");
+        };
     }
 
     @Override
@@ -157,9 +167,9 @@ public class RiverainDemoPack implements DemoPack {
         }
         decisionTemplate();
         informationRequestTemplate();
-        // En dernier : le déploiement exige le modèle de décision actif et le portail activé.
-        deployBpmn.deploy(PORTAL_VARIANT, example.xml(PORTAL_VARIANT).getBytes(StandardCharsets.UTF_8));
-        log.info("demo: riverain example installed (portal variant)");
+        // En dernier : le déploiement exige le modèle de décision actif, et le portail ou la pré-vérification activés.
+        deployBpmn.deploy(variant, example.xml(variant).getBytes(StandardCharsets.UTF_8));
+        log.info("demo: riverain example installed ({})", variant);
     }
 
     /** Le modèle du document de décision, actif ; sa variante anglaise est {@code en/template-decision.html}. */
@@ -180,12 +190,15 @@ public class RiverainDemoPack implements DemoPack {
     private void informationRequestTemplate() {
         JsonNode gabarit = example.json("config/gabarit-demande-informations.json");
         String key = gabarit.get("templateKey").asString();
-        if (!listNotifications.list(key, PageQuery.of(0, 1)).content().isEmpty()) {
+        // Comme le modèle de décision : une installation interrompue entre la création et l'activation est reprise.
+        var versions = listNotifications.list(key, PageQuery.of(0, 20)).content();
+        if (versions.stream().anyMatch(t -> t.status() == TemplateStatus.ACTIVE)) {
             return;
         }
-        var template = createNotification.create(new CreateNotificationTemplateUseCase.CreateCommand(key, null, null,
-                gabarit.get("label").asString(), gabarit.get("subject").asString(), gabarit.get("textBody").asString(),
-                gabarit.get("htmlBody").asString(), ACTOR));
+        var template = versions.stream().filter(t -> t.status() == TemplateStatus.DRAFT).findFirst()
+                .orElseGet(() -> createNotification.create(new CreateNotificationTemplateUseCase.CreateCommand(key, null, null,
+                        gabarit.get("label").asString(), gabarit.get("subject").asString(),
+                        gabarit.get("textBody").asString(), gabarit.get("htmlBody").asString(), ACTOR)));
         activateNotification.activate(template.id(), ACTOR);
     }
 

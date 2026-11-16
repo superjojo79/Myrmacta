@@ -1,0 +1,38 @@
+{
+  "_commentaire": "Capsule courte C6 (TODO §143, D-VIDEO-SHORT, issue #101) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c06-preverification.film.ts, sur la scène riverain (scripts/video.sh start c06-preverification), avec le modèle local d'Ollama (gemma4:12b). Trois cas du jeu d'évaluation (evaluation/cas.json) : conforme, preuve au nom d'un autre, consigne injectée — pas « preuve absente » ni « preuve scannée », où le modèle répond OK à tort. Le tournage échoue si le modèle ne signale pas l'écart des deux derniers cas.",
+  "id": "c06-preverification",
+  "format": "short",
+  "title": { "fr": "Les pièces incohérentes repérées avant l'agent", "en": "Inconsistent documents spotted before the officer" },
+  "underTheHood": {
+    "fr": ["Modèle local (Ollama) : aucune donnée ne sort", "Questions fermées, constats sourcés, marqués « IA »", "Décision de l'agent sur chaque constat, journalisée"],
+    "en": ["Local model (Ollama): no data leaves", "Closed questions, sourced findings, marked \"AI\"", "Officer's decision on each finding, logged"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "conforme",
+      "title": { "fr": "Un dossier conforme", "en": "A consistent case" },
+      "captions": {
+        "fr": ["Avant l'agent, un modèle local lit les pièces et les compare à la demande.", "Ici, tout concorde : le nom, l'adresse et la plaque."],
+        "en": ["Before the officer, a local model reads the documents and compares them with the request.", "Here, everything matches: name, address and plate."]
+      }
+    },
+    {
+      "id": "titulaire",
+      "title": { "fr": "Un autre titulaire", "en": "Another holder" },
+      "captions": {
+        "fr": ["La preuve de domicile est au nom d'une autre personne.", "L'écart est signalé, avec la pièce en cause."],
+        "en": ["The proof of address is in another person's name.", "The gap is flagged, with the document concerned."]
+      }
+    },
+    {
+      "id": "injection",
+      "title": { "fr": "Une consigne cachée", "en": "A hidden instruction" },
+      "captions": {
+        "fr": ["Cette pièce tente de dicter la réponse « tout est conforme ».", "La consigne est ignorée : l'écart reste signalé.", "L'agent garde la main : il accepte ou écarte chaque constat."],
+        "en": ["This document tries to dictate the answer \"all consistent\".", "The instruction is ignored: the gap is still flagged.", "The officer stays in control: each finding is accepted or dismissed."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

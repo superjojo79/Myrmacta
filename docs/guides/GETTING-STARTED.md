@@ -701,11 +701,16 @@ mail-servers`), et pour C6 un Ollama local avec le modèle `gemma4:12b` (`APP_PR
 
 1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
    c05-portail`. Le journal se termine par `demo: pack 'riverain' installed`. Le portail et la pré-vérification sont
-   activés par la scène.
+   activés par la scène, qui déploie la variante du processus avec portail.
 2. **C5 et S13** : `APP_DEMO_LOCALE=fr scripts/video.sh capsule c05-portail`. La capsule sort dans
    `frontend/capture/out/film/c05-portail/<langue>/`, le screenshot dans `frontend/capture/out/<langue>/S13-portail-mobile.png`.
    La plaque du dossier d'exemple est unique : pour refaire C5, repartir d'une base vide.
-3. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
+3. **C6** : sur une scène fraîche lancée pour elle (`scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr
+   scripts/video.sh start c06-preverification` : la scène déploie alors la variante du processus avec pré-vérification),
+   `APP_DEMO_LOCALE=fr scripts/video.sh capsule c06-preverification`. Le modèle local
+   pré-vérifie trois demandes, une à une : comptez quelques minutes d'attente, coupées au montage. Le tournage échoue si le
+   modèle ne signale pas les écarts attendus ; changer de modèle avec `APP_PRECHECK_MODEL`.
+4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
 
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 

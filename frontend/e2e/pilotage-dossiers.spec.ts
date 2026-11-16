@@ -869,11 +869,14 @@ function precheckRun(id: string, overrides: Record<string, unknown> = {}) {
     finishedAt: '2026-10-26T09:00:05Z',
     findings: [
       { id: 'f1', kind: 'MISSING', origin: 'DETERMINISTIC', sourceType: 'FIELD', sourceRef: 'telephone',
-        message: 'Champ obligatoire manquant : Téléphone.', confidence: null, decision: null, decidedBy: null, decidedAt: null },
+        message: 'Champ obligatoire manquant : Téléphone.', confidence: null, decision: null, decidedBy: null,
+        decidedByDisplayName: null, decidedAt: null },
       { id: 'f2', kind: 'INCONSISTENT', origin: 'MODEL', sourceType: 'QUESTION', sourceRef: 'adresse',
-        message: 'La rue de la preuve diffère de celle du formulaire.', confidence: 0.8, decision: null, decidedBy: null, decidedAt: null },
+        message: 'La rue de la preuve diffère de celle du formulaire.', confidence: 0.8, decision: null, decidedBy: null,
+        decidedByDisplayName: null, decidedAt: null },
       { id: 'f3', kind: 'TO_CHECK', origin: 'MODEL', sourceType: 'PIECE', sourceRef: 'preuveDomicile',
-        message: 'La date de la facture est peu lisible.', confidence: 0.4, decision: null, decidedBy: null, decidedAt: null },
+        message: 'La date de la facture est peu lisible.', confidence: 0.4, decision: null, decidedBy: null,
+        decidedByDisplayName: null, decidedAt: null },
     ],
     ...overrides,
   }
@@ -901,7 +904,12 @@ test('E2E-PRECHECK-1 an agent reads the AI-marked findings, accepts two, dismiss
     const { decision } = route.request().postDataJSON() as { decision: string | null }
     decisions.push({ findingId, decision })
     const finding = runs.find((r) => r.id === 'r1')!.findings.find((f) => f.id === findingId)!
-    Object.assign(finding, { decision, decidedBy: 'user-1', decidedAt: '2026-10-26T09:30:00Z' })
+    Object.assign(finding, {
+      decision,
+      decidedBy: '0ff88b55-6d18-4e2a-9c01-abcdef012345',
+      decidedByDisplayName: 'Alice Dupont',
+      decidedAt: '2026-10-26T09:30:00Z',
+    })
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(finding) })
   })
   await openApp(page)
@@ -923,7 +931,8 @@ test('E2E-PRECHECK-1 an agent reads the AI-marked findings, accepts two, dismiss
   await expect(findings.nth(1)).toHaveAttribute('data-decision', 'ACCEPTED')
   await panel.getByRole('button', { name: 'Écarter le constat : La date de la facture est peu lisible.' }).click()
   await expect(findings.nth(2)).toHaveAttribute('data-decision', 'DISMISSED')
-  await expect(findings.nth(2).getByTestId('precheck-decision')).toContainText('Écarté par user-1')
+  await expect(findings.nth(2).getByTestId('precheck-decision')).toContainText('Écarté par Alice Dupont')
+  await expect(findings.nth(2).getByTestId('precheck-decision')).not.toContainText(/0ff88b55-6d18/)
   expect(decisions).toEqual([
     { findingId: 'f1', decision: 'ACCEPTED' },
     { findingId: 'f2', decision: 'ACCEPTED' },

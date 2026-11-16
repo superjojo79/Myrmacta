@@ -161,6 +161,7 @@ class RiverainPrecheckExampleIT {
                 .andExpect(jsonPath("$.inputSha256").isString())
                 .andExpect(jsonPath("$.run.findings[0].decision").value("ACCEPTED"))
                 .andExpect(jsonPath("$.run.findings[0].decidedBy").value(AGENT))
+                .andExpect(jsonPath("$.run.findings[0].decidedByDisplayName").value(AGENT))
                 .andExpect(jsonPath("$.run.findings[1].decision").value("ACCEPTED"))
                 .andExpect(jsonPath("$.run.findings[3].decision").value("DISMISSED"));
     }

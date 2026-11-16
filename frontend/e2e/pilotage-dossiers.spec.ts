@@ -151,6 +151,126 @@ test('E2E-VIZ-ENDED-2 selecting another workflow link reloads its history', asyn
   await expect(page.getByText('Diagramme indisponible')).toHaveCount(0)
 })
 
+/** Issue #110 — une réponse lente du lien précédent n'écrase pas le lien sélectionné. */
+test('E2E-VIZ-STALE-1 slow previous-link response does not overwrite the selected run', async ({ page }) => {
+  const otherLinkId = '33333333-3333-3333-3333-333333333333'
+  let releaseLink1History!: () => void
+  const link1HistoryHeld = new Promise<void>((resolve) => {
+    releaseLink1History = resolve
+  })
+  await mockSession(page, { dossierStatus: 'CLOTURE', withEndedLink: true })
+  await page.route(`**/api/dossiers/${DOSSIER_ID}/workflows**`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            id: LINK_ID,
+            dossierId: DOSSIER_ID,
+            tenantId: 'tenant_dev',
+            processInstanceId: 'pi-1',
+            processDefinitionKey: 'claimWorkflow',
+            sequence: 1,
+            status: 'PROVISIONNE',
+            triggerRef: null,
+            startedAt: '2026-08-12T00:00:00Z',
+            endedAt: '2026-08-12T02:00:00Z',
+            endReason: 'COMPLETED',
+            startedBy: 'user-1',
+          },
+          {
+            id: otherLinkId,
+            dossierId: DOSSIER_ID,
+            tenantId: 'tenant_dev',
+            processInstanceId: 'pi-2',
+            processDefinitionKey: 'claimWorkflow',
+            sequence: 2,
+            status: 'COMPLETED',
+            triggerRef: null,
+            startedAt: '2026-08-13T00:00:00Z',
+            endedAt: '2026-08-13T03:00:00Z',
+            endReason: 'COMPLETED',
+            startedBy: 'user-1',
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${LINK_ID}/history**`, async (route) => {
+    await link1HistoryHeld
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            activityId: 'smokeTask',
+            name: 'Smoke Task',
+            assignee: 'user-1',
+            startTime: '2026-08-12T00:00:00Z',
+            endTime: '2026-08-12T00:01:00Z',
+            durationMs: 60_000,
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/history**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        envelope([
+          {
+            activityId: 'otherTask',
+            name: 'Other Run Task',
+            assignee: null,
+            startTime: '2026-08-13T00:00:00Z',
+            endTime: '2026-08-13T00:01:00Z',
+            durationMs: 60_000,
+          },
+        ]),
+      ),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/diagram**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        bpmnXml:
+          '<?xml version="1.0"?><definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" id="Defs"><process id="P" isExecutable="true"><startEvent id="start"/></process></definitions>',
+        activeIds: [],
+        completedIds: ['start'],
+        failedIds: [],
+      }),
+    })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/tasks**`, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(envelope([])) })
+  })
+  await page.route(`**/api/workflow-links/${otherLinkId}/incidents**`, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  })
+  await openApp(page)
+  await page.goto(`./dossiers/${DOSSIER_ID}`)
+  await expect(page.locator('.history-timeline')).toContainText('Other Run Task')
+
+  const staleHistory = page.waitForResponse(
+    (r) => r.url().includes(`/api/workflow-links/${LINK_ID}/history`) && r.ok(),
+  )
+  await page.getByTestId(`workflow-link-${LINK_ID}`).click()
+  await page.getByTestId(`workflow-link-${otherLinkId}`).click()
+  await expect(page.locator('.history-timeline')).toContainText('Other Run Task')
+
+  releaseLink1History()
+  await staleHistory
+  await expect(page.locator('.history-timeline')).toContainText('Other Run Task')
+  await expect(page.locator('.history-timeline')).not.toContainText('Smoke Task')
+})
+
 /** TODO §131 (D-HISTORY-SIGNIFICANT) — frise : noms métier, pas d'ids techniques flow_… (contrat API filtré). */
 test('E2E-HISTORY-1 timeline shows named significant steps only', async ({ page }) => {
   await mockSession(page)

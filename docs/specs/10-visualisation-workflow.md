@@ -354,6 +354,11 @@ sélectionnée ; s'il n'y en a pas, c'est la plus récente.
 > PI terminée : `activeIds` vide, `completedIds` = chemin parcouru ; `/history` reste filtré
 > (§131). Preuves : `FlowableWorkflowVisualizationAdapterTest#getDiagram_finishedProcess_*`,
 > assertions post-`complete` dans `WorkflowApiTest`, Playwright `E2E-VIZ-ENDED-1`.
+>
+> **Garde stale (issue #110).** Avant d'écrire `diagram` / `history` / `tasks` / `incidents`, le
+> store vérifie que `currentLinkId` est encore le lien demandé : une réponse HTTP lente d'une
+> exécution précédente n'écrase pas la visualisation affichée. Preuves : Vitest
+> `loadVisualization ignores a slower response…`, Playwright `E2E-VIZ-STALE-1`.
 
 ```
 Historique des workflows — Dossier DOS-SINISTRE-2024-000042

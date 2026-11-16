@@ -191,3 +191,42 @@ def test_the_capsules_are_well_formed():
             assert set(capsule["underTheHood"]) == {"fr", "en"}, path.name
         for chapter in capsule["chapters"]:
             assert len(chapter[key]["fr"]) == len(chapter[key]["en"]), f"{path.name} {chapter['id']}"
+
+
+def test_a_mobile_chapter_is_centred_on_a_16_by_9_background_instead_of_stretched():
+    phone = assemble.video_filter([(0.0, 3.0, 1.0)], 0.5, mobile=True)
+    assert "scale=-2:1080" in phone and "pad=1920:1080:(ow-iw)/2:0:color=" in phone
+    assert "scale=1920:1080" not in phone
+    desktop = assemble.video_filter([(0.0, 3.0, 1.0)], 0.5)
+    assert "scale=1920:1080" in desktop and ",pad=" not in desktop
+
+
+import recette_bundle  # noqa: E402
+
+
+def test_the_recette_bundle_adds_a_group_and_a_field_and_keeps_the_manifest_true(tmp_path):
+    import hashlib
+    import json
+    import zipfile
+
+    facture = {"code": "FACTURE", "label": "Facture fournisseur", "fieldDefinitions": [{"name": "expediteur", "label": "Fournisseur"}]}
+    source = tmp_path / "prod.zip"
+    with zipfile.ZipFile(source, "w") as z:
+        body = json.dumps(facture).encode()
+        z.writestr("dossier-types/FACTURE.json", body)
+        z.writestr("manifest.json", json.dumps({"formatVersion": 2, "sourceLabel": "production", "artifacts": [
+            {"key": "FACTURE", "path": "dossier-types/FACTURE.json", "type": "DOSSIER_TYPE",
+             "sha256": hashlib.sha256(body).hexdigest()}]}))
+    target = tmp_path / "recette.zip"
+    recette_bundle.run(source, target, "fr")
+    with zipfile.ZipFile(target) as z:
+        manifest = json.loads(z.read("manifest.json"))
+        assert manifest["sourceLabel"] == "recette"
+        for artifact in manifest["artifacts"]:
+            assert artifact["sha256"] == hashlib.sha256(z.read(artifact["path"])).hexdigest()
+        fields = json.loads(z.read("dossier-types/FACTURE.json"))["fieldDefinitions"]
+        assert [f["name"] for f in fields] == ["expediteur", "bonCommande"]
+        group = json.loads(z.read("user-groups/ACHATS.json"))
+        assert group == {"code": "ACHATS", "label": "Achats", "idpGroup": None}
+        assert {"key": "ACHATS", "path": "user-groups/ACHATS.json", "type": "USER_GROUP"}.items() <= next(
+            a for a in manifest["artifacts"] if a["key"] == "ACHATS").items()

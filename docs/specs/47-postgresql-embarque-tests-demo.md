@@ -104,7 +104,14 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   - C7 `c07-delais` : rapport SLA, réglage des alertes de franchissement et de l'export BI ;
   - C8 `c08-panne` : incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning ;
   - C9 `c09-connecteurs` : formulaires de plusieurs types de connecteurs, instance suspendue puis réactivée ;
-  - C10 `c10-brouillons` : brouillon MCP de la table de routage relu, publié, puis visible dans la table en ligne.
+  - C10 `c10-brouillons` : brouillon MCP de la table de routage relu, publié, puis visible dans la table en ligne ;
+  - C11 `c11-equipes` : groupe créé avec son membre, puis « Mes tâches » sur mobile. Un plan `"device": "mobile"` est
+    filmé à la taille d'un téléphone et centré sur un fond sombre au montage ;
+  - C12 `c12-promotion` : export de la configuration, paquet avancé hors champ par `scripts/video/recette_bundle.py`,
+    puis import (plan à blanc, application).
+- **Screenshots** (§127, §140) : S1 à S15 sans S13 (issue #101). S3 pose l'éditeur BPMN en vignette sur le concepteur de
+  parcours. S5 (`capture/screenshots-pdf.capture.ts`, Edge) montre le modèle de lettre `accuse-facture` du paquet
+  « états » à côté de son aperçu PDF.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

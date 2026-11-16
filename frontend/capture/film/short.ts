@@ -50,6 +50,38 @@ export async function underTheHood(capsule: ShortCapsule, page: Page): Promise<v
   await director.wrap(order)
 }
 
+/** Clé du parcours d'exemple (capsule C2, screenshot S3). */
+export const DEMO_JOURNEY = 'demandeAcces'
+
+/**
+ * Un parcours d'exemple : validation du manager, décision, validation des accès. Sans type de dossier : celui des
+ * arrivées lance déjà son propre processus, et le concepteur le signalerait par un avertissement.
+ */
+export function demoJourney() {
+  const t = (fr: string, english: string) => (en ? english : fr)
+  return {
+    label: t("Demande d'accès", 'Access request'),
+    definition: {
+      statuses: [
+        { code: 'VALIDATION', label: t('En validation', 'Under review'), initial: true, outcome: 'NONE' },
+        { code: 'ACCORDE', label: t('Accordé', 'Granted'), initial: false, outcome: 'COMPLETED' },
+        { code: 'REFUSE', label: t('Refusé', 'Refused'), initial: false, outcome: 'CANCELLED' },
+      ],
+      allowedDossierStatuses: ['OUVERT', 'EN_COURS'],
+      onStartDossierStatus: 'EN_COURS',
+      steps: [
+        { id: 'validation', label: t('Le manager valide', 'The manager approves'), kind: 'QUESTION', params: { schemaKey: 'validation-manager-onboarding' }, next: 'decision' },
+        { id: 'decision', label: t('Approuvée ?', 'Approved?'), kind: 'DECISION', params: {},
+          branches: [{ variable: 'decisionManager', operator: 'EQ', value: 'APPROUVER', next: 'acces' }], defaultNext: 'refus' },
+        { id: 'acces', label: t("L'IT valide les accès", 'IT approves the access'), kind: 'QUESTION', params: { schemaKey: 'validation-acces-onboarding' }, next: 'accorde' },
+        { id: 'accorde', label: t('Accès accordés', 'Access granted'), kind: 'SET_WORKFLOW_STATUS', params: { targetWorkflowStatus: 'ACCORDE' }, next: 'cloture' },
+        { id: 'cloture', label: t('Clôturer le dossier', 'Close the case'), kind: 'SET_DOSSIER_STATUS', params: { targetDossierStatus: 'CLOTURE' } },
+        { id: 'refus', label: t('Demande refusée', 'Request refused'), kind: 'SET_WORKFLOW_STATUS', params: { targetWorkflowStatus: 'REFUSE' } },
+      ],
+    },
+  }
+}
+
 /** Appel d'API de la session filmée ; le BFF exige l'en-tête CSRF recopié du cookie XSRF-TOKEN. */
 export async function api<T = unknown>(page: Page, method: 'GET' | 'POST' | 'PATCH' | 'PUT', url: string, data?: unknown,
   headers: Record<string, string> = {}): Promise<T> {

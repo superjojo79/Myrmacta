@@ -598,6 +598,9 @@ Les screenshots du site sont produits par des scripts Playwright à part (`front
 
    Sortie : `frontend/capture/out/fr/` (non versionnée), en 1440×900 avec une densité de 2, S15 en vue mobile. Le script
    se connecte avec `demo` / `demo` (`CAPTURE_USER`, `CAPTURE_PASSWORD`) ; `CAPTURE_BASE_URL` vise une autre instance.
+   S5 (aperçu PDF) se prend avec Microsoft Edge, présent sur tout poste Windows. Ailleurs, l'installer avec
+   `npx playwright install msedge`. Prendre les captures **avant** de tourner les capsules courtes, qui modifient la démo
+   (C8 rejoue l'incident, C10 publie le brouillon).
 5. **En anglais** : arrêter la démo, `scripts/demo.sh reset --yes`, `APP_DEMO_LOCALE=en scripts/demo.sh start`, puis
    `CAPTURE_LANG=en npm run capture`.
 

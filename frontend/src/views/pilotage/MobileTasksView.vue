@@ -116,6 +116,10 @@ async function take(task: MyWorkflowTask) {
   font-size: 0.85rem;
   opacity: 0.7;
 }
+/* « À prendre » puis le délai : sans marge, les deux étiquettes se collaient (« …groupe)SLA dans… »). */
+.tasks-view__list em + em {
+  margin-left: 0.5rem;
+}
 .tasks-view__actions {
   display: flex;
   gap: 0.5rem;

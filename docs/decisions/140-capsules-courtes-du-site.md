@@ -6,7 +6,7 @@
 validé par l'utilisateur le 2026-11-15. Livré en quatre lots : lot 1 (PR #102), mode court du pipeline, C1 et C8 ; lot 2 (PR #105), C2, C3 et C4 ; lot 3
 (PR #109), C7, C9 et C10 ; lot 4 (PR de clôture), C11, C12 et les screenshots. Dix capsules et quatorze screenshots, en
 français et en anglais, tous régénérables (`scripts/video.sh shorts`, `npm run capture`). Reportés : C5, C6 et S13
-([#101](https://github.com/superjojo79/Myrmacta/issues/101)). Défauts relevés : #103, #106.
+([#101](https://github.com/superjojo79/Myrmacta/issues/101)). Défauts relevés : #103, #106, #111, #112.
 Prolonge [§128](128-capsules-video-du-site.md) (outillage des capsules) et [§136](136-capsule-video-onboarding.md)
 (une capsule par fichier JSON, un dossier de sortie par capsule). Build `embedded-db` et outillage de développement
 seulement, jamais en production. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
@@ -119,3 +119,15 @@ Vitest couvre ce chargement.
 
 **Défaut corrigé au tournage (lot 4).** Sur « Mes tâches » (mobile), les étiquettes « À prendre » et « SLA dans… » se
 collaient. Une marge les sépare désormais (CSS, vérifié à l'image).
+
+**Revue de clôture (2026-11-16, revue indépendante).** Aucun constat critique, haut ni moyen.
+
+- Constats bas corrigés :
+  - un modèle de lettre laissé en brouillon par une installation interrompue est maintenant activé à la reprise
+    (`StatesDemoPackInstallTest`) ;
+  - une Javadoc était mal placée.
+- Constat bas hors périmètre, sur le sélecteur d'exécutions (§141) : issue
+  [#110](https://github.com/superjojo79/Myrmacta/issues/110).
+- Textes du serveur en anglais dans l'écran Promotion : [#111](https://github.com/superjojo79/Myrmacta/issues/111).
+- Le journal des publications de brouillons affiche un UUID au lieu du nom :
+  [#112](https://github.com/superjojo79/Myrmacta/issues/112).

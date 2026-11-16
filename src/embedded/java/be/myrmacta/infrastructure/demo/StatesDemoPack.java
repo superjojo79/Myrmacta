@@ -195,20 +195,22 @@ public class StatesDemoPack implements DemoPack {
                 new UpdateDossierStatusUseCase.UpdateDossierStatusCommand(dossier.id(), target, ACTOR, null), ADMIN));
     }
 
-    /** Une règle de plus dans la table de routage : les factures de l'imprimerie vont aussi à la comptabilité. */
     /**
      * TODO §140 (screenshot S5 de #58) — un modèle de lettre actif : l'accusé de réception d'une facture, avec ses
-     * variables Thymeleaf. Une installation reprise après un échec ne le recrée pas (clé déjà présente).
+     * variables Thymeleaf. Une installation reprise ne le recrée pas : si seul un brouillon existe (création réussie,
+     * activation interrompue), il est activé (revue de clôture de #58).
      */
     private void letterTemplate() {
-        boolean present = !listTemplates.list(tenant.id(), LETTER, false, PageQuery.of(0, 1)).content().isEmpty();
-        if (present) {
+        List<DocumentTemplate> versions = listTemplates.list(tenant.id(), LETTER, false, PageQuery.of(0, 20)).content();
+        if (versions.stream().anyMatch(t -> t.status() == TemplateStatus.ACTIVE)) {
             return;
         }
-        DocumentTemplate created = createTemplate.create(new CreateDocumentTemplateUseCase.CreateCommand(LETTER, null, null,
-                mailRoomExample.text("Accusé de réception de facture", "Invoice acknowledgement"), letterHtml(), ACTOR));
-        if (created.status() != TemplateStatus.ACTIVE) {
-            activateTemplate.activate(created.id(), tenant.id(), ACTOR);
+        DocumentTemplate letter = versions.stream().filter(t -> t.status() == TemplateStatus.DRAFT).findFirst()
+                .orElseGet(() -> createTemplate.create(new CreateDocumentTemplateUseCase.CreateCommand(LETTER, null, null,
+                        mailRoomExample.text("Accusé de réception de facture", "Invoice acknowledgement"), letterHtml(),
+                        ACTOR)));
+        if (letter.status() != TemplateStatus.ACTIVE) {
+            activateTemplate.activate(letter.id(), tenant.id(), ACTOR);
         }
     }
 
@@ -232,6 +234,7 @@ public class StatesDemoPack implements DemoPack {
                   """;
     }
 
+    /** Une règle de plus dans la table de routage : les factures de l'imprimerie vont aussi à la comptabilité. */
     private void proposeRoutingDraft() {
         String xml = routingWithPrinterRule();
         transaction.executeWithoutResult(status -> drafts.proposeDmn(ADMIN, Provenance.MCP, ROUTING, xml,

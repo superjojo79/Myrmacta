@@ -83,9 +83,9 @@ Vitest couvre ce chargement.
   de l'export BI. Ces deux envois partent à intervalle, au plus tôt une heure après l'activation pour l'export
   (`RunBiExportUseCaseImpl.isDue`) : la capsule ne promet pas un envoi à l'écran.
 - **C9 ne crée aucun connecteur** : un connecteur entrant se mettrait à relever. Elle parcourt les formulaires de
-  plusieurs types (REST avec OAuth2, IMAP, SFTP, Kafka), puis suspend et réactive une instance. Dans l'interface en
-  français, le catalogue des connecteurs reste en anglais : issue [#106](https://github.com/superjojo79/Myrmacta/issues/106).
-  C9 et S12 seront régénérés après sa correction.
+  plusieurs types (REST avec OAuth2, IMAP, SFTP, Kafka), puis suspend et réactive une instance. Le catalogue des
+  connecteurs était en anglais dans l'interface française : issue [#106](https://github.com/superjojo79/Myrmacta/issues/106),
+  corrigée par #108 pendant la clôture. C9 et S12 ont été régénérés avec le catalogue traduit.
 - **C10** relit puis publie le brouillon MCP de la table de routage ; la confirmation native est acceptée par le
   tournage. Le journal des publications nomme la personne par son identifiant technique (sujet OIDC), pas par son nom.
 

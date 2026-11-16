@@ -79,12 +79,12 @@ Issue : #58 · Spec du domaine : docs/specs/47-postgresql-embarque-tests-demo.md
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Mode court (voix, montage, video.sh), C1 « dossier de bout en bout », C8 « une panne n'arrête pas le dossier » ; défaut du changement de type dans « Nouveau dossier » corrigé | livré | (cette PR) |
-| 2 | C2 (parcours, BPMN, DMN testé puis restauré), C3 (question au bon moment), C4 (courriers PDF) | à faire | |
+| 1 | Mode court (voix, montage, video.sh), C1 « dossier de bout en bout », C8 « une panne n'arrête pas le dossier » ; défaut du changement de type dans « Nouveau dossier » corrigé | livré | #102 |
+| 2 | C2 (parcours, BPMN, DMN testé puis restauré), C3 (question au bon moment), C4 (courriers PDF) ; styles dmn-js chargés par l'éditeur DMN | livré | (cette PR) |
 | 3 | C7 (délais, SLA, export BI), C9 (connecteurs), C10 (brouillons MCP) | à faire | |
 | 4 | C11 (groupes, mobile), C12 (promotion), screenshots S1 à S15 sans S13, issue C5/C6/S13, clôture | à faire | |
 
-Prochaine action : PR du lot 1, puis lot 2 (C2, C3, C4). C5, C6 et S13 : issue #101. Défaut relevé, non corrigé : sur un processus terminé, la fiche n'affiche plus ni le diagramme ni l'historique (issue #103).
+Prochaine action : PR du lot 2, puis lot 3 (C7, C9, C10). C10 publie le brouillon MCP de la table de routage : C2 ne doit jamais déployer cette table.
 
 ## Preuves
 
@@ -95,6 +95,8 @@ Prochaine action : PR du lot 1, puis lot 2 (C2, C3, C4). C5, C6 et S13 : issue #
 | 2026-11-15 | `scripts/check-docs.sh` | tous les contrôles ok |
 | 2026-11-15 | `./mvnw verify` | 5209 tests, 0 échec, BUILD SUCCESS (après correctif CRLF de `EidTrustAnchorsTest`) |
 | 2026-11-15 | `scripts/video.sh capsule c01-dossier` et `c08-panne`, FR et EN, sur démo fraîche | 4/4 plans par capsule ; MP4 1920×1080 sans audio, 33,7 à 34,4 s ; contrôle image par image |
+| 2026-11-15 | Lot 2 : `./mvnw verify` ; `npm run lint && npm run test:all` ; pytest ; `check-docs` | 5209 tests, 0 échec ; Vitest 1133/1133, Playwright 201/201 ; 19 passed ; ok |
+| 2026-11-15 | `scripts/video.sh capsule c02-flux`, `c03-question` et `c04-courrier`, FR et EN, sur des démos fraîches | MP4 muets : C2 61,4/60,7 s, C3 31,7/30,6 s, C4 36,2/35,6 s ; contrôle image par image |
 
 ## Revue de clôture
 

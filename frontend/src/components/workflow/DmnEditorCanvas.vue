@@ -61,7 +61,18 @@ async function render() {
   const xml = toDmn13(props.dmnXml || EMPTY_DMN_XML)
 
   if (!modeler) {
-    const { default: DmnModelerCtor } = await import('dmn-js/lib/Modeler')
+    const [{ default: DmnModelerCtor }] = await Promise.all([
+      import('dmn-js/lib/Modeler'),
+      // Feuilles de style de dmn-js (comme BpmnEditorCanvas pour bpmn-js) : sans elles, la table de décision n'a ni
+      // grille ni contrôles, et la police d'icônes manque. Chargées avec l'éditeur seulement.
+      import('dmn-js/dist/assets/diagram-js.css'),
+      import('dmn-js/dist/assets/dmn-js-shared.css'),
+      import('dmn-js/dist/assets/dmn-js-drd.css'),
+      import('dmn-js/dist/assets/dmn-js-decision-table.css'),
+      import('dmn-js/dist/assets/dmn-js-decision-table-controls.css'),
+      import('dmn-js/dist/assets/dmn-js-literal-expression.css'),
+      import('dmn-js/dist/assets/dmn-font/css/dmn.css'),
+    ])
     const Modeler = DmnModelerCtor as unknown as new (options: Record<string, unknown>) => ModelerInstance
 
     modeler = new Modeler({

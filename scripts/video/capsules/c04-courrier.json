@@ -1,0 +1,30 @@
+{
+  "_commentaire": "Capsule courte C4 (TODO §140, D-VIDEO-SHORT, issue #58) : sans son, sous-titres incrustés, en boucle sur le site. Tournage : frontend/capture/film/c04-courrier.film.ts, sur la démo complète ; le modèle « confirmation-arrivee » est créé à l'écran.",
+  "id": "c04-courrier",
+  "format": "short",
+  "title": { "fr": "Des courriers PDF prêts à envoyer", "en": "PDF letters ready to send" },
+  "underTheHood": {
+    "fr": ["Modèles HTML versionnés, variables du dossier", "Rendu PDF côté serveur, aperçu avant usage"],
+    "en": ["Versioned HTML templates, case variables", "Server-side PDF rendering, preview before use"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "modele",
+      "title": { "fr": "Le modèle", "en": "The template" },
+      "captions": {
+        "fr": ["Un modèle de courrier s'écrit comme un document, avec des variables.", "L'aperçu les remplit avec des valeurs d'exemple.", "Le PDF est rendu par le serveur, prêt à joindre ou à envoyer."],
+        "en": ["A letter template is written like a document, with variables.", "The preview fills them with sample values.", "The PDF is rendered by the server, ready to attach or send."]
+      }
+    },
+    {
+      "id": "version",
+      "title": { "fr": "Les versions", "en": "The versions" },
+      "captions": {
+        "fr": ["Chaque modèle est versionné : on active une version, on prépare la suivante.", "Seul un brouillon se modifie : une version active ne bouge plus."],
+        "en": ["Every template is versioned: one version is active, the next one is prepared.", "Only a draft can be edited: an active version no longer changes."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

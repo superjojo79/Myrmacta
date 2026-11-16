@@ -22,7 +22,33 @@ vi.mock('dmn-js/lib/Modeler', () => ({
   },
 }))
 
+// Feuilles de style de dmn-js : sans elles, la table de décision s'affiche sans grille ni contrôles (#58, C2 et S4).
+const loadedStyles = vi.hoisted(() => [] as string[])
+const DMN_STYLES = [
+  'dmn-js/dist/assets/diagram-js.css',
+  'dmn-js/dist/assets/dmn-js-shared.css',
+  'dmn-js/dist/assets/dmn-js-drd.css',
+  'dmn-js/dist/assets/dmn-js-decision-table.css',
+  'dmn-js/dist/assets/dmn-js-decision-table-controls.css',
+  'dmn-js/dist/assets/dmn-js-literal-expression.css',
+  'dmn-js/dist/assets/dmn-font/css/dmn.css',
+] as const
+vi.mock('dmn-js/dist/assets/diagram-js.css', () => (loadedStyles.push('dmn-js/dist/assets/diagram-js.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-js-shared.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-js-shared.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-js-drd.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-js-drd.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-js-decision-table.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-js-decision-table.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-js-decision-table-controls.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-js-decision-table-controls.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-js-literal-expression.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-js-literal-expression.css'), {}))
+vi.mock('dmn-js/dist/assets/dmn-font/css/dmn.css', () => (loadedStyles.push('dmn-js/dist/assets/dmn-font/css/dmn.css'), {}))
+
 describe('DmnEditorCanvas', () => {
+  it('loads the dmn-js style sheets with the modeler, so the decision table has its grid and controls', async () => {
+    mount(DmnEditorCanvas, { props: { dmnXml: '<definitions/>' } })
+    await flushPromises()
+
+    expect([...loadedStyles].sort()).toEqual([...DMN_STYLES].sort())
+  })
+
   it('mounts a dmn-js Modeler and imports the given XML', async () => {
     mount(DmnEditorCanvas, { props: { dmnXml: '<definitions/>' } })
     await flushPromises()

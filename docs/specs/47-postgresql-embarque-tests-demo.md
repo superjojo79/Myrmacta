@@ -94,8 +94,14 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).
   Tournage : `frontend/capture/film/cNN-*.film.ts`, avec les aides de `short.ts` : carton d'ouverture avec le bénéfice,
   carte « Sous le capot » tenue 4,5 s, toutes deux avec le logo. `scripts/video.sh shorts` enchaîne les capsules
-  courtes dans l'ordre. Livrées : C1 `c01-dossier` (création, puis suivi d'une arrivée en cours) et C8 `c08-panne`
-  (incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning).
+  courtes dans l'ordre. Livrées :
+  - C1 `c01-dossier` : création, puis suivi d'une arrivée en cours ;
+  - C2 `c02-flux` : parcours compilé en BPMN, palette de l'éditeur BPMN, table DMN `delaiTraitement` testée puis
+    restaurée ;
+  - C3 `c03-question` : schéma de question avec son aperçu, réponse « à corriger » du manager ;
+  - C4 `c04-courrier` : modèle de document créé, aperçu PDF, activation puis nouvelle version ; tourné avec Edge
+    (lecteur PDF) ;
+  - C8 `c08-panne` : incident SIRH du paquet « états », adresse corrigée sur la fiche, rejeu jusqu'au provisioning.
 - **Code :** sous `src/embedded` seulement, donc absent du jar de production (`scripts/check-no-embedded-db-in-jar.sh`
   refuse `infrastructure/demo/`).
 - **Commandes :** `scripts/demo.sh build | start | reset`.

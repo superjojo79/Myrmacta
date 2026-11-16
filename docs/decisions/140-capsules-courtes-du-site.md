@@ -3,7 +3,7 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] ouvert (2026-11-15, issue [#58](https://github.com/superjojo79/Myrmacta/issues/58), vague `vague-vitrine`). Cadrage
-validé par l'utilisateur le 2026-11-15. Livraison en quatre lots. Lot 1 : mode court du pipeline, capsules C1 et C8.
+validé par l'utilisateur le 2026-11-15. Livraison en quatre lots. Lot 1 (PR #102) : mode court du pipeline, capsules C1 et C8. Lot 2 : C2, C3 et C4.
 Prolonge [§128](128-capsules-video-du-site.md) (outillage des capsules) et [§136](136-capsule-video-onboarding.md)
 (une capsule par fichier JSON, un dossier de sortie par capsule). Build `embedded-db` et outillage de développement
 seulement, jamais en production. Comportement : [spec 47](../specs/47-postgresql-embarque-tests-demo.md) ; procédure :
@@ -52,3 +52,24 @@ refusée (400, « Unknown field »). Le formulaire n'envoie plus que les champs 
 **Défaut relevé, non corrigé ici.** Quand le processus d'un dossier est terminé, la fiche n'affiche plus ni le diagramme
 ni l'historique : issue [#103](https://github.com/superjojo79/Myrmacta/issues/103). Les capsules suivent donc un dossier
 en cours ; C8 cadre sur les champs « Provisioning » après le rejeu.
+
+**Lot 2 (C2, C3, C4).**
+
+- **C2 a sa propre table DMN** (`delaiTraitement`), déployée hors champ en version 1, puis en version 2 avec un délai
+  fautif. Le film la teste, restaure la version 1 et la teste de nouveau. Déployer une table retire son brouillon
+  (D-DESIGN-DRAFT-LIFECYCLE) : la table de routage de la mail room n'est donc pas touchée, et son brouillon MCP reste
+  pour C10. Le parcours d'exemple n'a pas de type de dossier : le type « arrivée » lance déjà son propre processus, et
+  le concepteur afficherait un avertissement.
+- **C3** répond « à corriger » à la validation du manager : le processus reste en cours, et la fiche garde son
+  diagramme (voir #103).
+- **C4 se tourne avec Microsoft Edge** (`test.use({ channel: 'msedge' })`). L'aperçu PDF est une iframe, et le Chromium
+  headless de Playwright n'a pas de lecteur PDF : le cadre restait blanc. Edge est installé sur tout poste Windows.
+- **Styles posés au tournage seulement**, comme la vignette de §136 ; le produit n'est pas modifié :
+  - résultat du testeur DMN agrandi ;
+  - liste des versions de modèles agrandie et remontée au-dessus des sous-titres ;
+  - chemin parcouru et étape en cours remplis dans le diagramme (`highlightPath`, partagé avec la vignette).
+
+**Défaut corrigé au tournage (lot 2).** L'éditeur DMN chargeait dmn-js sans ses feuilles de style : la table de décision
+s'affichait sans grille ni contrôles, et la police d'icônes manquait (screenshot S4 compris). `DmnEditorCanvas.vue`
+charge désormais les feuilles de dmn-js avec le modeleur, comme le fait `BpmnEditorCanvas.vue` pour bpmn-js. Un test
+Vitest couvre ce chargement.

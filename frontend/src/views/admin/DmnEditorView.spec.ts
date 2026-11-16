@@ -11,6 +11,14 @@ const importXML = vi.fn().mockResolvedValue({ warnings: [] })
 const saveXML = vi.fn().mockResolvedValue({ xml: '<definitions><decision id="editedDecision"/></definitions>' })
 const destroy = vi.fn()
 
+// Feuilles de style de dmn-js, chargées avec l'éditeur : simulées comme dans BpmnEditorCanvas.spec.ts.
+vi.mock('dmn-js/dist/assets/diagram-js.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-js-shared.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-js-drd.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-js-decision-table.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-js-decision-table-controls.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-js-literal-expression.css', () => ({}))
+vi.mock('dmn-js/dist/assets/dmn-font/css/dmn.css', () => ({}))
 vi.mock('dmn-js/lib/Modeler', () => ({
   default: class {
     importXML = importXML

@@ -33,7 +33,10 @@ test('publication', async ({ page }) => {
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByTestId(`draft-row-${KEY}`).getByTestId('draft-publish').click()
   await expect(page.getByTestId('drafts-notice')).toBeVisible()
-  await scrollTo(page, page.getByTestId('publications-log'), 'center')
+  const log = page.getByTestId('publications-log')
+  // TODO §145 / #112 — le journal montre le nom (annuaire), pas le sujet OIDC.
+  await expect(log).not.toContainText(/publié par [0-9a-f]{8}-[0-9a-f]{4}-/i)
+  await scrollTo(page, log, 'center')
   await d.beat(2.5)
   await d.goto(`/admin/dmn-editor?decisionKey=${KEY}`)
   await expect(page.locator('.dmn-decision-table-container').first()).toContainText('imprimerie.example')

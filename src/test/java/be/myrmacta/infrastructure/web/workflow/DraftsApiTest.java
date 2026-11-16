@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.DossierStatus;
+import be.myrmacta.domain.user.port.in.RecordUserLoginUseCase;
 import be.myrmacta.domain.workflow.model.Provenance;
 import be.myrmacta.domain.workflow.model.ProposedWorkflowConfig;
 import be.myrmacta.domain.workflow.model.StatusOutcome;
@@ -52,6 +53,9 @@ class DraftsApiTest {
     @Autowired
     private GetWorkflowTypeConfigUseCase getConfig;
 
+    @Autowired
+    private RecordUserLoginUseCase recordUserLogin;
+
     private static RequestPostProcessor user(String id, String role) {
         return oidcLogin()
                 .idToken(t -> t.subject(id).claim("tenant_id", "tenant_dev").claim("email", id + "@example.com"))
@@ -75,7 +79,11 @@ class DraftsApiTest {
     }
 
     private String stamp(String key) throws Exception {
-        var body = mockMvc.perform(get("/api/admin/drafts").with(user("alice", "TENANT_ADMIN")))
+        return stampFor("alice", key);
+    }
+
+    private String stampFor(String subject, String key) throws Exception {
+        var body = mockMvc.perform(get("/api/admin/drafts").with(user(subject, "TENANT_ADMIN")))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var node = tools.jackson.databind.json.JsonMapper.builder().build().readTree(body);
         for (var d : node) {
@@ -114,6 +122,43 @@ class DraftsApiTest {
         mockMvc.perform(get("/api/admin/drafts/publications").with(user("alice", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.artifactKey=='%s')].publishedBy".formatted(key)).value("alice"));
+    }
+
+    @Test
+    void publicationLogShowsPublisherDisplayNameFromDirectoryWithSubjectFallback() throws Exception {
+        // D-DRAFT-PUB-NAME / issue #112 — annuaire D-ASSIGN-DIR, repli sur le sujet si inconnu.
+        String knownSubject = "0ff88b55-6d18-4e2a-9c01-abcdef012345";
+        String unknownSubject = "deadbeef-0000-4000-8000-ffffffffffff";
+        recordUserLogin.record(knownSubject, "Alice Dupont", "alice.dupont@example.com", Set.of("TENANT_ADMIN"));
+
+        String knownKey = key();
+        propose.proposeBpmn(AGENT, Provenance.MCP, knownKey, bpmn(knownKey), CONFIG, false);
+        String knownStamp = stampFor(knownSubject, knownKey);
+        mockMvc.perform(post("/api/admin/drafts/BPMN/%s/publish".formatted(knownKey))
+                        .with(user(knownSubject, "TENANT_ADMIN")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedUpdatedAt\":\"%s\"}".formatted(knownStamp)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publishedBy").value(knownSubject))
+                .andExpect(jsonPath("$.publishedByDisplayName").value("Alice Dupont"));
+
+        String unknownKey = key();
+        propose.proposeBpmn(AGENT, Provenance.MCP, unknownKey, bpmn(unknownKey), CONFIG, false);
+        String unknownStamp = stampFor(unknownSubject, unknownKey);
+        mockMvc.perform(post("/api/admin/drafts/BPMN/%s/publish".formatted(unknownKey))
+                        .with(user(unknownSubject, "TENANT_ADMIN")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expectedUpdatedAt\":\"%s\"}".formatted(unknownStamp)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publishedBy").value(unknownSubject))
+                .andExpect(jsonPath("$.publishedByDisplayName").value(unknownSubject));
+
+        mockMvc.perform(get("/api/admin/drafts/publications").with(user(knownSubject, "TENANT_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.artifactKey=='%s')].publishedByDisplayName".formatted(knownKey))
+                        .value("Alice Dupont"))
+                .andExpect(jsonPath("$[?(@.artifactKey=='%s')].publishedByDisplayName".formatted(unknownKey))
+                        .value(unknownSubject));
     }
 
     @Test

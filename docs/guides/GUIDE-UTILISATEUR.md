@@ -459,7 +459,8 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
 - **Écarter** : supprime le brouillon (définitif).
 - Un agent ne peut pas écraser le brouillon d'un autre auteur sans le demander explicitement.
 - Les brouillons d'agent ou d'assistant non touchés depuis 30 jours sont purgés ; ceux de l'éditeur, jamais.
-- *Dernières publications* : qui a rédigé, qui a publié, quand, quelle version, et si la publication était relue ou **directe**.
+- *Dernières publications* : qui a rédigé, qui a publié (nom de la personne, issu de l'annuaire des utilisateurs
+  déjà connectés ; à défaut son identifiant), quand, quelle version, et si la publication était relue ou **directe**.
 
 ### Promotion de configuration — de la recette à la production (TODO §83, §117)
 

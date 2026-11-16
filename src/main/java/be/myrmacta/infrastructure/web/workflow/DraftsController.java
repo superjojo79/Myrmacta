@@ -1,10 +1,11 @@
 package be.myrmacta.infrastructure.web.workflow;
 
-import be.myrmacta.domain.workflow.model.ConfigPublication;
+import be.myrmacta.domain.user.port.out.KnownUserRepository;
 import be.myrmacta.domain.workflow.model.DraftArtifactType;
 import be.myrmacta.domain.workflow.model.PendingDraft;
 import be.myrmacta.domain.workflow.model.PublicationMode;
 import be.myrmacta.domain.workflow.port.in.ManageDraftsUseCase;
+import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.web.dossier.AccessContextFactory;
 import java.time.Instant;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * TODO §82 (D6) — écran « Brouillons à publier » : liste (provenance, auteur, écart avec la version en ligne), publication par
  * un humain (mode {@code MANUAL}), abandon, journal des publications. Les mêmes cas d'usage que l'outil MCP.
+ * TODO §145 (D-DRAFT-PUB-NAME) — le journal expose aussi le nom du publicateur (annuaire D-ASSIGN-DIR).
  */
 @RestController
 @RequestMapping("/api/admin/drafts")
@@ -31,10 +33,16 @@ class DraftsController {
 
     private final ManageDraftsUseCase manageDrafts;
     private final AccessContextFactory accessContextFactory;
+    private final DraftPublicationResponses publicationResponses;
 
-    DraftsController(ManageDraftsUseCase manageDrafts, AccessContextFactory accessContextFactory) {
+    DraftsController(
+            ManageDraftsUseCase manageDrafts,
+            AccessContextFactory accessContextFactory,
+            TenantProperties tenantProperties,
+            KnownUserRepository knownUserRepository) {
         this.manageDrafts = manageDrafts;
         this.accessContextFactory = accessContextFactory;
+        this.publicationResponses = new DraftPublicationResponses(tenantProperties, knownUserRepository);
     }
 
     @GetMapping
@@ -43,19 +51,20 @@ class DraftsController {
     }
 
     @GetMapping("/publications")
-    List<ConfigPublication> publications(
+    List<ConfigPublicationResponse> publications(
             @RequestParam(required = false, defaultValue = "50") int limit, Authentication authentication) {
-        return manageDrafts.recentPublications(accessContextFactory.user(authentication), limit);
+        return publicationResponses.of(
+                manageDrafts.recentPublications(accessContextFactory.user(authentication), limit));
     }
 
     @PostMapping("/{type}/{key}/publish")
-    ConfigPublication publish(
+    ConfigPublicationResponse publish(
             @PathVariable DraftArtifactType type,
             @PathVariable String key,
             @RequestBody PublishDraftRequest request,
             Authentication authentication) {
-        return manageDrafts.publish(
-                accessContextFactory.user(authentication), type, key, request.expectedUpdatedAt(), PublicationMode.MANUAL);
+        return publicationResponses.of(manageDrafts.publish(
+                accessContextFactory.user(authentication), type, key, request.expectedUpdatedAt(), PublicationMode.MANUAL));
     }
 
     @DeleteMapping("/{type}/{key}")

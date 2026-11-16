@@ -137,13 +137,17 @@ describe('DraftsAdminView (TODO §82, D6)', () => {
         version: 2,
         draftProvenance: 'MCP',
         draftAuthor: 'agent-1',
-        publishedBy: 'alice',
+        publishedBy: '0ff88b55-6d18-4e2a-9c01-abcdef012345',
+        publishedByDisplayName: 'Alice Dupont',
         publishedAt: '2026-10-01T10:00:00Z',
         mode: 'DIRECT',
       },
     ])
     const wrapper = await mountView()
     expect(wrapper.find('[data-testid="drafts-empty"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="publications-log"]').text()).toContain('publication directe, sans relecture')
+    const log = wrapper.get('[data-testid="publications-log"]').text()
+    expect(log).toContain('publication directe, sans relecture')
+    expect(log).toContain('Alice Dupont')
+    expect(log).not.toContain('0ff88b55')
   })
 })

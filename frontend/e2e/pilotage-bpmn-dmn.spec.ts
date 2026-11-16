@@ -827,9 +827,31 @@ test('E2E-PALETTE-7 brique posée sur un diagramme importé sans xmlns:flowable 
 test('E2E-DRAFTS-1 an agent draft is reviewed and published by a human with the reviewed timestamp (D6)', async ({ page }) => {
   await mockSession(page)
   const stamp = '2026-10-01T10:00:00.123456Z'
+  const publisherSubject = '0ff88b55-6d18-4e2a-9c01-abcdef012345'
   let published = false
   await page.route('**/api/admin/drafts/publications**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        published
+          ? [
+              {
+                id: 'p1',
+                artifactType: 'BPMN',
+                artifactKey: 'claim',
+                version: 4,
+                draftProvenance: 'MCP',
+                draftAuthor: 'agent-1',
+                publishedBy: publisherSubject,
+                publishedByDisplayName: 'Alice Dupont',
+                publishedAt: '2026-10-01T10:05:00Z',
+                mode: 'MANUAL',
+              },
+            ]
+          : [],
+      ),
+    }),
   )
   await page.route('**/api/admin/drafts', (route) =>
     route.fulfill({
@@ -870,7 +892,13 @@ test('E2E-DRAFTS-1 an agent draft is reviewed and published by a human with the 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ id: 'p1', version: 4, mode: 'MANUAL' }),
+      body: JSON.stringify({
+        id: 'p1',
+        version: 4,
+        mode: 'MANUAL',
+        publishedBy: publisherSubject,
+        publishedByDisplayName: 'Alice Dupont',
+      }),
     })
   })
   page.on('dialog', (dialog) => dialog.accept())
@@ -885,6 +913,9 @@ test('E2E-DRAFTS-1 an agent draft is reviewed and published by a human with the 
   await row.getByTestId('draft-publish').click()
   await expect(page.getByTestId('drafts-notice')).toContainText('version 4')
   await expect(page.getByTestId('drafts-empty')).toBeVisible()
+  const log = page.getByTestId('publications-log')
+  await expect(log).toContainText('Alice Dupont')
+  await expect(log).not.toContainText(publisherSubject)
 })
 
 test('E2E-PROMO-1 import: dry-run plan first, secrets entered by name and sent only with the apply (D4)', async ({ page }) => {

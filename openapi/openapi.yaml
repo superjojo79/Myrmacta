@@ -2592,7 +2592,7 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/ConfigPublication"
+                $ref: "#/components/schemas/ConfigPublicationResponse"
   /api/admin/configuration/plan:
     post:
       tags:
@@ -4087,7 +4087,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ConfigPublication"
+                  $ref: "#/components/schemas/ConfigPublicationResponse"
   /api/admin/configuration/imports:
     get:
       tags:
@@ -5902,7 +5902,7 @@ components:
         expectedUpdatedAt:
           type: string
           format: date-time
-    ConfigPublication:
+    ConfigPublicationResponse:
       type: object
       properties:
         id:
@@ -5931,6 +5931,8 @@ components:
         draftAuthor:
           type: string
         publishedBy:
+          type: string
+        publishedByDisplayName:
           type: string
         publishedAt:
           type: string

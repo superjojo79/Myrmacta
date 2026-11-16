@@ -176,7 +176,7 @@ onMounted(() => load())
       <p v-if="publications.length === 0">{{ t('admin.drafts.noPublication') }}</p>
       <ul v-else class="drafts-admin__log" data-testid="publications-log">
         <li v-for="p in publications" :key="p.id">
-          {{ t('admin.drafts.logLine', { date: formatDate(p.publishedAt), type: p.artifactType, key: p.artifactKey, version: p.version != null ? `v${p.version} ` : '', author: p.draftAuthor, origin: origin(p.draftProvenance), by: p.publishedBy }) }}
+          {{ t('admin.drafts.logLine', { date: formatDate(p.publishedAt), type: p.artifactType, key: p.artifactKey, version: p.version != null ? `v${p.version} ` : '', author: p.draftAuthor, origin: origin(p.draftProvenance), by: p.publishedByDisplayName || p.publishedBy }) }}
           <em v-if="p.mode === 'DIRECT'">{{ t('admin.drafts.direct') }}</em>
         </li>
       </ul>

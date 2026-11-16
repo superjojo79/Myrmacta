@@ -71,3 +71,11 @@ de démarrage. ArchUnit : la notion de provenance vit dans le domaine, sans dép
 
 `.env.example`, `docs/guides/GETTING-STARTED.md`, `docs/guides/DEPLOIEMENT.md` (propriété de publication),
 `docs/guides/GUIDE-UTILISATEUR.md` (brouillons à publier), `15-serveur-mcp.md`, `CHANGELOG.md` (rupture).
+
+## Implémentation
+
+### Journal des publications — nom du publicateur (TODO §145, issue #112)
+
+`GET|POST /api/admin/drafts…` expose `publishedBy` (sujet OIDC) et `publishedByDisplayName` (nom de
+l'annuaire local D-ASSIGN-DIR, ou le sujet si inconnu). L'écran *Admin → Brouillons* affiche le nom.
+Le canal MCP continue de renvoyer le modèle domaine avec le sujet seul.

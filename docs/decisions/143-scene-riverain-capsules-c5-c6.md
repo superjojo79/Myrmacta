@@ -1,10 +1,11 @@
 # §143 — Scène riverain des capsules C5 et C6 et du screenshot S13
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (2026-11-16, issue [#101](https://github.com/superjojo79/Myrmacta/issues/101), vague `vague-vitrine`).
+[x] clos (2026-11-16, issue [#101](https://github.com/superjojo79/Myrmacta/issues/101), vague `vague-vitrine`).
 Cadrage validé par l'utilisateur le 2026-11-16. C'est la suite de [§140](140-capsules-courtes-du-site.md) : les capsules
-C5 et C6 et le screenshot S13 avaient été reportés, faute de données. Lot 1 (PR #115) : variante anglaise de l'exemple et scène. Lot 2 : C5 et S13.
+C5 et C6 et le screenshot S13 avaient été reportés, faute de données. Livré en trois lots : lot 1 (PR #115), variante anglaise de l'exemple et scène ; lot 2 (PR #116), C5 et S13 ; lot 3
+(PR de clôture), C6.
 Build `embedded-db` et outillage de développement seulement, jamais en production. Comportement :
 [spec 47](../specs/47-postgresql-embarque-tests-demo.md).
 
@@ -65,3 +66,19 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
   les `<documentation>`. Ce sont les consignes affichées sur la fiche et sur le portail ; le portail anglais montrait
   donc une consigne en français. `DemoExample` les traduit désormais, `DemoTranslationsTest` les exige, et les douze
   consignes des trois exemples ont leur traduction dans `en/names.json`.
+
+**Lot 3 (C6).**
+
+- C6 se prépare hors champ, sous une attente coupée au montage :
+  - la variante du processus avec pré-vérification est publiée (même clé que celle de la scène) ;
+  - trois demandes du jeu d'évaluation sont créées : conforme, preuve au nom d'un autre, consigne injectée. Chacune
+    a sa plaque (`1-RIV-101` à `103`), car une seule demande peut être ouverte par plaque ; leurs pièces la reprennent.
+- Le film montre la pré-vérification de chaque fiche, puis l'agent accepte le constat du troisième cas.
+- Le tournage **échoue si le modèle ne signale pas l'écart** des deux derniers cas : les sous-titres l'affirment.
+  `gemma4:12b` les a signalés en FR comme en EN.
+- **Réglages de la scène pour un modèle local.** Le délai est porté à 600 s (`APP_PRECHECK_TIMEOUT_SECONDS`) : Ollama
+  traite les demandes une à une. Le raisonnement du modèle est coupé (`APP_PRECHECK_REASONING_EFFORT=none`) : sinon
+  `gemma4` épuise ses 2000 tokens de sortie à réfléchir, et la réponse coupée n'est pas un JSON valide. C'est le cas
+  décrit dans DEPLOIEMENT, § pré-vérification.
+- En anglais, les pièces et donc les constats du modèle restent en français (hypothèse validée) ; les sous-titres et
+  l'interface sont en anglais.

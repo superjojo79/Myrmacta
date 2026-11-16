@@ -63,7 +63,12 @@ case "${1:-}" in
       scene_env=(APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
         APP_PRECHECK_ENABLED=true APP_PRECHECK_PROVIDER=openai-compatible
         APP_PRECHECK_BASE_URL="${APP_PRECHECK_BASE_URL:-http://localhost:11434/v1}"
-        APP_PRECHECK_MODEL="${APP_PRECHECK_MODEL:-gemma4:12b}")
+        APP_PRECHECK_MODEL="${APP_PRECHECK_MODEL:-gemma4:12b}"
+        # Un modèle local sur un poste traite les demandes une à une : C6 en envoie trois, chacune de une à deux minutes.
+        APP_PRECHECK_TIMEOUT_SECONDS="${APP_PRECHECK_TIMEOUT_SECONDS:-600}"
+        # gemma4 raisonne avant de répondre et épuise sinon les 2000 tokens de sortie : réponse coupée, JSON invalide
+        # (docs/guides/DEPLOIEMENT.md, APP_PRECHECK_REASONING_EFFORT).
+        APP_PRECHECK_REASONING_EFFORT="${APP_PRECHECK_REASONING_EFFORT:-none}")
     fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }

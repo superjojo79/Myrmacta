@@ -117,6 +117,10 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   anglaise (`en/`), y compris les consignes (`<documentation>`) des BPMN. Tests : `RiverainDemoPackIT` (FR et EN),
   `DemoTranslationsTest`, `DemoExampleTest`. Capsule C5 `c05-portail` : demande d'informations, lien dans Mailpit,
   réponse sur le portail mobile sans session, retour sur la fiche ; son tournage produit aussi le screenshot S13.
+  Capsule C6 `c06-preverification` : variante avec pré-vérification publiée hors champ, trois cas du jeu d'évaluation
+  (conforme, autre titulaire, consigne injectée) pré-vérifiés par le modèle local ; le tournage échoue si l'écart des
+  deux derniers n'est pas signalé. La scène fixe `APP_PRECHECK_TIMEOUT_SECONDS=600` et
+  `APP_PRECHECK_REASONING_EFFORT=none`.
 - **Screenshots** (§127, §140) : S1 à S15 sans S13 (issue #101). S3 pose l'éditeur BPMN en vignette sur le concepteur de
   parcours. S5 (`capture/screenshots-pdf.capture.ts`, Edge) montre le modèle de lettre `accuse-facture` du paquet
   « états » à côté de son aperçu PDF.

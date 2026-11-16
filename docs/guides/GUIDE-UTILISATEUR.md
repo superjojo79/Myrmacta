@@ -478,8 +478,10 @@ retirées). Un agent branché au MCP n'écrit **jamais** en ligne par défaut : 
    Le bundle n'est pas signé : transportez-le par un canal de confiance. Ni les ACL ni les réglages du tenant (rétention, SLA, webhooks) n'y figurent.
 2. **Planifier** (sur la production) : déposez le ZIP. Le plan **n'écrit rien** : pour chaque artefact, *Créer*, *Modifier*, *Inchangé*, *Conflit*
    (ex. un type dont le nouveau schéma casserait des dossiers existants — jamais forcé) ou *Bloqué* (secret requis, table DMN à publier d'abord,
-   paramètre manquant, validation refusée), avec la raison.
-   Le plan avertit aussi (`WARNING:` en tête du détail, l'artefact reste appliqué) quand une référence n'existe ni ici ni dans le bundle :
+   paramètre manquant, validation refusée), avec la raison. Cette raison, et le détail du rapport après application, sont dans la langue de
+   l'interface (français ou anglais).
+   Le plan avertit aussi, en tête du détail (`AVERTISSEMENT :` en français, `WARNING:` en anglais ; le journal conserve `WARNING:`),
+   quand une référence n'existe ni ici ni dans le bundle. L'artefact reste appliqué :
    - un groupe nommé par une table de routage, l'attribut `groupeTri` ou un `candidateGroups` ;
    - une clé de template d'un type sans version active.
 

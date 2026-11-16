@@ -162,6 +162,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 141 | [Visualisation après fin de processus : chemin parcouru et lien le plus récent](141-visualisation-apres-fin-de-processus.md) | clos | — |
 | 142 | [Catalogue des connecteurs : libellés et aides traduits (FR/EN)](142-catalogue-connecteurs-libelles-traduits.md) | clos | — |
 | 143 | [Scène riverain des capsules C5 et C6 et du screenshot S13](143-scene-riverain-capsules-c5-c6.md) | ouvert | — |
+| 144 | [Langue des détails du plan et du rapport de promotion](144-langue-des-details-de-promotion.md) | clos | — |
 
 ## Sections de l'ancien registre
 

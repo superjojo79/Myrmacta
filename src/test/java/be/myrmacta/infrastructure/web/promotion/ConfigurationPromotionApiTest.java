@@ -370,6 +370,42 @@ class ConfigurationPromotionApiTest {
         assertThat(replay).contains("UNCHANGED").contains("sg-prod-" + s);
     }
 
+    /** TODO §144 (D-PROMO-DETAIL-I18N) — le plan et le rapport suivent la langue de la requête ; sans en-tête, l'anglais d'origine. */
+    @Test
+    void planAndReportDetailsFollowTheRequestLanguage() throws Exception {
+        String code = "PROMO_I18N_" + suffix().toUpperCase();
+        ConfigurationBundle created = groupBundle(code, "Achats");
+        ConfigurationBundle renamed = groupBundle(code, "Achats renommés");
+
+        mockMvc.perform(multipart("/api/admin/configuration/plan").file(file(created))
+                        .header("Accept-Language", "fr").with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].reason").value("créé sans membres : ajoutez-les sur cette instance"));
+        mockMvc.perform(multipart("/api/admin/configuration/plan").file(file(created))
+                        .with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].reason").value("created without members: add them on this instance"));
+
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(created))
+                        .param("expectedBundleSha256", created.sha256())
+                        .header("Accept-Language", "en").with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].message").value("created without members: add them on this instance"));
+        mockMvc.perform(multipart("/api/admin/configuration/apply").file(file(renamed))
+                        .param("expectedBundleSha256", renamed.sha256())
+                        .header("Accept-Language", "fr").with(user("alice", "TENANT_ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].outcome").value("APPLIED"))
+                .andExpect(jsonPath("$.entries[0].message")
+                        .value("libellé mis à jour (membres et groupe du fournisseur d'identité conservés)"));
+    }
+
+    private ConfigurationBundle groupBundle(String code, String label) {
+        return new ConfigurationBundle(ConfigurationBundle.FORMAT_VERSION, Instant.parse("2026-11-16T10:00:00Z"),
+                "recette", "test", List.of(json(ArtifactType.USER_GROUP, code,
+                        new be.myrmacta.domain.promotion.model.doc.ConfigDocs.UserGroupDoc(code, label, null))));
+    }
+
     /**
      * TODO §117 (D-PROMO-TYPE-SETTINGS) — un seul passage crée le type, sa configuration de workflow (sans BPMN, appliquée
      * directement), le groupe d'escalade, puis le workflow « réponse » et l'échéance qui en dépendent ; l'export les restitue et

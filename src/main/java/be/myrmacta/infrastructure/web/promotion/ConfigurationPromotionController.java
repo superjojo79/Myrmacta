@@ -1,19 +1,24 @@
 package be.myrmacta.infrastructure.web.promotion;
 
+import be.myrmacta.domain.promotion.PromotionDetailTexts;
 import be.myrmacta.domain.promotion.model.ConfigImportRecord;
 import be.myrmacta.domain.promotion.model.ConfigurationBundle;
 import be.myrmacta.domain.promotion.model.ImportPlan;
 import be.myrmacta.domain.promotion.model.ImportReport;
 import be.myrmacta.domain.promotion.model.InvalidBundleException;
+import be.myrmacta.domain.promotion.model.PlanEntry;
+import be.myrmacta.domain.promotion.model.ReportEntry;
 import be.myrmacta.domain.promotion.port.in.ExportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.in.ImportConfigurationUseCase;
 import be.myrmacta.domain.promotion.port.out.ConfigurationBundleCodec;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.web.dossier.AccessContextFactory;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.LocaleResolver;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -45,6 +51,7 @@ class ConfigurationPromotionController {
     private final AccessContextFactory accessContextFactory;
     private final TenantProperties tenantProperties;
     private final ObjectMapper objectMapper;
+    private final LocaleResolver localeResolver;
 
     ConfigurationPromotionController(
             ExportConfigurationUseCase exportUseCase,
@@ -52,13 +59,15 @@ class ConfigurationPromotionController {
             ConfigurationBundleCodec bundleCodec,
             AccessContextFactory accessContextFactory,
             TenantProperties tenantProperties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            LocaleResolver localeResolver) {
         this.exportUseCase = exportUseCase;
         this.importUseCase = importUseCase;
         this.bundleCodec = bundleCodec;
         this.accessContextFactory = accessContextFactory;
         this.tenantProperties = tenantProperties;
         this.objectMapper = objectMapper;
+        this.localeResolver = localeResolver;
     }
 
     @GetMapping("/export")
@@ -77,9 +86,11 @@ class ConfigurationPromotionController {
     ImportPlan plan(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "parameters", required = false) String parameters,
-            Authentication authentication) {
-        return importUseCase.plan(
+            Authentication authentication,
+            HttpServletRequest request) {
+        ImportPlan plan = importUseCase.plan(
                 accessContextFactory.user(authentication), readBundle(file), parseStringMap(parameters, "parameters"));
+        return localize(plan, request);
     }
 
     @PostMapping(value = "/apply", consumes = "multipart/form-data")
@@ -88,19 +99,41 @@ class ConfigurationPromotionController {
             @RequestParam(value = "secrets", required = false) String secrets,
             @RequestParam(value = "parameters", required = false) String parameters,
             @RequestParam(value = "expectedBundleSha256", required = false) String expectedBundleSha256,
-            Authentication authentication) {
-        return importUseCase.apply(
+            Authentication authentication,
+            HttpServletRequest request) {
+        ImportReport report = importUseCase.apply(
                 accessContextFactory.user(authentication),
                 readBundle(file),
                 parseSecrets(secrets),
                 parseStringMap(parameters, "parameters"),
                 expectedBundleSha256,
                 ImportConfigurationUseCase.Channel.ADMIN);
+        // Le journal garde les phrases anglaises : seul l'écran suit la langue de la requête (D-PROMO-DETAIL-I18N).
+        return localize(report, request);
     }
 
     @GetMapping("/imports")
     List<ConfigImportRecord> imports(@RequestParam(required = false, defaultValue = "20") int limit, Authentication authentication) {
         return importUseCase.recentImports(accessContextFactory.user(authentication), limit);
+    }
+
+    /** TODO §144 — le plan et le rapport affichés suivent {@code Accept-Language} (fr, sinon l'anglais d'origine). */
+    private ImportPlan localize(ImportPlan plan, HttpServletRequest request) {
+        Locale locale = localeResolver.resolveLocale(request);
+        List<PlanEntry> entries = plan.entries().stream()
+                .map(entry -> new PlanEntry(entry.type(), entry.key(), entry.action(),
+                        PromotionDetailTexts.localize(entry.reason(), locale), entry.secretsRequired(), entry.connectorName()))
+                .toList();
+        return new ImportPlan(plan.bundleSha256(), plan.formatVersion(), plan.sourceLabel(), entries);
+    }
+
+    private ImportReport localize(ImportReport report, HttpServletRequest request) {
+        Locale locale = localeResolver.resolveLocale(request);
+        List<ReportEntry> entries = report.entries().stream()
+                .map(entry -> new ReportEntry(entry.type(), entry.key(), entry.outcome(),
+                        PromotionDetailTexts.localize(entry.message(), locale)))
+                .toList();
+        return new ImportReport(report.bundleSha256(), report.performedAt(), entries);
     }
 
     private ConfigurationBundle readBundle(MultipartFile file) {

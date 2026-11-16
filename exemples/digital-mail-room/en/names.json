@@ -50,5 +50,9 @@
   "Tri du courrier entrant": "Incoming mail sorting",
   "Trier le courrier": "Sort the mail",
   "Type de dossier": "Case type",
-  "Échéance dépassée": "Due date passed"
+  "Échéance dépassée": "Due date passed",
+  "La table de routage n'a pas reconnu ce courrier (motif dans la variable routageMotif). Le lire, le rattacher au dossier métier concerné (onglet Relations) ou réaffecter la tâche au service compétent, puis la terminer pour classer le courrier.": "The routing table did not recognise this mail (reason in the routageMotif variable). Read it, link it to the relevant business case (Relations tab) or reassign the task to the right department, then complete it to file the mail.",
+  "Le courrier (variable courrierReference) répond au fil de la facture parente ; ses pièces sont dans la facture. Décider de la suite, puis terminer la tâche.": "The mail (courrierReference variable) replies to the thread of the parent invoice; its documents are in the invoice. Decide what comes next, then complete the task.",
+  "Un courrier répond au fil de cette facture (variables courrierReference et courrierId) ; ses pièces ont été ajoutées au dossier. Le lire, puis terminer la tâche ; le traitement de la facture continue.": "A mail replies to the thread of this invoice (courrierReference and courrierId variables); its documents were added to the case. Read it, then complete the task; the invoice processing continues.",
+  "Vérifier la facture jointe au courrier lié, l'encoder puis terminer la tâche.": "Check the invoice attached to the linked mail, enter it, then complete the task."
 }

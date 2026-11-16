@@ -64,17 +64,19 @@ Issue : #101 (suite de #58) · Spec du domaine : docs/specs/47-postgresql-embarq
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Variante anglaise de l'exemple ; scène `demo-video-riverain` (paquet, video.sh) avec son IT | livré | (cette PR) |
-| 2 | C5 (portail) et S13, FR et EN | à faire | |
+| 1 | Variante anglaise de l'exemple ; scène `demo-video-riverain` (paquet, video.sh) avec son IT | livré | #115 |
+| 2 | C5 (portail) et S13, FR et EN ; portail mobile sans débordement ; consignes des BPMN traduites | livré | (cette PR) |
 | 3 | C6 (pré-vérification IA), FR et EN ; revue, clôture | à faire | |
 
-Prochaine action : PR du lot 1, puis lot 2 (C5 et S13 : instruction avec demande d'informations, e-mail Mailpit, portail sur mobile, retour sur la fiche).
+Prochaine action : PR du lot 2, puis lot 3 (C6 : tournage écrit, à jouer avec Ollama ; revue ; clôture).
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
 | 2026-11-16 | Lot 1 : `./mvnw verify` ; tests embarqués de la CI ; pytest ; `check-docs` | 5223 tests, 0 échec ; 52/52 (dont `RiverainDemoPackIT` FR et EN, et la variante avec portail déployée) ; 21 passed ; ok |
+| 2026-11-16 | Lot 2 : `./mvnw verify` ; tests embarqués ; `npm run lint && npm run test:all` ; pytest ; `check-docs` | 5223 tests, 0 échec ; 52/52 ; lint ok, Vitest 1159/1159, Playwright 205/205 (E2E-PORTAL-8) ; 21 passed ; ok |
+| 2026-11-16 | `scripts/video.sh capsule c05-portail`, FR et EN, sur des scènes fraîches | MP4 muets de 49,8 et 49,2 s ; S13 FR et EN ; contrôle image par image |
 
 ## Revue de clôture
 

@@ -691,3 +691,19 @@ test('E2E-SIG-26b internal default case: card only, no upload block, message wit
   await expect(alert).not.toContainText('autre moyen')
   expect(calls).toEqual([])
 })
+
+test('E2E-PORTAL-8 on a phone, the portal never scrolls sideways, even with a long dossier reference', async ({ page }) => {
+  // Relevé au tournage de la capsule C5 (#101) : en-tête trop large (logo, « Dossier DOS-AUTORISATION_RIVERAIN-… »,
+  // langue) ; la page faisait ~500 px pour un écran de 390.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/portal/task', async (route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ...PORTAL_TASK, dossierReference: 'DOS-AUTORISATION_RIVERAIN-2026-000001' }),
+    })
+  })
+  await page.goto(`./portal/#${PORTAL_TOKEN}`)
+  await expect(page.getByText('Dossier DOS-AUTORISATION_RIVERAIN-2026-000001')).toBeVisible()
+  const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
+  expect(widths.scroll).toBeLessThanOrEqual(widths.client)
+})

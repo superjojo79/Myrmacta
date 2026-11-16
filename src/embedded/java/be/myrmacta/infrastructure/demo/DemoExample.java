@@ -56,7 +56,7 @@ final class DemoExample {
     }
 
     /**
-     * Un BPMN ou un DMN, ses noms, libellés et descriptions traduits. Le {@code name} d'un élément qui le lit comme un code
+     * Un BPMN ou un DMN, ses noms, libellés, descriptions et consignes traduits. Le {@code name} d'un élément qui le lit comme un code
      * (message, signal, sortie ou donnée d'entrée DMN, élément {@code flowable:…}) n'est jamais traduit : le renommer
      * casserait le routage. La traduction est un texte brut, échappé pour le XML.
      */
@@ -71,17 +71,21 @@ final class DemoExample {
         StringBuilder out = new StringBuilder(xml.length());
         while (matcher.find()) {
             String replacement = matcher.group(1) != null
-                    ? "<description>" + translate(matcher.group(1), table) + "</description>"
-                    : "<" + matcher.group(2) + attributes(matcher.group(2), matcher.group(3), table);
+                    ? "<" + matcher.group(1) + ">" + translate(matcher.group(2), table) + "</" + matcher.group(1) + ">"
+                    : "<" + matcher.group(3) + attributes(matcher.group(3), matcher.group(4), table);
             matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(out);
         return out.toString();
     }
 
-    /** {@code <description>…</description>} (groupe 1), ou le début d'une balise ouvrante : nom (2), attributs (3). */
+    /**
+     * {@code <description>…</description>} ou {@code <documentation>…</documentation>} (élément 1, texte 2) — la consigne
+     * d'une tâche s'affiche sur la fiche et sur le portail (TODO §143) — ou le début d'une balise ouvrante : nom (3),
+     * attributs (4).
+     */
     private static final Pattern DESCRIPTION_OR_TAG = Pattern.compile(
-            "<description>([^<]*)</description>|<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)");
+            "<(description|documentation)>([^<]*)</\\1>|<([A-Za-z][\\w.:-]*)((?:\\s+[\\w.:-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)");
 
     private static final Pattern ATTRIBUTE = Pattern.compile("(\\s)(name|label)(\\s*=\\s*)\"([^\"]*)\"");
 

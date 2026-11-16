@@ -4,7 +4,7 @@
 
 [ ] ouvert (2026-11-16, issue [#101](https://github.com/superjojo79/Myrmacta/issues/101), vague `vague-vitrine`).
 Cadrage validé par l'utilisateur le 2026-11-16. C'est la suite de [§140](140-capsules-courtes-du-site.md) : les capsules
-C5 et C6 et le screenshot S13 avaient été reportés, faute de données. Lot 1 : variante anglaise de l'exemple et scène.
+C5 et C6 et le screenshot S13 avaient été reportés, faute de données. Lot 1 (PR #115) : variante anglaise de l'exemple et scène. Lot 2 : C5 et S13.
 Build `embedded-db` et outillage de développement seulement, jamais en production. Comportement :
 [spec 47](../specs/47-postgresql-embarque-tests-demo.md).
 
@@ -42,3 +42,26 @@ variante anglaise. Sa variante « avec portail » n'avait jamais été déployé
 
 **Vérifié au lot 1.** La variante avec portail se déploie sur un serveur dont le portail est activé
 (`RiverainDemoPackIT`, en français et en anglais).
+
+**Lot 2 (C5 et S13).**
+
+- **C5** se déroule en quatre temps :
+  - une demande incomplète est encodée hors champ ;
+  - l'agent demande une preuve de domicile ;
+  - le lien personnel arrive dans Mailpit (boîte locale de la scène, vidée avant le tournage) ;
+  - le demandeur répond sur un téléphone, sans session, et joint sa pièce ; la réponse et la pièce reviennent sur la
+    fiche, et l'instruction reprend.
+  Le plan « portail » est filmé à la taille d'un téléphone (`"device": "mobile"`, §140).
+- **S13** est produit par le tournage de C5 : même lien, en haute densité, avant l'envoi de la réponse
+  (`capture/out/<langue>/S13-portail-mobile.png`). Un screenshot à part devrait rejouer tout le parcours pour obtenir
+  un lien.
+
+**Défauts corrigés au tournage (lot 2).**
+
+- **Portail sur mobile** : l'en-tête (logo, « Dossier DOS-AUTORISATION_RIVERAIN-… », langue) ne passait pas à la ligne
+  et la référence ne se coupait pas. La page faisait 504 px de large pour un écran de 390. Le correctif est en CSS ;
+  `E2E-PORTAL-8` vérifie qu'il n'y a pas de défilement horizontal à 390 px.
+- **Consignes des tâches en anglais** : la démo anglaise traduisait les noms et les `<description>` des BPMN, mais pas
+  les `<documentation>`. Ce sont les consignes affichées sur la fiche et sur le portail ; le portail anglais montrait
+  donc une consigne en français. `DemoExample` les traduit désormais, `DemoTranslationsTest` les exige, et les douze
+  consignes des trois exemples ont leur traduction dans `en/names.json`.

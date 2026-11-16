@@ -40,5 +40,9 @@
   "Échec : GROUPE": "Failure: GROUP",
   "Échec : IAM": "Failure: IAM",
   "Échec : ITSM": "Failure: ITSM",
-  "Échec : SIRH": "Failure: HRIS"
+  "Échec : SIRH": "Failure: HRIS",
+  "Corriger la fiche selon le commentaire du manager, puis enregistrer : la demande repart en validation.": "Correct the record according to the manager's comment, then save: the request goes back for approval.",
+  "Le profil de poste demande des accès étendus. Choisir le groupe IAM à accorder (DEVELOPPEURS ou DIRECTION), ou STANDARD pour s'en tenir aux groupes par défaut. C'est ce choix, et non le profil de la fiche, qui désigne le groupe.": "The job profile requires extended access. Choose the IAM group to grant (DEVELOPPEURS or DIRECTION), or STANDARD to keep the default groups. This choice, not the profile on the record, sets the group.",
+  "Un appel à une application a échoué (champ « Dernier incident technique » de la fiche). Corriger la cause côté application, puis REESSAYER ; ou ABANDONNER : ce qui a été créé dans l'IAM et le SIRH est supprimé et la demande est clôturée.": "A call to an application failed (« Last technical incident » field of the record). Fix the cause in the application, then REESSAYER; or ABANDONNER: what was created in the IAM and the HR system is deleted and the request is closed.",
+  "Vérifier la fiche du collaborateur. APPROUVER lance la création dans le SIRH, l'IAM et l'ITSM ; CORRIGER renvoie la fiche aux RH avec votre commentaire ; REFUSER clôture la demande sans rien créer.": "Check the new hire's record. APPROUVER starts the creation in the HR system, the IAM and the ITSM; CORRIGER sends the record back to HR with your comment; REFUSER closes the request without creating anything."
 }

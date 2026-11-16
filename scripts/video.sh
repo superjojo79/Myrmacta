@@ -57,18 +57,28 @@ case "${1:-}" in
       c[0-9][0-9]-*) profile=demo ;;
       *) echo "pas de scène pour la capsule $capsule" >&2; exit 2 ;;
     esac
+    # Variables locales (OIDC, clé maîtresse des connecteurs) : .env s'il existe ; celles qui suivent priment.
+    if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
     # Scène riverain (TODO §143) : portail (liens envoyés à Mailpit) et pré-vérification par le modèle local d'Ollama.
+    # Lue après .env : un APP_PRECHECK_* ou APP_PORTAL_* qui y figure l'emporte sur ces valeurs par défaut.
+    # C5 (et S13) : variante du processus avec portail ; C6 : variante avec pré-vérification (même clé).
     scene_env=()
     if [[ "$profile" == demo-video-riverain ]]; then
-      scene_env=(APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
+      variant=portal
+      [[ "$capsule" == c06-* ]] && variant=preverification
+      scene_env=(APP_DEMO_RIVERAIN_VARIANT="$variant"
+        APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
         APP_PRECHECK_ENABLED=true APP_PRECHECK_PROVIDER=openai-compatible
         APP_PRECHECK_BASE_URL="${APP_PRECHECK_BASE_URL:-http://localhost:11434/v1}"
-        APP_PRECHECK_MODEL="${APP_PRECHECK_MODEL:-gemma4:12b}")
+        APP_PRECHECK_MODEL="${APP_PRECHECK_MODEL:-gemma4:12b}"
+        # Un modèle local sur un poste traite les demandes une à une : C6 en envoie trois, chacune de une à deux minutes.
+        APP_PRECHECK_TIMEOUT_SECONDS="${APP_PRECHECK_TIMEOUT_SECONDS:-600}"
+        # gemma4 raisonne avant de répondre et épuise sinon les 2000 tokens de sortie : réponse coupée, JSON invalide
+        # (docs/guides/DEPLOIEMENT.md, APP_PRECHECK_REASONING_EFFORT).
+        APP_PRECHECK_REASONING_EFFORT="${APP_PRECHECK_REASONING_EFFORT:-none}")
     fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }
-    # Variables locales (OIDC, clé maîtresse des connecteurs) : .env s'il existe ; celles qui suivent priment.
-    if [[ -f .env ]]; then set -a; . ./.env; set +a; fi
     # Comme scripts/demo.sh : profils fixés, variables DB_* écartées (base embarquée). Les e-mails sortants vont à Mailpit.
     # Échéances évaluées 30 s après le démarrage (au lieu de 2 min), puis toutes les 15 min : le rappel et l'escalade des
     # factures semées sont là au tournage.
@@ -110,7 +120,7 @@ case "${1:-}" in
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,33p' "$0"
+    sed -n '2,31p' "$0"
     exit 2
     ;;
 esac

@@ -30,6 +30,20 @@ body {
   padding: 0.5rem 0 1rem;
 }
 
+/* Sur un téléphone, logo, référence et langue passent à la ligne au lieu d'élargir la page (#101). Plus large, l'en-tête
+   reste sur une ligne : une référence longue se coupe dans sa colonne (E2E-PORTAL-8 et 9). */
+@media (max-width: 40rem) {
+  .portal__header {
+    flex-wrap: wrap;
+  }
+}
+
+/* Une référence comme « DOS-AUTORISATION_RIVERAIN-2026-000001 » n'a pas d'espace : elle se coupe où il faut. */
+.portal__reference {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .portal__logo {
   display: block;
   width: 11rem;

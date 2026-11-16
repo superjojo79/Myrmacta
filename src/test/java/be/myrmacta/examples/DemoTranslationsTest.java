@@ -35,7 +35,8 @@ class DemoTranslationsTest {
     /** Comme {@code DemoExample} : le {@code name} de ces éléments est un code, jamais traduit. */
     private static final Set<String> CODE_NAMED =
             Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");
-    private static final Pattern DESCRIPTION = Pattern.compile("<description>([^<]*)</description>");
+    /** Descriptions et consignes ({@code documentation}, montrée sur la fiche et le portail, TODO §143). */
+    private static final Pattern DESCRIPTION = Pattern.compile("<(?:description|documentation)>([^<]*)</(?:description|documentation)>");
     private static final Pattern EXPRESSION = Pattern.compile("\\$\\{[^}]*}");
 
     /** Les fichiers qu'un paquet de la démo lit et qui portent du texte visible. */
@@ -99,6 +100,29 @@ class DemoTranslationsTest {
         // Un code (nom de message, de variable, champ flowable) n'a rien à faire dans la table : le traduire casserait le routage.
         assertThat(names.keySet()).as("traductions de textes absents des BPMN et DMN, ou de codes").isSubsetOf(texts);
         assertThat(names.values()).as("traductions vides").noneMatch(String::isBlank);
+        // Une consigne ou une description peut citer une variable : sa traduction cite les mêmes.
+        names.forEach((fr, en) -> assertThat(expressions(en)).as("expressions ${…} de « " + en + " »")
+                .isEqualTo(expressions(fr)));
+    }
+
+    /** TODO §143 : un modèle de document anglais ({@code en/*.html}) lit les mêmes variables que son original. */
+    @ParameterizedTest
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
+    void eachEnglishDocumentTemplateReadsTheSameVariablesAsItsOriginal(String name) throws IOException {
+        Path example = Path.of("exemples", name);
+        if (!Files.isDirectory(example.resolve("en"))) {
+            return;
+        }
+        List<Path> templates;
+        try (Stream<Path> walk = Files.walk(example.resolve("en"))) {
+            templates = walk.filter(p -> p.toString().endsWith(".html")).toList();
+        }
+        for (Path copy : templates) {
+            Path original = example.resolve(example.resolve("en").relativize(copy));
+            assertThat(original).as("original de " + copy).isRegularFile();
+            assertThat(expressions(Files.readString(copy)).stream().sorted().toList()).as(copy.toString())
+                    .isEqualTo(expressions(Files.readString(original)).stream().sorted().toList());
+        }
     }
 
     private static boolean nameIsCode(String element) {

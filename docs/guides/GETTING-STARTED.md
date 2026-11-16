@@ -693,6 +693,25 @@ PDF) se tourne avec Microsoft Edge, présent sur tout poste Windows ; ailleurs, 
 3. **Toutes les capsules courtes**, dans l'ordre de leur numéro : `APP_DEMO_LOCALE=fr scripts/video.sh shorts`.
 4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
 
+### Capsules courtes riverain C5 et C6, screenshot S13 (TODO §143)
+
+Elles se tournent sur leur propre scène, l'exemple `exemples/autorisation-riverain`, et non sur la démo complète.
+Pré-requis : Keycloak, `.env`, jar de démo et `ffmpeg` (comme les autres capsules), Mailpit (`scripts/video.sh
+mail-servers`), et pour C6 un Ollama local avec le modèle `gemma4:12b` (`APP_PRECHECK_MODEL` pour en changer).
+
+1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
+   c05-portail`. Le journal se termine par `demo: pack 'riverain' installed`. Le portail et la pré-vérification sont
+   activés par la scène, qui déploie la variante du processus avec portail.
+2. **C5 et S13** : `APP_DEMO_LOCALE=fr scripts/video.sh capsule c05-portail`. La capsule sort dans
+   `frontend/capture/out/film/c05-portail/<langue>/`, le screenshot dans `frontend/capture/out/<langue>/S13-portail-mobile.png`.
+   La plaque du dossier d'exemple est unique : pour refaire C5, repartir d'une base vide.
+3. **C6** : sur une scène fraîche lancée pour elle (`scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr
+   scripts/video.sh start c06-preverification` : la scène déploie alors la variante du processus avec pré-vérification),
+   `APP_DEMO_LOCALE=fr scripts/video.sh capsule c06-preverification`. Le modèle local
+   pré-vérifie trois demandes, une à une : comptez quelques minutes d'attente, coupées au montage. Le tournage échoue si le
+   modèle ne signale pas les écarts attendus ; changer de modèle avec `APP_PRECHECK_MODEL`.
+4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :

@@ -808,4 +808,155 @@ describe('dossier store', () => {
     expect(workflowsApi.getWorkflowHistory).toHaveBeenCalledWith('link-1', { page: 1, size: 20 })
     expect(store.historyPage).toBe(1)
   })
+
+  /** Issue #110 — une réponse lente du lien précédent n'écrase pas la visualisation affichée. */
+  it('loadVisualization ignores a slower response from a previously selected link', async () => {
+    let resolveL1Diagram!: (value: {
+      bpmnXml: string
+      activeIds: string[]
+      completedIds: string[]
+      failedIds: string[]
+    }) => void
+    const l1Diagram = new Promise<{
+      bpmnXml: string
+      activeIds: string[]
+      completedIds: string[]
+      failedIds: string[]
+    }>((resolve) => {
+      resolveL1Diagram = resolve
+    })
+    let resolveL1History!: (value: ReturnType<typeof asPage>) => void
+    const l1History = new Promise<ReturnType<typeof asPage>>((resolve) => {
+      resolveL1History = resolve
+    })
+    let resolveL1Tasks!: (value: ReturnType<typeof asPage>) => void
+    const l1Tasks = new Promise<ReturnType<typeof asPage>>((resolve) => {
+      resolveL1Tasks = resolve
+    })
+
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockImplementation(async (linkId: string) => {
+      if (linkId === 'link-1') return l1Diagram
+      return { bpmnXml: '<xml-l2/>', activeIds: ['a2'], completedIds: [], failedIds: [] }
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockImplementation(async (linkId: string) => {
+      if (linkId === 'link-1') return l1History
+      return asPage([
+        {
+          activityId: 'otherTask',
+          name: 'L2 Task',
+          assignee: null,
+          startTime: '2026-08-13T00:00:00Z',
+          endTime: '2026-08-13T00:01:00Z',
+          durationMs: 60_000,
+        },
+      ])
+    })
+    vi.mocked(workflowsApi.getWorkflowTasks).mockImplementation(async (linkId: string) => {
+      if (linkId === 'link-1') return l1Tasks
+      return asPage([
+        {
+          taskId: 't2',
+          name: 'L2 Open',
+          assignee: null,
+          taskDefinitionKey: 'k2',
+          createTime: null,
+        },
+      ])
+    })
+    vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+
+    const store = useDossierStore()
+    const first = store.loadVisualization('link-1')
+    const second = store.loadVisualization('link-2')
+    await second
+
+    expect(store.currentLinkId).toBe('link-2')
+    expect(store.diagram?.bpmnXml).toBe('<xml-l2/>')
+    expect(store.history.map((h) => h.name)).toEqual(['L2 Task'])
+    expect(store.tasks.map((t) => t.taskId)).toEqual(['t2'])
+
+    resolveL1Diagram({ bpmnXml: '<xml-l1/>', activeIds: ['a1'], completedIds: [], failedIds: [] })
+    resolveL1History(
+      asPage([
+        {
+          activityId: 'smoke',
+          name: 'L1 Task',
+          assignee: null,
+          startTime: '2026-08-12T00:00:00Z',
+          endTime: '2026-08-12T00:01:00Z',
+          durationMs: 60_000,
+        },
+      ]),
+    )
+    resolveL1Tasks(
+      asPage([
+        {
+          taskId: 't1',
+          name: 'L1 Open',
+          assignee: null,
+          taskDefinitionKey: 'k1',
+          createTime: null,
+        },
+      ]),
+    )
+    await first
+
+    expect(store.currentLinkId).toBe('link-2')
+    expect(store.diagram?.bpmnXml).toBe('<xml-l2/>')
+    expect(store.history.map((h) => h.name)).toEqual(['L2 Task'])
+    expect(store.tasks.map((t) => t.taskId)).toEqual(['t2'])
+  })
+
+  /** Revue #110 — un soft-fail lent du lien précédent n'écrase pas non plus la viz affichée. */
+  it('loadVisualization ignores a slower soft-fail from a previously selected link', async () => {
+    let rejectL1Diagram!: (reason: unknown) => void
+    const l1Diagram = new Promise<never>((_, reject) => {
+      rejectL1Diagram = reject
+    })
+
+    vi.mocked(workflowsApi.getWorkflowDiagram).mockImplementation(async (linkId: string) => {
+      if (linkId === 'link-1') return l1Diagram
+      return { bpmnXml: '<xml-l2/>', activeIds: ['a2'], completedIds: [], failedIds: [] }
+    })
+    vi.mocked(workflowsApi.getWorkflowHistory).mockResolvedValue(
+      asPage([
+        {
+          activityId: 'otherTask',
+          name: 'L2 Task',
+          assignee: null,
+          startTime: '2026-08-13T00:00:00Z',
+          endTime: '2026-08-13T00:01:00Z',
+          durationMs: 60_000,
+        },
+      ]),
+    )
+    vi.mocked(workflowsApi.getWorkflowTasks).mockResolvedValue(
+      asPage([
+        {
+          taskId: 't2',
+          name: 'L2 Open',
+          assignee: null,
+          taskDefinitionKey: 'k2',
+          createTime: null,
+        },
+      ]),
+    )
+    vi.mocked(incidentsApi.listLinkIncidents).mockResolvedValue([])
+
+    const store = useDossierStore()
+    const first = store.loadVisualization('link-1')
+    await store.loadVisualization('link-2')
+
+    expect(store.diagram?.bpmnXml).toBe('<xml-l2/>')
+    expect(store.diagramUnavailable).toBe(false)
+
+    rejectL1Diagram({ response: { status: 409, data: { status: 409, detail: 'no PI' } } })
+    await first
+
+    expect(store.currentLinkId).toBe('link-2')
+    expect(store.diagram?.bpmnXml).toBe('<xml-l2/>')
+    expect(store.diagramUnavailable).toBe(false)
+    expect(store.history.map((h) => h.name)).toEqual(['L2 Task'])
+    expect(store.tasks.map((t) => t.taskId)).toEqual(['t2'])
+  })
 })

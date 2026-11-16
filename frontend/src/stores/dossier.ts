@@ -183,16 +183,22 @@ export const useDossierStore = defineStore('dossier', () => {
   }
 
   async function loadHistoryPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
-    if (!currentLinkId.value) return
-    const result = await getWorkflowHistory(currentLinkId.value, { page, size })
+    const linkId = currentLinkId.value
+    if (!linkId) return
+    const result = await getWorkflowHistory(linkId, { page, size })
+    // Issue #110 — une réponse lente d'un autre lien n'écrase pas l'historique affiché.
+    if (currentLinkId.value !== linkId) return
     history.value = result.content
     historyPage.value = result.page
     historyTotalPages.value = result.totalPages
   }
 
   async function loadTasksPage(page = 0, size = DEFAULT_SIZE): Promise<void> {
-    if (!currentLinkId.value) return
-    const result = await getWorkflowTasks(currentLinkId.value, { page, size })
+    const linkId = currentLinkId.value
+    if (!linkId) return
+    const result = await getWorkflowTasks(linkId, { page, size })
+    // Issue #110 — une réponse lente d'un autre lien n'écrase pas les tâches affichées.
+    if (currentLinkId.value !== linkId) return
     tasks.value = result.content
     tasksPage.value = result.page
     tasksTotalPages.value = result.totalPages
@@ -244,17 +250,20 @@ export const useDossierStore = defineStore('dossier', () => {
         loadHistoryPage(0, DEFAULT_SIZE),
         loadTasksPage(0, DEFAULT_SIZE),
       ])
+      // Issue #110 — une réponse lente d'un autre lien n'écrase pas le diagramme affiché.
+      if (currentLinkId.value !== linkId) return
       diagram.value = diagramResult
       diagramUnavailable.value = false
     } catch (err) {
       // Soft-fail viz (409 sans PI, 403 non-participant, 5xx) — ne pas masquer le dossier.
+      if (currentLinkId.value !== linkId) return
       diagramUnavailable.value = true
       diagram.value = null
       await loadHistoryPage(0, DEFAULT_SIZE).catch(() => {
-        history.value = []
+        if (currentLinkId.value === linkId) history.value = []
       })
       await loadTasksPage(0, DEFAULT_SIZE).catch(() => {
-        tasks.value = []
+        if (currentLinkId.value === linkId) tasks.value = []
       })
       await incidentsLoaded
       void err

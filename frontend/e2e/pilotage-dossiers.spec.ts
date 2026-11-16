@@ -715,13 +715,19 @@ test('E2E-UNIQUE-3 creating a dossier with a taken value shows the holder refere
 
 test('E2E-BASE-2 logout from a nested route posts to /api/auth/logout', async ({ page }) => {
   await mockSession(page)
-  await page.route('**/auth/logout', (route) => route.fulfill({ status: 200, body: 'ok' }))
+  // logout() soumet un <form> pleine page : le clic ne doit pas attendre la navigation mockée
+  // (timeout sous charge, issue #97). On attend explicitement la requête POST.
+  await page.route('**/api/auth/logout', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>logged out</body></html>' }),
+  )
   await openApp(page)
   await page.getByRole('link', { name: 'Nouveau dossier' }).click()
   await expect(page).toHaveURL(/\/dossiers\/new$/)
-  const logout = page.waitForRequest((request) => request.method() === 'POST' && request.url().includes('auth/logout'))
-  await page.getByRole('button', { name: 'Déconnexion' }).click()
-  expect(new URL((await logout).url()).pathname).toBe('/api/auth/logout')
+  const logoutRequest = page.waitForRequest(
+    (request) => request.method() === 'POST' && new URL(request.url()).pathname === '/api/auth/logout',
+  )
+  await page.getByRole('button', { name: 'Déconnexion' }).click({ noWaitAfter: true })
+  expect(new URL((await logoutRequest).url()).pathname).toBe('/api/auth/logout')
 })
 
 // TODO §106 (issue #211, lot C) — panneau « Pré-vérification » : constats sourcés, marquage IA, décisions, relance.

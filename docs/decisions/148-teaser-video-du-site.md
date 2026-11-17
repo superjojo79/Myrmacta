@@ -20,6 +20,11 @@ seul mouvement est un fondu d'entrée.
   - Les images de flow et decide sont des **extraits des capsules déjà tournées**, pris dans leurs plans montés
     sans sous-titres (`<capsule>/<langue>/clips/NN-<plan>.mp4`). La liste des coupes est versionnée. Une coupe qui
     sort de la durée de son plan, ou qui dure moins que la lecture de ses sous-titres, fait échouer le montage.
+  - Une coupe se désigne par des repères de sous-titres de son plan, pas par des secondes (lot 2) : les plans n'ont
+    pas la même durée en FR et en EN, les repères si, au texte près. Chaque sous-titre du teaser remplace un repère et
+    s'affiche à son moment : l'image montre ce qu'il dit. Il doit se lire dans le temps du repère.
+  - L1 n'est tournée qu'en français dans le worktree des captures : le teaser n'en prend pas d'extrait. Les preuves
+    prévues sur L1 passent par C2, C11, L2, C8 et C10.
   - Écartés : un tournage dédié à tout le teaser (un film de plus à maintenir) ; la punchline incrustée sur les
     extraits (elle demande une vidéo transparente ou un montage hors ffmpeg).
 - **D-VIDEO-REMOTION** — les cinq cartons du teaser (ouverture, trois punchlines, fin) sont rendus par Remotion, dans

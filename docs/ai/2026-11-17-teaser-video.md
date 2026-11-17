@@ -138,15 +138,16 @@ Brouillon, à relire par l'utilisateur. Chaque phrase renvoie à sa preuve ; les
 |---|---|---|---|
 | Ouverture | Vos flux métier, du courrier à la signature. | Your business flows, from incoming mail to signature. | L1 `01-facture` (courrier entrant), C13 (signature) ; spec 49, spec 30 |
 | flow, accroche | Décrivez le parcours, Myrmacta l'orchestre. | Describe the journey, Myrmacta runs it. | C2 `01-parcours` ; spec 44 (parcours compilé en BPMN), spec 05 |
-| flow, L1 `01-facture` | Un e-mail arrive : le courrier est enregistré et son accusé part en quelques secondes. | An email arrives: the mail is registered and acknowledged within seconds. | narration L1 (filmé), spec 49 |
-| flow, C2 `01-parcours` | Le parcours s'écrit avec les mots du métier, puis devient un processus BPMN. | The journey is written in business terms, then becomes a BPMN process. | C2 (filmé), spec 44 |
-| flow, C11 `01-groupes` | Chaque tâche va à l'équipe qui doit la traiter. | Each task goes to the team that must handle it. | C11 (filmé) |
-| flow, L2 `03-provisioning` | Le processus appelle vos applications : SIRH, IAM, outil de tickets. | The process calls your applications: HRIS, IAM, ticketing. | L2 (filmé), spec 06 |
-| flow, C8 `02-rejeu` | Une panne ? L'étape se rejoue d'un clic, le dossier reprend où il s'était arrêté. | An outage? Replay the step in one click; the case resumes where it stopped. | C8 (filmé) |
-| decide, accroche | Les règles changent, pas le code. | Rules change, code doesn't. | spec 25, spec 28 ; L1 conclusion (« le métier l'ajoute à la table de routage, sans code ») |
-| decide, L1 `01-facture` | Une table de décision, que le métier lit et modifie, oriente chaque courrier. | A decision table, read and edited by the business, routes every item of mail. | narration L1 (filmé), spec 49 |
-| decide, C2 `03-dmn` | Testez une règle sur un cas ; une version fautive se restaure en un clic. | Test a rule on a case; restore a faulty version in one click. | C2 (filmé), spec 28 |
-| decide, C10 | Un agent IA propose une règle par MCP ; une personne la relit et la publie. | An AI agent proposes a rule over MCP; a person reviews and publishes it. | C10 (filmé), spec 46 |
+| flow, C2 `parcours` repère 2 | Le parcours devient un processus BPMN, prêt à relire. | The journey becomes a BPMN process, ready for review. | C2 (filmé : « compilé en processus BPMN, à relire avant publication »), spec 44 |
+| flow, C11 `groupes` repère 1 | Chaque tâche va à l'équipe qui doit la traiter. | Each task goes to the team that handles it. | C11 (filmé : « le processus confie chaque tâche à un groupe ») |
+| flow, L2 `provisioning` repère 0 | Le processus pilote vos applications : SIRH, puis IAM. | The process drives your applications: HR system, then IAM. | L2 (filmé : fiche SIRH puis compte IAM), spec 06 |
+| flow, C8 `rejeu` repère 1 | Une panne ? Un clic rejoue l'étape, le dossier reprend. | An outage? One click replays the step; the case resumes. | C8 (filmé : panne au plan 1, rejeu au plan 2) |
+| decide, accroche | Les règles changent, pas le code. | Rules change, code doesn't. | spec 25, spec 28 ; C2 `dmn` et C10 (une nouvelle version de table, aucun code) |
+| decide, C2 `dmn` repères 1–2 | Une nouvelle version de la règle se teste sur un cas. / Erreur ? Un clic restaure la précédente. | A new version of the rule is tested on a case. / Wrong? One click restores the previous one. | C2 (filmé), spec 28 |
+| decide, C10 `brouillon` repère 0 et `publication` repère 0 | Un agent IA propose une règle par MCP… / … une personne la relit et la publie. | An AI agent proposes a rule over MCP… / … a person reviews and publishes it. | C10 (filmé), spec 46 |
+
+Lot 2 : les extraits de L1 sont retirés (L1 n'est tournée qu'en français ici, §148). L'ouverture garde « du courrier »
+sur la preuve spec 49 et L1 FR.
 | sign, accroche | Signé, et le dossier avance. | Signed, and the case moves on. | spec 30 (le processus reprend après le webhook) ; tournage C13 |
 | sign | Le document part en signature électronique chez Yousign. | The document goes out for e-signature with Yousign. | §109 ; tournage C13 |
 | sign | Le signataire signe en ligne, sans compte Myrmacta. | The signer signs online, with no Myrmacta account. | spec 30 §2.4 (portail tokenisé) ; tournage C13 |
@@ -159,8 +160,8 @@ Brouillon, à relire par l'utilisateur. Chaque phrase renvoie à sa preuve ; les
 
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
-| 1 | Projet Remotion des cinq cartons, FR et EN, rendus par `scripts/video.sh cards` ; images vérifiées | livré | à venir |
-| 2 | `t00-teaser.json`, `teaser.py`, `scripts/video.sh teaser` : teaser avec ouverture, flow, decide et fin ; tests Python | à faire | |
+| 1 | Projet Remotion des cinq cartons, FR et EN, rendus par `scripts/video.sh cards` ; images vérifiées | livré | #126 |
+| 2 | `t00-teaser.json`, `teaser.py`, `scripts/video.sh teaser` : teaser avec ouverture, flow, decide et fin ; tests Python | livré | #126 (même branche) |
 | 3 | Nouvel exemple avec étape de signature, scène `demo-video-signature`, connecteur Yousign depuis `.env` ; tests Java | à faire | |
 | 4 | Capsule C13 sur le bac à sable Yousign, rejeu du webhook, thème sign du teaser ; documentation, revue, clôture | à faire | |
 
@@ -176,7 +177,15 @@ Lot 1, constats pour la suite :
 - durées des cartons (s) : ouverture 6, flow 5, decide 4,5, sign 4,5, fin 11,5, soit 31,5 s ; reste environ 58 s pour
   les extraits.
 
-Prochaine action : lot 2 (`teaser.py`, coupes de flow et decide).
+Lot 2, constats pour la suite :
+
+- teaser actuel : 67,5 s (FR), 67,6 s (EN), 7 coupes, 8 sous-titres ; reste environ 22 s pour le carton sign (4,5 s)
+  et les coupes de C13 ;
+- les plans des capsules longues s'ouvrent sur un carton de chapitre (2,6 s) : `"from": 2.7` l'écarte ;
+- dans la coupe L2, la pastille « Sous le capot » de la capsule longue dépasse un peu à gauche du sous-titre :
+  accepté, à revoir si l'utilisateur la juge gênante.
+
+Prochaine action : lot 3 (nouvel exemple avec étape de signature, scène `demo-video-signature`).
 
 ## Preuves
 
@@ -187,6 +196,8 @@ Prochaine action : lot 2 (`teaser.py`, coupes de flow et decide).
 | 2026-11-17 | `scripts/video.sh cards`, FR puis EN | 10 MP4 1920×1080, 30 i/s, H.264, sans son, durées exactes ; planches d'images regardées |
 | 2026-11-17 | `scripts/check-docs.sh` | tous les contrôles `ok` |
 | 2026-11-17 | `./mvnw verify` (GreenMail de la scène vidéo arrêté le temps du build : il tient le port 3143 des tests IMAP) | code 0 ; 5 297 tests, 0 échec, 0 erreur, 5 ignorés |
+| 2026-11-17 | lot 2 : `uv run --with pytest --with pyjwt pytest scripts/video -q` | 44 réussis (dont 13 de `test_teaser.py`) |
+| 2026-11-17 | lot 2 : `scripts/video.sh teaser`, FR puis EN | MP4 1920×1080, 30 i/s, H.264, yuv420p `tv`, sans son, 69,8 s / 70,0 s puis 67,5 / 67,6 s sans le carton de chapitre L2 ; couleurs des cartons et des plans identiques avant et après montage (pixels comparés) ; planches regardées |
 
 ## Revue de clôture
 

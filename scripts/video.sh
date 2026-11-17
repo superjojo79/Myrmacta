@@ -27,6 +27,9 @@
 #   scripts/video.sh cards                cartons du teaser t00-teaser (§148) rendus par Remotion (scripts/video/remotion, Node
 #                                         et le Chromium headless de Playwright ; pas de démo à lancer)
 #                                         → frontend/capture/out/film/t00-teaser/<langue>/cards/<carton>.mp4
+#   scripts/video.sh teaser               teaser t00-teaser (§148) : les cartons, puis les coupes prises dans les plans des
+#                                         capsules déjà tournées dans la langue (pas de démo à lancer), muet, sous-titres
+#                                         incrustés → frontend/capture/out/film/t00-teaser/<langue>/t00-teaser-<langue>.mp4
 #   scripts/video.sh reset [--yes]        vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
 #
 # Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues ou deux scènes, reset. Connexion : comme
@@ -121,12 +124,15 @@ case "${1:-}" in
   cards)
     exec uv run scripts/video/cards.py scripts/video/capsules/t00-teaser.json --lang "${APP_DEMO_LOCALE:-fr}"
     ;;
+  teaser)
+    exec uv run scripts/video/teaser.py scripts/video/capsules/t00-teaser.json --lang "${APP_DEMO_LOCALE:-fr}"
+    ;;
   reset)
     shift
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,34p' "$0"
+    sed -n '2,37p' "$0"
     exit 2
     ;;
 esac

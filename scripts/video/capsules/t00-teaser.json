@@ -62,5 +62,61 @@
         "url": "myrmacta.be"
       }
     }
+  ],
+  "_sequence": "Ordre du teaser (scripts/video/teaser.py). Une coupe prend, dans le plan monté d'une capsule, les repères de sous-titres cues [premier, dernier] (comptés depuis 0, voice.json de la capsule) et remplace leur texte par le sien, un texte par repère, tenu au même moment ; from (s) écarte le début du plan (carton de chapitre des capsules longues, 2,6 s). Le thème sign (carton et coupes de C13) s'ajoute au lot 4.",
+  "sequence": [
+    { "card": "opening" },
+    { "card": "flow" },
+    {
+      "cut": { "capsule": "c02-flux", "plan": "parcours", "cues": [2, 2] },
+      "captions": {
+        "fr": ["Le parcours devient un processus BPMN, prêt à relire."],
+        "en": ["The journey becomes a BPMN process, ready for review."]
+      }
+    },
+    {
+      "cut": { "capsule": "c11-equipes", "plan": "groupes", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Chaque tâche va à l'équipe qui doit la traiter."],
+        "en": ["Each task goes to the team that handles it."]
+      }
+    },
+    {
+      "cut": { "capsule": "l2-onboarding", "plan": "provisioning", "cues": [0, 0], "from": 2.7 },
+      "captions": {
+        "fr": ["Le processus pilote vos applications : SIRH, puis IAM."],
+        "en": ["The process drives your applications: HR system, then IAM."]
+      }
+    },
+    {
+      "cut": { "capsule": "c08-panne", "plan": "rejeu", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Une panne ? Un clic rejoue l'étape, le dossier reprend."],
+        "en": ["An outage? One click replays the step; the case resumes."]
+      }
+    },
+    { "card": "decide" },
+    {
+      "cut": { "capsule": "c02-flux", "plan": "dmn", "cues": [1, 2] },
+      "captions": {
+        "fr": ["Une nouvelle version de la règle se teste sur un cas.", "Erreur ? Un clic restaure la précédente."],
+        "en": ["A new version of the rule is tested on a case.", "Wrong? One click restores the previous one."]
+      }
+    },
+    {
+      "cut": { "capsule": "c10-brouillons", "plan": "brouillon", "cues": [0, 0] },
+      "captions": {
+        "fr": ["Un agent IA propose une règle par MCP…"],
+        "en": ["An AI agent proposes a rule over MCP…"]
+      }
+    },
+    {
+      "cut": { "capsule": "c10-brouillons", "plan": "publication", "cues": [0, 0] },
+      "captions": {
+        "fr": ["… une personne la relit et la publie."],
+        "en": ["… a person reviews and publishes it."]
+      }
+    },
+    { "card": "closing" }
   ]
 }

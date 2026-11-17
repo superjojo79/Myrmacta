@@ -95,6 +95,14 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   Playwright. Textes et durées : `scripts/video/capsules/t00-teaser.json` ; `scripts/video/cards.py` refuse un texte
   absent d'une langue ou un carton trop court pour être lu. Sortie : `frontend/capture/out/film/t00-teaser/<langue>/cards/`.
   Pas de démo à lancer.
+- **Teaser du site, montage** (§148, D-VIDEO-TEASER, en cours) : `scripts/video.sh teaser` rend les cartons, puis
+  monte la suite de `t00-teaser.json` (`"sequence"`) : cartons et coupes prises dans les plans des capsules déjà
+  tournées dans la langue (`<capsule>/<langue>/clips/`). Une coupe désigne des repères de sous-titres de son plan
+  (`"cues"`) et remplace leur texte par le sien, au même moment ; `"from"` écarte le début du plan (carton de chapitre
+  d'une capsule longue). `scripts/video/teaser.py` refuse un plan absent (avec la commande qui le tourne), un texte
+  illisible dans le temps de son repère et un teaser de plus de 90 s ; il ramène cartons et plans en `yuv420p` échelle
+  limitée. Sortie : `t00-teaser-<langue>.mp4`, muet, sous-titres incrustés, avec `.vtt` et `.srt`. Le thème sign
+  arrive avec la capsule C13.
 - **Capsules courtes du site** (§140, D-VIDEO-SHORT) : scène = démo complète (`scripts/video.sh start cNN-…`, profil
   `demo`). Une capsule `"format": "short"` n'a pas de voix. `voice.py` minute ses sous-titres à la lecture et écrit le
   même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).

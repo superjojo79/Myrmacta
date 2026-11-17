@@ -25,6 +25,8 @@ buildNumber.properties
 
 # Frontend (Vite)
 frontend/node_modules/
+# Cartons du teaser (TODO §148, D-VIDEO-REMOTION) : projet Remotion à part
+scripts/video/remotion/node_modules/
 frontend/dist/
 frontend/coverage/
 frontend/playwright-report/

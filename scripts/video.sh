@@ -24,6 +24,9 @@
 #   scripts/video.sh shorts               sur une démo fraîche (start c01-dossier) : les capsules courtes de la démo
 #                                         complète, dans l'ordre de leur numéro (certaines modifient la démo : on ne les
 #                                         rejoue pas seules sans reset) ; C5 et C6 se tournent sur leur scène, à part
+#   scripts/video.sh cards                cartons du teaser t00-teaser (§148) rendus par Remotion (scripts/video/remotion, Node
+#                                         et le Chromium headless de Playwright ; pas de démo à lancer)
+#                                         → frontend/capture/out/film/t00-teaser/<langue>/cards/<carton>.mp4
 #   scripts/video.sh reset [--yes]        vide la base embarquée (application ARRÊTÉE) : le prochain start rejoue la scène
 #
 # Langue : APP_DEMO_LOCALE=fr (défaut) ou en ; entre deux langues ou deux scènes, reset. Connexion : comme
@@ -115,12 +118,15 @@ case "${1:-}" in
       "$0" capsule "$(basename "$file" .json)"
     done
     ;;
+  cards)
+    exec uv run scripts/video/cards.py scripts/video/capsules/t00-teaser.json --lang "${APP_DEMO_LOCALE:-fr}"
+    ;;
   reset)
     shift
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,31p' "$0"
+    sed -n '2,34p' "$0"
     exit 2
     ;;
 esac

@@ -1,0 +1,66 @@
+{
+  "_commentaire": "Teaser « Myrmacta en 90 secondes » (TODO §148, D-VIDEO-TEASER, D-VIDEO-REMOTION, issue #59) : muet, sous-titres incrustés, FR et EN. Les cartons sont rendus par Remotion (scripts/video/cards.py, projet scripts/video/remotion). Chaque texte affiché est un fait vérifié : sa preuve est dans la table « Textes et preuves » du document de travail de la feature, puis dans la spec 47 à la clôture. Les mots des punchlines restent en anglais dans les deux langues.",
+  "id": "t00-teaser",
+  "format": "teaser",
+  "title": { "fr": "Myrmacta en 90 secondes", "en": "Myrmacta in 90 seconds" },
+  "cards": [
+    {
+      "id": "opening",
+      "composition": "Opening",
+      "seconds": 6.0,
+      "props": {
+        "line": {
+          "fr": "Vos flux métier, du courrier à la signature.",
+          "en": "Your business flows, from incoming mail to signature."
+        }
+      }
+    },
+    {
+      "id": "flow",
+      "composition": "Punchline",
+      "seconds": 5.0,
+      "props": {
+        "word": "flow",
+        "tagline": { "fr": "Décrivez le parcours, Myrmacta l'orchestre.", "en": "Describe the journey, Myrmacta runs it." }
+      }
+    },
+    {
+      "id": "decide",
+      "composition": "Punchline",
+      "seconds": 4.5,
+      "props": {
+        "word": "decide",
+        "tagline": { "fr": "Les règles changent, pas le code.", "en": "Rules change, code doesn't." }
+      }
+    },
+    {
+      "id": "sign",
+      "composition": "Punchline",
+      "seconds": 4.5,
+      "props": {
+        "word": "sign",
+        "tagline": { "fr": "Signé, et le dossier avance.", "en": "Signed, and the case moves on." }
+      }
+    },
+    {
+      "id": "closing",
+      "composition": "Closing",
+      "seconds": 11.5,
+      "props": {
+        "lines": {
+          "fr": [
+            "Des flux métier configurés, pas développés.",
+            "Conçus par l'intégrateur, ajustés par le métier.",
+            "Avec une IA qui peut tourner sur vos postes."
+          ],
+          "en": [
+            "Business flows, configured, not coded.",
+            "Designed by integrators, fine-tuned by the business.",
+            "With AI that can run on your own machines."
+          ]
+        },
+        "url": "myrmacta.be"
+      }
+    }
+  ]
+}

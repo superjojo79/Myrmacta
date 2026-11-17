@@ -184,7 +184,9 @@ def test_the_capsules_are_well_formed():
     for path in sorted((Path(__file__).parent / "capsules").glob("*.json")):
         capsule = json.loads(path.read_text(encoding="utf-8"))
         assert capsule["id"] == path.stem
-        key = "captions" if capsule.get("format") == "short" else "narration"
+        if capsule.get("format") == "teaser":
+            continue  # ni voix ni chapitres filmés : vérifié par test_cards.py (TODO §148)
+        key ="captions" if capsule.get("format") == "short" else "narration"
         if key == "narration":
             assert set(capsule["voices"]) == {"fr", "en"}
         else:

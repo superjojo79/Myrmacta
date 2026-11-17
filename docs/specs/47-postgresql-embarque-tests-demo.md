@@ -89,6 +89,12 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   `frontend/capture/film/l2-onboarding.film.ts`. La partie 1 est jouée dans l'interface ; le metteur en scène pose le
   diagramme de l'instance (`BpmnViewer`) en vignette, réduit dans le coin inférieur droit, nœuds parcourus et en cours
   remplis. Les arrivées de la partie 2 sont encodées et approuvées par l'API après la commande de panne, hors champ.
+- **Teaser du site, cartons** (§148, D-VIDEO-REMOTION, en cours) : `scripts/video.sh cards` rend les cinq cartons du
+  teaser `t00-teaser` (ouverture, punchlines « Myrmacta flow / decide / sign », fin) avec Remotion
+  (`scripts/video/remotion`, versions exactes, installé par `npm ci` au premier rendu) et le Chromium headless de
+  Playwright. Textes et durées : `scripts/video/capsules/t00-teaser.json` ; `scripts/video/cards.py` refuse un texte
+  absent d'une langue ou un carton trop court pour être lu. Sortie : `frontend/capture/out/film/t00-teaser/<langue>/cards/`.
+  Pas de démo à lancer.
 - **Capsules courtes du site** (§140, D-VIDEO-SHORT) : scène = démo complète (`scripts/video.sh start cNN-…`, profil
   `demo`). Une capsule `"format": "short"` n'a pas de voix. `voice.py` minute ses sous-titres à la lecture et écrit le
   même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).

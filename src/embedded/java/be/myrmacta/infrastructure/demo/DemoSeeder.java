@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
  * échec arrête la démo : les suivants peuvent dépendre de lui.
  */
 @Component
-@Profile({"demo", "demo-mailroom", VideoMailRoomDemoPack.PROFILE, OnboardingDemoPack.VIDEO_PROFILE, RiverainDemoPack.PROFILE})
+@Profile({"demo", "demo-mailroom", VideoMailRoomDemoPack.PROFILE, OnboardingDemoPack.VIDEO_PROFILE, RiverainDemoPack.PROFILE,
+        SignatureDemoPack.PROFILE})
 public class DemoSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DemoSeeder.class);

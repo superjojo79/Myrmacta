@@ -217,6 +217,17 @@ profil de production sans le second drapeau.
 - **Appels sortants.** Client HTTP du JDK vers l'hôte du bac à sable ou de la production, sans
   redirection, corps borné, secret absent des erreurs (D-SIGNATURE-HTTP). Ce ne sont pas les
   garde-fous d'une URL libre de `http-rest`.
+- **Premier essai sur le bac à sable Yousign (TODO §148, 2026-11-17).** La chaîne complète passe : création, dépôt
+  du PDF, ancre reconnue, signataire, activation, redirection du portail, signature, webhook, téléchargement du PDF
+  signé et de la preuve, reprise du processus. Deux écarts corrigés :
+  - le nom du fichier déposé est en ASCII et finit par `.pdf` (Yousign refuse un fichier sans extension ou un nom
+    hors ASCII simple ; le libellé d'un document généré n'a pas d'extension). La base est coupée avant l'extension
+    et vaut `document` si elle est vide ;
+  - un `signature_request.done` (ou `envelope-completed` de DocuSign) ne détaille pas les signataires et veut dire
+    que tous ont signé : chaque signataire encore ouvert passe `SIGNED` (il restait affiché « révoqué »). La date de
+    décision affichée est celle de la réception du retour.
+
+  Contrainte du bac à sable : il refuse tout signataire hors de l'organisation du compte Yousign.
 - **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le
   fournisseur, pas un niveau choisi par Myrmacta.
 

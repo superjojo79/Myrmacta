@@ -1,0 +1,49 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Supplier agreement</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #222; }
+    h1 { font-size: 15pt; margin: 0 0 4pt 0; }
+    h2 { font-size: 11.5pt; margin: 16pt 0 6pt 0; border-bottom: 1px solid #999; padding-bottom: 2pt; }
+    .entete { color: #555; font-size: 9pt; margin-bottom: 18pt; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3pt 4pt; vertical-align: top; }
+    td.libelle { width: 38%; color: #555; }
+    .signature { margin-top: 24pt; width: 60%; border: 1pt solid #999; padding: 8pt 10pt; height: 70pt; }
+    /* Yousign signature anchor (D-SIGNATURE-ANCHOR): read in the PDF text, invisible to the reader. */
+    .ancre { color: #ffffff; font-size: 6pt; }
+  </style>
+</head>
+<body>
+  <!-- English variant of template-convention.html: same variables, same anchor. -->
+
+  <h1>Supplier agreement</h1>
+  <div class="entete">
+    Case <span th:text="${referenceDossier}">DOS-0000</span>
+    — drawn up on <span th:text="${dateConvention}">2026-01-01</span>
+  </div>
+
+  <h2>Parties</h2>
+  <table>
+    <tr><td class="libelle">Supplier</td><td th:text="${dossierFields.fournisseur}">Supplier</td></tr>
+    <tr><td class="libelle">Company number</td><td th:text="${dossierFields.numeroEntreprise}">BE 0000.000.000</td></tr>
+    <tr><td class="libelle">Represented by</td><td th:text="${dossierFields.signataireNom}">Signer</td></tr>
+  </table>
+
+  <h2>Purpose</h2>
+  <table>
+    <tr><td class="libelle">Service</td><td th:text="${dossierFields.objet}">Purpose</td></tr>
+    <tr><td class="libelle">Annual amount</td><td th:text="${dossierFields.montantAnnuel}">0 EUR</td></tr>
+    <tr><td class="libelle">Start date</td><td th:text="${dossierFields.dateDebut}">2026-01-01</td></tr>
+  </table>
+
+  <p>The supplier undertakes to deliver the service described above on the agreed terms. This agreement takes effect on
+     the start date and runs for one year, renewable.</p>
+
+  <div class="signature">
+    For the supplier, <span th:text="${dossierFields.signataireNom}">Signer</span>:
+    <div class="ancre">{{s1|signature|85|37}}</div>
+  </div>
+</body>
+</html>

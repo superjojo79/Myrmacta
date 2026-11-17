@@ -79,6 +79,16 @@ class DemoExampleTest {
     }
 
     @Test
+    void inEnglish_theNameOfASigner_isALabel_andIsTranslated() throws IOException {
+        // TODO §148 : le libellé d'un signataire s'affiche sur la fiche et chez le fournisseur de signature.
+        Files.writeString(dir.resolve("signer.bpmn20.xml"),
+                "<flowable:signer source=\"dossierField:email\" kind=\"EXTERNAL\" name=\"Fournisseur\"/>");
+        Files.writeString(dir.resolve("en/names.json"), "{\"Fournisseur\":\"Supplier\"}");
+
+        assertThat(example("en").xml("signer.bpmn20.xml")).contains("name=\"Supplier\"");
+    }
+
+    @Test
     void inEnglish_aTranslationIsEscapedForXml() throws IOException {
         Files.writeString(dir.resolve("en/names.json"),
                 "{\"Trier le courrier\":\"Sort R&D \\\"mail\\\" <now>\",\"Sans règle\":\"No rule & no <tag>\"}");

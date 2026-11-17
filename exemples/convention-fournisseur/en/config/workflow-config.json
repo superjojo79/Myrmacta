@@ -1,0 +1,16 @@
+{
+  "processDefinitionKey": "conventionFournisseur",
+  "label": "Supplier agreement",
+  "onStartDossierStatus": "EN_COURS",
+  "allowedDossierStatuses": [
+    "OUVERT",
+    "EN_COURS",
+    "CLOTURE"
+  ],
+  "statusDefinitions": [
+    { "code": "EN_PREPARATION", "label": "In preparation", "initial": true, "outcome": "NONE" },
+    { "code": "EN_SIGNATURE", "label": "Out for signature", "initial": false, "outcome": "NONE" },
+    { "code": "SIGNEE", "label": "Signed", "initial": false, "outcome": "COMPLETED" },
+    { "code": "NON_SIGNEE", "label": "Not signed", "initial": false, "outcome": "FAILED" }
+  ]
+}

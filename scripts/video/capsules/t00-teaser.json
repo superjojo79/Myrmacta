@@ -1,0 +1,144 @@
+{
+  "_commentaire": "Teaser « Myrmacta en 90 secondes » (TODO §148, D-VIDEO-TEASER, D-VIDEO-REMOTION, issue #59) : muet, sous-titres incrustés, FR et EN. Les cartons sont rendus par Remotion (scripts/video/cards.py, projet scripts/video/remotion). Chaque texte affiché est un fait vérifié : sa preuve est dans la table de la spec 47 (teaser du site, montage). Les mots des punchlines restent en anglais dans les deux langues.",
+  "id": "t00-teaser",
+  "format": "teaser",
+  "title": { "fr": "Myrmacta en 90 secondes", "en": "Myrmacta in 90 seconds" },
+  "cards": [
+    {
+      "id": "opening",
+      "composition": "Opening",
+      "seconds": 6.0,
+      "props": {
+        "line": {
+          "fr": "Vos flux métier, du courrier à la signature.",
+          "en": "Your business flows, from incoming mail to signature."
+        }
+      }
+    },
+    {
+      "id": "flow",
+      "composition": "Punchline",
+      "seconds": 5.0,
+      "props": {
+        "word": "flow",
+        "tagline": { "fr": "Décrivez le parcours, Myrmacta l'orchestre.", "en": "Describe the journey, Myrmacta runs it." }
+      }
+    },
+    {
+      "id": "decide",
+      "composition": "Punchline",
+      "seconds": 4.5,
+      "props": {
+        "word": "decide",
+        "tagline": { "fr": "Les règles changent, pas le code.", "en": "Rules change, code doesn't." }
+      }
+    },
+    {
+      "id": "sign",
+      "composition": "Punchline",
+      "seconds": 4.5,
+      "props": {
+        "word": "sign",
+        "tagline": { "fr": "Signé, et le dossier avance.", "en": "Signed, and the case moves on." }
+      }
+    },
+    {
+      "id": "closing",
+      "composition": "Closing",
+      "seconds": 11.5,
+      "props": {
+        "lines": {
+          "fr": [
+            "Des flux métier configurés, pas développés.",
+            "Conçus par l'intégrateur, ajustés par le métier.",
+            "Avec une IA qui peut tourner sur vos postes."
+          ],
+          "en": [
+            "Business flows, configured, not coded.",
+            "Designed by integrators, fine-tuned by the business.",
+            "With AI that can run on your own machines."
+          ]
+        },
+        "url": "myrmacta.be"
+      }
+    }
+  ],
+  "_sequence": "Ordre du teaser (scripts/video/teaser.py). Une coupe prend, dans le plan monté d'une capsule, les repères de sous-titres cues [premier, dernier] (comptés depuis 0, voice.json de la capsule) et remplace leur texte par le sien, un texte par repère, tenu au même moment ; from (s) écarte le début du plan (carton de chapitre des capsules longues, 2,6 s). Le thème sign prend ses coupes dans C13, tournée sur le bac à sable Yousign (lot 4).",
+  "sequence": [
+    { "card": "opening" },
+    { "card": "flow" },
+    {
+      "cut": { "capsule": "c02-flux", "plan": "parcours", "cues": [2, 2] },
+      "captions": {
+        "fr": ["Le parcours devient un processus BPMN, prêt à relire."],
+        "en": ["The journey becomes a BPMN process, ready for review."]
+      }
+    },
+    {
+      "cut": { "capsule": "c11-equipes", "plan": "groupes", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Chaque tâche va à l'équipe qui doit la traiter."],
+        "en": ["Each task goes to the team that handles it."]
+      }
+    },
+    {
+      "cut": { "capsule": "l2-onboarding", "plan": "provisioning", "cues": [0, 0], "from": 2.7 },
+      "captions": {
+        "fr": ["Le processus pilote vos applications : SIRH, puis IAM."],
+        "en": ["The process drives your applications: HR system, then IAM."]
+      }
+    },
+    {
+      "cut": { "capsule": "c08-panne", "plan": "rejeu", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Une panne ? Un clic rejoue l'étape, le dossier reprend."],
+        "en": ["An outage? One click replays the step; the case resumes."]
+      }
+    },
+    { "card": "decide" },
+    {
+      "cut": { "capsule": "c02-flux", "plan": "dmn", "cues": [1, 2] },
+      "captions": {
+        "fr": ["Une nouvelle version de la règle se teste sur un cas.", "Erreur ? Un clic restaure la précédente."],
+        "en": ["A new version of the rule is tested on a case.", "Wrong? One click restores the previous one."]
+      }
+    },
+    {
+      "cut": { "capsule": "c10-brouillons", "plan": "brouillon", "cues": [0, 0] },
+      "captions": {
+        "fr": ["Un agent IA propose une règle par MCP…"],
+        "en": ["An AI agent proposes a rule over MCP…"]
+      }
+    },
+    {
+      "cut": { "capsule": "c10-brouillons", "plan": "publication", "cues": [0, 0] },
+      "captions": {
+        "fr": ["… une personne la relit et la publie."],
+        "en": ["… a person reviews and publishes it."]
+      }
+    },
+    { "card": "sign" },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "envoi", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Le document part en signature électronique chez Yousign."],
+        "en": ["The document goes out for e-signature with Yousign."]
+      }
+    },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "signature", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Signé en ligne, sans compte Myrmacta."],
+        "en": ["Signed online, with no Myrmacta account."]
+      }
+    },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "retour", "cues": [0, 0] },
+      "captions": {
+        "fr": ["Le PDF signé et sa preuve rejoignent le dossier."],
+        "en": ["The signed PDF and its proof join the case."]
+      }
+    },
+    { "card": "closing" }
+  ]
+}

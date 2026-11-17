@@ -19,7 +19,8 @@ import java.util.Objects;
 /**
  * TODO §72 — retour d'un fournisseur réel. L'issue est celle du fournisseur (les décisions par
  * signataire ne servent qu'à l'affichage) ; les signataires non décidés sont clos avec la demande
- * ({@code EXPIRED} pour une expiration, sinon {@code REVOKED}). Une référence inconnue est une erreur
+ * ({@code EXPIRED} pour une expiration, sinon {@code REVOKED}), sauf ceux d'une demande signée sans détail
+ * par signataire, qui ont tous signé ({@code SIGNED}, TODO §148). Une référence inconnue est une erreur
  * de requête (400 pour le fournisseur) ; un événement sur une demande déjà close est ignoré, sauf un
  * {@code SIGNED} hébergé qui remplace un refus local pas encore repris par le process. Un refus déjà
  * distribué, ou un refus venu du fournisseur, reste clos.
@@ -61,11 +62,17 @@ public final class HandleSignatureCallbackUseCaseImpl implements HandleSignature
             return false;
         }
         Instant now = clock.instant();
+        // TODO §148 (lot 4) — un « signé » sans détail par signataire (Yousign signature_request.done, DocuSign
+        // envelope-completed) veut dire que tous ont signé : sinon ils resteraient affichés « révoqué » sous une demande
+        // signée. La date de décision est celle de la réception du retour.
+        boolean signedWithoutDetail = event.outcome() == SignatureOutcome.SIGNED && event.signerDecisions().isEmpty();
         List<Signer> signers = new ArrayList<>();
         for (Signer signer : repository.findSigners(request.id())) {
             SignerStatus reported = event.signerDecisions().get(signer.id());
             if (reported != null && signer.status().isOpen() && !reported.isOpen()) {
                 signers.add(signer.decided(reported, now, null));
+            } else if (signedWithoutDetail && signer.status().isOpen()) {
+                signers.add(signer.decided(SignerStatus.SIGNED, now, null));
             } else if (signer.status().isOpen()) {
                 signers.add(signer.decided(
                         event.outcome() == SignatureOutcome.EXPIRED ? SignerStatus.EXPIRED : SignerStatus.REVOKED,

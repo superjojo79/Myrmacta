@@ -712,6 +712,35 @@ mail-servers`), et pour C6 un Ollama local avec le modèle `gemma4:12b` (`APP_PR
    modèle ne signale pas les écarts attendus ; changer de modèle avec `APP_PRECHECK_MODEL`.
 4. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
 
+### Capsule C13 « signature » et teaser du site (TODO §148)
+
+C13 se tourne sur sa propre scène, l'exemple `exemples/convention-fournisseur`, contre le **bac à sable Yousign**.
+Pré-requis : Keycloak, `.env`, jar de démo, `ffmpeg`, Mailpit (`scripts/video.sh mail-servers`), et dans `.env` (section
+C13 de `.env.local.example`, jamais une clé de production) :
+
+- `YOUSIGN_SANDBOX_API_KEY` : la clé d'API du bac à sable ;
+- `YOUSIGN_WEBHOOK_SECRET` : une valeur aléatoire (`openssl rand -hex 32`). Aucun webhook à déclarer chez Yousign :
+  il ne joint pas le poste, le tournage le rejoue en local (`scripts/video/sign_webhook.py`) ;
+- `YOUSIGN_SANDBOX_SIGNER_EMAIL` : une adresse de votre organisation Yousign (l'e-mail du compte suffit), seule
+  acceptée par le bac à sable ;
+- `YOUSIGN_SANDBOX_ACCOUNT_NAME` : le nom du titulaire du compte, entre guillemets s'il contient une espace. Le
+  tournage remplace à l'écran ce nom et l'adresse ci-dessus par ceux de l'exemple, et s'arrête s'il en manque un.
+
+Après un changement de ces valeurs, `scripts/video.sh reset --yes` : le connecteur de la scène garde celles de son
+installation.
+
+1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
+   c13-signature` (journal : `demo: signature example installed (Yousign sandbox)`). `VIDEO_SIGNATURE_PROVIDER=stub`
+   répète sans Yousign, mais le plan de signature ne se tourne qu'avec Yousign.
+2. **La capsule** : `APP_DEMO_LOCALE=fr scripts/video.sh capsule c13-signature`. Une vraie demande part au bac à sable,
+   le tournage signe sur la page Yousign, rejoue le webhook et attend le statut « Signée ». Un dossier ne se signe
+   qu'une fois : pour refaire C13, repartir d'une base vide.
+3. **En anglais** : arrêter la scène, `scripts/video.sh reset --yes`, puis la même chose avec `APP_DEMO_LOCALE=en`.
+4. **Le teaser** (`t00-teaser`), une fois tournées dans la langue les capsules dont il prend des extraits (C2, C8, C10,
+   C11, L2, C13) : `APP_DEMO_LOCALE=fr scripts/video.sh teaser`, sans démo lancée. Les cartons sont rendus par
+   Remotion (`scripts/video/remotion`, installé par `npm ci` au premier rendu). Sortie :
+   `frontend/capture/out/film/t00-teaser/<langue>/t00-teaser-<langue>.mp4`.
+
 ### Démo de la Digital Mail Room (profil `demo-mailroom`, TODO §113)
 
 Une démo reproductible du courrier entrant, sur la base embarquée, sans serveur de messagerie ni SFTP :

@@ -1,0 +1,19 @@
+{
+  "code": "CONVENTION_FOURNISSEUR",
+  "label": "Supplier agreement",
+  "workflowKey": "conventionFournisseur",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    { "name": "fournisseur", "label": "Supplier", "type": "STRING", "required": true, "group": "Supplier", "width": "HALF", "searchable": true },
+    { "name": "numeroEntreprise", "label": "Company number", "type": "STRING", "required": true, "group": "Supplier", "width": "HALF" },
+    { "name": "signataireNom", "label": "Signer", "type": "STRING", "required": true, "group": "Supplier", "width": "HALF",
+      "helpText": "Person who signs the agreement for the supplier." },
+    { "name": "signataireEmail", "label": "Signer's e-mail", "type": "STRING", "required": true, "group": "Supplier", "width": "HALF",
+      "helpText": "Address the signing link is sent to." },
+    { "name": "objet", "label": "Purpose of the agreement", "type": "STRING", "required": true, "group": "Agreement", "width": "FULL" },
+    { "name": "montantAnnuel", "label": "Annual amount", "type": "STRING", "required": true, "group": "Agreement", "width": "HALF" },
+    { "name": "dateDebut", "label": "Start date", "type": "DATE", "required": true, "group": "Agreement", "width": "HALF" }
+  ],
+  "pieceTypes": []
+}

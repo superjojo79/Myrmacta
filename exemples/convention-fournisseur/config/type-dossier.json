@@ -1,0 +1,19 @@
+{
+  "code": "CONVENTION_FOURNISSEUR",
+  "label": "Convention fournisseur",
+  "workflowKey": "conventionFournisseur",
+  "active": true,
+  "allowUnknownFields": false,
+  "fieldDefinitions": [
+    { "name": "fournisseur", "label": "Fournisseur", "type": "STRING", "required": true, "group": "Fournisseur", "width": "HALF", "searchable": true },
+    { "name": "numeroEntreprise", "label": "Numéro d'entreprise", "type": "STRING", "required": true, "group": "Fournisseur", "width": "HALF" },
+    { "name": "signataireNom", "label": "Signataire", "type": "STRING", "required": true, "group": "Fournisseur", "width": "HALF",
+      "helpText": "Personne qui signe la convention pour le fournisseur." },
+    { "name": "signataireEmail", "label": "E-mail du signataire", "type": "STRING", "required": true, "group": "Fournisseur", "width": "HALF",
+      "helpText": "Adresse à laquelle part le lien de signature." },
+    { "name": "objet", "label": "Objet de la convention", "type": "STRING", "required": true, "group": "Convention", "width": "FULL" },
+    { "name": "montantAnnuel", "label": "Montant annuel", "type": "STRING", "required": true, "group": "Convention", "width": "HALF" },
+    { "name": "dateDebut", "label": "Date de début", "type": "DATE", "required": true, "group": "Convention", "width": "HALF" }
+  ],
+  "pieceTypes": []
+}

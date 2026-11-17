@@ -1,0 +1,21 @@
+{
+  "name": "myrmacta-video-cards",
+  "private": true,
+  "description": "Cartons du teaser vidéo (TODO §148, D-VIDEO-REMOTION, issue #59). Outillage de développement : hors jar, hors CI.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "studio": "remotion studio src/index.ts --public-dir=../../../frontend/src/assets/brand"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.540",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.540"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}

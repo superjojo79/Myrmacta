@@ -221,9 +221,11 @@ profil de production sans le second drapeau.
   du PDF, ancre reconnue, signataire, activation, redirection du portail, signature, webhook, téléchargement du PDF
   signé et de la preuve, reprise du processus. Deux écarts corrigés :
   - le nom du fichier déposé est en ASCII et finit par `.pdf` (Yousign refuse un fichier sans extension ou un nom
-    hors ASCII simple ; le libellé d'un document généré n'a pas d'extension) ;
-  - un `signature_request.done` ne détaille pas les signataires : sur une demande signée sans détail, chaque requis
-    encore ouvert passe `SIGNED` (il restait affiché « révoqué »).
+    hors ASCII simple ; le libellé d'un document généré n'a pas d'extension). La base est coupée avant l'extension
+    et vaut `document` si elle est vide ;
+  - un `signature_request.done` (ou `envelope-completed` de DocuSign) ne détaille pas les signataires et veut dire
+    que tous ont signé : chaque signataire encore ouvert passe `SIGNED` (il restait affiché « révoqué »). La date de
+    décision affichée est celle de la réception du retour.
 
   Contrainte du bac à sable : il refuse tout signataire hors de l'organisation du compte Yousign.
 - **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le

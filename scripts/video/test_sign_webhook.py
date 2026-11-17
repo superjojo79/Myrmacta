@@ -41,14 +41,25 @@ def test_aRequestThatIsNotDoneInYousign_isNotReplayed(status):
         sign_webhook.ensure_done({"id": REQUEST_ID, "status": status})
 
 
-def test_theRequestToReplay_isTheLatestDoneOne_whenNoneIsGiven():
-    page = {"data": [{"id": "a", "status": "done"}, {"id": "b", "status": "done"}]}
-    assert sign_webhook.latest_done(page) == "a"
+MYRMACTA_ID = "f9942614-b123-4a1d-bb48-0478c2f2d8a9"
 
 
-def test_noDoneRequestInYousign_saysWhatToDo():
-    with pytest.raises(SystemExit, match="aucune demande signée"):
-        sign_webhook.latest_done({"data": []})
+def test_theRequestToReplay_isTheOneWhoseExternalIdIsTheMyrmactaRequest_notTheLatestOneOfTheSandbox():
+    # Revue du lot 4 : « la dernière demande signée » du bac à sable pouvait être celle d'une autre prise.
+    page = {"data": [{"id": "other", "external_id": "another-take", "status": "done"},
+                     {"id": REQUEST_ID, "external_id": MYRMACTA_ID, "status": "ongoing"}]}
+    assert sign_webhook.matching(page, MYRMACTA_ID)["id"] == REQUEST_ID
+
+
+def test_noRequestForTheMyrmactaId_saysSo():
+    with pytest.raises(SystemExit, match=f"aucune demande Yousign.*{MYRMACTA_ID}"):
+        sign_webhook.matching({"data": [{"id": "other", "external_id": "another-take", "status": "done"}]}, MYRMACTA_ID)
+
+
+def test_aRejectedSignature_namesTheScene_reset():
+    # Revue du lot 4 : un secret changé dans .env sans reset laisse l'ancien connecteur à la scène.
+    with pytest.raises(SystemExit, match=r"401.*reset"):
+        sign_webhook.refused(401, b"")
 
 
 def test_theCallbackUrl_isTheEndpointOfTheSignatureConnector():

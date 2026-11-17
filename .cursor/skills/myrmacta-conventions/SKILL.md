@@ -209,3 +209,6 @@ désormais empêcher devient ce test et sort de la liste.
 - **Deux Maven sur le même `target/`** (#279, lot 1) : un `mvnw test` lancé pendant un `mvnw verify` recompile les classes
   sous ses pieds (dizaines de `NoClassDefFoundError`), et un `verify` avec le frontend réinstalle `node_modules` pendant un
   lint. Un seul Maven à la fois ; `-Dskip.frontend=true` si les contrôles frontend tournent à part.
+- **Coupes de montage décalées dans un tournage** (#59, lot 4) : la vidéo de Playwright ne commence qu'à la première
+  image peinte. Une attente hors champ (`offscreen`) sur une page vide décale toutes les coupes du plan ; elle s'ouvre
+  sur une page (`d.goto`) avant d'attendre.

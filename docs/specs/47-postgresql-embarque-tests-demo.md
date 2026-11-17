@@ -103,7 +103,28 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   illisible dans le temps de son repère et un teaser de plus de 90 s ; il ramène cartons et plans en `yuv420p` échelle
   limitée. Sortie : `t00-teaser-<langue>.mp4`, muet, sous-titres incrustés, avec `.vtt` et `.srt`. Le thème sign
   prend ses coupes dans C13 (envoi, signature chez Yousign, retour au dossier) : environ 84 s au total. Un texte minuté
-  sur son propre repère y tient malgré l'arrondi à la milliseconde de `voice.json`.
+  sur son propre repère y tient malgré l'arrondi à la milliseconde de `voice.json`. Chaque texte à l'écran est un fait
+  vérifié (§148) ; une phrase sans preuve est retirée :
+
+  | Où | Texte (FR) | Preuve |
+  |---|---|---|
+  | Ouverture | Vos flux métier, du courrier à la signature. | L1 (courrier entrant), C13 (signature) ; specs 49 et 30 |
+  | flow, accroche | Décrivez le parcours, Myrmacta l'orchestre. | C2 `parcours` ; spec 44 (parcours compilé en BPMN) |
+  | flow, C2 `parcours` | Le parcours devient un processus BPMN, prêt à relire. | C2, filmé ; spec 44 |
+  | flow, C11 `groupes` | Chaque tâche va à l'équipe qui doit la traiter. | C11, filmé |
+  | flow, L2 `provisioning` | Le processus pilote vos applications : SIRH, puis IAM. | L2, filmé ; spec 06 |
+  | flow, C8 `rejeu` | Une panne ? Un clic rejoue l'étape, le dossier reprend. | C8, filmé |
+  | decide, accroche | Les règles changent, pas le code. | C2 `dmn` et C10 (nouvelle version de table, aucun code) ; specs 25 et 28 |
+  | decide, C2 `dmn` | Une nouvelle version de la règle se teste sur un cas. Erreur ? Un clic restaure la précédente. | C2, filmé ; spec 28 |
+  | decide, C10 | Un agent IA propose une règle par MCP… une personne la relit et la publie. | C10, filmé ; spec 46 |
+  | sign, accroche | Signé, et le dossier avance. | C13 `retour` : workflow « Signée », processus terminé après le webhook ; spec 30 |
+  | sign, C13 `envoi` | Le document part en signature électronique chez Yousign. | C13, filmé ; demande active lue dans l'API du bac à sable |
+  | sign, C13 `signature` | Signé en ligne, sans compte Myrmacta. | C13 : lien du portail, page Yousign, aucune session Myrmacta ; spec 30 |
+  | sign, C13 `retour` | Le PDF signé et sa preuve rejoignent le dossier. | C13 : éléments « Document signé » et « Preuve de signature » |
+  | Fin | Des flux métier configurés, pas développés. Conçus par l'intégrateur, ajustés par le métier. | spec 31 (D-POSITIONING = C, `scriptTask` écarté) ; C9, L2 |
+  | Fin | Avec une IA qui peut tourner sur vos postes. | L1 (modèle local, D-VIDEO-AGENT), C6 ; spec 48 |
+
+  Les textes anglais sont leur traduction, dans `t00-teaser.json`.
 - **Capsules courtes du site** (§140, D-VIDEO-SHORT) : scène = démo complète (`scripts/video.sh start cNN-…`, profil
   `demo`). Une capsule `"format": "short"` n'a pas de voix. `voice.py` minute ses sous-titres à la lecture et écrit le
   même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).
@@ -137,12 +158,16 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   - Capsule C13 `c13-signature` (`frontend/capture/film/c13-signature.film.ts`) : relecture validée, demande envoyée
     chez Yousign ; invitation dans Mailpit ; le portail redirige vers la page Yousign, le fournisseur signe (lecture du
     document hors champ) ; retour au dossier avec le PDF signé, la preuve et le statut « Signée ». Yousign ne joint pas
-    le poste : `scripts/video/sign_webhook.py` lit l'état réel de la demande dans l'API du bac à sable, refuse si elle
-    n'est pas signée, puis poste `signature_request.done` signé HMAC (`X-Yousign-Signature-256`) au point d'entrée du
-    connecteur. La suite est celle du produit (téléchargement du PDF signé et de la preuve, reprise du processus).
+    le poste : `scripts/video/sign_webhook.py` retrouve chez Yousign la demande de la prise par son `external_id`
+    (l'identifiant Myrmacta de la demande), lit son état réel, refuse si elle n'est pas signée, puis poste
+    `signature_request.done` signé HMAC (`X-Yousign-Signature-256`) au point d'entrée du connecteur. La suite est
+    celle du produit (téléchargement du PDF signé et de la preuve, reprise du processus). Un refus 401 ou 403 dit de
+    relancer la scène après `reset` : le connecteur garde le secret de son installation.
   - À l'écran seulement, l'adresse réelle du signataire et le nom du titulaire du compte Yousign
-    (`YOUSIGN_SANDBOX_ACCOUNT_NAME`) sont remplacés par ceux de l'exemple (`maskPersonalData`, `director.ts`) : les
-    données ne changent pas.
+    (`YOUSIGN_SANDBOX_ACCOUNT_NAME`, obligatoire) sont remplacés par ceux de l'exemple (`maskPersonalData`,
+    `director.ts`) : texte, attributs et valeur affichée des champs ; l'état des applications n'est pas touché et le
+    tournage ne soumet aucun champ masqué. Sans ces valeurs, le tournage s'arrête. Avant de ranger un plan masqué,
+    `assertMasked` vérifie que ni l'adresse ni le nom ne sont à l'écran.
   - Le lien de signature Yousign est à usage unique : la version anglaise change la langue par le menu de la page.
   - Tests : `SignatureDemoPackIT` (stub : relecture, attente, retour `SIGNED`, statut « Signée » ; EN ; connecteur
     Yousign et signataire du bac à sable ; refus sans clés ou sans signataire), `DemoTranslationsTest`,

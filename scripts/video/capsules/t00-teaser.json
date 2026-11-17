@@ -1,5 +1,5 @@
 {
-  "_commentaire": "Teaser « Myrmacta en 90 secondes » (TODO §148, D-VIDEO-TEASER, D-VIDEO-REMOTION, issue #59) : muet, sous-titres incrustés, FR et EN. Les cartons sont rendus par Remotion (scripts/video/cards.py, projet scripts/video/remotion). Chaque texte affiché est un fait vérifié : sa preuve est dans la table « Textes et preuves » du document de travail de la feature, puis dans la spec 47 à la clôture. Les mots des punchlines restent en anglais dans les deux langues.",
+  "_commentaire": "Teaser « Myrmacta en 90 secondes » (TODO §148, D-VIDEO-TEASER, D-VIDEO-REMOTION, issue #59) : muet, sous-titres incrustés, FR et EN. Les cartons sont rendus par Remotion (scripts/video/cards.py, projet scripts/video/remotion). Chaque texte affiché est un fait vérifié : sa preuve est dans la table de la spec 47 (teaser du site, montage). Les mots des punchlines restent en anglais dans les deux langues.",
   "id": "t00-teaser",
   "format": "teaser",
   "title": { "fr": "Myrmacta en 90 secondes", "en": "Myrmacta in 90 seconds" },

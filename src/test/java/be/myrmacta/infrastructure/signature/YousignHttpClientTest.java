@@ -106,6 +106,17 @@ class YousignHttpClientTest {
         assertThat(calls).singleElement().asString().contains("filename=\"Contrat n-12 - -final-.PDF\"");
     }
 
+    /** Revue du lot 4 : l'extension survit à la coupe d'un nom long, et un nom sans base devient « document ». */
+    @Test
+    void pdfFileName_keepsItsExtensionWhenClipped_andNeverHasAnEmptyBase() {
+        String clipped = YousignHttpClient.pdfFileName("a".repeat(300) + ".pdf");
+        assertThat(clipped).hasSize(255).endsWith("a.pdf");
+        assertThat(YousignHttpClient.pdfFileName(".pdf")).isEqualTo("document.pdf");
+        assertThat(YousignHttpClient.pdfFileName("  .PDF ")).isEqualTo("document.PDF");
+        assertThat(YousignHttpClient.pdfFileName(null)).isEqualTo("document.pdf");
+        assertThat(YousignHttpClient.pdfFileName("   ")).isEqualTo("document.pdf");
+    }
+
     @Test
     void redirectIsNotFollowedAndTheKeyStaysOutOfTheError() throws IOException {
         elsewhere = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

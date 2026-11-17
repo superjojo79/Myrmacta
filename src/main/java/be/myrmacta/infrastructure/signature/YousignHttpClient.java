@@ -248,18 +248,18 @@ final class YousignHttpClient implements YousignClient {
     /**
      * TODO §148 (lot 4, bac à sable) — Yousign refuse un fichier sans extension autorisée et un nom hors ASCII simple.
      * Les accents sont retirés, tout autre caractère hors {@code [A-Za-z0-9 ._-]} devient un tiret, et {@code .pdf}
-     * est ajouté s'il manque (le libellé d'un document généré n'en a pas).
+     * est ajouté s'il manque (le libellé d'un document généré n'en a pas). La base est coupée avant l'extension, et
+     * vaut « document » si elle est vide.
      */
     static String pdfFileName(String filename) {
         String plain = filename == null ? "" : Normalizer.normalize(filename, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .replaceAll("[^A-Za-z0-9 ._-]", "-")
                 .strip();
-        String name = plain.isBlank() ? "document" : plain;
-        if (!name.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
-            name = clip(name, 251) + ".pdf";
-        }
-        return clip(name, 255);
+        boolean hasExtension = plain.toLowerCase(Locale.ROOT).endsWith(".pdf");
+        String extension = hasExtension ? plain.substring(plain.length() - 4) : ".pdf";
+        String base = clip(hasExtension ? plain.substring(0, plain.length() - 4) : plain, 251);
+        return (base.isBlank() ? "document" : base) + extension;
     }
 
     private static byte[] multipart(String boundary, String filename, byte[] pdf) {

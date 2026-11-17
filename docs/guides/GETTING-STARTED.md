@@ -724,7 +724,10 @@ C13 de `.env.local.example`, jamais une clé de production) :
 - `YOUSIGN_SANDBOX_SIGNER_EMAIL` : une adresse de votre organisation Yousign (l'e-mail du compte suffit), seule
   acceptée par le bac à sable ;
 - `YOUSIGN_SANDBOX_ACCOUNT_NAME` : le nom du titulaire du compte, entre guillemets s'il contient une espace. Le
-  tournage remplace à l'écran ce nom et l'adresse ci-dessus par ceux de l'exemple.
+  tournage remplace à l'écran ce nom et l'adresse ci-dessus par ceux de l'exemple, et s'arrête s'il en manque un.
+
+Après un changement de ces valeurs, `scripts/video.sh reset --yes` : le connecteur de la scène garde celles de son
+installation.
 
 1. **Scène** sur une base vide : `scripts/video.sh reset --yes`, puis `APP_DEMO_LOCALE=fr scripts/video.sh start
    c13-signature` (journal : `demo: signature example installed (Yousign sandbox)`). `VIDEO_SIGNATURE_PROVIDER=stub`

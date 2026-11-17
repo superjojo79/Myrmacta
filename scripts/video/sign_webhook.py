@@ -9,11 +9,12 @@ signe (HMAC-SHA256 du corps brut, en-tête X-Yousign-Signature-256) avec le secr
 poste au point d'entrée de ce connecteur. La suite est le vrai comportement du produit : téléchargement du PDF signé et
 de la preuve chez Yousign, reprise du processus. Outil de tournage : rien n'est ajouté au jar.
 
-    uv run scripts/video/sign_webhook.py --instance <id du connecteur signature> [--request <id Yousign>]
+    uv run scripts/video/sign_webhook.py --instance <id du connecteur signature> --request <id Myrmacta de la demande>
         [--base-url http://localhost:8080] [--wait 90]
 
 Clés lues dans l'environnement (`.env`, chargé par scripts/video.sh) : YOUSIGN_SANDBOX_API_KEY, YOUSIGN_WEBHOOK_SECRET.
-Sans --request : la dernière demande signée du bac à sable.
+La demande Yousign est celle dont l'`external_id` est l'identifiant Myrmacta de la demande (YousignSignatureAdapter) :
+jamais une autre prise ni un autre poste du même bac à sable.
 """
 
 from __future__ import annotations
@@ -64,12 +65,18 @@ def ensure_done(request: dict) -> None:
         raise SystemExit(f"la demande Yousign {request.get('id')} n'est pas signée (statut {status}) : rien n'est rejoué")
 
 
-def latest_done(page: dict) -> str:
-    """L'identifiant de la demande signée la plus récente (Yousign liste les plus récentes d'abord)."""
-    done = [r for r in page.get("data", []) if r.get("status") == "done"]
-    if not done:
-        raise SystemExit("aucune demande signée dans le bac à sable Yousign : signer d'abord, ou passer --request")
-    return done[0]["id"]
+def matching(page: dict, myrmacta_id: str) -> dict:
+    """La demande Yousign créée pour la demande Myrmacta `myrmacta_id` (son `external_id`)."""
+    for request in page.get("data", []):
+        if request.get("external_id") == myrmacta_id:
+            return request
+    raise SystemExit(f"aucune demande Yousign pour la demande Myrmacta {myrmacta_id} (external_id)")
+
+
+def refused(status: int, body: bytes) -> None:
+    hint = (" : le connecteur de la scène garde les clés de son installation ; après un changement de "
+            "YOUSIGN_WEBHOOK_SECRET dans .env, scripts/video.sh reset puis start") if status in (401, 403) else ""
+    raise SystemExit(f"le connecteur a répondu {status}{hint} : {body[:300]!r}")
 
 
 def callback_url(base_url: str, instance: str) -> str:
@@ -83,12 +90,12 @@ def yousign(api_key: str, path: str) -> dict:
         return json.loads(response.read())
 
 
-def done_request(api_key: str, request_id: str | None, wait: float) -> dict:
+def done_request(api_key: str, myrmacta_id: str, wait: float) -> dict:
     """La demande lue chez Yousign, attendue jusqu'à `wait` secondes : la signature y passe `done` peu après le clic."""
     deadline = time.monotonic() + wait
     while True:
         try:
-            rid = request_id or latest_done(yousign(api_key, "/signature_requests?status=done&limit=1"))
+            rid = matching(yousign(api_key, f"/signature_requests?external_id={myrmacta_id}"), myrmacta_id)["id"]
             found = yousign(api_key, f"/signature_requests/{rid}")
             ensure_done(found)
             return found
@@ -105,13 +112,14 @@ def post(url: str, body: bytes, header: str) -> int:
         with urllib.request.urlopen(request, timeout=20) as response:
             return response.status
     except urllib.error.HTTPError as error:
-        raise SystemExit(f"le connecteur a répondu {error.code} : {error.read()[:300]!r}") from error
+        refused(error.code, error.read())
+        raise
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--instance", required=True, help="identifiant du connecteur signature (Yousign)")
-    parser.add_argument("--request", help="identifiant de la demande Yousign (défaut : la dernière signée)")
+    parser.add_argument("--request", required=True, help="identifiant Myrmacta de la demande de signature")
     parser.add_argument("--base-url", default="http://localhost:8080")
     parser.add_argument("--wait", type=float, default=90, help="attente maximale de la signature chez Yousign (s)")
     args = parser.parse_args(argv)

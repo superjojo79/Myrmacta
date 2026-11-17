@@ -1,9 +1,11 @@
 # §148 — Teaser vidéo du site : extraits des capsules, cartons Remotion, signature Yousign
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (issue [#59](https://github.com/superjojo79/Myrmacta/issues/59), vague `vague-vitrine`). Cadrage validé
-par l'utilisateur le 2026-11-17. Document de travail : `docs/ai/2026-11-17-teaser-video.md`. Prolonge
+[x] clos (2026-11-17, issue [#59](https://github.com/superjojo79/Myrmacta/issues/59), vague `vague-vitrine`). Cadrage
+validé par l'utilisateur le 2026-11-17. Livré en cinq lots dans la PR #126 : cartons Remotion ; montage flow et
+decide ; exemple convention fournisseur et scène de signature ; capsule C13 sur le bac à sable Yousign et thème sign ;
+revue indépendante et clôture. Prolonge
 [§128](128-capsules-video-du-site.md) (D-VIDEO-PIPELINE) et [§140](140-capsules-courtes-du-site.md) (D-VIDEO-SHORT).
 
 **Constat.** La page d'accueil de myrmacta.be attend une vidéo d'accroche, « Myrmacta en 90 secondes ». Elle est vue
@@ -63,7 +65,11 @@ seul mouvement est un fondu d'entrée.
   - **Données personnelles à l'écran** (choix de l'utilisateur, 2026-11-17) : l'adresse réelle du signataire et le
     nom du titulaire du compte Yousign sont remplacés, à l'écran seulement, par ceux de l'exemple (le tournage réécrit
     le texte affiché des pages filmées). La signature se fait avec la vraie adresse. Écarté : un membre dédié de
-    l'organisation Yousign (un compte de plus à tenir).
+    l'organisation Yousign (un compte de plus à tenir). Revue de clôture : le tournage s'arrête si l'adresse ou le
+    nom à masquer manque (`YOUSIGN_SANDBOX_ACCOUNT_NAME` est obligatoire), la valeur d'un champ est réécrite dès
+    qu'elle est posée, et chaque plan masqué vérifie, avant d'être rangé, que ni l'adresse ni le nom ne sont à
+    l'écran. Le rejeu du webhook vise la demande de la prise par son `external_id` (l'identifiant Myrmacta), jamais
+    « la dernière signée » du bac à sable.
 
 **Décision de conception (2026-11-17).**
 
@@ -78,8 +84,8 @@ seul mouvement est un fondu d'entrée.
   - Lot 4 : `scripts/video/sign_webhook.py`, appelé hors champ par le plan « retour » de C13. Le secret du webhook est
     une valeur aléatoire du `.env` : aucun webhook n'est déclaré chez Yousign.
 
-**Textes du teaser.** Ton marketing, mais chaque affirmation à l'écran est un fait vérifié : le document de travail
-tient la table « affirmation → preuve ». Une affirmation sans preuve est retirée. La carte de fin suit le
+**Textes du teaser.** Ton marketing, mais chaque affirmation à l'écran est un fait vérifié : la
+[spec 47](../specs/47-postgresql-embarque-tests-demo.md) tient la table « affirmation → preuve ». Une affirmation sans preuve est retirée. La carte de fin suit le
 positionnement retenu ([spec 31](../specs/31-positionnement-produit.md), D-POSITIONING = C : l'intégrateur conçoit
 les processus, le métier ajuste formulaires, documents et règles), et non le discours « sans développement » que la
 spec 31 demande de nuancer.

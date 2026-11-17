@@ -211,32 +211,31 @@ export async function sendMail(scenario: 'facture' | 'inconnu' | 'reponse'): Pro
  * TODO §148 (D-VIDEO-SIGN) — le bac à sable Yousign n'accepte qu'un signataire de l'organisation du compte : la vraie
  * signature se fait avec l'adresse de `YOUSIGN_SANDBOX_SIGNER_EMAIL`, et la page Yousign nomme le titulaire du compte
  * (`YOUSIGN_SANDBOX_ACCOUNT_NAME`). À l'écran seulement, ces données personnelles sont remplacées par celles de
- * l'exemple, dans chaque page de `page` (Myrmacta, Mailpit, Yousign) : texte, champs et attributs. Les données ne changent
- * pas.
+ * l'exemple, dans chaque page de `page` (Myrmacta, Mailpit, Yousign) : texte, attributs et valeur affichée des champs.
+ * L'état des applications n'est pas touché (un champ Vue garde sa valeur) ; le tournage ne soumet aucun champ masqué.
+ * Sans ces deux valeurs, le tournage s'arrête : la vidéo est publique. `assertMasked` vérifie l'image avant de ranger
+ * le plan.
  */
 export async function maskPersonalData(page: Page, replacement: { email: string; name: string }): Promise<void> {
-  const pairs: [string, string][] = []
-  const email = process.env.YOUSIGN_SANDBOX_SIGNER_EMAIL?.trim()
-  if (email) {
-    const masked = (address: string) => `${address[0]}***@${address.split('@')[1]}`
-    pairs.push([email, replacement.email], [masked(email), masked(replacement.email)])
-  }
-  const name = process.env.YOUSIGN_SANDBOX_ACCOUNT_NAME?.trim()
-  if (name) pairs.push([name, replacement.name])
-  if (pairs.length === 0) return
   await page.context().addInitScript((list: [string, string][]) => {
     const swap = (text: string) => list.reduce((out, [from, to]) => out.split(from).join(to), text)
     const touches = (text: string | null | undefined) => !!text && list.some(([from]) => text.includes(from))
+    // La valeur d'un champ est réécrite dès qu'elle est posée (un framework la pose sans mutation du DOM).
+    for (const proto of [HTMLInputElement.prototype, HTMLTextAreaElement.prototype]) {
+      const value = Object.getOwnPropertyDescriptor(proto, 'value')!
+      Object.defineProperty(proto, 'value', {
+        configurable: true,
+        get() { return value.get!.call(this) },
+        set(v: unknown) { value.set!.call(this, typeof v === 'string' && touches(v) ? swap(v) : v) },
+      })
+    }
     const scrub = (root: Node) => {
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (touches(node.nodeValue)) node.nodeValue = swap(node.nodeValue!)
       }
-      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea').forEach((field) => {
-        if (touches(field.value)) field.value = swap(field.value)
-      })
-      document.querySelectorAll('[title], [aria-label]').forEach((el) => {
-        for (const attribute of ['title', 'aria-label']) {
+      document.querySelectorAll('[title], [aria-label], [value], [placeholder]').forEach((el) => {
+        for (const attribute of ['title', 'aria-label', 'value', 'placeholder']) {
           const value = el.getAttribute(attribute)
           if (touches(value)) el.setAttribute(attribute, swap(value!))
         }
@@ -245,21 +244,43 @@ export async function maskPersonalData(page: Page, replacement: { email: string;
     }
     const start = () => {
       scrub(document.body)
-      new MutationObserver(() => scrub(document.body)).observe(document.body, { subtree: true, childList: true, characterData: true })
-      // Un framework peut poser la valeur d'un champ sans mutation du DOM.
-      setInterval(() => scrub(document.body), 50)
+      new MutationObserver(() => scrub(document.body)).observe(document.body, {
+        subtree: true, childList: true, characterData: true, attributes: true,
+      })
     }
     if (document.body) start()
     else document.addEventListener('DOMContentLoaded', start)
-  }, pairs)
+  }, personalPairs(replacement))
+}
+
+function personalPairs(replacement: { email: string; name: string }): [string, string][] {
+  const email = process.env.YOUSIGN_SANDBOX_SIGNER_EMAIL?.trim()
+  const name = process.env.YOUSIGN_SANDBOX_ACCOUNT_NAME?.trim()
+  if (!email || !name) {
+    throw new Error('YOUSIGN_SANDBOX_SIGNER_EMAIL and YOUSIGN_SANDBOX_ACCOUNT_NAME are required in .env: '
+      + 'they are masked on screen (the video is public)')
+  }
+  const masked = (address: string) => `${address[0]}***@${address.split('@')[1]}`
+  return [[email, replacement.email], [masked(email), masked(replacement.email)], [name, replacement.name]]
+}
+
+/** Échoue si l'adresse ou le nom masqués sont encore à l'écran (texte, valeurs des champs, titre). */
+export async function assertMasked(page: Page): Promise<void> {
+  const real = personalPairs({ email: 'x@x', name: 'x' }).map(([from]) => from)
+  const shown = await page.evaluate(() => [document.title, document.body.innerText,
+    ...[...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')].map((f) => f.value)]
+    .join('\n'))
+  const leaked = real.filter((value) => shown.includes(value))
+  expect(leaked.length, 'personal data still on screen').toBe(0)
 }
 
 /**
  * TODO §148 (D-VIDEO-SIGN-WEBHOOK) — rejoue le webhook Yousign de la signature faite au tournage
- * (scripts/video/sign_webhook.py) vers le connecteur `instance` : Yousign ne joint pas le poste.
+ * (scripts/video/sign_webhook.py) vers le connecteur `instance`, pour la demande Myrmacta `request` : Yousign ne joint pas
+ * le poste.
  */
-export async function replaySignatureWebhook(instance: string): Promise<void> {
-  await run('uv', ['run', 'scripts/video/sign_webhook.py', '--instance', instance])
+export async function replaySignatureWebhook(instance: string, request: string): Promise<void> {
+  await run('uv', ['run', 'scripts/video/sign_webhook.py', '--instance', instance, '--request', request])
 }
 
 function run(command: string, args: string[]): Promise<void> {

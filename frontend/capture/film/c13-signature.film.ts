@@ -3,7 +3,7 @@
 // validée ; Myrmacta la génère et l'envoie chez Yousign ; le lien du portail arrive dans Mailpit ; le fournisseur signe
 // chez Yousign ; le webhook est rejoué en local (hors champ) ; le PDF signé et la preuve reviennent au dossier.
 import { expect, test, type Page } from '@playwright/test'
-import { maskPersonalData, replaySignatureWebhook, until } from './director'
+import { assertMasked, maskPersonalData, replaySignatureWebhook, until } from './director'
 import { api, en, opening, plan, scrollTo, shortCapsule, underTheHood } from './short'
 
 const capsule = shortCapsule('c13-signature')
@@ -68,6 +68,7 @@ test('envoi', async ({ page }) => {
   })
   await scrollTo(page, page.getByTestId('signature-requests-panel'), 'center')
   await d.holdForVoice(0.4)
+  await assertMasked(page)
   await d.wrap(order)
 })
 
@@ -106,6 +107,7 @@ test('signature', async ({ page }) => {
   await d.settle()
   await d.beat(2)
   await d.holdForVoice(0.4)
+  await assertMasked(page)
   await d.wrap(order)
 })
 
@@ -139,7 +141,9 @@ test('retour', async ({ page }) => {
     const connectors = await api<{ content: Connector[] }>(page, 'GET', '/api/connectors?size=50')
     const instance = connectors.content.find((c) => c.connectorType === 'signature')
     expect(instance, 'signature connector of the scene').toBeTruthy()
-    await replaySignatureWebhook(instance!.id)
+    const request = (await signatures(page, found.id))[0]
+    expect(request, 'signature request of the sample case').toBeTruthy()
+    await replaySignatureWebhook(instance!.id, request!.id)
     await until(async () => {
       const links = await api<{ content: { status: string }[] }>(page, 'GET', `/api/dossiers/${found.id}/workflows?size=5`)
       return links.content.some((l) => l.status === 'SIGNEE')
@@ -151,6 +155,7 @@ test('retour', async ({ page }) => {
   await d.beat(3)
   await scrollTo(page, page.getByTestId('signature-requests-panel'), 'center')
   await d.holdForVoice(0.6)
+  await assertMasked(page)
   await d.wrap(order)
 })
 

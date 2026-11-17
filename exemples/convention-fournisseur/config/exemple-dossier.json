@@ -1,0 +1,13 @@
+{
+  "dossierTypeCode": "CONVENTION_FOURNISSEUR",
+  "label": "Convention — Imprimerie Lambert",
+  "fields": {
+    "fournisseur": "Imprimerie Lambert SRL",
+    "numeroEntreprise": "BE 0123.456.789",
+    "signataireNom": "Claire Lambert",
+    "signataireEmail": "claire.lambert@imprimerie-lambert.example",
+    "objet": "Impression et mise sous pli des courriers sortants",
+    "montantAnnuel": "18 000 EUR HTVA",
+    "dateDebut": "2027-01-01"
+  }
+}

@@ -50,6 +50,11 @@ seul mouvement est un fondu d'entrée.
     2026-11-17), installé seulement par la scène de C13 : les exemples et les capsules existants ne changent pas.
     Écartés : une variante « contrat d'arrivée » de l'exemple onboarding, une signature interne de facture dans la
     mail room.
+  - Lot 3 : l'exemple est `exemples/convention-fournisseur` (relecture, convention générée, signature du représentant
+    du fournisseur, statut « Signée » ou « Non signée »), installé par `SignatureDemoPack` (profil
+    `demo-video-signature`). Fournisseur `yousign` par défaut, `stub` pour répéter ; les clés sont
+    `YOUSIGN_SANDBOX_API_KEY` et `YOUSIGN_WEBHOOK_SECRET`. Le libellé d'un signataire (`flowable:signer name`) s'affiche
+    sur la fiche et chez Yousign : les exemples le traduisent comme un nom d'activité, ce n'est pas un code.
 
 **Décision de conception (2026-11-17).**
 

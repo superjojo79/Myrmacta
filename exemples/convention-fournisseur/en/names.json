@@ -1,0 +1,22 @@
+{
+  "Convention fournisseur": "Supplier agreement",
+  "Convention non signée": "Agreement not signed",
+  "Convention signée": "Agreement signed",
+  "Convention à établir": "Agreement to draw up",
+  "Date de la convention": "Agreement date",
+  "Envoyer en signature": "Send for signature",
+  "Fournisseur": "Supplier",
+  "Générer la convention": "Generate the agreement",
+  "Joindre la convention au dossier": "Attach the agreement to the case",
+  "Non": "No",
+  "Oui": "Yes",
+  "Relire la convention": "Review the agreement",
+  "Référence du dossier": "Case reference",
+  "Signature reçue": "Signature received",
+  "Signée ?": "Signed?",
+  "Statut : en préparation": "Status: in preparation",
+  "Statut : en signature": "Status: out for signature",
+  "Statut : non signée": "Status: not signed",
+  "Statut : signée": "Status: signed",
+  "Vérifier le fournisseur, l'objet et le montant, puis valider : la convention est générée et part en signature chez le représentant du fournisseur.": "Check the supplier, the purpose and the amount, then approve: the agreement is generated and sent for signature to the supplier's representative."
+}

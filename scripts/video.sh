@@ -15,6 +15,9 @@
 #                                           c05-…, c06-… (capsules courtes riverain) — profil demo-video-riverain :
 #                                             exemple autorisation riverain, portail activé, pré-vérification IA par le
 #                                             modèle local d'Ollama (APP_PRECHECK_MODEL, défaut gemma4:12b) ;
+#                                           c13-… (signature) — profil demo-video-signature : exemple convention
+#                                             fournisseur, portail activé, bac à sable Yousign (clés dans .env ;
+#                                             APP_SIGNATURE_PROVIDER=stub pour répéter sans Yousign) ;
 #                                           autres cNN-… (capsules courtes) — profil demo : la démo complète de
 #                                             scripts/demo.sh
 #   scripts/video.sh mail <scénario>      envoie un e-mail du tournage L1 : facture | inconnu | reponse
@@ -60,6 +63,7 @@ case "${1:-}" in
       l1-mailroom) profile=demo-video-mailroom ;;
       l2-onboarding) profile=demo-video-onboarding ;;
       c05-*|c06-*) profile=demo-video-riverain ;;
+      c13-*) profile=demo-video-signature ;;
       c[0-9][0-9]-*) profile=demo ;;
       *) echo "pas de scène pour la capsule $capsule" >&2; exit 2 ;;
     esac
@@ -82,6 +86,14 @@ case "${1:-}" in
         # gemma4 raisonne avant de répondre et épuise sinon les 2000 tokens de sortie : réponse coupée, JSON invalide
         # (docs/guides/DEPLOIEMENT.md, APP_PRECHECK_REASONING_EFFORT).
         APP_PRECHECK_REASONING_EFFORT="${APP_PRECHECK_REASONING_EFFORT:-none}")
+    fi
+    # Scène signature (§148) : exemple convention fournisseur, signataire externe (portail, liens envoyés à Mailpit),
+    # bac à sable Yousign (YOUSIGN_SANDBOX_API_KEY et YOUSIGN_WEBHOOK_SECRET dans .env) ; APP_SIGNATURE_PROVIDER=stub
+    # pour répéter sans Yousign.
+    if [[ "$profile" == demo-video-signature ]]; then
+      scene_env=(APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
+        APP_SIGNATURE_PROVIDER="${APP_SIGNATURE_PROVIDER:-yousign}"
+        APP_DEMO_SIGNATURE_DIR="${APP_DEMO_SIGNATURE_DIR:-exemples/convention-fournisseur}")
     fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }
@@ -132,7 +144,7 @@ case "${1:-}" in
     exec scripts/embedded-db.sh reset "$@"
     ;;
   *)
-    sed -n '2,37p' "$0"
+    sed -n '2,40p' "$0"
     exit 2
     ;;
 esac

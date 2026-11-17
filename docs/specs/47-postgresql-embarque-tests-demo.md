@@ -123,6 +123,15 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
     filmé à la taille d'un téléphone et centré sur un fond sombre au montage ;
   - C12 `c12-promotion` : export de la configuration, paquet avancé hors champ par `scripts/video/recette_bundle.py`,
     puis import (plan à blanc, application).
+- **Scène signature** (§148, D-VIDEO-SIGN, en cours) : profil `demo-video-signature`, lancé par `scripts/video.sh start
+  c13-…`. `SignatureDemoPack` installe `exemples/convention-fournisseur` (`APP_DEMO_SIGNATURE_DIR`) par les vrais cas
+  d'usage : type, configuration, modèle de la convention (actif, avec l'ancre de signature Yousign), processus ; puis un
+  dossier d'exemple ouvert, dont le processus attend la relecture. Signataire externe : la scène active le portail
+  (liens vers Mailpit). Fournisseur (`APP_SIGNATURE_PROVIDER`) : `yousign` par défaut, sur le bac à sable, connecteur
+  `signature` créé depuis `YOUSIGN_SANDBOX_API_KEY` et `YOUSIGN_WEBHOOK_SECRET` (`.env`), démarrage refusé sans eux ;
+  `stub` pour répéter sans Yousign. Le libellé d'un signataire (`flowable:signer name`) se traduit en anglais par
+  `en/names.json`. Tests : `SignatureDemoPackIT` (stub : relecture, attente, retour `SIGNED`, statut « Signée » ; EN ;
+  connecteur Yousign ; refus sans clés), `DemoTranslationsTest`, `DemoExampleTest`.
 - **Scène riverain** (§143, D-VIDEO-RIVERAIN-SCENE) : profil `demo-video-riverain`, lancé par `scripts/video.sh start
   c05-…`. `RiverainDemoPack` installe `exemples/autorisation-riverain` (`APP_DEMO_RIVERAIN_DIR`) par les vrais cas
   d'usage : type et types de pièces, questionnaires, configuration, modèle de décision et gabarit activés, puis une

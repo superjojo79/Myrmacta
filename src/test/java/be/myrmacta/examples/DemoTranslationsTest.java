@@ -51,10 +51,13 @@ class DemoTranslationsTest {
             // TODO §143 (issue #101) : scène de tournage riverain (capsules C5, C6, screenshot S13).
             "autorisation-riverain", List.of("config/type-dossier.json", "config/questions.json",
                     "config/workflow-config.json", "config/modele-document.json",
-                    "config/gabarit-demande-informations.json"));
+                    "config/gabarit-demande-informations.json"),
+            // TODO §148 (issue #59) : scène de tournage de la signature (capsule C13).
+            "convention-fournisseur", List.of("config/type-dossier.json", "config/workflow-config.json",
+                    "config/modele-document.json"));
 
     @ParameterizedTest
-    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain", "convention-fournisseur"})
     void eachEnglishCopyKeepsTheStructureAndTheCodesOfItsOriginal(String name) throws IOException {
         Path example = Path.of("exemples", name);
         for (String file : REQUIRED.get(name)) {
@@ -75,7 +78,7 @@ class DemoTranslationsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain", "convention-fournisseur"})
     void theNameTableTranslatesEveryNameOfTheProcessesAndTables_andNothingElse(String name) throws IOException {
         Path example = Path.of("exemples", name);
         Map<String, String> names = JSON.readValue(example.resolve("en/names.json").toFile(),
@@ -108,7 +111,7 @@ class DemoTranslationsTest {
 
     /** TODO §143 : un modèle de document anglais ({@code en/*.html}) lit les mêmes variables que son original. */
     @ParameterizedTest
-    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain"})
+    @ValueSource(strings = {"digital-mail-room", "onboarding-collaborateur", "autorisation-riverain", "convention-fournisseur"})
     void eachEnglishDocumentTemplateReadsTheSameVariablesAsItsOriginal(String name) throws IOException {
         Path example = Path.of("exemples", name);
         if (!Files.isDirectory(example.resolve("en"))) {
@@ -127,6 +130,9 @@ class DemoTranslationsTest {
     }
 
     private static boolean nameIsCode(String element) {
+        if (element.equals("flowable:signer")) {
+            return false; // TODO §148 : comme DemoExample, le libellé d'un signataire est un texte.
+        }
         int colon = element.indexOf(':');
         return element.startsWith("flowable:") || CODE_NAMED.contains(colon < 0 ? element : element.substring(colon + 1));
     }

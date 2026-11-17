@@ -162,7 +162,7 @@ sur la preuve spec 49 et L1 FR.
 |---|---|---|---|
 | 1 | Projet Remotion des cinq cartons, FR et EN, rendus par `scripts/video.sh cards` ; images vérifiées | livré | #126 |
 | 2 | `t00-teaser.json`, `teaser.py`, `scripts/video.sh teaser` : teaser avec ouverture, flow, decide et fin ; tests Python | livré | #126 (même branche) |
-| 3 | Nouvel exemple avec étape de signature, scène `demo-video-signature`, connecteur Yousign depuis `.env` ; tests Java | à faire | |
+| 3 | Nouvel exemple avec étape de signature, scène `demo-video-signature`, connecteur Yousign depuis `.env` ; tests Java | livré | #126 (même branche) |
 | 4 | Capsule C13 sur le bac à sable Yousign, rejeu du webhook, thème sign du teaser ; documentation, revue, clôture | à faire | |
 
 Branche : `feat/59-teaser-video`, dans le worktree `.claude/worktrees/issue-55-outillage-demo` (sorties des capsules
@@ -185,7 +185,19 @@ Lot 2, constats pour la suite :
 - dans la coupe L2, la pastille « Sous le capot » de la capsule longue dépasse un peu à gauche du sous-titre :
   accepté, à revoir si l'utilisateur la juge gênante.
 
-Prochaine action : lot 3 (nouvel exemple avec étape de signature, scène `demo-video-signature`).
+Lot 3, constats pour la suite :
+
+- exemple `exemples/convention-fournisseur` (hypothèse « convention fournisseur » retenue) ; dossier d'exemple
+  « Convention — Imprimerie Lambert », signataire `claire.lambert@imprimerie-lambert.example` (Mailpit reçoit le lien) ;
+- le signataire Yousign porte le libellé du bloc (« Fournisseur » / « Supplier ») : Myrmacta n'envoie pas le nom du
+  champ `signataireNom` (nom affiché = `name` du `flowable:signer`). Assez pour la vidéo ; une évolution produit
+  (nom du signataire lu dans le dossier) serait une issue à part ;
+- risque à lever au lot 4 : Yousign peut refuser une adresse en `.example` ; sinon, une variable de scène pour
+  l'adresse du signataire ;
+- `scripts/video.sh start c13-signature` attend le JSON de la capsule (lot 4).
+
+Prochaine action : lot 4, après dépôt des clés du bac à sable dans `.env` (`YOUSIGN_SANDBOX_API_KEY`,
+`YOUSIGN_WEBHOOK_SECRET`).
 
 ## Preuves
 

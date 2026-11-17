@@ -1,0 +1,54 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Convention fournisseur</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #222; }
+    h1 { font-size: 15pt; margin: 0 0 4pt 0; }
+    h2 { font-size: 11.5pt; margin: 16pt 0 6pt 0; border-bottom: 1px solid #999; padding-bottom: 2pt; }
+    .entete { color: #555; font-size: 9pt; margin-bottom: 18pt; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3pt 4pt; vertical-align: top; }
+    td.libelle { width: 38%; color: #555; }
+    .signature { margin-top: 24pt; width: 60%; border: 1pt solid #999; padding: 8pt 10pt; height: 70pt; }
+    /* Ancre de signature de Yousign (D-SIGNATURE-ANCHOR) : lue dans le texte du PDF, invisible à la lecture. */
+    .ancre { color: #ffffff; font-size: 6pt; }
+  </style>
+</head>
+<body>
+  <!--
+    Variables lues (toutes doivent exister et être non nulles : le moteur de rendu échoue sinon) :
+    - dossierFields.* : champs OBLIGATOIRES du type CONVENTION_FOURNISSEUR (instantané au démarrage) ;
+    - referenceDossier, dateConvention : posées par le workflow conventionFournisseur juste avant la génération.
+    L'ancre {{s1|signature|85|37}} place la signature du premier signataire (Yousign) ; un seul signataire.
+  -->
+
+  <h1>Convention fournisseur</h1>
+  <div class="entete">
+    Dossier <span th:text="${referenceDossier}">DOS-0000</span>
+    — établie le <span th:text="${dateConvention}">2026-01-01</span>
+  </div>
+
+  <h2>Parties</h2>
+  <table>
+    <tr><td class="libelle">Fournisseur</td><td th:text="${dossierFields.fournisseur}">Fournisseur</td></tr>
+    <tr><td class="libelle">Numéro d'entreprise</td><td th:text="${dossierFields.numeroEntreprise}">BE 0000.000.000</td></tr>
+    <tr><td class="libelle">Représenté par</td><td th:text="${dossierFields.signataireNom}">Signataire</td></tr>
+  </table>
+
+  <h2>Objet</h2>
+  <table>
+    <tr><td class="libelle">Prestation</td><td th:text="${dossierFields.objet}">Objet</td></tr>
+    <tr><td class="libelle">Montant annuel</td><td th:text="${dossierFields.montantAnnuel}">0 EUR</td></tr>
+    <tr><td class="libelle">Date de début</td><td th:text="${dossierFields.dateDebut}">2026-01-01</td></tr>
+  </table>
+
+  <p>Le fournisseur s'engage à exécuter la prestation décrite ci-dessus aux conditions convenues. La présente convention
+     prend effet à la date de début et vaut pour un an, reconductible.</p>
+
+  <div class="signature">
+    Pour le fournisseur, <span th:text="${dossierFields.signataireNom}">Signataire</span> :
+    <div class="ancre">{{s1|signature|85|37}}</div>
+  </div>
+</body>
+</html>

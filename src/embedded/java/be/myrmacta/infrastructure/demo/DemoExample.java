@@ -94,7 +94,16 @@ final class DemoExample {
     /** Éléments dont le {@code name} est un code lu par le moteur (nom local, sans préfixe d'espace de noms). */
     static final Set<String> CODE_NAMED = Set.of("message", "signal", "error", "escalation", "output", "inputData", "variable");
 
+    /**
+     * TODO §148 — éléments {@code flowable:…} dont le {@code name} est un libellé : celui d'un signataire s'affiche sur la
+     * fiche et chez le fournisseur de signature.
+     */
+    static final Set<String> FLOWABLE_LABELLED = Set.of("flowable:signer");
+
     static boolean nameIsCode(String element) {
+        if (FLOWABLE_LABELLED.contains(element)) {
+            return false;
+        }
         int colon = element.indexOf(':');
         return element.startsWith("flowable:") || CODE_NAMED.contains(colon < 0 ? element : element.substring(colon + 1));
     }

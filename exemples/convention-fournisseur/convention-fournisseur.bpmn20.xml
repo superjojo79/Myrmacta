@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://myrmacta/exemples">
+  <!-- Généré par generer-bpmn.py : modifier le script plutôt que ce fichier. -->
+  <message id="signatureCompletedMsg" name="signatureCompleted"/>
+  <process id="conventionFournisseur" name="Convention fournisseur" isExecutable="true">
+    <startEvent id="debut" name="Convention à établir"/>
+    <serviceTask id="statutPreparation" name="Statut : en préparation" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_PREPARATION"/>
+    <userTask id="relecture" name="Relire la convention"><documentation>Vérifier le fournisseur, l'objet et le montant, puis valider : la convention est générée et part en signature chez le représentant du fournisseur.</documentation></userTask>
+    <serviceTask id="prepReference" name="Référence du dossier" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="dossier.reference" flowable:formulaResult="referenceDossier"/>
+    <serviceTask id="prepDate" name="Date de la convention" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$substring(now, 0, 10)" flowable:formulaResult="dateConvention"/>
+    <serviceTask id="genererConvention" name="Générer la convention" flowable:delegateExpression="${documentGenerationTask}" flowable:documentType="convention-fournisseur"/>
+    <serviceTask id="joindreConvention" name="Joindre la convention au dossier" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <serviceTask id="statutSignature" name="Statut : en signature" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_SIGNATURE"/>
+    <serviceTask id="demanderSignature" name="Envoyer en signature" flowable:delegateExpression="${signatureRequestTask}" flowable:signatureDocument="variable:generatedDocumentId" flowable:signatureMode="PARALLEL" flowable:signatureDeadlineDays="14"><extensionElements><flowable:signer source="dossierField:signataireEmail" kind="EXTERNAL" required="true" name="Fournisseur"/></extensionElements></serviceTask>
+    <intermediateCatchEvent id="attenteSignature" name="Signature reçue"><messageEventDefinition messageRef="signatureCompletedMsg"/></intermediateCatchEvent>
+    <exclusiveGateway id="signee" name="Signée ?"/>
+    <serviceTask id="statutSignee" name="Statut : signée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="SIGNEE"/>
+    <endEvent id="finSignee" name="Convention signée"/>
+    <serviceTask id="statutNonSignee" name="Statut : non signée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="NON_SIGNEE"/>
+    <endEvent id="finNonSignee" name="Convention non signée"/>
+    <sequenceFlow id="f1" sourceRef="debut" targetRef="statutPreparation"/>
+    <sequenceFlow id="f2" sourceRef="statutPreparation" targetRef="relecture"/>
+    <sequenceFlow id="f3" sourceRef="relecture" targetRef="prepReference"/>
+    <sequenceFlow id="f4" sourceRef="prepReference" targetRef="prepDate"/>
+    <sequenceFlow id="f5" sourceRef="prepDate" targetRef="genererConvention"/>
+    <sequenceFlow id="f6" sourceRef="genererConvention" targetRef="joindreConvention"/>
+    <sequenceFlow id="f7" sourceRef="joindreConvention" targetRef="statutSignature"/>
+    <sequenceFlow id="f8" sourceRef="statutSignature" targetRef="demanderSignature"/>
+    <sequenceFlow id="f9" sourceRef="demanderSignature" targetRef="attenteSignature"/>
+    <sequenceFlow id="f10" sourceRef="attenteSignature" targetRef="signee"/>
+    <sequenceFlow id="fOui" name="Oui" sourceRef="signee" targetRef="statutSignee"><conditionExpression xsi:type="tFormalExpression">${signatureOutcome == 'SIGNED'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="fNon" name="Non" sourceRef="signee" targetRef="statutNonSignee"><conditionExpression xsi:type="tFormalExpression">${signatureOutcome != 'SIGNED'}</conditionExpression></sequenceFlow>
+    <sequenceFlow id="f11" sourceRef="statutSignee" targetRef="finSignee"/>
+    <sequenceFlow id="f12" sourceRef="statutNonSignee" targetRef="finNonSignee"/>
+  </process>
+  <bpmndi:BPMNDiagram id="conventionFournisseur_diagram">
+    <bpmndi:BPMNPlane id="conventionFournisseur_plane" bpmnElement="conventionFournisseur">
+      <bpmndi:BPMNShape id="debut_di" bpmnElement="debut"><omgdc:Bounds x="102" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="statutPreparation_di" bpmnElement="statutPreparation"><omgdc:Bounds x="220" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="relecture_di" bpmnElement="relecture"><omgdc:Bounds x="380" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="prepReference_di" bpmnElement="prepReference"><omgdc:Bounds x="540" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="prepDate_di" bpmnElement="prepDate"><omgdc:Bounds x="700" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="genererConvention_di" bpmnElement="genererConvention"><omgdc:Bounds x="860" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="joindreConvention_di" bpmnElement="joindreConvention"><omgdc:Bounds x="1020" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="statutSignature_di" bpmnElement="statutSignature"><omgdc:Bounds x="1180" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="demanderSignature_di" bpmnElement="demanderSignature"><omgdc:Bounds x="1340" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="attenteSignature_di" bpmnElement="attenteSignature"><omgdc:Bounds x="1542" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="signee_di" bpmnElement="signee"><omgdc:Bounds x="1695" y="95" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="statutSignee_di" bpmnElement="statutSignee"><omgdc:Bounds x="1820" y="80" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="finSignee_di" bpmnElement="finSignee"><omgdc:Bounds x="2022" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="statutNonSignee_di" bpmnElement="statutNonSignee"><omgdc:Bounds x="1820" y="230" width="120" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="finNonSignee_di" bpmnElement="finNonSignee"><omgdc:Bounds x="2022" y="252" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="f1_di" bpmnElement="f1"><omgdi:waypoint x="138" y="120"/><omgdi:waypoint x="220" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f2_di" bpmnElement="f2"><omgdi:waypoint x="340" y="120"/><omgdi:waypoint x="380" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f3_di" bpmnElement="f3"><omgdi:waypoint x="500" y="120"/><omgdi:waypoint x="540" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f4_di" bpmnElement="f4"><omgdi:waypoint x="660" y="120"/><omgdi:waypoint x="700" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f5_di" bpmnElement="f5"><omgdi:waypoint x="820" y="120"/><omgdi:waypoint x="860" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f6_di" bpmnElement="f6"><omgdi:waypoint x="980" y="120"/><omgdi:waypoint x="1020" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f7_di" bpmnElement="f7"><omgdi:waypoint x="1140" y="120"/><omgdi:waypoint x="1180" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f8_di" bpmnElement="f8"><omgdi:waypoint x="1300" y="120"/><omgdi:waypoint x="1340" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f9_di" bpmnElement="f9"><omgdi:waypoint x="1460" y="120"/><omgdi:waypoint x="1542" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f10_di" bpmnElement="f10"><omgdi:waypoint x="1578" y="120"/><omgdi:waypoint x="1695" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="fOui_di" bpmnElement="fOui"><omgdi:waypoint x="1745" y="120"/><omgdi:waypoint x="1820" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="fNon_di" bpmnElement="fNon"><omgdi:waypoint x="1720" y="145"/><omgdi:waypoint x="1720" y="270"/><omgdi:waypoint x="1820" y="270"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f11_di" bpmnElement="f11"><omgdi:waypoint x="1940" y="120"/><omgdi:waypoint x="2022" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="f12_di" bpmnElement="f12"><omgdi:waypoint x="1940" y="270"/><omgdi:waypoint x="2022" y="270"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

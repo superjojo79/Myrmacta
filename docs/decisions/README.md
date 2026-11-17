@@ -167,6 +167,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 146 | [Nom de l'agent dans les décisions de pré-vérification](146-nom-de-lagent-dans-les-decisions-de-preverification.md) | clos | — |
 | 147 | [Libellé citoyen des tâches portail](147-libelle-citoyen-des-taches-portail.md) | clos | — |
 | 148 | [Teaser vidéo du site : extraits des capsules, cartons Remotion, signature Yousign](148-teaser-video-du-site.md) | clos | — |
+| 149 | [Expéditeur SMTP configurable (MAIL_FROM)](149-expediteur-smtp-configurable.md) | clos | — |
 
 ## Sections de l'ancien registre
 

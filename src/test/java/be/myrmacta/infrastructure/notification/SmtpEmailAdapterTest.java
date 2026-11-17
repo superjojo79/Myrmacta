@@ -35,7 +35,7 @@ class SmtpEmailAdapterTest {
         mailSender = mock(JavaMailSender.class);
         mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
-        adapter = new SmtpEmailAdapter(mailSender);
+        adapter = new SmtpEmailAdapter(mailSender, "noreply@myrmacta.example");
     }
 
     @Test
@@ -125,6 +125,44 @@ class SmtpEmailAdapterTest {
             }
         }
         return leaves;
+    }
+
+    /** Issue #134 — sans From, JavaMail signait « utilisateur@nom-du-poste » (From et Return-Path). */
+    @Test
+    void send_setsTheConfiguredSenderAsFrom() throws Exception {
+        adapter.send("user@example.com", "Hello", "Body");
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getFrom()).extracting(Object::toString).containsExactly("noreply@myrmacta.example");
+    }
+
+    /** Issue #134 — même expéditeur pour un message avec pièce jointe. */
+    @Test
+    void send_withAttachment_setsTheConfiguredSenderAsFrom() throws Exception {
+        adapter.send("user@example.com", "Hello", "Body",
+                new EmailPort.EmailAttachmentContent("a.pdf", "application/pdf", new byte[] {1}));
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getFrom()).extracting(Object::toString).containsExactly("noreply@myrmacta.example");
+    }
+
+    /** Issue #134 (D-MAIL-FROM) — une adresse nue et valide, sinon démarrage refusé. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"", " ", "noreply", "noreply@", "@example.org",
+            "a b@example.org", "Myrmacta <noreply@example.org>", "a@example.org, b@example.org", "noreply@example.org\r\nBcc: x@y.z"})
+    void constructor_rejectsAnInvalidSender(String from) {
+        assertThatThrownBy(() -> new SmtpEmailAdapter(mailSender, from))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MAIL_FROM");
+    }
+
+    @Test
+    void constructor_rejectsAMissingSender() {
+        assertThatThrownBy(() -> new SmtpEmailAdapter(mailSender, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MAIL_FROM");
     }
 
     @Test

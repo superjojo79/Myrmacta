@@ -274,6 +274,21 @@ public interface BrowserPushPort {
 
 ---
 
+## Implémentation — expéditeur SMTP (issue #134, registre §149)
+
+- **Règle (D-MAIL-FROM).** Tous les e-mails sortants (outbox de notifications, connecteur `smtp`, invitations portail
+  et signature) passent par `SmtpEmailAdapter`, qui pose `From` = `app.mail.from` (`MAIL_FROM`).
+  `spring.mail.properties.mail.smtp.from` reprend la même valeur pour l'enveloppe (`MAIL FROM`, donc `Return-Path`).
+  Sans elle, JavaMail signait `utilisateur@nom-du-poste`.
+- **Validation.** Adresse nue, une seule, sans nom affiché ni caractère de contrôle ; sinon démarrage refusé avec un
+  message qui nomme `MAIL_FROM`.
+- **Défaut.** `noreply@myrmacta.invalid` : démarre sans configuration, mais un vrai relais le refuse. Un déploiement
+  qui envoie des e-mails renseigne `MAIL_FROM` (`.env.example`). `scripts/video.sh` utilise
+  `noreply@myrmacta.example`.
+- **Tests de référence :** `SmtpEmailAdapterTest`, `NotifierTemplateEmailIT` (From et `Return-Path` relus sur GreenMail).
+
+---
+
 ## Implémentation — boucle locale (issue #73, TODO §132)
 
 - **Règle (D-LOOPBACK-LOCAL-ENV).** `NotificationConfig` construit `OutboundUrlGuard` avec la boucle

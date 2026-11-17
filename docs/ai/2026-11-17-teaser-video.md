@@ -208,6 +208,9 @@ Prochaine action : lot 4, après dépôt des clés du bac à sable dans `.env` (
 | 2026-11-17 | `scripts/video.sh cards`, FR puis EN | 10 MP4 1920×1080, 30 i/s, H.264, sans son, durées exactes ; planches d'images regardées |
 | 2026-11-17 | `scripts/check-docs.sh` | tous les contrôles `ok` |
 | 2026-11-17 | `./mvnw verify` (GreenMail de la scène vidéo arrêté le temps du build : il tient le port 3143 des tests IMAP) | code 0 ; 5 297 tests, 0 échec, 0 erreur, 5 ignorés |
+| 2026-11-17 | lot 3 : `./mvnw verify` (GreenMail arrêté le temps du build) | code 0 ; 5 306 tests, 0 échec, 0 erreur, 5 ignorés |
+| 2026-11-17 | lot 3 : `./mvnw -Pembedded-db test` sur les tests de démo et d'exemples, puis `VideoMailRoomDemoPackIT` port libre | 83 tests, 0 échec (dont `SignatureDemoPackIT` : 4) |
+| 2026-11-17 | lot 3 : jar de démo démarré sur `demo-video-signature`, fournisseur `stub` | « demo: signature example installed (stub) », démarrage en 35 s |
 | 2026-11-17 | lot 2 : `uv run --with pytest --with pyjwt pytest scripts/video -q` | 44 réussis (dont 13 de `test_teaser.py`) |
 | 2026-11-17 | lot 2 : `scripts/video.sh teaser`, FR puis EN | MP4 1920×1080, 30 i/s, H.264, yuv420p `tv`, sans son, 69,8 s / 70,0 s puis 67,5 / 67,6 s sans le carton de chapitre L2 ; couleurs des cartons et des plans identiques avant et après montage (pixels comparés) ; planches regardées |
 

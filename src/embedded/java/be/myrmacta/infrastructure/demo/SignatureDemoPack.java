@@ -77,6 +77,8 @@ public class SignatureDemoPack implements DemoPack {
     private final TenantProperties tenant;
     private final String yousignApiKey;
     private final String webhookSecret;
+    /** Le bac à sable Yousign n'accepte qu'un signataire de l'organisation du compte : il remplace celui de l'exemple. */
+    private final String signerEmail;
     private final boolean yousign;
     private final DossierTypeRepository types;
     private final CreateDossierTypeUseCase createType;
@@ -99,6 +101,7 @@ public class SignatureDemoPack implements DemoPack {
             @Value("${app.demo.locale:fr}") String locale, @Value("${app.signature.provider:none}") String provider,
             @Value("${app.demo.signature.yousign-api-key:${YOUSIGN_SANDBOX_API_KEY:}}") String yousignApiKey,
             @Value("${app.demo.signature.webhook-secret:${YOUSIGN_WEBHOOK_SECRET:}}") String webhookSecret,
+            @Value("${app.demo.signature.signer-email:${YOUSIGN_SANDBOX_SIGNER_EMAIL:}}") String signerEmail,
             ObjectMapper json, TenantProperties tenant, DossierTypeRepository types, CreateDossierTypeUseCase createType,
             SaveWorkflowTypeConfigUseCase saveConfig, WorkflowTypeConfigRepository workflowConfigs,
             CreateDocumentTemplateUseCase createDocument, ActivateDocumentTemplateUseCase activateDocument,
@@ -112,11 +115,13 @@ public class SignatureDemoPack implements DemoPack {
             default -> throw new IllegalStateException("demo: the signature scene runs with app.signature.provider "
                     + "stub or yousign, not '" + provider + "'");
         };
-        if (yousign && (yousignApiKey.isBlank() || webhookSecret.isBlank())) {
-            throw new IllegalStateException("demo: the signature scene needs the Yousign sandbox keys: set "
-                    + "YOUSIGN_SANDBOX_API_KEY (API key of the sandbox) and YOUSIGN_WEBHOOK_SECRET (secret of its webhook) "
-                    + "in .env");
+        if (yousign && (yousignApiKey.isBlank() || webhookSecret.isBlank() || signerEmail.isBlank())) {
+            throw new IllegalStateException("demo: the signature scene needs the Yousign sandbox settings: set "
+                    + "YOUSIGN_SANDBOX_API_KEY (API key of the sandbox), YOUSIGN_WEBHOOK_SECRET (any random secret: the "
+                    + "webhook is replayed locally) and YOUSIGN_SANDBOX_SIGNER_EMAIL (an address of your Yousign "
+                    + "organisation: the sandbox refuses any other signer) in .env");
         }
+        this.signerEmail = signerEmail;
         this.example = new DemoExample(Path.of(dir), locale, json);
         this.json = json;
         this.tenant = tenant;
@@ -223,6 +228,9 @@ public class SignatureDemoPack implements DemoPack {
         Map<String, Object> fields = new HashMap<>(json.convertValue(sample.get("fields"),
                 new TypeReference<Map<String, Object>>() {}));
         String label = sample.get("label").asString();
+        if (!signerEmail.isBlank()) {
+            fields.put("signataireEmail", signerEmail);
+        }
         if (example.english()) {
             label = "Agreement — Lambert Printing";
             fields.put("fournisseur", "Lambert Printing Ltd");

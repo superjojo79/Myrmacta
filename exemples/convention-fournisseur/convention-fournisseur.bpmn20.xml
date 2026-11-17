@@ -15,9 +15,9 @@
     <serviceTask id="prepReference" name="Référence du dossier" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="dossier.reference" flowable:formulaResult="referenceDossier"/>
     <serviceTask id="prepDate" name="Date de la convention" flowable:delegateExpression="${businessExpressionTask}" flowable:formula="$substring(now, 0, 10)" flowable:formulaResult="dateConvention"/>
     <serviceTask id="genererConvention" name="Générer la convention" flowable:delegateExpression="${documentGenerationTask}" flowable:documentType="convention-fournisseur"/>
-    <serviceTask id="joindreConvention" name="Joindre la convention au dossier" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <serviceTask id="joindreConvention" name="Convention à signer" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
     <serviceTask id="statutSignature" name="Statut : en signature" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="EN_SIGNATURE"/>
-    <serviceTask id="demanderSignature" name="Envoyer en signature" flowable:delegateExpression="${signatureRequestTask}" flowable:signatureDocument="variable:generatedDocumentId" flowable:signatureMode="PARALLEL" flowable:signatureDeadlineDays="14"><extensionElements><flowable:signer source="dossierField:signataireEmail" kind="EXTERNAL" required="true" name="Fournisseur"/></extensionElements></serviceTask>
+    <serviceTask id="demanderSignature" name="Envoyer en signature" flowable:delegateExpression="${signatureRequestTask}" flowable:signatureDocument="variable:generatedDocumentId" flowable:signatureMode="PARALLEL" flowable:signatureDeadlineDays="14"><extensionElements><flowable:signer source="dossierField:signataireEmail" kind="EXTERNAL" required="true" name="Représentant du fournisseur"/></extensionElements></serviceTask>
     <intermediateCatchEvent id="attenteSignature" name="Signature reçue"><messageEventDefinition messageRef="signatureCompletedMsg"/></intermediateCatchEvent>
     <exclusiveGateway id="signee" name="Signée ?"/>
     <serviceTask id="statutSignee" name="Statut : signée" flowable:delegateExpression="${updateWorkflowLinkStatusTask}" flowable:targetWorkflowStatus="SIGNEE"/>

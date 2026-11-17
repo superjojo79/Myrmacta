@@ -207,6 +207,61 @@ export async function sendMail(scenario: 'facture' | 'inconnu' | 'reponse'): Pro
   await run('uv', ['run', 'scripts/video/send_mail.py', scenario, '--lang', lang])
 }
 
+/**
+ * TODO §148 (D-VIDEO-SIGN) — le bac à sable Yousign n'accepte qu'un signataire de l'organisation du compte : la vraie
+ * signature se fait avec l'adresse de `YOUSIGN_SANDBOX_SIGNER_EMAIL`, et la page Yousign nomme le titulaire du compte
+ * (`YOUSIGN_SANDBOX_ACCOUNT_NAME`). À l'écran seulement, ces données personnelles sont remplacées par celles de
+ * l'exemple, dans chaque page de `page` (Myrmacta, Mailpit, Yousign) : texte, champs et attributs. Les données ne changent
+ * pas.
+ */
+export async function maskPersonalData(page: Page, replacement: { email: string; name: string }): Promise<void> {
+  const pairs: [string, string][] = []
+  const email = process.env.YOUSIGN_SANDBOX_SIGNER_EMAIL?.trim()
+  if (email) {
+    const masked = (address: string) => `${address[0]}***@${address.split('@')[1]}`
+    pairs.push([email, replacement.email], [masked(email), masked(replacement.email)])
+  }
+  const name = process.env.YOUSIGN_SANDBOX_ACCOUNT_NAME?.trim()
+  if (name) pairs.push([name, replacement.name])
+  if (pairs.length === 0) return
+  await page.context().addInitScript((list: [string, string][]) => {
+    const swap = (text: string) => list.reduce((out, [from, to]) => out.split(from).join(to), text)
+    const touches = (text: string | null | undefined) => !!text && list.some(([from]) => text.includes(from))
+    const scrub = (root: Node) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (touches(node.nodeValue)) node.nodeValue = swap(node.nodeValue!)
+      }
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea').forEach((field) => {
+        if (touches(field.value)) field.value = swap(field.value)
+      })
+      document.querySelectorAll('[title], [aria-label]').forEach((el) => {
+        for (const attribute of ['title', 'aria-label']) {
+          const value = el.getAttribute(attribute)
+          if (touches(value)) el.setAttribute(attribute, swap(value!))
+        }
+      })
+      if (touches(document.title)) document.title = swap(document.title)
+    }
+    const start = () => {
+      scrub(document.body)
+      new MutationObserver(() => scrub(document.body)).observe(document.body, { subtree: true, childList: true, characterData: true })
+      // Un framework peut poser la valeur d'un champ sans mutation du DOM.
+      setInterval(() => scrub(document.body), 50)
+    }
+    if (document.body) start()
+    else document.addEventListener('DOMContentLoaded', start)
+  }, pairs)
+}
+
+/**
+ * TODO §148 (D-VIDEO-SIGN-WEBHOOK) — rejoue le webhook Yousign de la signature faite au tournage
+ * (scripts/video/sign_webhook.py) vers le connecteur `instance` : Yousign ne joint pas le poste.
+ */
+export async function replaySignatureWebhook(instance: string): Promise<void> {
+  await run('uv', ['run', 'scripts/video/sign_webhook.py', '--instance', instance])
+}
+
 function run(command: string, args: string[]): Promise<void> {
   return new Promise((ok, fail) => {
     const child = spawn(command, args, { cwd: REPO, stdio: 'inherit' })

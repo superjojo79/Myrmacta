@@ -85,6 +85,14 @@ def test_a_caption_too_long_to_read_in_its_cue_is_refused_with_the_capsule_the_p
         teaser.check_captions(item, SOURCE_CUES, "en")
 
 
+def test_the_caption_of_the_capsule_itself_fits_its_cue_despite_the_millisecond_rounding_of_voice_json():
+    # Lot 4 : C13 « envoi », repère 1 minuté par voice.py sur ce même texte (56 caractères, 3,7333 s), arrondi à 3,733 s.
+    text = "Le document part en signature électronique chez Yousign."
+    cues = [{"start": 0.6, "end": 3.133, "text": "a"}, {"start": 3.583, "end": 7.316, "text": text}]
+    item = {"cut": {"capsule": "c13-signature", "plan": "envoi", "cues": [1, 1]}, "captions": {"fr": [text], "en": [text]}}
+    teaser.check_captions(item, cues, "fr")
+
+
 def test_one_caption_per_cue_is_required():
     with pytest.raises(ValueError, match=r"c08-panne.*rejeu.*fr.*2 repères"):
         teaser.check_captions(cut(first=1, last=2, fr=["Un seul."]), SOURCE_CUES, "fr")

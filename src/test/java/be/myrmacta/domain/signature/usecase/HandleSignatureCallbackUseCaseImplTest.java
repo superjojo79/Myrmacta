@@ -95,6 +95,19 @@ class HandleSignatureCallbackUseCaseImplTest {
         verify(listener).outcomeRecorded(request.id());
     }
 
+    /**
+     * TODO §148 (lot 4, premier essai sur le bac à sable Yousign) — {@code signature_request.done} ne détaille pas les
+     * signataires : la demande est signée parce que chaque requis a signé. Le panneau du dossier affichait le signataire
+     * « Révoqué » sous une demande « Signée ».
+     */
+    @Test
+    void signedEventWithoutDetail_marksTheOpenRequiredSignersSigned_andRevokesOnlyTheOptionalOnes() {
+        assertThat(useCase.apply(event(SignatureOutcome.SIGNED, Map.of()))).isTrue();
+
+        assertThat(repository.findById(request.id()).orElseThrow().status()).isEqualTo(SignatureStatus.SIGNED);
+        assertThat(statuses()).containsExactly(SignerStatus.SIGNED, SignerStatus.REVOKED);
+    }
+
     @Test
     void hostedSignedEventClosesWithoutDownloadingOrResuming() {
         when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(true));

@@ -1,0 +1,38 @@
+{
+  "_commentaire": "Capsule courte C13 (TODO §148, D-VIDEO-SIGN, issue #59) : sans son, sous-titres incrustés. Tournage : frontend/capture/film/c13-signature.film.ts, sur la scène signature (scripts/video.sh start c13-signature), bac à sable Yousign. Yousign ne joint pas le poste : le webhook de la signature est rejoué en local par scripts/video/sign_webhook.py (D-VIDEO-SIGN-WEBHOOK), hors champ.",
+  "id": "c13-signature",
+  "format": "short",
+  "title": { "fr": "La convention se signe en ligne", "en": "The agreement is signed online" },
+  "underTheHood": {
+    "fr": ["Signature électronique Yousign, lien à jeton sans compte", "PDF signé et preuve versés au dossier, le processus reprend"],
+    "en": ["Yousign e-signature, tokenised link, no account", "Signed PDF and proof filed on the case, the process resumes"]
+  },
+  "chapters": [
+    { "id": "ouverture", "title": { "fr": "Ouverture", "en": "Opening" }, "captions": { "fr": [], "en": [] } },
+    {
+      "id": "envoi",
+      "title": { "fr": "L'envoi", "en": "Sending" },
+      "captions": {
+        "fr": ["La convention est relue, puis validée.", "Le document part en signature électronique chez Yousign."],
+        "en": ["The agreement is reviewed, then approved.", "The document goes out for e-signature with Yousign."]
+      }
+    },
+    {
+      "id": "signature",
+      "title": { "fr": "La signature", "en": "Signing" },
+      "captions": {
+        "fr": ["Le fournisseur reçoit un lien personnel par e-mail.", "Il signe en ligne, sans compte Myrmacta."],
+        "en": ["The supplier receives a personal link by e-mail.", "They sign online, with no Myrmacta account."]
+      }
+    },
+    {
+      "id": "retour",
+      "title": { "fr": "Le retour", "en": "Back on the case" },
+      "captions": {
+        "fr": ["Le PDF signé et sa preuve rejoignent le dossier.", "Signé, et le dossier avance."],
+        "en": ["The signed PDF and its proof join the case.", "Signed, and the case moves on."]
+      }
+    },
+    { "id": "sous-le-capot", "title": { "fr": "Sous le capot", "en": "Under the hood" }, "captions": { "fr": [], "en": [] } }
+  ]
+}

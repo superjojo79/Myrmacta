@@ -55,6 +55,15 @@ seul mouvement est un fondu d'entrée.
     `demo-video-signature`). Fournisseur `yousign` par défaut, `stub` pour répéter ; les clés sont
     `YOUSIGN_SANDBOX_API_KEY` et `YOUSIGN_WEBHOOK_SECRET`. Le libellé d'un signataire (`flowable:signer name`) s'affiche
     sur la fiche et chez Yousign : les exemples le traduisent comme un nom d'activité, ce n'est pas un code.
+  - Lot 4 (premier essai réel, 2026-11-17) : le bac à sable refuse tout signataire hors de l'organisation du compte.
+    `YOUSIGN_SANDBOX_SIGNER_EMAIL` (une adresse de l'organisation) remplace celle de l'exemple ; la scène refuse de
+    démarrer sans elle. Le fournisseur de la scène est `VIDEO_SIGNATURE_PROVIDER` : le `.env` d'un poste fixe souvent
+    `APP_SIGNATURE_PROVIDER=none`. Le signataire s'appelle « Représentant du fournisseur » : Yousign coupe le libellé en
+    prénom et nom, et un seul mot donnait « Fournisseur - ».
+  - **Données personnelles à l'écran** (choix de l'utilisateur, 2026-11-17) : l'adresse réelle du signataire et le
+    nom du titulaire du compte Yousign sont remplacés, à l'écran seulement, par ceux de l'exemple (le tournage réécrit
+    le texte affiché des pages filmées). La signature se fait avec la vraie adresse. Écarté : un membre dédié de
+    l'organisation Yousign (un compte de plus à tenir).
 
 **Décision de conception (2026-11-17).**
 
@@ -66,6 +75,8 @@ seul mouvement est un fondu d'entrée.
   - Écarté : un tunnel public vers le poste (la démo serait exposée sur Internet, et il faudrait un compte de plus) ;
     couper le plan après la signature (le dossier signé ne serait pas montré).
   - Le rejeu est un outil de tournage, pas une fonction du produit : rien n'est ajouté au jar.
+  - Lot 4 : `scripts/video/sign_webhook.py`, appelé hors champ par le plan « retour » de C13. Le secret du webhook est
+    une valeur aléatoire du `.env` : aucun webhook n'est déclaré chez Yousign.
 
 **Textes du teaser.** Ton marketing, mais chaque affirmation à l'écran est un fait vérifié : le document de travail
 tient la table « affirmation → preuve ». Une affirmation sans preuve est retirée. La carte de fin suit le
@@ -76,6 +87,11 @@ spec 31 demande de nuancer.
 **Risque connu.** Les adaptateurs Yousign (§109) n'ont été vérifiés que contre la documentation publique, jamais
 contre le bac à sable. Le lot de la signature est leur premier essai réel. Un écart du produit se corrige en TDD dans
 ce lot, ou part en issue s'il dépasse le teaser.
+
+- Lot 4 : deux écarts corrigés en TDD (nom du fichier déposé ; statut des signataires d'une demande signée sans
+  détail, [spec 30](../specs/30-signature-electronique.md)). Hors teaser : le préfixe « Document généré — » et les
+  libellés « Document signé » et « Preuve de signature » sont écrits en français quelle que soit la langue, et le
+  signataire Yousign est créé en français (`locale`) ; la version anglaise de C13 les montre.
 
 **Impacte :** `scripts/video.sh`, `scripts/video/` (montage du teaser, rejeu du webhook, tests), `scripts/video/remotion/`,
 `scripts/video/capsules/`, `frontend/capture/film/c13-signature.film.ts`, la scène de démo de la signature,

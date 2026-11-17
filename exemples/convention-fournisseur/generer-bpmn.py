@@ -41,14 +41,14 @@ NODES = [
     ("prepDate", "serviceTask", "Date de la convention", formula("$substring(now, 0, 10)", "dateConvention"), "", 4, MAIN),
     ("genererConvention", "serviceTask", "Générer la convention",
      f'flowable:delegateExpression="${{documentGenerationTask}}" flowable:documentType="{TEMPLATE_KEY}"', "", 5, MAIN),
-    ("joindreConvention", "serviceTask", "Joindre la convention au dossier",
+    ("joindreConvention", "serviceTask", "Convention à signer",
      'flowable:delegateExpression="${attachGeneratedDocumentTask}"', "", 6, MAIN),
     ("statutSignature", "serviceTask", "Statut : en signature", status("EN_SIGNATURE"), "", 7, MAIN),
     ("demanderSignature", "serviceTask", "Envoyer en signature",
      'flowable:delegateExpression="${signatureRequestTask}" flowable:signatureDocument="variable:generatedDocumentId" '
      'flowable:signatureMode="PARALLEL" flowable:signatureDeadlineDays="14"',
      '<extensionElements><flowable:signer source="dossierField:signataireEmail" kind="EXTERNAL" required="true" '
-     'name="Fournisseur"/></extensionElements>', 8, MAIN),
+     'name="Représentant du fournisseur"/></extensionElements>', 8, MAIN),
     ("attenteSignature", "intermediateCatchEvent", "Signature reçue", "",
      '<messageEventDefinition messageRef="signatureCompletedMsg"/>', 9, MAIN),
     ("signee", "exclusiveGateway", "Signée ?", "", "", 10, MAIN),

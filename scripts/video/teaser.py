@@ -36,6 +36,7 @@ LANGS = ("fr", "en")
 FILM = cards.REPO / "frontend" / "capture" / "out" / "film"
 LEAD_IN = 0.3  # une coupe commence un peu avant son premier repère (s)
 MAX_SECONDS = 90.0
+ROUNDING = 0.002  # voice.json arrondit ses repères à la milliseconde (s)
 
 
 def card_of(teaser: dict, card_id: str) -> dict:
@@ -74,7 +75,8 @@ def check_captions(item: dict, cues: list[dict], lang: str) -> None:
     skip = float(source.get("from", 0.0))
     for text, cue in zip(texts, cues[first:last + 1]):
         slot = cue["end"] - max(cue["start"], skip)
-        if cards.reading(text) > slot + 1e-6:
+        # voice.json arrondit ses repères à la milliseconde : un texte minuté sur son propre repère doit y tenir.
+        if cards.reading(text) > slot + ROUNDING:
             raise ValueError(f"{where} : « {text} » demande {cards.reading(text):.1f} s de lecture, "
                              f"son repère dure {slot:.1f} s")
 

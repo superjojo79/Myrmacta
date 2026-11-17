@@ -17,7 +17,7 @@
 #                                             modèle local d'Ollama (APP_PRECHECK_MODEL, défaut gemma4:12b) ;
 #                                           c13-… (signature) — profil demo-video-signature : exemple convention
 #                                             fournisseur, portail activé, bac à sable Yousign (clés dans .env ;
-#                                             APP_SIGNATURE_PROVIDER=stub pour répéter sans Yousign) ;
+#                                             VIDEO_SIGNATURE_PROVIDER=stub pour répéter sans Yousign) ;
 #                                           autres cNN-… (capsules courtes) — profil demo : la démo complète de
 #                                             scripts/demo.sh
 #   scripts/video.sh mail <scénario>      envoie un e-mail du tournage L1 : facture | inconnu | reponse
@@ -88,11 +88,12 @@ case "${1:-}" in
         APP_PRECHECK_REASONING_EFFORT="${APP_PRECHECK_REASONING_EFFORT:-none}")
     fi
     # Scène signature (§148) : exemple convention fournisseur, signataire externe (portail, liens envoyés à Mailpit),
-    # bac à sable Yousign (YOUSIGN_SANDBOX_API_KEY et YOUSIGN_WEBHOOK_SECRET dans .env) ; APP_SIGNATURE_PROVIDER=stub
-    # pour répéter sans Yousign.
+    # bac à sable Yousign (YOUSIGN_SANDBOX_API_KEY, YOUSIGN_WEBHOOK_SECRET et YOUSIGN_SANDBOX_SIGNER_EMAIL dans .env) ;
+    # VIDEO_SIGNATURE_PROVIDER=stub
+    # pour répéter sans Yousign. Pas APP_SIGNATURE_PROVIDER : le .env d'un poste le fixe souvent à none (.env.local.example).
     if [[ "$profile" == demo-video-signature ]]; then
       scene_env=(APP_PORTAL_ENABLED=true APP_PORTAL_PUBLIC_BASE_URL="${APP_PORTAL_PUBLIC_BASE_URL:-http://localhost:8080}"
-        APP_SIGNATURE_PROVIDER="${APP_SIGNATURE_PROVIDER:-yousign}"
+        APP_SIGNATURE_PROVIDER="${VIDEO_SIGNATURE_PROVIDER:-yousign}"
         APP_DEMO_SIGNATURE_DIR="${APP_DEMO_SIGNATURE_DIR:-exemples/convention-fournisseur}")
     fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"

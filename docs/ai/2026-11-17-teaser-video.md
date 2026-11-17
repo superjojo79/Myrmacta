@@ -148,10 +148,10 @@ Brouillon, à relire par l'utilisateur. Chaque phrase renvoie à sa preuve ; les
 
 Lot 2 : les extraits de L1 sont retirés (L1 n'est tournée qu'en français ici, §148). L'ouverture garde « du courrier »
 sur la preuve spec 49 et L1 FR.
-| sign, accroche | Signé, et le dossier avance. | Signed, and the case moves on. | spec 30 (le processus reprend après le webhook) ; tournage C13 |
-| sign | Le document part en signature électronique chez Yousign. | The document goes out for e-signature with Yousign. | §109 ; tournage C13 |
-| sign | Le signataire signe en ligne, sans compte Myrmacta. | The signer signs online, with no Myrmacta account. | spec 30 §2.4 (portail tokenisé) ; tournage C13 |
-| sign | Le PDF signé et sa preuve rejoignent le dossier, puis le processus reprend. | The signed PDF and its proof join the case, then the process resumes. | spec 30 (Webhook) ; tournage C13 |
+| sign, accroche | Signé, et le dossier avance. | Signed, and the case moves on. | C13 `retour` (filmé : workflow `SIGNEE`, processus terminé après le webhook) ; spec 30 |
+| sign, C13 `envoi` repère 1 | Le document part en signature électronique chez Yousign. | The document goes out for e-signature with Yousign. | C13 (filmé ; demande active lue dans l'API du bac à sable) ; §109 |
+| sign, C13 `signature` repère 1 | Signé en ligne, sans compte Myrmacta. | Signed online, with no Myrmacta account. | C13 (filmé : lien du portail, page Yousign, aucune session Myrmacta) ; spec 30 §2.4 |
+| sign, C13 `retour` repère 0 | Le PDF signé et sa preuve rejoignent le dossier. | The signed PDF and its proof join the case. | C13 (filmé : éléments « Document signé » et « Preuve de signature ») ; spec 30 |
 | Fin | Des flux métier configurés, pas développés. | Business flows, configured, not coded. | C9, L2 conclusion ; spec 31 (`scriptTask` écarté, §57) |
 | Fin | Conçus par l'intégrateur, ajustés par le métier. | Designed by integrators, fine-tuned by the business. | spec 31, D-POSITIONING = C |
 | Fin | Avec une IA qui peut tourner sur vos postes. | With AI that can run on your own machines. | L1 `03-agent` (modèle local, D-VIDEO-AGENT), C6, spec 48 |
@@ -163,7 +163,8 @@ sur la preuve spec 49 et L1 FR.
 | 1 | Projet Remotion des cinq cartons, FR et EN, rendus par `scripts/video.sh cards` ; images vérifiées | livré | #126 |
 | 2 | `t00-teaser.json`, `teaser.py`, `scripts/video.sh teaser` : teaser avec ouverture, flow, decide et fin ; tests Python | livré | #126 (même branche) |
 | 3 | Nouvel exemple avec étape de signature, scène `demo-video-signature`, connecteur Yousign depuis `.env` ; tests Java | livré | #126 (même branche) |
-| 4 | Capsule C13 sur le bac à sable Yousign, rejeu du webhook, thème sign du teaser ; documentation, revue, clôture | à faire | |
+| 4 | Capsule C13 sur le bac à sable Yousign, rejeu du webhook, thème sign du teaser ; documentation | livré | #126 (même branche) |
+| 5 | Revue indépendante, correctifs, clôture (document de travail supprimé, `Closes #59`) | à faire | |
 
 Branche : `feat/59-teaser-video`, dans le worktree `.claude/worktrees/issue-55-outillage-demo` (sorties des capsules
 sous la main, non versionnées). Le remote `origin` de ce checkout pointe encore vers l'ancien dépôt FlowForge : la PR
@@ -196,13 +197,32 @@ Lot 3, constats pour la suite :
   l'adresse du signataire ;
 - `scripts/video.sh start c13-signature` attend le JSON de la capsule (lot 4).
 
-Prochaine action : lot 4, après dépôt des clés du bac à sable dans `.env` (`YOUSIGN_SANDBOX_API_KEY`,
-`YOUSIGN_WEBHOOK_SECRET`).
+Lot 4, constats :
+
+- premier essai réel des adaptateurs Yousign : deux écarts du produit corrigés en TDD (fichier déposé sans extension
+  `.pdf`, refusé en 400 ; signataire affiché « révoqué » sous une demande signée par `signature_request.done`) ;
+- le bac à sable n'accepte qu'un signataire de l'organisation du compte (`YOUSIGN_SANDBOX_SIGNER_EMAIL`) ; adresse et
+  nom du titulaire masqués à l'écran (choix de l'utilisateur, §148) ;
+- le lien de signature Yousign est à usage unique : la version anglaise change la langue par le menu de la page ;
+- la vidéo de Playwright ne commence qu'à la première image peinte : une attente hors champ s'ouvre sur une page ;
+- C13 : 35,2 s (FR), 35,7 s (EN) ; teaser : 83,7 s (FR), 83,3 s (EN) ;
+- à proposer en issue (hors teaser) : « Document généré — », « Document signé », « Preuve de signature » écrits en
+  français dans toutes les langues ; signataire Yousign créé en `locale` `fr` ; brouillon Yousign laissé si le dépôt du
+  PDF échoue.
+
+Prochaine action : lot 5, revue indépendante de la branche, puis clôture.
 
 ## Preuves
 
 | Date | Commande | Résultat |
 |---|---|---|
+| 2026-11-17 | lot 4 : `uv run --with pytest --with pyjwt pytest scripts/video -q` | 56 réussis (dont 11 de `test_sign_webhook.py`) |
+| 2026-11-17 | lot 4 : `./mvnw test -Dtest='HandleSignatureCallbackUseCaseImplTest,Signature*Test,Yousign*Test,…'` | 503 tests, 0 échec (dont 3 nouveaux, rouges avant correctif) |
+| 2026-11-17 | lot 4 : `./mvnw -Pembedded-db test -Dtest=SignatureDemoPackIT` | 5 tests, 0 échec |
+| 2026-11-17 | lot 4 : `scripts/video.sh capsule c13-signature`, FR puis EN, bac à sable Yousign | 5 plans filmés, webhook rejoué → 202, workflow `SIGNEE` ; planches regardées (masquage, signataire « Signé ») |
+| 2026-11-17 | lot 4 : `scripts/video.sh teaser`, FR puis EN | 83,7 s / 83,3 s, 1920×1080, 30 i/s, yuv420p `tv`, 15 morceaux, 11 sous-titres ; planches regardées |
+| 2026-11-17 | lot 4 : `cd frontend && npm run lint` ; `scripts/check-docs.sh` | 0 erreur ; tous les contrôles `ok` |
+| 2026-11-17 | lot 4 : `./mvnw verify` (GreenMail arrêté le temps du build) | code 0 ; 5 309 tests, 0 échec, 0 erreur, 5 ignorés |
 | 2026-11-17 | `uv run --with pytest --with pyjwt pytest scripts/video -q` | 31 réussis (dont 10 de `test_cards.py`) |
 | 2026-11-17 | `cd scripts/video/remotion && npx tsc --noEmit` | 0 erreur |
 | 2026-11-17 | `scripts/video.sh cards`, FR puis EN | 10 MP4 1920×1080, 30 i/s, H.264, sans son, durées exactes ; planches d'images regardées |

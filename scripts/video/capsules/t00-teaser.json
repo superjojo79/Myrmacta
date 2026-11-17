@@ -63,7 +63,7 @@
       }
     }
   ],
-  "_sequence": "Ordre du teaser (scripts/video/teaser.py). Une coupe prend, dans le plan monté d'une capsule, les repères de sous-titres cues [premier, dernier] (comptés depuis 0, voice.json de la capsule) et remplace leur texte par le sien, un texte par repère, tenu au même moment ; from (s) écarte le début du plan (carton de chapitre des capsules longues, 2,6 s). Le thème sign (carton et coupes de C13) s'ajoute au lot 4.",
+  "_sequence": "Ordre du teaser (scripts/video/teaser.py). Une coupe prend, dans le plan monté d'une capsule, les repères de sous-titres cues [premier, dernier] (comptés depuis 0, voice.json de la capsule) et remplace leur texte par le sien, un texte par repère, tenu au même moment ; from (s) écarte le début du plan (carton de chapitre des capsules longues, 2,6 s). Le thème sign prend ses coupes dans C13, tournée sur le bac à sable Yousign (lot 4).",
   "sequence": [
     { "card": "opening" },
     { "card": "flow" },
@@ -115,6 +115,28 @@
       "captions": {
         "fr": ["… une personne la relit et la publie."],
         "en": ["… a person reviews and publishes it."]
+      }
+    },
+    { "card": "sign" },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "envoi", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Le document part en signature électronique chez Yousign."],
+        "en": ["The document goes out for e-signature with Yousign."]
+      }
+    },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "signature", "cues": [1, 1] },
+      "captions": {
+        "fr": ["Signé en ligne, sans compte Myrmacta."],
+        "en": ["Signed online, with no Myrmacta account."]
+      }
+    },
+    {
+      "cut": { "capsule": "c13-signature", "plan": "retour", "cues": [0, 0] },
+      "captions": {
+        "fr": ["Le PDF signé et sa preuve rejoignent le dossier."],
+        "en": ["The signed PDF and its proof join the case."]
       }
     },
     { "card": "closing" }

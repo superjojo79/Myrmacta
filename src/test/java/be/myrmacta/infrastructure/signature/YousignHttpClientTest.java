@@ -85,6 +85,27 @@ class YousignHttpClientTest {
                 .contains("%PDF-1.4");
     }
 
+    /**
+     * TODO §148 (lot 4, premier essai sur le bac à sable) — Yousign refuse un fichier sans extension autorisée (400,
+     * « The extension of the file is invalid ») et un nom qui n'est pas de l'ASCII simple : le nom d'un document généré
+     * (« Document généré à Joindre la convention au dossier ») n'en a pas.
+     */
+    @Test
+    void uploadSendsAnAsciiPdfFileName_evenForAGeneratedDocumentLabel() {
+        client().uploadSignablePdf(REQUEST_ID, "Document généré à Joindre la convention au dossier",
+                "%PDF-1.4".getBytes(StandardCharsets.UTF_8));
+
+        assertThat(calls).singleElement().asString()
+                .contains("filename=\"Document genere a Joindre la convention au dossier.pdf\"");
+    }
+
+    @Test
+    void uploadKeepsAnExistingPdfExtension_andReplacesCharactersYousignWouldReject() {
+        client().uploadSignablePdf(REQUEST_ID, "Contrat n°12 / “final”.PDF", "%PDF-1.4".getBytes(StandardCharsets.UTF_8));
+
+        assertThat(calls).singleElement().asString().contains("filename=\"Contrat n-12 - -final-.PDF\"");
+    }
+
     @Test
     void redirectIsNotFollowedAndTheKeyStaysOutOfTheError() throws IOException {
         elsewhere = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

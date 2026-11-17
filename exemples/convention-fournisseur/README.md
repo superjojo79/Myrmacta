@@ -34,4 +34,4 @@ document, table `names.json` des noms du BPMN).
 
 `scripts/video.sh start c13-signature` installe l'exemple (paquet `SignatureDemoPack`, profil `demo-video-signature`)
 et ouvre le dossier d'essai, qui attend sa relecture. Bac à sable Yousign : `YOUSIGN_SANDBOX_API_KEY` et
-`YOUSIGN_WEBHOOK_SECRET` dans `.env` ; `APP_SIGNATURE_PROVIDER=stub` pour répéter sans Yousign.
+`YOUSIGN_WEBHOOK_SECRET` dans `.env` ; `VIDEO_SIGNATURE_PROVIDER=stub` pour répéter sans Yousign.

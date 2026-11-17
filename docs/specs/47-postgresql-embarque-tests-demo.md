@@ -102,7 +102,8 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
   d'une capsule longue). `scripts/video/teaser.py` refuse un plan absent (avec la commande qui le tourne), un texte
   illisible dans le temps de son repère et un teaser de plus de 90 s ; il ramène cartons et plans en `yuv420p` échelle
   limitée. Sortie : `t00-teaser-<langue>.mp4`, muet, sous-titres incrustés, avec `.vtt` et `.srt`. Le thème sign
-  arrive avec la capsule C13.
+  prend ses coupes dans C13 (envoi, signature chez Yousign, retour au dossier) : environ 84 s au total. Un texte minuté
+  sur son propre repère y tient malgré l'arrondi à la milliseconde de `voice.json`.
 - **Capsules courtes du site** (§140, D-VIDEO-SHORT) : scène = démo complète (`scripts/video.sh start cNN-…`, profil
   `demo`). Une capsule `"format": "short"` n'a pas de voix. `voice.py` minute ses sous-titres à la lecture et écrit le
   même `voice.json`. `assemble.py` sort un MP4 sans piste audio, sans chapitres, avec les sous-titres incrustés (libass).
@@ -123,15 +124,29 @@ site ([§127](../decisions/127-demo-par-paquets-et-captures-du-site.md), issue #
     filmé à la taille d'un téléphone et centré sur un fond sombre au montage ;
   - C12 `c12-promotion` : export de la configuration, paquet avancé hors champ par `scripts/video/recette_bundle.py`,
     puis import (plan à blanc, application).
-- **Scène signature** (§148, D-VIDEO-SIGN, en cours) : profil `demo-video-signature`, lancé par `scripts/video.sh start
-  c13-…`. `SignatureDemoPack` installe `exemples/convention-fournisseur` (`APP_DEMO_SIGNATURE_DIR`) par les vrais cas
-  d'usage : type, configuration, modèle de la convention (actif, avec l'ancre de signature Yousign), processus ; puis un
-  dossier d'exemple ouvert, dont le processus attend la relecture. Signataire externe : la scène active le portail
-  (liens vers Mailpit). Fournisseur (`APP_SIGNATURE_PROVIDER`) : `yousign` par défaut, sur le bac à sable, connecteur
-  `signature` créé depuis `YOUSIGN_SANDBOX_API_KEY` et `YOUSIGN_WEBHOOK_SECRET` (`.env`), démarrage refusé sans eux ;
-  `stub` pour répéter sans Yousign. Le libellé d'un signataire (`flowable:signer name`) se traduit en anglais par
-  `en/names.json`. Tests : `SignatureDemoPackIT` (stub : relecture, attente, retour `SIGNED`, statut « Signée » ; EN ;
-  connecteur Yousign ; refus sans clés), `DemoTranslationsTest`, `DemoExampleTest`.
+- **Scène signature et capsule C13** (§148, D-VIDEO-SIGN, D-VIDEO-SIGN-WEBHOOK) : profil `demo-video-signature`, lancé
+  par `scripts/video.sh start c13-…`. `SignatureDemoPack` installe `exemples/convention-fournisseur`
+  (`APP_DEMO_SIGNATURE_DIR`) par les vrais cas d'usage : type, configuration, modèle de la convention (actif, avec
+  l'ancre de signature Yousign), processus ; puis un dossier d'exemple ouvert, dont le processus attend la relecture.
+  Signataire externe : la scène active le portail (liens vers Mailpit). Fournisseur (`VIDEO_SIGNATURE_PROVIDER`, passé
+  en `APP_SIGNATURE_PROVIDER` : la valeur de `.env`, souvent `none`, ne s'applique pas à la scène) : `yousign` par
+  défaut, sur le bac à sable, connecteur `signature` créé depuis `YOUSIGN_SANDBOX_API_KEY` et `YOUSIGN_WEBHOOK_SECRET`
+  (`.env`) ; `stub` pour répéter sans Yousign. Le bac à sable refuse tout signataire hors de l'organisation du compte :
+  `YOUSIGN_SANDBOX_SIGNER_EMAIL` remplace l'adresse de l'exemple. Sans ces trois valeurs, la scène refuse de démarrer
+  et les nomme. Le libellé d'un signataire (`flowable:signer name`) se traduit en anglais par `en/names.json`.
+  - Capsule C13 `c13-signature` (`frontend/capture/film/c13-signature.film.ts`) : relecture validée, demande envoyée
+    chez Yousign ; invitation dans Mailpit ; le portail redirige vers la page Yousign, le fournisseur signe (lecture du
+    document hors champ) ; retour au dossier avec le PDF signé, la preuve et le statut « Signée ». Yousign ne joint pas
+    le poste : `scripts/video/sign_webhook.py` lit l'état réel de la demande dans l'API du bac à sable, refuse si elle
+    n'est pas signée, puis poste `signature_request.done` signé HMAC (`X-Yousign-Signature-256`) au point d'entrée du
+    connecteur. La suite est celle du produit (téléchargement du PDF signé et de la preuve, reprise du processus).
+  - À l'écran seulement, l'adresse réelle du signataire et le nom du titulaire du compte Yousign
+    (`YOUSIGN_SANDBOX_ACCOUNT_NAME`) sont remplacés par ceux de l'exemple (`maskPersonalData`, `director.ts`) : les
+    données ne changent pas.
+  - Le lien de signature Yousign est à usage unique : la version anglaise change la langue par le menu de la page.
+  - Tests : `SignatureDemoPackIT` (stub : relecture, attente, retour `SIGNED`, statut « Signée » ; EN ; connecteur
+    Yousign et signataire du bac à sable ; refus sans clés ou sans signataire), `DemoTranslationsTest`,
+    `DemoExampleTest`, `scripts/video/test_sign_webhook.py`.
 - **Scène riverain** (§143, D-VIDEO-RIVERAIN-SCENE) : profil `demo-video-riverain`, lancé par `scripts/video.sh start
   c05-…`. `RiverainDemoPack` installe `exemples/autorisation-riverain` (`APP_DEMO_RIVERAIN_DIR`) par les vrais cas
   d'usage : type et types de pièces, questionnaires, configuration, modèle de décision et gabarit activés, puis une

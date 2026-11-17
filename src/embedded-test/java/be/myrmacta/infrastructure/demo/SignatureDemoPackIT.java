@@ -72,7 +72,7 @@ class SignatureDemoPackIT {
     void withTheStub_theSampleCaseGoesFromReviewToSignatureThenToSigned(@TempDir Path baseDir) throws IOException {
         try (ConfigurableApplicationContext context = run(baseDir, "fr", "stub")) {
             assertThat(context.getBean(SignatureDemoPack.class).installed()).isTrue();
-            assertThat(deployedProcess(context)).contains("name=\"Relire la convention\"").contains("name=\"Fournisseur\"");
+            assertThat(deployedProcess(context)).contains("name=\"Relire la convention\"").contains("name=\"Représentant du fournisseur\"");
             assertThat(signatureConnectors(context)).as("le stub n'a pas besoin du connecteur signature").isEmpty();
 
             Dossier dossier = sampleCase(context);
@@ -91,7 +91,7 @@ class SignatureDemoPackIT {
             assertThat(signatures.findSigners(request.id())).singleElement().satisfies(signer -> {
                 assertThat(signer.kind()).isEqualTo(SignerKind.EXTERNAL);
                 assertThat(signer.email()).isEqualTo(SIGNER);
-                assertThat(signer.displayName()).isEqualTo("Fournisseur");
+                assertThat(signer.displayName()).isEqualTo("Représentant du fournisseur");
             });
             assertThat(status(context, instance)).isEqualTo("EN_SIGNATURE");
             assertThat(context.getBean(DossierElementRepository.class).findByDossierIdOrderByAddedAtAsc(dossier.id()))
@@ -115,7 +115,7 @@ class SignatureDemoPackIT {
             DossierType type = context.getBean(DossierTypeRepository.class).findByCode(TENANT, SignatureDemoPack.TYPE)
                     .orElseThrow();
             assertThat(type.label()).isEqualTo("Supplier agreement");
-            assertThat(deployedProcess(context)).contains("name=\"Review the agreement\"").contains("name=\"Supplier\"")
+            assertThat(deployedProcess(context)).contains("name=\"Review the agreement\"").contains("name=\"Supplier representative\"")
                     .doesNotContain("Relire la convention");
             assertThat(sampleCase(context).label()).isEqualTo("Agreement — Lambert Printing");
         }
@@ -126,7 +126,10 @@ class SignatureDemoPackIT {
         String secret = "whsec-" + "x".repeat(40);
         try (ConfigurableApplicationContext context = run(baseDir, "fr", "yousign",
                 "--app.demo.signature.yousign-api-key=sandbox-key-for-test",
-                "--app.demo.signature.webhook-secret=" + secret)) {
+                "--app.demo.signature.webhook-secret=" + secret,
+                "--app.demo.signature.signer-email=signataire@organisation.test")) {
+            // Le bac à sable Yousign n'accepte qu'un signataire de l'organisation du compte (lot 4, premier essai réel).
+            assertThat(sampleCase(context).fields()).containsEntry("signataireEmail", "signataire@organisation.test");
             assertThat(signatureConnectors(context)).singleElement().satisfies(instance -> {
                 assertThat(instance.enabled()).isTrue();
                 assertThat(instance.config()).containsEntry("webhookAuthType", "YOUSIGN_HMAC")
@@ -141,7 +144,16 @@ class SignatureDemoPackIT {
     void withYousign_theSceneRefusesToStartWithoutItsKeys_andSaysWhatToSet(@TempDir Path baseDir) {
         assertThatThrownBy(() -> run(baseDir, "fr", "yousign").close())
                 .hasStackTraceContaining("YOUSIGN_SANDBOX_API_KEY")
-                .hasStackTraceContaining("YOUSIGN_WEBHOOK_SECRET");
+                .hasStackTraceContaining("YOUSIGN_WEBHOOK_SECRET")
+                .hasStackTraceContaining("YOUSIGN_SANDBOX_SIGNER_EMAIL");
+    }
+
+    @Test
+    void withYousign_theSceneRefusesToStartWithoutASignerOfTheSandboxOrganisation(@TempDir Path baseDir) {
+        assertThatThrownBy(() -> run(baseDir, "fr", "yousign",
+                "--app.demo.signature.yousign-api-key=sandbox-key-for-test",
+                "--app.demo.signature.webhook-secret=" + "x".repeat(40)).close())
+                .hasStackTraceContaining("YOUSIGN_SANDBOX_SIGNER_EMAIL");
     }
 
     private static Dossier sampleCase(ConfigurableApplicationContext context) {

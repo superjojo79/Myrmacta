@@ -111,7 +111,7 @@ case "${1:-}" in
       APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \
       APP_I18N_DEFAULT_LOCALE="${APP_I18N_DEFAULT_LOCALE:-${APP_DEMO_LOCALE:-fr}}" \
       MAIL_HOST=localhost MAIL_PORT="${MAILPIT_SMTP_PORT:-1025}" MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false \
-      MAIL_FROM="${VIDEO_MAIL_FROM:-noreply@myrmacta.example}" \
+      MAIL_FROM="${VIDEO_MAIL_FROM:-noreply@myrmacta.example}" MAIL_SMTP_LOCALHOST=myrmacta.example \
       "${scene_env[@]}" \
       java -jar "$jar" --app.deadlines.initial-delay-ms=30000 --app.inbound.initial-delay=10s
     ;;

@@ -65,6 +65,10 @@ spring:
           writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT_MS:30000}
           # Issue #134 (D-MAIL-FROM, registre §149) : expéditeur d'enveloppe (MAIL FROM, Return-Path) = app.mail.from.
           from: ${app.mail.from}
+          # Nom annoncé au relais (EHLO, repris dans l'en-tête Received). Vide : nom de la machine.
+          localhost: ${MAIL_SMTP_LOCALHOST:}
+        # Adresse locale de JavaMail : domaine du Message-ID (sinon @nom-du-poste).
+        from: ${app.mail.from}
   servlet:
     multipart:
       max-file-size: ${APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB:25}MB

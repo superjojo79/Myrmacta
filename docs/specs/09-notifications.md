@@ -279,13 +279,15 @@ public interface BrowserPushPort {
 - **Règle (D-MAIL-FROM).** Tous les e-mails sortants (outbox de notifications, connecteur `smtp`, invitations portail
   et signature) passent par `SmtpEmailAdapter`, qui pose `From` = `app.mail.from` (`MAIL_FROM`).
   `spring.mail.properties.mail.smtp.from` reprend la même valeur pour l'enveloppe (`MAIL FROM`, donc `Return-Path`).
-  Sans elle, JavaMail signait `utilisateur@nom-du-poste`.
+  Sans elle, JavaMail signait `utilisateur@nom-du-poste`. La propriété de session `mail.from` reprend aussi la valeur :
+  le `Message-ID` finit par `@<domaine de MAIL_FROM>` au lieu de `@nom-du-poste`. `MAIL_SMTP_LOCALHOST` (facultatif)
+  fixe le nom annoncé en `EHLO`, repris dans l'en-tête `Received` ; vide, c'est le nom de la machine.
 - **Validation.** Adresse nue, une seule, sans nom affiché ni caractère de contrôle ; sinon démarrage refusé avec un
   message qui nomme `MAIL_FROM`.
 - **Défaut.** `noreply@myrmacta.invalid` : démarre sans configuration, mais un vrai relais le refuse. Un déploiement
   qui envoie des e-mails renseigne `MAIL_FROM` (`.env.example`). `scripts/video.sh` utilise
   `noreply@myrmacta.example`.
-- **Tests de référence :** `SmtpEmailAdapterTest`, `NotifierTemplateEmailIT` (From et `Return-Path` relus sur GreenMail).
+- **Tests de référence :** `SmtpEmailAdapterTest`, `NotifierTemplateEmailIT` (From, `Return-Path` et domaine du `Message-ID` relus sur GreenMail).
 
 ---
 

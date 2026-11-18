@@ -16,6 +16,8 @@ par SPF ou DMARC.
   `SmtpEmailAdapter` et en enveloppe par `spring.mail.properties.mail.smtp.from` (même valeur).
 - Adresse nue (`noreply@example.org`), sans nom affiché ni liste : la même valeur sert à la commande SMTP
   `MAIL FROM`, qui n'accepte qu'une adresse. Valeur invalide : démarrage refusé, avec un message qui nomme `MAIL_FROM`.
+- Même valeur pour `mail.from`, l'adresse locale de JavaMail : le `Message-ID` prend le domaine de l'expéditeur au lieu
+  du nom du poste. Le nom annoncé en `EHLO` (en-tête `Received`) reste celui de la machine, sauf `MAIL_SMTP_LOCALHOST`.
 - **Défaut : `noreply@myrmacta.invalid`** (choix de l'utilisateur, 2026-11-17). Le domaine réservé `.invalid`
   (RFC 2606) démarre partout sans configuration et ne fuit rien, mais un vrai relais SMTP le refusera : un
   déploiement qui envoie des e-mails doit renseigner `MAIL_FROM`. Écartés : `noreply@localhost` (passe pour une
@@ -25,4 +27,4 @@ par SPF ou DMARC.
 si un client le demande.
 
 **Tests.** `SmtpEmailAdapterTest` (From posé, avec ou sans pièce jointe ; adresses refusées), `NotifierTemplateEmailIT`
-(From et `Return-Path` relus sur GreenMail).
+(From, `Return-Path` et domaine du `Message-ID` relus sur GreenMail).

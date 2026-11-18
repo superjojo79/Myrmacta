@@ -52,7 +52,7 @@
              Commission européenne (LGPL-2.1). Son POM parent déclare PDFBox 3.0.8, HttpClient 5.6.5 et BouncyCastle
              1.86 : BouncyCastle est aligné ci-dessous pour tout le projet (sshj compris). -->
         <dss.version>6.5.1</dss.version>
-        <bouncycastle.version>1.86</bouncycastle.version>
+        <bouncycastle.version>1.87</bouncycastle.version>
         <!-- D-SDK=A (serveur-mcp) — Spring AI MCP server WebMVC starter ; D-ASSIST-PROVIDER (revue du 2026-10-02) — starter modèle Anthropic -->
         <spring-ai.version>2.0.2</spring-ai.version>
         <skip.frontend>false</skip.frontend>

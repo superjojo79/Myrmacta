@@ -106,6 +106,10 @@ class NotifierTemplateEmailIT {
         MimeMessage message = onlyMessage();
         assertThat(message.getSubject()).isEqualTo("Accusé : " + dossier.reference());
         assertThat(message.getHeader("Auto-Submitted")).containsExactly("auto-generated");
+        // Issue #134 (D-MAIL-FROM) : expéditeur par défaut en From et en enveloppe (MAIL FROM), jamais utilisateur@poste.
+        assertThat(message.getFrom()).extracting(Object::toString).containsExactly("noreply@myrmacta.invalid");
+        assertThat(message.getHeader("Return-Path")).containsExactly("<noreply@myrmacta.invalid>");
+        assertThat(message.getMessageID()).endsWith("@myrmacta.invalid>");
         List<BodyPart> parts = leafParts(message);
         assertThat(parts).hasSize(2);
         assertThat(parts.get(0).getContentType()).startsWith("text/plain");

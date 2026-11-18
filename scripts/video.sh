@@ -98,7 +98,8 @@ case "${1:-}" in
     fi
     jar="$(ls target/myrmacta-*.jar 2>/dev/null | grep -v '\.original$' | head -n1 || true)"
     [[ -n "$jar" ]] || { echo "jar introuvable : lancer d'abord « scripts/video.sh build »" >&2; exit 2; }
-    # Comme scripts/demo.sh : profils fixés, variables DB_* écartées (base embarquée). Les e-mails sortants vont à Mailpit.
+    # Comme scripts/demo.sh : profils fixés, variables DB_* écartées (base embarquée). Les e-mails sortants vont à Mailpit,
+    # signés par un expéditeur de démo (D-MAIL-FROM) : jamais utilisateur@nom-du-poste à l'écran.
     # Échéances évaluées 30 s après le démarrage (au lieu de 2 min), puis toutes les 15 min : le rappel et l'escalade des
     # factures semées sont là au tournage.
     exec env -u DB_URL -u DB_USERNAME -u DB_PASSWORD -u DB_NAME -u DB_PORT \
@@ -110,6 +111,7 @@ case "${1:-}" in
       APP_DEMO_LOCALE="${APP_DEMO_LOCALE:-fr}" \
       APP_I18N_DEFAULT_LOCALE="${APP_I18N_DEFAULT_LOCALE:-${APP_DEMO_LOCALE:-fr}}" \
       MAIL_HOST=localhost MAIL_PORT="${MAILPIT_SMTP_PORT:-1025}" MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false \
+      MAIL_FROM="${VIDEO_MAIL_FROM:-noreply@myrmacta.example}" MAIL_SMTP_LOCALHOST=myrmacta.example \
       "${scene_env[@]}" \
       java -jar "$jar" --app.deadlines.initial-delay-ms=30000 --app.inbound.initial-delay=10s
     ;;

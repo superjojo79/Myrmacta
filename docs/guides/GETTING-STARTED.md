@@ -230,6 +230,7 @@ MAIL_PORT=587
 MAIL_USERNAME=un-compte-smtp
 MAIL_PASSWORD=un-mot-de-passe-smtp
 MAIL_SMTP_AUTH=true
+MAIL_FROM=noreply@example.com
 MAIL_SMTP_STARTTLS=true
 ```
 

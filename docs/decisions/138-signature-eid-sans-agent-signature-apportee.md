@@ -112,16 +112,21 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
 
 ## Limites connues
 
-- Aucun PDF signé avec une vraie carte eID n'a été soumis à la vérification pendant le développement. Les
-  tests fabriquent leur propre hiérarchie de certificats. Une recette avec une vraie carte est due avant
-  usage réel.
-- Le profil exact des certificats eID (identifiants de politique, hôtes OCSP) n'a pas pu être relu sur les
-  sites officiels depuis l'environnement de travail. La conception n'en dépend pas : les autorités sont
-  fournies par l'exploitant, les adresses de révocation viennent des certificats.
+- Pendant le développement, aucune vraie carte n'avait été essayée. La recette du 2026-11-18 (ci-dessous) a validé
+  une carte récente (ECDSA P-384) ; une carte ancienne (RSA) reste à essayer.
+- Hôtes relevés sur de vraies cartes : `ocsp.eidpki.belgium.be` / `crl.eidpki.belgium.be` (Citizen CA 202408,
+  Root CA6), `ocsp.eid.belgium.be` / `crl.eid.belgium.be` (Citizen CA 201809, Root CA4). La CRL de Citizen CA
+  201809 pèse environ 3,3 Mo, au-delà du plafond par défaut de 1 Mio : sans effet tant que l'OCSP répond.
 - Le signataire a toujours besoin d'un lecteur et d'un logiciel qui parle à la carte : un pont navigateur
   pour signer dans la page, ou son outil de signature pour le téléversement.
-- Aucun des deux ponts n'a pu être essayé avec une vraie extension et une vraie carte pendant le
-  développement : le code client suit leurs sources publiques et ses tests simulent l'extension.
+- **BeIDConnect est inutilisable sur un domaine Myrmacta** (constat de recette R1). L'extension publiée (1.0.7, MV3,
+  Chrome, Edge, Brave) n'injecte son script que sur `*.belgium.be`, `*.fgov.be`, `*.govshare.fed.be`, `*.yourict.be`
+  et quelques SharePoint fédéraux. Les sources publiques (`Fedict/fts-beidconnect`, manifestes
+  `ChromeExtension/src_v3/manifest/*`) autorisent tous les sites : elles ne reflètent pas le build publié, d'où l'erreur
+  de la lecture du 2026-11-14. L'application native n'accepte que les identifiants des extensions de BOSA
+  (`allowed_origins`) : un clone publié par Myrmacta serait refusé. Seul Web eID reste comme pont.
+- Web eID affiche deux fenêtres (choix du certificat, puis certificat et PIN) : c'est son protocole en deux appels,
+  le serveur ayant besoin du certificat pour calculer le condensé PAdES (constat R3, documenté pour les signataires).
 - Web eID ne rend que le certificat du signataire : les autorités intermédiaires (Citizen CA) doivent alors
   figurer dans le fichier de l'exploitant (D-EID-TRUST). BeIDConnect rend la chaîne lue sur la carte.
 - Par défaut, téléversement désactivé : un poste sans pont compatible (Web eID ou BeIDConnect installé) ne peut pas
@@ -134,8 +139,42 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   supprimé. Non corrigé. Le pont n'est pas exposé à ce cas : le serveur assemble lui-même le PDF.
 - **(b)** Un même champ de signature peut être inscrit sur plusieurs pages alors qu'une seule est contrôlée. Une
   apparence peut alors être posée sur du texte. Non corrigé. Même remarque sur le pont.
-- La recette avec une vraie carte et de vraies extensions reste due : issue
-  [#98](https://github.com/superjojo79/Myrmacta/issues/98). Ce point se clôt avec elle.
+- La recette n'est pas terminée : issue [#98](https://github.com/superjojo79/Myrmacta/issues/98). Ce point se clôt
+  avec elle. Restent : signature de portail acceptée (seconde carte), carte RSA, Chrome et Firefox, lecteur à clavier,
+  horodatage, PDF final dans Adobe Acrobat Reader.
+
+## Recette du 2026-11-18 (issue #98)
+
+Poste Windows 11, lecteur USB ordinaire, logiciel eID belge, Web eID 2.10.0, carte récente (Citizen CA 202408,
+ECDSA P-384). Instance locale en HTTPS, `APP_SIGNATURE_EID_BRIDGES=web-eid`, fichier d'autorités Root CA4 + Citizen
+CA 201809 + Root CA6 + Citizen CA 202408.
+
+| # | Constat | Résultat |
+|---|---|---|
+| R1 | BeIDConnect, Brave puis Edge, `http://localhost` | « Aucun logiciel eID détecté » : extension publiée limitée aux domaines fédéraux (voir Limites) |
+| R2 | Web eID, agent (« Mes signatures »), Edge et Brave | Acceptées : `PAdES-BASELINE-B`, `SHA384withECDSA`, QcCompliance et QcSSCD, `QES`, révocation OCSP ; chaîne complétée par les intermédiaires du fichier |
+| R3 | Web eID, déroulé | Deux fenêtres (certificat, puis certificat + PIN) : attendu, documenté |
+| R4 | Web eID, portail, même carte que l'agent | Parcours complet, refus attendu `DUPLICATE_SIGNER` affiché au signataire |
+
+Brave n'est pas cité par Web eID, mais fonctionne avec l'extension du Chrome Web Store.
+
+## Signature en lot (étudiée le 2026-11-18, non réalisée)
+
+Question : un signataire peut-il signer plusieurs documents en une fois ?
+
+- **Avec la carte, un PIN par document.** L'API de Web eID signe un condensé par appel (`sign(certificate, hash,
+  hashFunction)`) et son application demande le PIN à chaque appel. Une signature PAdES est propre à chaque PDF : N
+  documents demandent N signatures, donc N saisies du PIN.
+- **Ce que Myrmacta pourrait gagner** : un parcours « signer la sélection » dans « Mes signatures », qui demande le
+  certificat une seule fois puis enchaîne les signatures. On passe de 2N fenêtres à N + 1, sans changer le serveur
+  (une préparation et une finalisation par demande). Non conçu.
+- **Une seule signature pour plusieurs documents** (conteneur ASiC-E ou XAdES multi-fichiers) : un seul PIN, mais la
+  signature n'est plus dans chaque PDF et le modèle « une demande, un document » ne s'y prête pas. Écarté.
+- **Un vrai lot avec un seul PIN** passe par la signature à distance de BOSA (Federal Trust Services) : sa
+  documentation d'intégration annonce la signature de plusieurs documents en une opération, PIN ou myGov.be. C'est la
+  piste fournisseur hébergé, à ouvrir avec BOSA (conditions d'accès des communes inconnues).
+- **Un cachet qualifié de la commune** (service d'e-sealing de BOSA, `Fedict/fts-esealing`) signe sans PIN, mais au nom
+  de l'organisation, pas d'une personne : autre besoin, autre décision.
 
 ## Revues de clôture
 
@@ -157,7 +196,7 @@ les deux contre-revues par un autre modèle, le premier ayant atteint sa limite 
 | | Web eID | BeIDConnect |
 |---|---|---|
 | À installer sur le poste | extension, application native **et** logiciel eID belge (module PKCS#11) | extension et application native ; pas de logiciel eID |
-| Sites acceptés | tous, en HTTPS réel | tous sous Chrome, Edge et Firefox ; domaines fédéraux seulement sous Safari |
+| Sites acceptés | tous, en HTTPS réel | d'après les sources : tous sous Chrome, Edge et Firefox ; **extension publiée : domaines fédéraux seulement** (R1) |
 | Saisie du PIN | fenêtre du logiciel eID | lecteur à clavier, sinon la page |
 | Certificat rendu | le certificat seul | le certificat et la chaîne de la carte |
 | Signature ECDSA rendue | brute (r puis s) | DER |

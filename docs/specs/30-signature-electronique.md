@@ -240,6 +240,13 @@ propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 
   `app.signature.eid.bridges` (défaut `web-eid,beidconnect`). Le serveur calcule le condensé, la carte signe, et le
   serveur assemble lui-même le PDF à partir de la valeur de signature rendue (signature invisible, mise à jour
   incrémentale). Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
+  **Seul Web eID est utilisable en pratique** : l'extension BeIDConnect publiée (1.0.7) ne s'active que sur des
+  domaines fédéraux (`*.belgium.be`, `*.fgov.be`…), constat de recette du 2026-11-18 (§138). Valeur recommandée :
+  `web-eid`.
+- **Deux fenêtres Web eID.** Avec Web eID, la page appelle `get-signing-certificate` (le logiciel natif fait choisir le
+  certificat), puis `prepare` côté serveur (le condensé PAdES inclut le certificat), puis `sign` (le logiciel natif
+  réaffiche le certificat et demande le PIN). Le signataire voit donc deux fenêtres successives ; c'est le protocole de
+  Web eID, pas un défaut à corriger. Le PIN ne passe jamais par la page.
 - **Téléversement, repli désactivé par défaut.** Le signataire signe hors de Myrmacta puis téléverse le PDF. Le
   parcours n'existe que si `app.signature.eid.upload-enabled` (`APP_SIGNATURE_EID_UPLOAD_ENABLED`) vaut `true`.
   Désactivé, les points `signed-document` répondent 409, `code` = `SIGNED_UPLOAD_DISABLED`, après le contrôle d'accès ;
@@ -289,9 +296,13 @@ propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 
   `DssSignedPdfVerifierReviewTest`, `DssSignedPdfVerifierCounterReviewTest`, `EidSignatureAdapterTest`,
   `EidTrustAnchorsTest`, `PinnedRevocationTransportTest`, `DssDocumentTimestamperTest`, `MySignaturesEidApiTest`,
   `SignaturePortalEidApiTest`, `SignaturePropertiesTest`.
-- **Limites.** Aucun PDF signé avec une vraie carte n'a encore été vérifié, et aucun pont n'a été essayé avec une
-  vraie extension : les tests fabriquent leur hiérarchie de certificats et simulent l'extension. Le profil exact des
-  certificats eID n'a pas été relu sur les sites officiels. Le téléversement, désactivé par défaut, a deux
+- **Recette réelle (2026-11-18, issue #98).** Carte récente (Citizen CA 202408, ECDSA P-384), Web eID 2.10, Edge et
+  Brave : signatures d'agent acceptées (`PAdES-BASELINE-B`, `SHA384withECDSA`, QcCompliance et QcSSCD reconnus,
+  révocation par OCSP, chaîne complétée par les intermédiaires du fichier d'autorités) ; parcours du portail joué
+  jusqu'au refus attendu `DUPLICATE_SIGNER` (même carte). BeIDConnect : non détecté sur un domaine Myrmacta.
+- **Limites.** Restent à recetter : signature de portail acceptée avec une seconde carte, carte ancienne (RSA),
+  Chrome et Firefox, lecteur à clavier, horodatage, PDF final dans Adobe Acrobat Reader. La signature se fait
+  document par document : pas de signature en lot à ce jour (voir §138, « Signature en lot »). Le téléversement, désactivé par défaut, a deux
   contournements connus non corrigés et peut refuser à tort des PDF d'outils réels (voir §138, « Limites connues »).
 - **Hors lot.** Pilotage de la carte depuis le navigateur (D-EID-TRANSPORT), liste de confiance européenne,
   rapprochement du nom du certificat avec le signataire attendu, signature par téléphone.

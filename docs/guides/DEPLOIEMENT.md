@@ -484,27 +484,66 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
 > usage. Le contrôle peut aussi refuser à tort des PDF d'outils réels (signature visible sur une zone non vide, page
 > tournée, PDF balisé, champ vide ajouté par l'outil). Un avertissement est journalisé au démarrage.
 
+#### Prérequis (vérifiés par la recette du 2026-11-18, issue #98)
+
+**Côté serveur (exploitant).**
+
+| Prérequis | Détail |
+|---|---|
+| `APP_SIGNATURE_PROVIDER=eid` | un seul fournisseur actif par instance |
+| `APP_SIGNATURE_EID_BRIDGES=web-eid` | **recommandé** : BeIDConnect ne fonctionne pas sur un domaine Myrmacta (voir ci-dessous) |
+| HTTPS réel | Web eID refuse une page en HTTP, `http://localhost` compris ; certificat reconnu par le navigateur du signataire |
+| Fichier PEM des autorités | racines **et** intermédiaires « Citizen CA » (Web eID ne rend que le certificat du signataire) |
+| Sortie HTTP vers l'OCSP et les CRL | adresses lues dans les certificats : `ocsp.eidpki.belgium.be`, `crl.eidpki.belgium.be` (cartes récentes), `ocsp.eid.belgium.be`, `crl.eid.belgium.be` (cartes plus anciennes) |
+| Portail (signataires externes) | `APP_PORTAL_ENABLED=true`, `APP_PORTAL_PUBLIC_BASE_URL` en `https://` |
+
+**Côté poste du signataire (agent ou tiers).**
+
+| Prérequis | Détail |
+|---|---|
+| Lecteur de carte à puce | lecteur USB ordinaire (PIN saisi dans la fenêtre de Web eID) ou lecteur à clavier |
+| Logiciel eID belge (middleware) | fournit le module PKCS#11 (`beidpkcs11.dll` sous Windows) par lequel Web eID atteint la carte |
+| Web eID 2.x | installateur unique (web-eid.eu) : application native + extension Chrome, Edge et Firefox, **à activer** dans le navigateur ; sans droits d'administration particuliers pour l'usage |
+| Navigateur | Chrome, Edge, Firefox ; Brave fonctionne avec l'extension Web eID du Chrome Web Store (recetté, hors support officiel de Web eID) ; Safari via l'App Store (macOS 14+) |
+
+Pour un parc d'agents, l'informatique de la commune déploie le logiciel eID et Web eID comme tout logiciel (MSI),
+puis active l'extension par stratégie de navigateur.
+
+**Déroulé vu du signataire : deux fenêtres Web eID.** Le protocole de Web eID se fait en deux appels : la page
+demande d'abord le certificat de signature (première fenêtre : choix du certificat), le serveur calcule alors le
+condensé PAdES, qui inclut ce certificat, puis la page demande la signature (seconde fenêtre : le certificat est
+réaffiché, saisie du PIN). Ce double affichage est attendu : le serveur ne peut pas préparer le condensé sans le
+certificat. Le PIN reste dans le logiciel Web eID ; la page ne le voit pas.
+
+**Pourquoi pas BeIDConnect.** L'extension BeIDConnect publiée dans les boutiques (1.0.7) n'injecte son script que sur
+`*.belgium.be`, `*.fgov.be` et quelques domaines fédéraux : sur le domaine d'une commune, la page ne détecte aucun
+logiciel, quel que soit le navigateur (constat de recette, voir le §138). Le code du pont reste en place, mais
+`beidconnect` ne sert à rien tant que BOSA n'ouvre pas son extension. Ses sources publiques (`Fedict/fts-beidconnect`)
+autorisent tous les sites : elles ne reflètent pas le build publié.
+
 - **Autorités de confiance (obligatoire).** Le fichier PEM contient, à la suite, les racines belges et les
   autorités intermédiaires (« Citizen CA ») que l'exploitant accepte. Myrmacta n'embarque aucun certificat et ne
   télécharge aucune autorité depuis une URL de certificat. Les intermédiaires doivent figurer dans ce fichier :
-  Web eID ne rend que le certificat du signataire. Ces certificats se prennent sur le dépôt officiel des
-  certificats eID ; l'adresse de ce dépôt n'a pas été vérifiée pendant le développement. Sans fichier lisible
-  qui contient au moins un certificat, l'instance refuse de démarrer.
+  Web eID ne rend que le certificat du signataire. Jeu recetté : Belgium Root CA4 + Citizen CA 201809 (cartes RSA)
+  et Belgium Root CA6 + Citizen CA 202408 (cartes ECDSA P-384). Ces certificats se téléchargent aux adresses
+  inscrites dans les certificats de la carte (`http://certs.eid.belgium.be/belgiumrca4.crt`,
+  `http://certs.eid.belgium.be/citizen201809.crt`, `http://crt.eidpki.belgium.be/eid/brca6.crt`,
+  `http://crt.eidpki.belgium.be/eid/eidc202408.crt`) ; comparer leur empreinte avec la copie lue sur une carte, et
+  ajouter les nouvelles « Citizen CA » au fil de leur émission. Sans fichier lisible qui contient au moins un
+  certificat, l'instance refuse de démarrer.
 - **Ponts navigateur.** `APP_SIGNATURE_EID_BRIDGES` (défaut `web-eid,beidconnect`) donne les ponts proposés dans
   la page, dans cet ordre. Liste vide : signature dans la page non offerte. Valeur inconnue : démarrage refusé. Sans pont
-  autorisé, le téléversement doit être activé, sinon démarrage refusé.
-  Ce que chaque pont exige sur le poste du signataire :
+  autorisé, le téléversement doit être activé, sinon démarrage refusé. Valeur recommandée : `web-eid`.
 
   | | Web eID | BeIDConnect |
   |---|---|---|
   | À installer | extension du navigateur, application native **et** logiciel eID belge | extension du navigateur et application native ; pas de logiciel eID |
-  | Sites acceptés | tous, en HTTPS réel | tous sous Chrome, Edge et Firefox ; domaines fédéraux seulement sous Safari |
-  | Saisie du PIN | dans la fenêtre du logiciel eID, hors de la page | sur un lecteur à clavier ; sinon dans la page |
+  | Sites acceptés | tous, en HTTPS réel | **domaines fédéraux seulement** (extension publiée 1.0.7) : inutilisable pour Myrmacta |
+  | Saisie du PIN | dans la fenêtre du logiciel Web eID, hors de la page | sur un lecteur à clavier ; sinon dans la page |
 
 - **PIN saisi dans la page.** Le PIN n'est jamais envoyé au serveur ni conservé. Avec BeIDConnect sur un lecteur
-  ordinaire, la page demande le PIN, le passe à l'extension et le garde en mémoire le temps de l'appel. Pour
-  refuser cette saisie, retirez `beidconnect` de `APP_SIGNATURE_EID_BRIDGES` : il ne reste alors que Web eID et
-  le téléversement.
+  ordinaire, la page demande le PIN, le passe à l'extension et le garde en mémoire le temps de l'appel. Avec
+  `APP_SIGNATURE_EID_BRIDGES=web-eid`, la page ne demande jamais le PIN.
 - **HTTPS réel.** Le portail doit être servi en HTTPS réel pour que la carte soit utilisable (Web eID l'exige) ;
   une page ouverte en HTTP affiche un message de connexion sécurisée à la place.
 - **Révocation.** Une fois la chaîne du certificat vérifiée, Myrmacta interroge son état de révocation (OCSP, sinon
@@ -512,8 +551,10 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
   suivent aucune redirection ; les adresses de boucle locale et les plages privées sont refusées. Délai total :
   `APP_SIGNATURE_EID_REVOCATION_TIMEOUT` (la connexion est bornée à 5 s). La même taille maximale,
   `APP_SIGNATURE_EID_REVOCATION_MAX_RESPONSE_BYTES` (1 Mio par défaut), s'applique à une réponse OCSP et à une
-  CRL : une CRL plus grosse est refusée. La taille réelle des CRL des autorités belges n'a pas été vérifiée ;
-  relevez le plafond si besoin. La révocation est obtenue en ligne seulement. Révocation injoignable : la signature
+  CRL : une CRL plus grosse est refusée. Tailles relevées le 2026-11-18 : CRL de Citizen CA 202408 environ 630 Ko,
+  de Citizen CA 201809 environ 3,3 Mo (au-delà du défaut). Myrmacta demande d'abord l'OCSP, qui a répondu pendant
+  la recette ; la CRL n'est qu'un repli. Pour que ce repli fonctionne avec les cartes anciennes, relevez le plafond
+  à 4 Mio au moins. La révocation est obtenue en ligne seulement. Révocation injoignable : la signature
   est refusée, le signataire réessaie.
 - **Horodatage (facultatif).** Par défaut, ni horodatage ni TSA. Pour en activer un, renseignez
   `APP_SIGNATURE_EID_TSA_URL` (http ou https) : le document final reçoit un horodatage RFC 3161 et, quand les
@@ -527,10 +568,12 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
 - **Taille (téléversement activé seulement).** `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES` vaut par défaut `app.signature.max-document-bytes` plus 2 Mio
   (22 Mio avec le défaut de 20 Mio). La limite multipart globale (`APP_DOSSIER_ATTACHMENT_MAX_SIZE_MB`, 25 Mo)
   s'applique avant.
-- **Recette avant usage réel.** Aucun PDF signé avec une vraie carte n'a été vérifié pendant le développement, et
-  aucun pont n'a été essayé avec une vraie extension. Avant tout usage réel, signez une demande de test avec une
-  vraie carte, par chaque pont et, si le téléversement est activé, par téléversement avec de vrais outils de signature,
-puis contrôlez la preuve produite.
+- **Recette.** Le 2026-11-18 (issue #98), une vraie carte récente (ECDSA P-384) a signé par Web eID dans Edge et
+  Brave, côté agent (« Mes signatures ») : signatures acceptées, `QES`, révocation par OCSP. Côté portail, le
+  parcours complet a été joué avec la même carte et s'est conclu par le refus attendu (`DUPLICATE_SIGNER`, une carte
+  ne signe qu'une fois un document). Restent à recetter : une signature de portail acceptée (seconde carte), carte
+  ancienne (RSA), Chrome et Firefox, lecteur à clavier, horodatage, ouverture du PDF final dans Adobe Acrobat Reader. Avant un usage réel sur une
+  nouvelle instance, signez une demande de test et contrôlez la preuve produite.
 
 | Variable | Défaut | Rôle |
 |---|---|---|

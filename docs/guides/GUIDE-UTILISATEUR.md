@@ -1118,23 +1118,37 @@ sur la page de la demande (lien du portail) et dans « Mes signatures ». C'est 
 dans la page, avec un logiciel installé sur votre ordinateur. Le téléversement (signer hors de la page) n'apparaît
 que si l'exploitant l'a activé.
 
-**Avant de commencer.** Insérez votre carte dans le lecteur. Installez ce que la page demande : une extension du
-navigateur et une application, Web eID ou BeIDConnect (Web eID demande en plus le logiciel eID belge). La page
-doit s'ouvrir en connexion sécurisée (https). Si rien n'est détecté, la page vous le dit : installez le logiciel
-demandé, puis réessayez. Sans logiciel, vous ne pouvez signer que si l'exploitant a activé le téléversement (voir
-ci-dessous).
+**Avant de commencer.** Il vous faut, une seule fois sur votre ordinateur :
 
-**Signer dans la page.** Cliquez sur « Signer avec ma carte eID ».
+| Élément | Où le trouver | Remarque |
+|---|---|---|
+| Un lecteur de carte à puce | n'importe quel lecteur USB | branché avant d'ouvrir la page |
+| Le logiciel eID belge | eid.belgium.be | souvent déjà installé (il sert aussi à vous connecter aux sites publics) |
+| **Web eID** (application et extension du navigateur) | web-eid.eu, installateur Windows, macOS ou Linux | l'installateur ajoute l'extension à Chrome, Edge et Firefox ; **activez-la** ensuite dans le navigateur |
 
-- Si plusieurs certificats ou lecteurs sont disponibles, la page vous demande de choisir. Prenez le **certificat
-  de signature**, et non le certificat d'authentification. Chaque choix indique sa date de fin de validité et son
-  lecteur.
-- Avec Web eID, une fenêtre du logiciel eID s'ouvre. Choisissez le certificat et saisissez votre code PIN **dans
-  cette fenêtre**.
-- Avec BeIDConnect sur un lecteur à clavier, tapez le PIN sur le lecteur. Sur un autre lecteur, la page vous
-  demande le PIN (4 à 12 caractères). Il est transmis à la carte et n'est jamais envoyé à Myrmacta.
-- Si le PIN est faux, la page indique combien d'essais restent. Une carte bloquée se débloque avec votre code PUK
-  ou auprès de votre commune.
+Navigateurs : Chrome, Edge et Firefox (pris en charge par Web eID) ; Brave fonctionne aussi, avec l'extension
+Web eID ajoutée depuis le Chrome Web Store. La page doit s'ouvrir en connexion sécurisée (https). Si rien n'est
+détecté, la page vous le dit : installez ou activez Web eID, redémarrez le navigateur, puis réessayez.
+
+BeIDConnect, l'extension utilisée par les sites fédéraux, **ne fonctionne pas ici** : elle ne s'active que sur les
+sites de l'État fédéral. Gardez-la si vous en avez besoin ailleurs, mais installez Web eID pour signer dans Myrmacta.
+
+**Signer dans la page.** Cliquez sur « Signer avec ma carte eID ». Le logiciel Web eID ouvre alors **deux fenêtres
+successives**, c'est normal :
+
+1. **Première fenêtre : choix du certificat.** Choisissez le certificat de **signature**, et non celui d'authentification,
+   puis confirmez. Myrmacta prépare alors le document pour ce certificat.
+2. **Seconde fenêtre : confirmation et code PIN.** Le certificat choisi s'affiche de nouveau ; saisissez votre code PIN
+   **dans cette fenêtre** et confirmez. La carte signe.
+
+Pourquoi deux fenêtres : le document à signer contient votre certificat. Myrmacta doit donc le connaître avant de
+préparer ce que la carte signe ; Web eID demande le certificat, puis la signature, en deux temps. Le PIN reste dans
+le logiciel Web eID : il n'est jamais transmis à la page ni à Myrmacta.
+
+- Si le PIN est faux, un message indique combien d'essais restent. **Trois erreurs bloquent la carte** ; elle se
+  débloque avec votre code PUK ou auprès de votre commune.
+- Une même carte ne signe qu'une fois un même document : si deux personnes doivent signer, chacune utilise sa
+  propre carte.
 
 **Signer hors de la page (si l'exploitant l'a activé).** Si la signature dans la page ne fonctionne pas et que ce
 choix vous est proposé, cliquez sur « Télécharger le document

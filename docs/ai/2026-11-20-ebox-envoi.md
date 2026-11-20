@@ -16,7 +16,7 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
   secours elle-même (le process s'en charge), réception des réponses et accusés (#11, §150 lot 2), partitions.
 - Critères de succès : (1) un message valide part en multipart avec sa clé d'idempotence et son mandat ; (2) un rejeu ne
   publie jamais deux fois (409, journal, preuve existante) ; (3) un citoyen sans consentement ne reçoit rien dans l'eBox et le
-  process reçoit la voie de secours ; (4) chaque envoi laisse une ligne d'audit que la base refuse de modifier ou supprimer ;
+  process reçoit la voie de secours ; (4) chaque envoi laisse une ligne d'audit que la base refuse de modifier ou supprimer (sauf le rôle propriétaire, voir Q10) ;
   (5) aucun NISS en clair dans le journal ; (6) le jeton ne part que vers des hôtes autorisés.
 - Contraintes : JPA seulement (§122), changeSet nouveau (054), un schéma par tenant, SSRF (`OutboundUrlGuard`, pas de
   redirection), secrets chiffrés au repos (instance de connecteur), specs ONSS non versionnées (licence).
@@ -35,6 +35,8 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Q7. Conservation du journal : 10 ans à partir du 1er janvier suivant (ATREQ01) ; la base interdit toute suppression. | a) jamais de purge en V1 ; b) purge par un rôle PostgreSQL dédié qui désactive le déclencheur | a en V1, b quand la première échéance approche (2037) | ouverte |
 | Q8. Clé du HMAC du NISS dérivée de la clé maîtresse des connecteurs : une rotation de cette clé coupe la comparaison avec les lignes anciennes. | a) clé maîtresse (fait) ; b) clé dédiée `APP_EBOX_AUDIT_HASH_KEY` | a tant que la rotation n'est pas outillée ; la version `SSIN_HMAC_V1` permet de passer à b | hypothèse |
 | Q9. Autorisation d'usage du NISS pour cibler un citoyen (même sujet que CSAM, archive #210) | — | prérequis juridique avant toute mise en production de la voie citoyen | ouverte (#13) |
+| Q10. Le rôle applicatif possède `ebox_send_audit` et peut désactiver ses déclencheurs (revue M1). Séparer un rôle de migration ? | a) limite documentée (fait) ; b) rôle de migration propriétaire, rôle applicatif en `INSERT`/`SELECT` sur le journal ; c) b pour toutes les tables | b ou c avant la validation BOSA ; touche `provision-tenant.sh`, Liquibase (datasource dédiée) et le déploiement | ouverte (Benoit) |
+| Q11. `allowedHostSuffixes` de l'instance `ebox-outbound` est réglé par l'administrateur du tenant (revue B3) : un admin pourrait envoyer le jeton ailleurs. | a) laisser (fait, comme §150) ; b) liste fixée par la plateforme ; c) intersection plateforme ∩ tenant | c au lot 2, avec l'écran du connecteur | ouverte |
 
 ## Conception
 
@@ -49,7 +51,7 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
     `citizenEboxConsents/search` (`hasConsent`, citoyen absent = inconnu).
   - Code : `OAuth2TokenProvider` (`PRIVATE_KEY_JWT`, cache par empreinte de configuration, `invalidate` refusé dans les
     30 s qui suivent l'émission), `OutboundUrlGuard`, `PinnedHttpClient.exchange` (ne lisait que le corps d'un 200 : il lit
-    désormais celui d'un 201 pour une méthode avec corps).
+    désormais celui d'un 201 pour une méthode avec corps, revue B4 : `PinnedHttpClientTest.exchangeReadsACreatedBodyOnlyForAMethodWithABody`).
 - Composants (lot 1) : domaine `be.myrmacta.domain.ebox` (modèle, `EboxDelivery`, ports `EboxChannel`,
   `EboxSendAuditTrail`, `SendEboxMessageUseCase`) ; `HttpEboxEnterpriseChannel` + `EboxOutboundSettings` (connecteurs
   intégrés, pour réutiliser `OAuth2TokenProvider`) ; `StubEboxCitizenChannel` ; persistance `infrastructure.persistence.ebox`
@@ -78,9 +80,19 @@ Prochaine action : réponses de Benoit à Q1 à Q5, puis lot 2.
 | 2026-11-20 | `mvnw test -Dtest='Ebox*Test,SendEbox*Test,HttpEbox*Test,StubEbox*Test,EboxSendAuditPersistenceIT,ArchitectureRulesTest,PinnedHttpClient*Test'` | 112 tests, 0 échec (après correctifs : en-tête `Content-Type` de la recherche de préférence, horloge du test 401) |
 | 2026-11-20 | `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 416 tests, 0 échec, 0 erreur, 5 ignorés (existants) |
 | 2026-11-20 | `scripts/check-docs.sh` | vert |
+| 2026-11-20 | mêmes tests ciblés, après les correctifs de revue (M2 à M5, B1, B2, B4, ordre JSON) | 126 tests, 0 échec |
 
 ## Revue de clôture
 
 | Constat | Sévérité | Correctif ou issue |
 |---|---|---|
-| (à faire à la clôture de la feature) | | |
+| M1 rôle applicatif propriétaire du journal (déclencheurs contournables) | moyenne | limite et mesure cible au §155, Q10 |
+| M2 recommandé sans `Idempotency-Key` (double envoi possible) | moyenne | réservation 055, erreur explicite sans renvoi |
+| M3 voie eBox réutilisée au rejeu malgré un consentement retiré | moyenne | consentement constaté de nouveau |
+| M4 rejeu d'un recommandé publié sans sa preuve | moyenne | preuve relue par `messageId` |
+| M5 mémoire ≈ 4 × la taille des pièces | moyenne | une copie, empreinte unique, corps à taille exacte |
+| B1 2xx inexploitable, `clientId` non borné | basse | issue incertaine journalisée ; borne 200 |
+| B2 404 de la fédération lu comme « pas d'eBox » | basse | erreur |
+| B3 suffixes d'hôtes réglés par l'admin du tenant | basse | Q11 |
+| B4 201 lu par `exchange` sans test | basse | test unitaire |
+| CI PIT (JDK 25) : ordre de `Map.of` dans le JSON publié | — | `LinkedHashMap`, test par nœuds JSON |

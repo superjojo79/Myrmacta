@@ -75,7 +75,9 @@ Prochaine action : réponses de Benoit à Q1 à Q5, puis lot 2.
 
 | Date | Commande | Résultat |
 |---|---|---|
-| 2026-11-20 | `mvnw test -Dtest='Ebox*Test,SendEbox*Test,HttpEbox*Test,StubEbox*Test,EboxSendAuditPersistenceIT,ArchitectureRulesTest,PinnedHttpClient*Test'` | voir le rapport du lot (tests ciblés verts) |
+| 2026-11-20 | `mvnw test -Dtest='Ebox*Test,SendEbox*Test,HttpEbox*Test,StubEbox*Test,EboxSendAuditPersistenceIT,ArchitectureRulesTest,PinnedHttpClient*Test'` | 112 tests, 0 échec (après correctifs : en-tête `Content-Type` de la recherche de préférence, horloge du test 401) |
+| 2026-11-20 | `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 416 tests, 0 échec, 0 erreur, 5 ignorés (existants) |
+| 2026-11-20 | `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

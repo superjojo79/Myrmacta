@@ -38,6 +38,9 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
   5. Le jeton OAuth est demandé par `client_assertion` signée ; aucun secret n'apparaît dans les journaux.
   6. L'étape « Marquer l'action comme faite » appelle le PATCH ; une erreur de l'eBox crée un incident rejouable.
   7. Isolation : l'instance d'un tenant ne lit qu'avec les identifiants de ce tenant.
+  9. Plusieurs instances `ebox-inbound` par tenant sont possibles (une par numéro BCE ou par groupe de partitions) ; deux
+     instances actives qui couvrent la même partition du même numéro BCE sont refusées à l'enregistrement (sinon le journal,
+     tenu par instance, laisserait passer des doublons).
   8. Une instance sans partition configurée est refusée à l'enregistrement ; un message hors des partitions configurées
      n'est jamais demandé au serveur (vérifié sur le faux serveur).
 - Contraintes : stack figée (aucune nouvelle dépendance d'exécution ; WireMock en test seulement si besoin) ; un schéma par

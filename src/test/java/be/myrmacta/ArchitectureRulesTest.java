@@ -138,9 +138,9 @@ class ArchitectureRulesTest {
             // TODO §115 (D-DEADLINE-TIMER) : la brique « Calculer une échéance » lit un seul champ DATE non sensible désigné par
             // la brique et en tire des instants de minuteur ; la valeur n'est ni renvoyée à un navigateur ni journalisée.
             "be.myrmacta.infrastructure.flowable.ComputeDeadlineDelegate",
-            // TODO §150 (D-EBOX-ACTION) : la brique « Marquer l'action eBox comme faite » lit les seuls champs eboxRegistre et
-            // eboxMessageId (identifiants du message reçu) et les passe au connecteur eBox ; ni renvoyés à un navigateur ni journalisés.
-            "be.myrmacta.infrastructure.flowable.EboxActionDoneDelegate",
+            // TODO §150 et §151 (D-EBOX-ACTION, D-EBOX-MOVE) : les briques eBox lisent les seuls champs eboxRegistre et
+            // eboxMessageId (identifiants du message reçu) et les passent au connecteur eBox ; ni renvoyés à un navigateur ni journalisés.
+            "be.myrmacta.infrastructure.flowable.EboxMessageDelegate",
             // TODO §104 (issue #210) : lit le seul champ d'identité (sensible) d'une tâche à authentification forte pour le
             // comparer au NRN vérifié par FAS ou itsme ; la valeur n'est jamais renvoyée au tiers ni journalisée.
             "be.myrmacta.domain.workflow.portal.PortalIdentityFieldValue",

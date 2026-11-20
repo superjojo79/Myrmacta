@@ -168,9 +168,10 @@ public class SignatureUseCaseConfig {
             AddDossierElementUseCase addElementUseCase,
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
-            SignatureOutcomeListener listener) {
+            SignatureOutcomeListener listener,
+            I18nProperties i18n) {
         return new SignatureOutcomeHandler(tenantProperties.id(), repository, port, storage, elementRepository,
-                addElementUseCase, notifier, metrics, listener, CLOCK);
+                addElementUseCase, notifier, metrics, listener, CLOCK, i18n.locale());
     }
 
     @Bean

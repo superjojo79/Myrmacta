@@ -40,6 +40,7 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +61,8 @@ class SignatureOutcomeHandlerTest {
     private SignatureOutcomeHandler handler;
     private SignatureRequest request;
 
+    private SignatureNotifier notifier;
+
     @BeforeEach
     void setUp() {
         DossierWorkflowLinkRepository links = mock(DossierWorkflowLinkRepository.class);
@@ -68,10 +71,9 @@ class SignatureOutcomeHandlerTest {
         when(links.findByProcessInstanceId(any(), any())).thenReturn(Optional.of(link));
         WorkflowParticipantPort participants = mock(WorkflowParticipantPort.class);
         when(participants.findParticipantUserIds(link)).thenReturn(List.of("manager", "reviewer"));
-        SignatureNotifier notifier = new SignatureNotifier(TENANT, links, participants, sendNotification);
+        notifier = new SignatureNotifier(TENANT, links, participants, sendNotification);
         when(port.capabilities()).thenReturn(SignatureFixtures.capabilities(false));
-        handler = new SignatureOutcomeHandler(TENANT, repository, port, storage, elements, addElement, notifier, metrics,
-                listener, Clock.fixed(NOW, ZoneOffset.UTC));
+        handler = handler(Locale.FRENCH);
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("stub:x")
                 .withSimulation(true, "SIMULATED");
         when(storage.store(eq(TENANT), anyString(), any())).thenReturn("ref/signed", "ref/proof");
@@ -99,6 +101,35 @@ class SignatureOutcomeHandlerTest {
         verify(sendNotification, times(2)).send(any(NotificationEvent.class), eq(TENANT));
         verify(metrics).outcome(SignatureOutcome.SIGNED);
         verify(listener).outcomeRecorded(request.id());
+    }
+
+    /** #131 — le document signé et la preuve prennent la langue du tenant. */
+    @Test
+    void signedArtifactsAreLabelledInFrenchForAFrenchTenant() {
+        when(port.fetchArtifacts("stub:x")).thenReturn(new SignaturePort.SignedArtifacts(
+                "S".getBytes(), "application/pdf", "P".getBytes(), "application/pdf", false));
+
+        handler.afterClosed(request, SignatureOutcome.SIGNED);
+
+        assertThat(addedLabels()).containsExactly("Document signé", "Preuve de signature");
+    }
+
+    @Test
+    void signedArtifactsAreLabelledInEnglishForAnEnglishTenant() {
+        handler = handler(Locale.ENGLISH);
+        when(port.fetchArtifacts("stub:x")).thenReturn(new SignaturePort.SignedArtifacts(
+                "S".getBytes(), "application/pdf", "P".getBytes(), "application/pdf", true));
+
+        handler.afterClosed(request, SignatureOutcome.SIGNED);
+
+        assertThat(addedLabels()).containsExactly("Signed document (SIMULATION)", "Signature proof (SIMULATION)");
+    }
+
+    private List<String> addedLabels() {
+        ArgumentCaptor<AddDossierElementUseCase.AddCommand> add =
+                ArgumentCaptor.forClass(AddDossierElementUseCase.AddCommand.class);
+        verify(addElement, times(2)).add(add.capture(), any(AccessContext.class));
+        return add.getAllValues().stream().map(AddDossierElementUseCase.AddCommand::label).toList();
     }
 
     @Test
@@ -291,6 +322,11 @@ class SignatureOutcomeHandlerTest {
         handler.ensureSignedArtifacts(request.closed(SignatureOutcome.SIGNED, null, NOW));
         verify(port, never()).fetchArtifacts(any());
         assertThat(request.status()).isEqualTo(SignatureStatus.PENDING);
+    }
+
+    private SignatureOutcomeHandler handler(Locale locale) {
+        return new SignatureOutcomeHandler(TENANT, repository, port, storage, elements, addElement, notifier, metrics,
+                listener, Clock.fixed(NOW, ZoneOffset.UTC), locale);
     }
 
     private DossierElement marker(ElementType type, String addedBy, java.util.Map<String, Object> metadata) {

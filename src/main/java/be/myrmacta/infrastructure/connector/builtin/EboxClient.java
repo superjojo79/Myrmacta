@@ -39,6 +39,15 @@ interface EboxClient {
     /** {@code PATCH /ebox/messages/{id}/messageActions/{actionId}} avec {@code isExecuted: true}. */
     void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId);
 
+    /** TODO §151 (D-EBOX-PARTITION-CHECK) — {@code GET /ebox/{enterpriseNumber}/partitions} (API Partition 1.3) : les identifiants. */
+    List<String> partitions(String partitionApiUrl, Access access, String enterpriseNumber);
+
+    /**
+     * TODO §151 (D-EBOX-MOVE) — {@code POST /ebox/messages/changePartition} : déplace un message vers une autre partition de l'eBox
+     * destinataire ({@code targetRecipientPartitionId}).
+     */
+    void moveToPartition(String endpointUrl, Access access, String messageId, String targetPartition);
+
     /** Jeton refusé (401) : le connecteur le renouvelle une fois. */
     final class EboxUnauthorizedException extends IllegalStateException {
         EboxUnauthorizedException() {

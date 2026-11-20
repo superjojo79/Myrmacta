@@ -7,17 +7,22 @@ import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.infrastructure.connector.builtin.SignatureCallbackConnector;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Adaptateur Yousign (TODO §109, D-SIGNATURE-PROVIDER). L'URL de signature n'est pas conservée à la
- * création (D-SIGNATURE-LINK). Un PDF sans ancre pour chaque signataire fait échouer la demande et
- * annule le brouillon (D-SIGNATURE-ANCHOR).
+ * création (D-SIGNATURE-LINK). Un PDF sans ancre pour chaque signataire fait échouer la demande
+ * (D-SIGNATURE-ANCHOR) ; tout échec après la création supprime le brouillon (D-SIGNATURE-DRAFT-CLEANUP).
  */
 public final class YousignSignatureAdapter implements SignaturePort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(YousignSignatureAdapter.class);
 
     public static final String CODE = "yousign";
     private static final String LEVEL = "ELECTRONIC";
@@ -25,17 +30,25 @@ public final class YousignSignatureAdapter implements SignaturePort {
     private final String tenantId;
     private final ConnectorInstanceRepository instances;
     private final YousignClient fixed;
+    private final Locale signerLocale;
 
-    public YousignSignatureAdapter(String tenantId, ConnectorInstanceRepository instances) {
+    /** @param signerLocale langue du tenant ({@code app.i18n.default-locale}), donnée à chaque signataire */
+    public YousignSignatureAdapter(String tenantId, ConnectorInstanceRepository instances, Locale signerLocale) {
         this.tenantId = tenantId;
         this.instances = instances;
         this.fixed = null;
+        this.signerLocale = signerLocale;
     }
 
     YousignSignatureAdapter(YousignClient client) {
+        this(client, Locale.FRENCH);
+    }
+
+    YousignSignatureAdapter(YousignClient client, Locale signerLocale) {
         this.tenantId = null;
         this.instances = null;
         this.fixed = client;
+        this.signerLocale = signerLocale;
     }
 
     @Override
@@ -66,18 +79,22 @@ public final class YousignSignatureAdapter implements SignaturePort {
                 : command.deadlineAt().atZone(ZoneOffset.UTC).toLocalDate().toString();
         UUID requestId = client.createSignatureRequest(
                 command.documentName(), ordered, command.requestId().toString(), expiration);
-        YousignClient.Upload upload = client.uploadSignablePdf(requestId, command.documentName(), command.document());
-        // total_anchors ne distingue pas deux ancres du même rang d'une ancre par signataire.
-        if (upload.totalAnchors() < command.signers().size()
-                || !SignatureAnchors.everyRankPresent(command.document(), command.signers().size())) {
-            cancelQuietly(client, requestId);
-            throw new IllegalStateException("the document is missing a signature anchor");
+        try {
+            YousignClient.Upload upload = client.uploadSignablePdf(requestId, command.documentName(), command.document());
+            // total_anchors ne distingue pas deux ancres du même rang d'une ancre par signataire.
+            if (upload.totalAnchors() < command.signers().size()
+                    || !SignatureAnchors.everyRankPresent(command.document(), command.signers().size())) {
+                throw new IllegalStateException("the document is missing a signature anchor");
+            }
+            for (SubmitSigner signer : command.signers()) {
+                String[] name = nameParts(signer.displayName());
+                client.addSigner(requestId, name[0], name[1], signer.email(), signerLocale);
+            }
+            client.activate(requestId);
+        } catch (RuntimeException ex) {
+            discardQuietly(client, requestId);
+            throw ex;
         }
-        for (SubmitSigner signer : command.signers()) {
-            String[] name = nameParts(signer.displayName());
-            client.addSigner(requestId, name[0], name[1], signer.email());
-        }
-        client.activate(requestId);
         return new SignatureSubmission(YousignCallbackParser.REFERENCE_PREFIX + requestId, false, LEVEL, Map.of());
     }
 
@@ -141,8 +158,23 @@ public final class YousignSignatureAdapter implements SignaturePort {
         try {
             client.cancel(requestId);
         } catch (RuntimeException ex) {
-            // D-SIGNATURE-ANCHOR : l'annulation du brouillon est au mieux.
+            LOG.warn("Yousign request {} could not be canceled: {}", requestId, ex.getMessage());
         }
+    }
+
+    /**
+     * D-SIGNATURE-DRAFT-CLEANUP (#133) : tout échec après la création supprime le brouillon (l'API v3 n'annule pas
+     * un brouillon). Si la suppression est refusée, la demande a pu passer en cours (activation aboutie malgré
+     * l'erreur) : elle est annulée. Le nettoyage est au mieux, journalisé, et ne remplace jamais l'erreur d'origine.
+     */
+    private static void discardQuietly(YousignClient client, UUID requestId) {
+        try {
+            client.deleteDraft(requestId);
+            return;
+        } catch (RuntimeException ex) {
+            LOG.warn("Yousign draft {} could not be deleted, trying to cancel it: {}", requestId, ex.getMessage());
+        }
+        cancelQuietly(client, requestId);
     }
 
     private static Optional<UUID> requestId(String providerReference) {

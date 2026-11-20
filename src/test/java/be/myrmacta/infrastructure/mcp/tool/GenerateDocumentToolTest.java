@@ -23,6 +23,7 @@ import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
 import be.myrmacta.infrastructure.config.DocumentGenerationProperties;
+import be.myrmacta.infrastructure.config.I18nProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.mcp.McpAccessContextFactory;
 import be.myrmacta.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
@@ -110,6 +111,22 @@ class GenerateDocumentToolTest {
         assertThat(view.downloadable()).isTrue();
         assertThat(view.label()).isEqualTo("Document généré — quote");
         assertThat(view.toString()).doesNotContain("storageRef").doesNotContain("tenant_dev/abc.pdf");
+    }
+
+    /** #131 — le libellé suit la langue du tenant, même pour un document demandé dans une autre langue. */
+    @Test
+    void generate_labelsTheDocumentInEnglishForAnEnglishTenant() {
+        tool = newTool(new DocumentGenerationRateLimiter(FIXED_CLOCK), 30, "en");
+        when(generateDocumentUseCase.generate(any())).thenReturn(new byte[] {1});
+        when(documentStoragePort.store(eq(TENANT), eq("application/pdf"), any())).thenReturn("ref");
+        when(addDossierElementUseCase.add(any(), any())).thenReturn(producedDoc("ref"));
+
+        tool.generateDocument(dossierId.toString(), "quote", null, "fr", Map.of(), false);
+
+        ArgumentCaptor<AddDossierElementUseCase.AddCommand> add =
+                ArgumentCaptor.forClass(AddDossierElementUseCase.AddCommand.class);
+        verify(addDossierElementUseCase).add(add.capture(), any());
+        assertThat(add.getValue().label()).isEqualTo("Generated document — quote");
     }
 
     @Test
@@ -205,6 +222,11 @@ class GenerateDocumentToolTest {
     }
 
     private GenerateDocumentTool newTool(DocumentGenerationRateLimiter rateLimiter, int rateLimitPerMinute) {
+        return newTool(rateLimiter, rateLimitPerMinute, "fr");
+    }
+
+    private GenerateDocumentTool newTool(
+            DocumentGenerationRateLimiter rateLimiter, int rateLimitPerMinute, String tenantLocale) {
         return new GenerateDocumentTool(
                 getDossierUseCase,
                 getDossierTypeUseCase,
@@ -215,7 +237,8 @@ class GenerateDocumentToolTest {
                 new TenantProperties(TENANT),
                 new McpAccessContextFactory(),
                 rateLimiter,
-                new DocumentGenerationProperties(0, rateLimitPerMinute));
+                new DocumentGenerationProperties(0, rateLimitPerMinute),
+                new I18nProperties(tenantLocale));
     }
 
     private static void bindJwt() {

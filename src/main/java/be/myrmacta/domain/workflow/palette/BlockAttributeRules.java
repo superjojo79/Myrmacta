@@ -36,7 +36,7 @@ public final class BlockAttributeRules {
      */
     private static final Set<String> LITERAL_ONLY_DELEGATES =
             Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask", "aiPrecheckTask", "computeDeadlineTask",
-                    "eboxActionDoneTask");
+                    "eboxActionDoneTask", "eboxMoveTask");
 
     /** TODO §102 (lot B, R4) — noms de variables écrites par la brique « Rechercher des dossiers ». */
     private static final Set<String> RESULT_VARIABLE_PARAMETERS =

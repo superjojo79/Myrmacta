@@ -10,6 +10,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -73,6 +74,40 @@ class YousignHttpClientTest {
         assertThat(authorizations).containsExactly("Bearer " + API_KEY);
     }
 
+    /** #132 — la page et les messages Yousign du signataire suivent la langue du tenant. */
+    @Test
+    void addSignerInFrench() {
+        client().addSigner(REQUEST_ID, "Ada", "Lovelace", "ada@example.org", Locale.FRENCH);
+
+        assertThat(calls).singleElement().asString()
+                .contains("POST /v3/signature_requests/" + REQUEST_ID + "/signers")
+                .contains("\"locale\":\"fr\"");
+    }
+
+    @Test
+    void addSignerInEnglish() {
+        client().addSigner(REQUEST_ID, "Ada", "Lovelace", "ada@example.org", Locale.ENGLISH);
+
+        assertThat(calls).singleElement().asString().contains("\"locale\":\"en\"");
+    }
+
+    /** Une variante régionale garde sa langue. */
+    @Test
+    void addSignerInBritishEnglish() {
+        client().addSigner(REQUEST_ID, "Ada", "Lovelace", "ada@example.org", Locale.UK);
+
+        assertThat(calls).singleElement().asString().contains("\"locale\":\"en\"");
+    }
+
+    /** Langue absente ou que Myrmacta ne propose pas : repli sur le français, la langue par défaut d'un tenant. */
+    @Test
+    void addSignerFallsBackToFrench() {
+        client().addSigner(REQUEST_ID, "Ada", "Lovelace", "ada@example.org", Locale.JAPANESE);
+        client().addSigner(REQUEST_ID, "Ada", "Lovelace", "ada@example.org", null);
+
+        assertThat(calls).hasSize(2).allSatisfy(call -> assertThat(call).contains("\"locale\":\"fr\""));
+    }
+
     @Test
     void uploadAsksForAnchorParsing() {
         client().uploadSignablePdf(REQUEST_ID, "contrat.pdf", "%PDF-1.4".getBytes(StandardCharsets.UTF_8));
@@ -115,6 +150,38 @@ class YousignHttpClientTest {
         assertThat(YousignHttpClient.pdfFileName("  .PDF ")).isEqualTo("document.PDF");
         assertThat(YousignHttpClient.pdfFileName(null)).isEqualTo("document.pdf");
         assertThat(YousignHttpClient.pdfFileName("   ")).isEqualTo("document.pdf");
+    }
+
+    /**
+     * #133 — l'API v3 n'annule (POST /cancel) qu'une demande en approbation ou en cours ; un brouillon se supprime
+     * (DELETE, 204 sans corps).
+     */
+    @Test
+    void deleteDraftSendsADeleteOnTheRequest_andAcceptsAnEmptyNoContentAnswer() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            calls.add(exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawPath());
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+
+        client().deleteDraft(REQUEST_ID);
+
+        assertThat(calls).containsExactly("DELETE /v3/signature_requests/" + REQUEST_ID);
+    }
+
+    @Test
+    void deleteDraftRefusedByYousignFailsWithoutTheKey() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            exchange.sendResponseHeaders(405, -1);
+            exchange.close();
+        });
+
+        assertThatThrownBy(() -> client().deleteDraft(REQUEST_ID))
+                .isInstanceOf(YousignCallException.class)
+                .hasMessageContaining("405")
+                .hasMessageNotContaining(API_KEY);
     }
 
     @Test
@@ -191,6 +258,9 @@ class YousignHttpClientTest {
         }
         if (path.endsWith("/documents") && "POST".equals(method)) {
             return "{\"id\":\"22222222-2222-2222-2222-222222222222\",\"total_anchors\":1}";
+        }
+        if (path.endsWith("/signers") && "POST".equals(method)) {
+            return "{\"id\":\"33333333-3333-3333-3333-333333333333\"}";
         }
         return "{}";
     }

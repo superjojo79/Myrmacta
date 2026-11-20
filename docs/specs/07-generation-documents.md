@@ -158,6 +158,12 @@ pas de couplage MinIO dans le code — port `DocumentStoragePort` S3 + filesyste
 
 Alternative : stockage filesystem local pour les environnements simples.
 
+**Pièce ajoutée au dossier.** La tâche BPMN `attachGeneratedDocumentTask` et l'outil MCP `generate_document`
+ajoutent un élément `PRODUCED_DOC` dont le libellé est « Document généré — {nom de l'activité ou clé du template} »,
+ou « Generated document — … » : il est écrit à l'ajout dans la langue par défaut du tenant
+(`app.i18n.default-locale`), pas dans la langue demandée pour le document (`documentLocale`, paramètre `locale`).
+Un libellé déjà enregistré ne change pas (D-I18N-DOSSIER-TEXT, issue #131).
+
 ---
 
 ## Port domaine

@@ -1,0 +1,17 @@
+{
+  "_commentaire": "Exemple NON créé sur l'instance (§155). Compte expéditeur eBox de la commune (Document Sender). Renseigner le client OAuth v5 obtenu à l'onboarding, la clé privée du certificat (PEM PKCS#8) et son empreinte. onBehalfOf : numéro BCE de la commune si Myrmacta publie pour elle en prestataire technique (mandat Mahis). registeredMailUrl : facultatif, seulement si la commune a accès à Registered Mail (question ouverte Q2). La voie citoyen n'a pas encore de réglage par instance (API BOSA inconnue).",
+  "name": "eBox de la commune (envoi)",
+  "connectorType": "ebox-outbound",
+  "enabled": true,
+  "config": {
+    "publicationUrl": "https://services.socialsecurity.be/REST/ebox/enterprise/messageRegistry/v3",
+    "federationUrl": "https://services.socialsecurity.be/REST/ebox/enterprise/federation/v1",
+    "onBehalfOf": "",
+    "allowedHostSuffixes": "socialsecurity.be",
+    "oauthTokenUrl": "https://services.socialsecurity.be/REST/oauth/v5/token",
+    "oauthClientId": "<client OAuth v5>",
+    "oauthPrivateKey": "<clé privée PEM PKCS#8>",
+    "oauthCertThumbprint": "<empreinte SHA-256 du certificat>",
+    "oauthScope": "scope:document:management:consult:ws-eboxrestentreprise:publicationsender"
+  }
+}

@@ -237,7 +237,34 @@ class BlockAttributeRulesTest {
                 "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping",
                 "searchCriteria", "searchCountResult", "searchFirstReferenceResult", "precheckPieces", "precheckFields",
                 "precheckQuestions", "precheckRules", "precheckResult", "connectorRequest", "groupeTri", "champEcheance", "delaiJours",
-                "rappelJours", "delaiOuvrable", "rappelOuvrable", "eboxActionId", "eboxPartitionCible");
+                "rappelJours", "delaiOuvrable", "rappelOuvrable", "eboxActionId", "eboxPartitionCible",
+                "eboxEnvoiTypeDestinataire", "eboxEnvoiDestinataire", "eboxEnvoiDocument", "eboxEnvoiObjet", "eboxEnvoiApplication", "eboxEnvoiTypeMessage",
+                "eboxEnvoiLangue", "eboxEnvoiRecommande", "eboxEnvoiSecours");
+    }
+
+    /** TODO §155 (lot 2, D-EBOX-SEND-BLOCK) — « Envoyer en eBox » : attributs littéraux, tous les obligatoires dans le BPMN. */
+    @Test
+    void theEboxSendBlockIsLiteralAndValidatedAtDeployment() {
+        java.util.Map<String, String> ok = new java.util.HashMap<>(Map.of(
+                "connectorInstanceId", "00000000-0000-0000-0000-0000000000e5", "eboxEnvoiTypeDestinataire", "CITOYEN",
+                "eboxEnvoiDestinataire", "dossierField:niss", "eboxEnvoiDocument", "variable:generatedDocumentId", "eboxEnvoiObjet", "Votre permis",
+                "eboxEnvoiApplication", "myrmacta-commune", "eboxEnvoiTypeMessage", "decision", "eboxEnvoiLangue", "fr", "eboxEnvoiSecours", "PAPER"));
+        BlockAttributeRules.validate("e", "eboxSendTask", ok);
+        ok.put("eboxEnvoiLangue", "dossierField:langue");
+        ok.put("eboxEnvoiRecommande", "OUI");
+        BlockAttributeRules.validate("e", "eboxSendTask", ok);
+
+        for (java.util.Map.Entry<String, String> bad : Map.of("eboxEnvoiLangue", "en", "eboxEnvoiDestinataire", "0212345678",
+                "eboxEnvoiTypeDestinataire", "AUTRE", "eboxEnvoiSecours", "FAX", "eboxEnvoiRecommande", "PEUT-ETRE").entrySet()) {
+            java.util.Map<String, String> wrong = new java.util.HashMap<>(ok);
+            wrong.put(bad.getKey(), bad.getValue());
+            assertThatThrownBy(() -> BlockAttributeRules.validate("e", "eboxSendTask", wrong)).as(bad.getKey())
+                    .isInstanceOf(InvalidBpmnException.class).hasMessageContaining(bad.getKey());
+        }
+        java.util.Map<String, String> missing = new java.util.HashMap<>(ok);
+        missing.remove("eboxEnvoiObjet");
+        assertThatThrownBy(() -> BlockAttributeRules.validate("e", "eboxSendTask", missing))
+                .isInstanceOf(InvalidBpmnException.class).hasMessageContaining("flowable:eboxEnvoiObjet is required");
     }
 
     /** TODO §102 (lot B, R1, R4, R5) — brique « Rechercher des dossiers » : forme validée au déploiement. */

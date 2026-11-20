@@ -37,7 +37,9 @@ public final class AllowedBpmnDelegates {
             // TODO §150 (D-EBOX-ACTION) : bloc « Marquer l'action eBox comme faite » (PATCH de l'action d'un message reçu).
             "eboxActionDoneTask",
             // TODO §151 (D-EBOX-MOVE) : bloc « Classer le message eBox » (changePartition d'un message reçu).
-            "eboxMoveTask");
+            "eboxMoveTask",
+            // TODO §155 (lot 2, D-EBOX-SEND-BLOCK) : bloc « Envoyer en eBox » (publication, consentement, voie de secours).
+            "eboxSendTask");
 
     private AllowedBpmnDelegates() {}
 

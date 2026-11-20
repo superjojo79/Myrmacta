@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://myrmacta/exemples/envoi-ebox">
+
+  <!--
+    Exemple (registre §155, lot 2) : la décision du dossier part dans l'eBox de l'entreprise (BCE) ; si l'eBox ne suffit pas
+    (pas d'eBox, ou copie tant que l'entreprise n'a pas choisi l'eBox comme canal exclusif), un agent envoie la copie papier.
+    Remplacer connectorInstanceId par l'instance ebox-outbound du tenant, documentType par le gabarit de la décision.
+  -->
+  <process id="envoiDecisionEbox" name="Envoyer la décision en eBox" isExecutable="true">
+    <startEvent id="debut"/>
+    <sequenceFlow id="f1" sourceRef="debut" targetRef="generer"/>
+    <serviceTask id="generer" name="Générer la décision" flowable:delegateExpression="${documentGenerationTask}"
+                 flowable:documentType="decision"/>
+    <sequenceFlow id="f2" sourceRef="generer" targetRef="joindre"/>
+    <serviceTask id="joindre" name="Joindre la décision" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
+    <sequenceFlow id="f3" sourceRef="joindre" targetRef="envoyer"/>
+    <serviceTask id="envoyer" name="Envoyer en eBox" flowable:async="true"
+                 flowable:delegateExpression="${eboxSendTask}"
+                 flowable:connectorInstanceId="00000000-0000-0000-0000-000000000000"
+                 flowable:eboxEnvoiTypeDestinataire="ENTREPRISE"
+                 flowable:eboxEnvoiDestinataire="dossierField:numeroBce"
+                 flowable:eboxEnvoiDocument="variable:generatedDocumentId"
+                 flowable:eboxEnvoiObjet="Décision relative à votre demande"
+                 flowable:eboxEnvoiApplication="myrmacta-commune"
+                 flowable:eboxEnvoiTypeMessage="decision"
+                 flowable:eboxEnvoiLangue="dossierField:langue"
+                 flowable:eboxEnvoiSecours="PAPER"/>
+    <sequenceFlow id="f4" sourceRef="envoyer" targetRef="voie"/>
+    <exclusiveGateway id="voie" name="Voie de secours ?" default="f6"/>
+    <sequenceFlow id="f5" sourceRef="voie" targetRef="secours">
+      <conditionExpression>${eboxSecoursRequis == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f6" sourceRef="voie" targetRef="fin"/>
+    <userTask id="secours" name="Envoyer la décision par courrier" flowable:candidateGroups="COURRIER"/>
+    <sequenceFlow id="f7" sourceRef="secours" targetRef="fin"/>
+    <endEvent id="fin"/>
+  </process>
+</definitions>

@@ -64,9 +64,18 @@ public final class WorkflowVariables {
 
     public static final String ECHEANCE_DEPASSEE = "echeanceDepassee";
 
+    /**
+     * TODO §155 (lot 2, D-EBOX-SEND-BLOCK) — issue d'un envoi eBox, écrite par la brique « Envoyer en eBox » seulement.
+     * Réservée : sinon une complétion de tâche pourrait faire croire au process qu'un message est parti dans l'eBox et lui faire
+     * sauter la voie de secours (courrier jamais reçu).
+     */
+    public static final Set<String> EBOX_SEND_RESULTS = Set.of("eboxIssue", "eboxLivraison", "eboxSecoursRequis",
+            "eboxVoieSecours", "eboxEnvoiMessageId", "eboxEnvoiRejoue");
+
     private static final Set<String> RESERVED = Set.of(
             DOSSIER_ID, DOSSIER_WORKFLOW_LINK_ID, TENANT_ID, DOSSIER_FIELDS, CONNECTOR_RESULT, GENERATED_DOCUMENT_ID, ECHEANCE_RAPPEL,
-            ECHEANCE_DEPASSEE);
+            ECHEANCE_DEPASSEE, "eboxIssue", "eboxLivraison", "eboxSecoursRequis", "eboxVoieSecours", "eboxEnvoiMessageId",
+            "eboxEnvoiRejoue");
 
     /**
      * Business (non-platform) variable names already claimed by another task form kind —

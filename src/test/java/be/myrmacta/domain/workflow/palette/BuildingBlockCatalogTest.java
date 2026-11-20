@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheTwentyBlocksWithUniqueIds() {
+    void containsTheTwentyOneBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "route-mail", "attach-to-thread", "ebox-action-done", "ebox-move", "compute-deadline", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
+                "route-mail", "attach-to-thread", "ebox-action-done", "ebox-move", "ebox-send", "compute-deadline", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
                 "ai-precheck", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());
@@ -47,9 +47,10 @@ class BuildingBlockCatalogTest {
 
     /** TODO §106 (D-PRECHECK-BLOCK) — la palette crée la pré-vérification asynchrone, seule brique dans ce cas. */
     @Test
-    void onlyTheAiPrecheckIsCreatedAsynchronous() {
+    void onlyTheAiPrecheckAndTheEboxSendAreCreatedAsynchronous() {
+        // TODO §155 (lot 2, D-EBOX-SEND-BLOCK) : l'envoi eBox appelle un service externe, jamais dans la transaction d'une complétion.
         assertThat(blocks.stream().filter(b -> b.marker().async()).map(BuildingBlock::id))
-                .containsExactly("ai-precheck");
+                .containsExactly("ebox-send", "ai-precheck");
     }
 
     @Test
@@ -93,7 +94,7 @@ class BuildingBlockCatalogTest {
         assertThat(request.required()).isFalse();
         assertThat(request.multiline()).isTrue();
         assertThat(request.maxLength()).isEqualTo(2000);
-        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(9);
+        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(10);
     }
 
     @Test
@@ -114,6 +115,8 @@ class BuildingBlockCatalogTest {
         assertThat(required("attach-document")).isEmpty();
         assertThat(required("ebox-action-done")).containsExactly("connectorInstanceId");
         assertThat(required("ebox-move")).containsExactly("connectorInstanceId", "eboxPartitionCible");
+        assertThat(required("ebox-send")).containsExactly("connectorInstanceId", "eboxEnvoiTypeDestinataire", "eboxEnvoiDestinataire",
+                "eboxEnvoiDocument", "eboxEnvoiObjet", "eboxEnvoiApplication", "eboxEnvoiTypeMessage", "eboxEnvoiLangue", "eboxEnvoiSecours");
     }
 
     @Test

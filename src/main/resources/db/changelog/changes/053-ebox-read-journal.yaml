@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 053-ebox-read-journal
+      author: myrmacta
+      comment: >-
+        TODO §150 (D-EBOX-JOURNAL, D-EBOX-WINDOW) — messages eBox déjà pris en charge, par eBox lue (numéro BCE), registre et
+        identifiant de message ; et curseur de lecture par instance de connecteur, registre et partition (dernier jour lu
+        entièrement).
+      changes:
+        - createTable:
+            tableName: ebox_message_journal
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_ebox_message_journal, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: enterprise_number, type: varchar(10), constraints: {nullable: false}}
+              - column: {name: registry_id, type: varchar(50), constraints: {nullable: false}}
+              - column: {name: message_id, type: varchar(200), constraints: {nullable: false}}
+              - column: {name: partition_id, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: connector_instance_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: taken_at, type: timestamp with time zone, constraints: {nullable: false}}
+        - addUniqueConstraint:
+            tableName: ebox_message_journal
+            columnNames: tenant_id, enterprise_number, registry_id, message_id
+            constraintName: uq_ebox_message_journal_message
+        - createTable:
+            tableName: ebox_read_cursor
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_ebox_read_cursor, nullable: false}}
+              - column:
+                  name: connector_instance_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_ebox_read_cursor_instance
+                    references: connector_instance(id)
+                    deleteCascade: true
+              - column: {name: registry_id, type: varchar(50), constraints: {nullable: false}}
+              - column: {name: partition_id, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: read_until, type: date, constraints: {nullable: false}}
+        - addUniqueConstraint:
+            tableName: ebox_read_cursor
+            columnNames: connector_instance_id, registry_id, partition_id
+            constraintName: uq_ebox_read_cursor_key

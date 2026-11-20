@@ -273,6 +273,65 @@ class MailRoomExampleIT {
         assertThat(read(get("/api/dossiers/{id}/relations", intruder))).isEmpty();
     }
 
+    /**
+     * TODO §150 — un message de la partition dédiée de l'eBox Enterprise, servi par un faux registre en boucle locale, devient un
+     * courrier EBOX qui part au tri ; la partition non configurée n'est jamais lue et un second passage ne recrée rien.
+     */
+    @Test
+    void anEboxMessageOfTheDedicatedPartitionBecomesAnEboxMail_takenOnlyOnce() throws Exception {
+        configureTheExample();
+        JsonNode example = JSON.readTree(EXAMPLE.resolve("config/connecteur-ebox.exemple.json").toFile());
+        try (FakeEboxServer ebox = new FakeEboxServer()) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> config = new java.util.HashMap<>(JSON.convertValue(example.get("config"), Map.class));
+            config.put("registryUrl", ebox.registryUrl());
+            config.put("oauthTokenUrl", ebox.tokenUrl());
+            config.put("oauthClientId", "commune-test");
+            config.put("oauthPrivateKey", rsaPrivateKeyPem());
+            config.put("oauthCertThumbprint", "ab".repeat(32));
+            String subject = "Avis de cotisation " + UUID.randomUUID();
+            ebox.add(new FakeEboxServer.Message("onss-" + UUID.randomUUID(), "myrmacta", subject, "0206731645",
+                    "2026-11-19T08:00:00+01:00", "avis.pdf", "%PDF-1.4 avis".getBytes(StandardCharsets.US_ASCII),
+                    "Veuillez trouver votre avis en annexe."));
+            ebox.add(new FakeEboxServer.Message("autre-" + UUID.randomUUID(), "comptabilite", "Hors partition", "0206731645",
+                    "2026-11-19T08:00:00+01:00", "autre.pdf", "%PDF-1.4 autre".getBytes(StandardCharsets.US_ASCII), null));
+            Map<String, Object> request = Map.of("name", example.get("name").asString() + " " + UUID.randomUUID(), "connectorType",
+                    example.get("connectorType").asString(), "enabled", false, "config", config);
+            JsonNode created = JSON.readTree(mockMvc.perform(post("/api/connectors").with(user("admin-courrier", "TENANT_ADMIN"))
+                            .with(csrf()).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(request)))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            ConnectorInstanceData instance = new ConnectorInstanceData(UUID.fromString(created.get("id").asString()), TENANT,
+                    created.get("name").asString(), "ebox-inbound", true, config);
+
+            triggerRuntime.onIncomingEvent(instance, Map.of());
+
+            String mailId = awaitMailDossierByField("objet", subject);
+            JsonNode dossier = read(get("/api/dossiers/{id}", mailId));
+            assertThat(dossier.get("fields").get("canal").asString()).isEqualTo("EBOX");
+            assertThat(dossier.get("fields").get("expediteur").asString()).isEqualTo("0206731645");
+            assertThat(dossier.get("fields").get("texte").asString()).isEqualTo("Veuillez trouver votre avis en annexe.");
+            assertThat(read(get("/api/dossiers/{id}/elements", mailId)).toString()).contains("avis.pdf");
+            ProcessInstance sorting = awaitSortingTask(mailId);
+            assertThat(runtimeService.getVariables(sorting.getId())).containsEntry("eboxPartition", "myrmacta")
+                    .containsEntry("eboxRegistre", "socsec_v3").containsEntry("routageResultat", "A_TRIER");
+            assertThat(ebox.requests).noneMatch(line -> line.contains("comptabilite") || line.contains("/autre-"));
+
+            triggerRuntime.onIncomingEvent(instance, Map.of());
+            assertThat(read(get("/api/dossiers").param("dossierTypeCode", "COURRIER").param("f.objet", subject)).get("content"))
+                    .hasSize(1);
+            assertThat(jdbc.queryForObject("select read_until from ebox_read_cursor where connector_instance_id = ? and partition_id = ?",
+                    LocalDate.class, instance.id(), "myrmacta")).isNotNull();
+        }
+    }
+
+    private static String rsaPrivateKeyPem() throws java.security.GeneralSecurityException {
+        java.security.KeyPairGenerator generator = java.security.KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        return "-----BEGIN PRIVATE KEY-----\n"
+                + java.util.Base64.getMimeEncoder().encodeToString(generator.generateKeyPair().getPrivate().getEncoded())
+                + "\n-----END PRIVATE KEY-----\n";
+    }
+
     /** TODO §113 (D-MAILROOM-PDF-SFTP) — un PDF numérisé et son index JSON deviennent un courrier PAPIER, qui part au tri. */
     @Test
     void aScannedPdfWithItsIndexBecomesAPaperMail_sentToTheSortingQueue() throws Exception {

@@ -103,3 +103,5 @@ databaseChangeLog:
       file: db/changelog/changes/051-signature-signed-upload.yaml
   - include:
       file: db/changelog/changes/052-tenant-calendar-source-name-case.yaml
+  - include:
+      file: db/changelog/changes/053-ebox-read-journal.yaml

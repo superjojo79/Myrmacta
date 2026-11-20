@@ -114,17 +114,17 @@ class ConnectorAdminApiTest {
     }
 
     @Test
-    void listDefinitions_registersExactlyThirteenTypesWithoutCollision_connecteursCibleLotB1_D3cD3d_etMailRoom() throws Exception {
+    void listDefinitions_registersExactlyFourteenTypesWithoutCollision_connecteursCibleLotB1_D3cD3d_mailRoomEtEbox() throws Exception {
         // T-REG-REGISTRY-COUNT : les 6 connecteurs déjà livrés (http-rest, flowable-signal,
         // flowable-callback, scheduler, smtp, document-storage) + batch-import + kafka + (TODO §87, D3c/D3d) imap-inbound,
-        // graph-mail-inbound (D3c-bis), azure-service-bus et (TODO §113, D-MAILROOM-PDF-SFTP) sftp-pdf-inbound et mail-deposit (D-MAILROOM-DEPOSIT), tous
+        // graph-mail-inbound (D3c-bis), azure-service-bus et (TODO §113, D-MAILROOM-PDF-SFTP) sftp-pdf-inbound et mail-deposit (D-MAILROOM-DEPOSIT) et (TODO §150) ebox-inbound, tous
         // enregistrés sans collision de type au démarrage du contexte Spring réel (un doublon
         // ferait échouer ConnectorRegistry.init() et empêcherait ce test de démarrer).
         mockMvc.perform(get("/api/connector-definitions")
                         .param("size", "50")
                         .with(user("connector-admin", "TENANT_ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(13))
+                .andExpect(jsonPath("$.totalElements").value(14))
                 .andExpect(jsonPath("$.content[*].type", hasItem("http-rest")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-signal")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("flowable-callback")))
@@ -137,7 +137,8 @@ class ConnectorAdminApiTest {
                 .andExpect(jsonPath("$.content[*].type", hasItem("graph-mail-inbound")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("azure-service-bus")))
                 .andExpect(jsonPath("$.content[*].type", hasItem("sftp-pdf-inbound")))
-                .andExpect(jsonPath("$.content[*].type", hasItem("mail-deposit")));
+                .andExpect(jsonPath("$.content[*].type", hasItem("mail-deposit")))
+                .andExpect(jsonPath("$.content[*].type", hasItem("ebox-inbound")));
     }
 
     @Test

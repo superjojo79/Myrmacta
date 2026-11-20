@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -156,8 +157,20 @@ public final class PinnedHttpClient {
      */
     public static Fetched get(String url, InetAddress pin, Duration connect, Duration socketRead, Duration total, long maxBytes)
             throws IOException {
+        return get(url, pin, Map.of(), connect, socketRead, total, maxBytes);
+    }
+
+    /**
+     * TODO §150 (D-EBOX-REGISTRY-HOSTS) — même {@code GET} borné, avec des en-têtes (jeton, mandat) : lecture d'un corps binaire
+     * (pièce d'un message eBox) que {@link HttpRestConnector.HttpSender} ne sait pas rendre intact. L'appelant a validé l'URL par
+     * {@code OutboundUrlGuard} ; le jeton ne suit jamais une redirection.
+     */
+    public static Fetched get(String url, InetAddress pin, Map<String, String> headers, Duration connect, Duration socketRead,
+            Duration total, long maxBytes) throws IOException {
         long deadline = System.nanoTime() + total.toNanos();
-        ClassicHttpRequest request = ClassicRequestBuilder.get(url).build();
+        ClassicRequestBuilder builder = ClassicRequestBuilder.get(url);
+        headers.forEach(builder::setHeader);
+        ClassicHttpRequest request = builder.build();
         try (CloseableHttpClient client = client(pin, hostOf(url), Timeout.of(connect), Timeout.of(socketRead), null)) {
             // Le délai de lecture ne borne que l'attente d'un octet : un serveur qui goutte-à-goutte ses en-têtes le
             // renouvelle sans fin. Le chien de garde coupe la connexion à l'échéance, en-têtes comprises.

@@ -2,6 +2,7 @@ package be.myrmacta.infrastructure.connector.builtin;
 
 import be.myrmacta.domain.connector.model.ConfigField;
 import be.myrmacta.domain.connector.model.ConfigFieldType;
+import be.myrmacta.domain.connector.model.ConnectorCallContext;
 import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorDefinition;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
@@ -229,6 +230,15 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
      * ouverte du message. Toute erreur remonte : l'étape BPMN échoue et son incident se rejoue.
      */
     @Override
+    public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input, ConnectorCallContext context) {
+        // Revue de clôture : ni l'API d'administration ni l'API M2M ne confirment une action eBox, seul un process le fait.
+        if (context == null || !context.fromProcess()) {
+            throw new IllegalArgumentException(TYPE + ": " + MARK_ACTION_EXECUTED + " is only available from a process step");
+        }
+        return execute(instance, input);
+    }
+
+    @Override
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input) {
         Objects.requireNonNull(instance, "instance");
         Map<String, Object> params = input == null ? Map.of() : input;
@@ -262,8 +272,10 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
             List<String> open = statuses.stream()
                     .filter(status -> !status.path("isExecuted").asBoolean(false))
                     .map(status -> status.path("messageActionId").asString(""))
-                    .filter(id -> MESSAGE_ID.matcher(id).matches())
                     .toList();
+            if (open.stream().anyMatch(id -> !MESSAGE_ID.matcher(id).matches())) {
+                throw new IllegalStateException(TYPE + ": an open action of the message has an invalid id");
+            }
             if (open.isEmpty() && !statuses.isEmpty()) {
                 return Map.of("eboxActionExecutee", true, "eboxActionDejaFaite", true);
             }
@@ -335,9 +347,12 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
     private void readPartition(Run run, Endpoint endpoint, String partition) {
         LocalDate today = LocalDate.now(clock.withZone(EBOX_ZONE));
-        LocalDate from = journal.readUntil(run.instance.id(), endpoint.registryId(), partition)
+        // Un message qui échoue toujours retient le curseur : la fenêtre ne remonte jamais au-delà de MAX_LOOKBACK_DAYS.
+        LocalDate floor = today.minusDays(MAX_LOOKBACK_DAYS);
+        LocalDate cursorDay = journal.readUntil(run.instance.id(), endpoint.registryId(), partition)
                 .map(day -> day.minusDays(1))
                 .orElse(today.minusDays(run.lookbackDays));
+        LocalDate from = cursorDay.isBefore(floor) ? floor : cursorDay;
         List<JsonNode> listed = new ArrayList<>();
         boolean complete = false;
         try {
@@ -398,7 +413,8 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
     private static boolean inPartition(JsonNode message, String partition) {
         JsonNode recipientPartition = message.path("recipient").path("partition");
-        return recipientPartition.isMissingNode() || recipientPartition.isNull() || partition.equals(recipientPartition.asString(""));
+        // Partition absente : étrangère. Un registre qui ignore le filtre rendrait sinon toute la boîte principale.
+        return recipientPartition.isString() && partition.equals(recipientPartition.asString());
     }
 
     /** Remet un message ; faux s'il doit être relu au passage suivant. */
@@ -406,6 +422,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         String messageId = message.path("messageId").asString();
         List<InboundAttachment> attachments = new ArrayList<>();
         List<String> notImported = new ArrayList<>();
+        long kept = 0;
         int index = 0;
         for (JsonNode attachment : message.path("attachments")) {
             String name = fileName(attachment, ++index);
@@ -414,7 +431,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
                 continue;
             }
             double sizeKb = attachment.path("size").asDouble(0);
-            if (sizeKb * 1024 > inbound.maxAttachmentBytes()) {
+            if (sizeKb * 1024 > inbound.maxAttachmentBytes() || kept + sizeKb * 1024 > inbound.maxMessageBytes()) {
                 notImported.add(name);
                 continue;
             }
@@ -426,6 +443,12 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
             try {
                 byte[] content = run.authorized(() -> client.attachment(endpoint.url(), run.access, messageId, attachmentId,
                         inbound.maxAttachmentBytes()));
+                if (kept + content.length > inbound.maxMessageBytes()) {
+                    // Plafond par message (app.inbound.max-message-bytes), comme pour l'e-mail : la pièce est nommée, pas gardée.
+                    notImported.add(name);
+                    continue;
+                }
+                kept += content.length;
                 attachments.add(new InboundAttachment(name, mediaType(attachment), content));
             } catch (EboxResourceException refused) {
                 if (refused.status == 403) {

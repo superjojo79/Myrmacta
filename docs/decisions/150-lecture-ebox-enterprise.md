@@ -1,9 +1,11 @@
 # §150 — Lecture de l'eBox Enterprise (canal de la Digital Mail Room)
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (2026-11-20, issue [#12](https://github.com/superjojo79/Myrmacta/issues/12)) : se clôt avec la livraison du
-lot 1b.
+[x] clos (2026-11-20, issue [#12](https://github.com/superjojo79/Myrmacta/issues/12), PR #139). Comportement :
+[spec 49](../specs/49-digital-mail-room.md) § « Canaux » et [spec 06](../specs/06-connecteurs.md). Suites : démo
+([#141](https://github.com/superjojo79/Myrmacta/issues/141)), constats bas de la revue de clôture
+([#140](https://github.com/superjojo79/Myrmacta/issues/140)), partitions et accusés des recommandés (lot 2).
 
 **Constat.** Une commune ou un CPAS reçoit dans son eBox Enterprise le courrier officiel des administrations. Myrmacta le
 lit comme *Document Consumer* (API e-Box REST 3.8 et Document Provider Registry 1.2, OAuth v5 de la sécurité sociale) et
@@ -16,16 +18,20 @@ d'acceptation n'est pas accessible pendant le développement.
 
 - **D-EBOX-PARTITIONS** (choix de l'utilisateur, 2026-11-20). Myrmacta ne lit que des partitions eBox **qui lui sont
   dédiées** : la liste des partitions est obligatoire dans la configuration de l'instance et chaque lecture est filtrée
-  par `recipientPartition`. Le reste de l'eBox n'est jamais lu ni marqué comme lu. Écartés : tout lire (les agents qui
+  par `recipientPartition`. Un message rendu sans `recipient.partition` est traité comme étranger (un registre qui
+  ignorerait le filtre rendrait sinon toute la boîte principale). Le reste de l'eBox n'est jamais lu ni marqué comme lu. Écartés : tout lire (les agents qui
   suivent l'eBox sur le portail perdent le repère « non lu ») et ne lire que les métadonnées (une pièce expirée est perdue).
 - **D-EBOX-JOURNAL.** Un message pris en charge est inscrit dans `ebox_message_journal`, dans la même transaction que la
-  création du courrier. La clé est l'eBox lue (numéro BCE), le registre et le `messageId`, et non l'instance : deux
+  création du courrier. La clé est le tenant, l'eBox lue (numéro BCE), le registre et le `messageId`, et non l'instance : deux
   instances qui lisent la même partition ne créent pas de doublon. Un échec de remise n'inscrit rien : le message est
   relu au passage suivant. Une pièce écartée par les contrôles ne retient pas le courrier (comme pour l'e-mail) : le
   process reçoit `inboundAttachmentsRejected`.
 - **D-EBOX-WINDOW.** Chaque passage lit à partir de la veille du dernier jour lu entièrement (curseur `ebox_read_cursor`
   par instance, registre et partition). Le curseur n'avance que si aucune remise n'a échoué et que le plafond par
-  passage n'a pas été atteint. Premier passage : `initialLookbackDays` (14 par défaut, 90 au plus). Écarté : ne lire que
+  passage n'a pas été atteint. Premier passage : `initialLookbackDays` (14 par défaut, 90 au plus). La fenêtre ne
+  remonte jamais au-delà de 90 jours : un message qui échoue toujours retient le curseur, mais la relecture reste bornée.
+  Une pièce n'est gardée que dans la limite de `app.inbound.max-message-bytes` par message, comme pour l'e-mail ; au-delà,
+  elle est nommée dans `eboxPiecesNonImportees`. Écarté : ne lire que
   les non lus (`read=false`), qui casse dès qu'un agent ouvre un message sur le portail.
 - **D-EBOX-REGISTRY-HOSTS.** Les registres sont découverts par le Document Provider Registry. Le jeton part vers chaque
   URL annoncée : elle doit être en `https`, passer `OutboundUrlGuard` (adresse figée, pas de redirection) et son hôte doit
@@ -43,7 +49,10 @@ d'acceptation n'est pas accessible pendant le développement.
   champs de même nom du dossier courant : le routage ne passe aucune variable au process métier, mais il copie les champs
   non sensibles déclarés sur les deux types. Sans `eboxActionId`, la brique confirme la seule action encore ouverte
   (`GET .../messageActions`) ; plusieurs actions ouvertes font échouer l'étape, et une action déjà faite la laisse passer.
-  Toute erreur de l'eBox remonte : l'étape échoue et son incident se rejoue. Écartés : « Appeler un connecteur » avec une
+  Toute erreur de l'eBox remonte : l'étape échoue et son incident se rejoue. L'opération n'est servie qu'à un process :
+  l'API d'administration et l'API M2M la refusent. Limite connue : les champs `eboxRegistre` et `eboxMessageId` d'un
+  dossier sont modifiables ; un gestionnaire peut viser un autre message lu par ce tenant dans la même eBox, jamais celui
+  d'un autre tenant ou d'une autre eBox (suivi en issue). Écartés : « Appeler un connecteur » avec une
   requête construite (la cible viendrait de variables modifiables sans garde propre à l'eBox) et une table qui relie le
   dossier au message (changeset de plus pour une information que les champs portent déjà).
 - **Specs non versionnées.** Les YAML de l'ONSS (licence « e-Box » sans clause de redistribution) ne sont pas copiés

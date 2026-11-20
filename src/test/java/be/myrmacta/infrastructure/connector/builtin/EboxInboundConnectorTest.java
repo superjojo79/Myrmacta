@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import be.myrmacta.domain.connector.model.ConnectorCallContext;
 import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
@@ -239,6 +240,38 @@ class EboxInboundConnectorTest {
     }
 
     @Test
+    void aMessageWithoutPartitionIsTreatedAsForeign() {
+        ObjectMapperNode message = message("m-main", "myrmacta", "2026-11-19T08:00:00+01:00");
+        message.values.put("recipient", Map.of("eboxType", "enterprise", "enterpriseNumber", "0212345678"));
+        ebox.add("myrmacta", message);
+
+        assertThat(poll(config())).isEmpty();
+        assertThat(ebox.downloads).isEmpty();
+    }
+
+    @Test
+    void attachmentsBeyondTheMessageCapAreNamedNotKept() {
+        connector = connector(new InboundConnectorProperties(20, 20_000L, 20_000, 10_485_760L, 30, 1_048_576L));
+        ObjectMapperNode message = message("m-heavy", "myrmacta", "2026-11-19T08:00:00+01:00");
+        message.attachment("a-2", "annexe.pdf", "application/pdf", 19.6);
+        ebox.add("myrmacta", message);
+
+        WorkflowTriggerEvent event = poll(config()).getFirst();
+
+        assertThat(event.attachments()).extracting("filename").containsExactly("avis-m-heavy.pdf");
+        assertThat(event.variables()).containsEntry("eboxPiecesNonImportees", List.of("annexe.pdf"));
+    }
+
+    @Test
+    void aStuckCursorNeverWidensTheWindowBeyondTheMaximumLookback() {
+        journal.cursors.put(cursorKey("myrmacta"), TODAY.minusDays(400));
+
+        poll(config());
+
+        assertThat(ebox.receivedAfter.getFirst()).isEqualTo(TODAY.minusDays(90));
+    }
+
+    @Test
     void aMessageAlreadyTakenIsNotDeliveredAgainEvenByAnotherInstance() {
         ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
         assertThat(poll(config())).hasSize(1);
@@ -432,6 +465,30 @@ class EboxInboundConnectorTest {
                 .hasMessageContaining("not taken");
         assertThat(ebox.confirmed).isEmpty();
         assertThat(ebox.tokensSeen).isEmpty();
+    }
+
+    @Test
+    void onlyAProcessStepMayConfirmAnAction() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        Map<String, Object> input = Map.of("operation", "markActionExecuted", "registry", "socsec_v3", "messageId", "m-1",
+                "actionId", "act-1");
+
+        assertThatThrownBy(() -> connector.execute(instance(config()), input, ConnectorCallContext.direct()))
+                .isInstanceOf(IllegalArgumentException.class);
+        connector.execute(instance(config()), input, ConnectorCallContext.process(null));
+        assertThat(ebox.confirmed).hasSize(1);
+    }
+
+    @Test
+    void anOpenActionWithAnInvalidIdMakesTheChoiceAmbiguous() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.actionStatuses.add(actionStatus("\u0000bad", false));
+        ebox.actionStatuses.add(actionStatus("act-2", false));
+
+        assertThatThrownBy(() -> markAction("m-1", null)).isInstanceOf(IllegalStateException.class);
+        assertThat(ebox.confirmed).isEmpty();
     }
 
     @Test

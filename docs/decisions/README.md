@@ -168,7 +168,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 147 | [Libellé citoyen des tâches portail](147-libelle-citoyen-des-taches-portail.md) | clos | — |
 | 148 | [Teaser vidéo du site : extraits des capsules, cartons Remotion, signature Yousign](148-teaser-video-du-site.md) | clos | — |
 | 149 | [Expéditeur SMTP configurable (MAIL_FROM)](149-expediteur-smtp-configurable.md) | clos | — |
-| 150 | [Lecture de l'eBox Enterprise (canal de la Digital Mail Room)](150-lecture-ebox-enterprise.md) | ouvert | — |
+| 150 | [Lecture de l'eBox Enterprise (canal de la Digital Mail Room)](150-lecture-ebox-enterprise.md) | clos | — |
 
 ## Sections de l'ancien registre
 

@@ -172,6 +172,7 @@ jamais en le supprimant ou en le renumérotant ; un nouveau point prend le numé
 | 151 | [eBox Enterprise : partitions vérifiées, classement des messages, recommandés](151-ebox-partitions-classement-recommandes.md) | ouvert | — |
 | 153 | [Yousign : nettoyage du brouillon quand l'envoi échoue](153-yousign-nettoyage-du-brouillon.md) | clos | — |
 | 154 | [Yousign : langue du signataire](154-yousign-langue-du-signataire.md) | clos | — |
+| 155 | [Envoi vers l'eBox citoyen et entreprise (rôle expéditeur)](155-envoi-ebox-citoyen-et-entreprise.md) | ouvert | — |
 
 ## Sections de l'ancien registre
 

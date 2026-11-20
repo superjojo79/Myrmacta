@@ -1,4 +1,4 @@
-# §152 — Yousign : langue du signataire
+# §154 — Yousign : langue du signataire
 
 > **Statut :** clos · point de premier niveau · [registre](README.md)
 

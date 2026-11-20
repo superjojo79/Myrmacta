@@ -77,6 +77,21 @@ public final class ServerDossierTexts {
                 : "Un courrier (" + mailReference + ") répond au fil du dossier " + dossierReference + ".";
     }
 
+    /** #131 — pièce produite par une génération de document (tâche BPMN ou outil MCP). */
+    public static String generatedDocumentLabel(Locale locale, String source) {
+        return (english(locale) ? "Generated document — " : "Document généré — ") + source;
+    }
+
+    /** #131 — document signé rapatrié du fournisseur de signature. */
+    public static String signedDocumentLabel(Locale locale) {
+        return english(locale) ? "Signed document" : "Document signé";
+    }
+
+    /** #131 — preuve de signature rapatriée du fournisseur de signature. */
+    public static String signatureProofLabel(Locale locale) {
+        return english(locale) ? "Signature proof" : "Preuve de signature";
+    }
+
     private static boolean english(Locale locale) {
         return "en".equals(Objects.requireNonNull(locale, "locale").getLanguage());
     }

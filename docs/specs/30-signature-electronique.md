@@ -128,7 +128,10 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
   (métadonnées : identifiant de la demande, rôle `SIGNED_DOCUMENT` ou `SIGNATURE_PROOF`,
   `simulated`). **Aucune nouvelle valeur d'`ElementType`** : pas d'impact sur l'export CSV, l'affichage
   ni le schéma. Le marqueur doit être filtrable côté API pour que l'UI distingue document source,
-  document signé et preuve.
+  document signé et preuve. Leur libellé (« Document signé » / « Signed document », « Preuve de
+  signature » / « Signature proof », suivi de « (SIMULATION) » pour le stub) est écrit à l'ajout
+  dans la langue par défaut du tenant, `app.i18n.default-locale` (D-I18N-DOSSIER-TEXT, issue #131) ;
+  un libellé déjà enregistré ne change pas. Le contenu du PDF de preuve eID reste en français.
 - **Purge et rétention** : la purge de dossier doit supprimer les demandes, documents signés et
   preuves (même leçon que D-PORTAL-PURGE : le graphe de `ProcessPurgeOutboxUseCaseImpl` doit
   couvrir les nouvelles tables).

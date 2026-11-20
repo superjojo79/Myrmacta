@@ -28,3 +28,11 @@ dans la langue du tenant, comme le message envoyé à un tiers.
 
 **Impacte :** `ServerDossierTexts`, `EvaluateDeadlinesUseCaseImpl`, `DeadlineConfig`, `AttachToThreadDelegate`,
 specs 04 et 49.
+
+**Extension (issue [#131](https://github.com/superjojo79/Myrmacta/issues/131), 2026-11-20).** La même règle vaut pour
+les libellés des pièces ajoutées par le serveur : « Document généré — … » (`AttachGeneratedDocumentTask`, outil MCP
+`generate_document`), « Document signé » et « Preuve de signature » (`SignatureOutcomeHandler`). La langue est celle
+du tenant, pas celle demandée pour le document. Restent en français, hors de ce lot : le PDF de preuve eID
+(`EidProofPdfFactory`, document entier dont la formulation juridique demande une traduction relue) et les titres
+`ProblemDetail` des API de signature et du portail (tous en français, à traiter ensemble). Specs
+[07](../specs/07-generation-documents.md) et [30](../specs/30-signature-electronique.md).

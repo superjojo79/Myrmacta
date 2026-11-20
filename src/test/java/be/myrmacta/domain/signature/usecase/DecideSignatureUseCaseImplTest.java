@@ -94,7 +94,8 @@ class DecideSignatureUseCaseImplTest {
     private DecideSignatureUseCaseImpl build(Clock clock, SignatureNotifier notifier) {
         SignatureAccessResolver resolver = new SignatureAccessResolver(repository, tokenPort, dossiers, clock);
         SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
-                mock(DossierElementRepository.class), addElement, notifier, metrics, listener, clock);
+                mock(DossierElementRepository.class), addElement, notifier, metrics, listener, clock,
+                java.util.Locale.FRENCH);
         return new DecideSignatureUseCaseImpl(repository, resolver, handler, port, clock);
     }
 

@@ -24,7 +24,11 @@ interface YousignClient {
      */
     Optional<String> signatureLink(UUID requestId, int signerPosition);
 
+    /** Annule une demande en approbation ou en cours ; l'API v3 refuse l'annulation d'un brouillon. */
     void cancel(UUID requestId);
+
+    /** Supprime une demande encore en brouillon (#133) ; l'API v3 refuse la suppression d'une demande en cours. */
+    void deleteDraft(UUID requestId);
 
     byte[] downloadSignedPdf(UUID requestId);
 

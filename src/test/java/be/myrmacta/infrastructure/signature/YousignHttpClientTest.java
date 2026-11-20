@@ -117,6 +117,38 @@ class YousignHttpClientTest {
         assertThat(YousignHttpClient.pdfFileName("   ")).isEqualTo("document.pdf");
     }
 
+    /**
+     * #133 — l'API v3 n'annule (POST /cancel) qu'une demande en approbation ou en cours ; un brouillon se supprime
+     * (DELETE, 204 sans corps).
+     */
+    @Test
+    void deleteDraftSendsADeleteOnTheRequest_andAcceptsAnEmptyNoContentAnswer() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            calls.add(exchange.getRequestMethod() + " " + exchange.getRequestURI().getRawPath());
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+
+        client().deleteDraft(REQUEST_ID);
+
+        assertThat(calls).containsExactly("DELETE /v3/signature_requests/" + REQUEST_ID);
+    }
+
+    @Test
+    void deleteDraftRefusedByYousignFailsWithoutTheKey() {
+        server.removeContext("/");
+        server.createContext("/", exchange -> {
+            exchange.sendResponseHeaders(405, -1);
+            exchange.close();
+        });
+
+        assertThatThrownBy(() -> client().deleteDraft(REQUEST_ID))
+                .isInstanceOf(YousignCallException.class)
+                .hasMessageContaining("405")
+                .hasMessageNotContaining(API_KEY);
+    }
+
     @Test
     void redirectIsNotFollowedAndTheKeyStaysOutOfTheError() throws IOException {
         elsewhere = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

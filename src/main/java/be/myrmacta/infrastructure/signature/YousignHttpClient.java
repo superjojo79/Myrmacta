@@ -129,6 +129,16 @@ final class YousignHttpClient implements YousignClient {
         postJson("/signature_requests/" + requestId + "/cancel", "{\"reason\":\"other\"}");
     }
 
+    /** {@code DELETE} sans {@code permanent_delete} : Yousign garde la trace du brouillon supprimé. Réponse 204 sans corps. */
+    @Override
+    public void deleteDraft(UUID requestId) {
+        HttpRequest request = authorized(uri("/signature_requests/" + requestId)).DELETE().build();
+        HttpResponse<byte[]> response = exchange(request, MAX_JSON_BYTES);
+        if (response.statusCode() / 100 != 2) {
+            throw new YousignCallException("Yousign answered HTTP " + response.statusCode());
+        }
+    }
+
     @Override
     public byte[] downloadSignedPdf(UUID requestId) {
         JsonNode documents = getJson("/signature_requests/" + requestId + "/documents");

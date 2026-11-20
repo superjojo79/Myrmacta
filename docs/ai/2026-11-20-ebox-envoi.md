@@ -100,6 +100,10 @@ Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q
 | 2026-11-20 | `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 416 tests, 0 échec, 0 erreur, 5 ignorés (existants) |
 | 2026-11-20 | `scripts/check-docs.sh` | vert |
 | 2026-11-20 | mêmes tests ciblés, après les correctifs de revue (M2 à M5, B1, B2, B4, ordre JSON) | 126 tests, 0 échec |
+| 2026-11-20 | lot 2 : `mvnw test -Dtest='EboxOutboundConnectorTest,EboxSendDelegateTest,BuildingBlockCatalogTest,BlockAttributeRulesTest,FlowableBpmnParserAdapterBlockTest,FlowableBpmnParserAdapterShippedProcessesTest,EboxSendIT'` | 113 tests, 0 échec |
+| 2026-11-20 | lot 2 : `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 479 tests, 0 échec, 0 erreur, 5 ignorés (un premier passage : `OutboxRelayIT` en échec, instable, vert seul et au second verify complet, sans lien avec le lot) |
+| 2026-11-20 | lot 2 : `cd frontend && npm run lint && npm run test && npx playwright test` | lint vert ; Vitest 1 161 tests ; Playwright 207 tests |
+| 2026-11-20 | lot 2 : `scripts/check-docs.sh` | vert |
 
 ## Revue de clôture
 

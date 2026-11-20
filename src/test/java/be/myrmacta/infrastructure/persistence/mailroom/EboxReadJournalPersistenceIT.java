@@ -41,6 +41,22 @@ class EboxReadJournalPersistenceIT {
     }
 
     @Test
+    void anEntryGivesThePartitionItWasReadFrom() {
+        String bce = "0" + (100_000_000 + (int) (Math.random() * 899_999_999));
+        String id = "m-" + UUID.randomUUID();
+        UUID instance = UUID.randomUUID();
+        journal.recordTaken(taken(bce, "socsec_v3", id, instance));
+
+        assertThat(journal.taken(TENANT, bce, "socsec_v3", id)).get()
+                .satisfies(entry -> {
+                    assertThat(entry.partition()).isEqualTo("myrmacta");
+                    assertThat(entry.connectorInstanceId()).isEqualTo(instance);
+                });
+        assertThat(journal.taken(TENANT, bce, "autre", id)).isEmpty();
+        assertThat(journal.taken("autre_tenant", bce, "socsec_v3", id)).isEmpty();
+    }
+
+    @Test
     void theLookupIsBatchedBeyondOnePage() {
         String bce = "0" + (100_000_000 + (int) (Math.random() * 899_999_999));
         List<String> ids = IntStream.range(0, 450).mapToObj(i -> "m-" + i + "-" + UUID.randomUUID()).toList();

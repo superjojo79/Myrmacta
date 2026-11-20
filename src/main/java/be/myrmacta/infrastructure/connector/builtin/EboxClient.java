@@ -39,12 +39,20 @@ interface EboxClient {
     /** {@code PATCH /ebox/messages/{id}/messageActions/{actionId}} avec {@code isExecuted: true}. */
     void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId);
 
-    /** TODO §151 (D-EBOX-PARTITION-CHECK) — {@code GET /ebox/{enterpriseNumber}/partitions} (API Partition 1.3) : les identifiants. */
+    /**
+     * TODO §151 (D-EBOX-PARTITION-CHECK) — {@code GET /ebox/{enterpriseNumber}/partitions} (API Partition 1.3), page par page
+     * ({@code page}, {@code pageSize}, {@code totalItems}, comme les messages) : les identifiants. Une réponse sans tableau
+     * {@code items}, ou une liste qui reste incomplète, lève {@link EboxTransportException} : la liste n'est pas vérifiable.
+     */
     List<String> partitions(String partitionApiUrl, Access access, String enterpriseNumber);
+
+    /** {@code GET /ebox/messages/{id}} : le message tel que l'eBox le voit maintenant ; vide s'il n'y est plus (404, 410). */
+    Optional<JsonNode> message(String endpointUrl, Access access, String messageId);
 
     /**
      * TODO §151 (D-EBOX-MOVE) — {@code POST /ebox/messages/changePartition} : déplace un message vers une autre partition de l'eBox
-     * destinataire ({@code targetRecipientPartitionId}).
+     * destinataire ({@code targetRecipientPartitionId}). Succès : 200, 202 ou 204 ; un corps qui signale l'échec du message lève
+     * {@link EboxResourceException} de statut 409, comme un refus.
      */
     void moveToPartition(String endpointUrl, Access access, String messageId, String targetPartition);
 
@@ -67,7 +75,11 @@ interface EboxClient {
         final int status;
 
         EboxResourceException(int status) {
-            super("ebox answered HTTP " + status);
+            this(status, "ebox answered HTTP " + status);
+        }
+
+        EboxResourceException(int status, String message) {
+            super(message);
             this.status = status;
         }
     }

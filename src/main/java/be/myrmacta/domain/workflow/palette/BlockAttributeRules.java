@@ -26,6 +26,8 @@ public final class BlockAttributeRules {
     /** Même grammaire que le dépôt des gabarits de notification (issue #43). Ne remplace pas {@link #KEY}. */
     private static final Pattern NOTIFICATION_TEMPLATE_KEY = Pattern.compile("[a-z0-9][a-z0-9-]{0,99}");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
+    /** TODO §151 (D-EBOX-MOVE) — identifiant de partition eBox, même grammaire que la configuration du connecteur. */
+    private static final Pattern EBOX_PARTITION = Pattern.compile("[A-Za-z0-9._:-]{1,100}");
     /** Paramètres pouvant s'étendre sur plusieurs lignes (texte libre ou expression). */
     private static final Set<String> MULTILINE = BlockParameter.MULTILINE_NAMES;
 
@@ -296,6 +298,9 @@ public final class BlockAttributeRules {
             case TEXT -> {
                 if (KEY_TEXT.contains(parameter.name()) && !KEY.matcher(value).matches()) {
                     throw new InvalidBpmnException(owner + " has an invalid format");
+                }
+                if ("eboxPartitionCible".equals(parameter.name()) && !EBOX_PARTITION.matcher(value).matches()) {
+                    throw new InvalidBpmnException(owner + " must be an eBox partition id ([A-Za-z0-9._:-]{1,100})");
                 }
                 if (RESULT_VARIABLE_PARAMETERS.contains(parameter.name())) {
                     checkFormulaResult(owner, value);

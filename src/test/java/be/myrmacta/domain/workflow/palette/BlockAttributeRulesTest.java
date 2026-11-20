@@ -240,6 +240,21 @@ class BlockAttributeRulesTest {
                 "rappelJours", "delaiOuvrable", "rappelOuvrable", "eboxActionId", "eboxPartitionCible");
     }
 
+    /** TODO §151 (D-EBOX-MOVE) — la partition cible a la forme d'un identifiant de partition eBox dès le déploiement. */
+    @Test
+    void theEboxTargetPartitionIsAPartitionIdAtDeployment() {
+        String connector = "00000000-0000-0000-0000-0000000000eb";
+        BlockAttributeRules.validate("c", "eboxMoveTask", Map.of("connectorInstanceId", connector,
+                "eboxPartitionCible", "myrmacta.traite:2026_a-b"));
+        for (String invalid : List.of("myrmacta traite", "rh/paie", "é", "a".repeat(101))) {
+            assertThatThrownBy(() -> BlockAttributeRules.validate("c", "eboxMoveTask", Map.of("connectorInstanceId", connector,
+                    "eboxPartitionCible", invalid)))
+                    .as(invalid)
+                    .isInstanceOf(InvalidBpmnException.class)
+                    .hasMessageContaining("eboxPartitionCible");
+        }
+    }
+
     /** TODO §102 (lot B, R1, R4, R5) — brique « Rechercher des dossiers » : forme validée au déploiement. */
     @Test
     void theDossierSearchBlockIsValidatedAtDeployment() {

@@ -687,7 +687,7 @@ test('E2E-SIG-26b internal default case: card only, no upload block, message wit
   await expect(page.getByRole('button', { name: 'Signer', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
   const alert = page.getByTestId('signature-error')
-  await expect(alert).toContainText('Installez Web eID ou BeIDConnect')
+  await expect(alert).toContainText('Installez Web eID (extension du navigateur')
   await expect(alert).not.toContainText('autre moyen')
   expect(calls).toEqual([])
 })

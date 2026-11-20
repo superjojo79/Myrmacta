@@ -396,9 +396,10 @@ app:
       # (spring.servlet.multipart, 25 Mo) s'applique avant elle.
       max-upload-bytes: ${APP_SIGNATURE_EID_MAX_UPLOAD_BYTES:0}
       # Appel sortant vers l'état de révocation du certificat (OCSP, sinon CRL) : délai total et taille de réponse maximale.
-      # Ponts navigateur offerts pour signer dans la page (D-EID-BRIDGE), dans l'ordre d'essai : web-eid, beidconnect.
+      # Ponts navigateur offerts pour signer dans la page (D-EID-BRIDGE), dans l'ordre d'essai. Reconnus : web-eid,
+      # beidconnect. Défaut : web-eid seul (l'extension BeIDConnect publiée ne s'active que sur des domaines fédéraux, §138).
       # Liste vide : signature dans la page non offerte (téléversement seulement). Valeur inconnue : démarrage refusé.
-      bridges: ${APP_SIGNATURE_EID_BRIDGES:web-eid,beidconnect}
+      bridges: ${APP_SIGNATURE_EID_BRIDGES:web-eid}
       # Téléversement d'un PDF signé hors de l'application : DÉSACTIVÉ par défaut. Ce parcours n'est pas tenu pour sûr face
       # à un signataire malveillant tant que sa vérification n'a pas été revue et recettée : à n'activer qu'en connaissance
       # de cause. Sans ce parcours, il faut au moins un pont (bridges) : démarrage refusé sinon.

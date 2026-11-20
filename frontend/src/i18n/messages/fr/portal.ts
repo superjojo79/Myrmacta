@@ -78,8 +78,8 @@ export default {
         submit: 'Valider le PIN',
         cancel: 'Annuler',
       },
-      noBridgeAlone: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID ou BeIDConnect (extension du navigateur et logiciel eID), puis réessayez. Si le problème persiste, contactez la personne qui vous a envoyé le lien.',
-      noBridge: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID ou BeIDConnect (extension du navigateur et logiciel eID), puis réessayez, ou utilisez l’autre moyen ci-dessous.',
+      noBridgeAlone: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID (extension du navigateur et application Web eID) et le logiciel eID belge, puis réessayez. Si le problème persiste, contactez la personne qui vous a envoyé le lien.',
+      noBridge: 'Aucun logiciel eID n’a été détecté sur votre ordinateur. Installez Web eID (extension du navigateur et application Web eID) et le logiciel eID belge, puis réessayez, ou utilisez l’autre moyen ci-dessous.',
       errors: {
         unavailableAlone: 'Le logiciel eID ne répond pas. Vérifiez qu’il est installé et démarré, puis réessayez. Si le problème persiste, contactez la personne qui vous a envoyé le lien.',
         unavailable: 'Le logiciel eID ne répond pas. Vérifiez qu’il est installé et démarré, puis réessayez, ou utilisez l’autre moyen ci-dessous.',

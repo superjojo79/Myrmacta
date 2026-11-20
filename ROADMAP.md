@@ -50,7 +50,7 @@ seul » avec URL de base, `DELETE` ; exemple « arrivée d'un collaborateur » a
 3. **Avant un premier client :** recette ClamAV, Keycloak et FAS réels ([#18](https://github.com/superjojo79/Myrmacta/issues/18)).
    Licence choisie : PolyForm Noncommercial 1.0.0 avec addendum de droit belge, licence commerciale sur demande
    ([§118](docs/decisions/118-licence-polyform-noncommercial-et-addendum-belge.md)). Contrat commercial à faire relire par un avocat avant le premier client.
-4. **Signature par carte eID et horodatage BOSA, priorité 3 :** à cadrer ([#10](https://github.com/superjojo79/Myrmacta/issues/10)).
+4. **Signature par carte eID :** livrée par Web eID ([#10](https://github.com/superjojo79/Myrmacta/issues/10), recette [#98](https://github.com/superjojo79/Myrmacta/issues/98)) ; l'option BOSA (BeIDConnect) est abandonnée ([§138](docs/decisions/138-signature-eid-sans-agent-signature-apportee.md)).
 5. **Sans priorité :** envoi vers l'eBox ([#13](https://github.com/superjojo79/Myrmacta/issues/13)) ; réponses reçues par l'eBox, en attente de l'ONSS et de BOSA ([#11](https://github.com/superjojo79/Myrmacta/issues/11)).
 
 ## Hors V1

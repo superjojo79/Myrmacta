@@ -435,7 +435,7 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
     expect(wrapper.get('[data-testid="signature-error"]').text()).toContain('annulée')
   })
 
-  it('says no eID software was found, names both bridges and keeps the upload available', async () => {
+  it('says no eID software was found, names Web eID only and keeps the upload available', async () => {
     useBridge(null, [new CardBridgeError('unavailable')])
     vi.mocked(api.listMySignatures).mockResolvedValue([cardItem()])
     const wrapper = mountView()
@@ -445,7 +445,7 @@ describe('MySignaturesView, signature dans la page (lot 3b)', () => {
     const text = wrapper.get('[data-testid="signature-error"]').text()
     expect(text).toContain('Aucun logiciel eID')
     expect(text).toContain('Web eID')
-    expect(text).toContain('BeIDConnect')
+    expect(text).not.toContain('BeIDConnect')
     expect(api.prepareMyCardSignature).not.toHaveBeenCalled()
     expect(wrapper.findAll('[data-testid="signature-error"]')).toHaveLength(1)
     expect(wrapper.find('[data-testid="signature-send"]').exists()).toBe(true)
@@ -611,7 +611,7 @@ describe('MySignaturesView, combinaisons cardBridges × signedUpload (lot 3d)', 
     vi.spyOn(bridges, 'detectCardBridge').mockResolvedValue({ bridge: null, errors: [new CardBridgeError('unavailable')] })
     await w.get('[data-testid="signature-card-sign"]').trigger('click')
     await flushPromises()
-    expect(w.get('[data-testid="signature-error"]').text()).toContain('Installez Web eID ou BeIDConnect')
+    expect(w.get('[data-testid="signature-error"]').text()).toContain('Installez Web eID (extension du navigateur')
     expect(w.get('[data-testid="signature-error"]').text()).not.toContain('autre moyen')
 
     const bridge = { id: 'web-eid' as const, detect: () => Promise.resolve(), listChoices: () => Promise.reject(new CardBridgeError('failed')), certificateOf: vi.fn(), sign: vi.fn() }

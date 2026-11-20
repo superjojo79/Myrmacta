@@ -515,7 +515,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     expect(wrapper.find('[data-testid="signature-pin"]').exists()).toBe(false)
   })
 
-  it('says no eID software was found, names both bridges and keeps the upload available', async () => {
+  it('says no eID software was found, names Web eID only and keeps the upload available', async () => {
     useBridge(null, [new CardBridgeError('unavailable'), new CardBridgeError('unavailable')])
     const wrapper = await mountReady()
     await click(wrapper)
@@ -523,7 +523,7 @@ describe('PortalSignature, signature dans la page (lot 3b)', () => {
     const message = wrapper.get('[data-testid="signature-error"]').text()
     expect(message).toContain('Aucun logiciel eID')
     expect(message).toContain('Web eID')
-    expect(message).toContain('BeIDConnect')
+    expect(message).not.toContain('BeIDConnect')
     expect(api.prepareCardSignature).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="signature-upload"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="signature-send"]').attributes('disabled')).toBeDefined()
@@ -797,7 +797,7 @@ describe('PortalSignature, combinaisons cardBridges × signedUpload (lot 3d)', (
     await w.get('[data-testid="signature-card-sign"]').trigger('click')
     await flushPromises()
     const text = w.get('[data-testid="signature-error"]').text()
-    expect(text).toContain('Installez Web eID ou BeIDConnect')
+    expect(text).toContain('Installez Web eID (extension du navigateur')
     expect(text).toContain('contactez la personne qui vous a envoyé le lien')
     expect(text).not.toContain('autre moyen')
   })

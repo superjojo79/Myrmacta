@@ -248,8 +248,8 @@ abstract class AbstractCardSignatureRealApiTest extends AbstractSignatureEngineT
         mockMvc.perform(get(PORTAL).header(TOKEN, p.tokenA()).with(ip()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.signedUpload").value(uploadOffered()))
-                .andExpect(jsonPath("$.cardBridges[0]").value("web-eid"))
-                .andExpect(jsonPath("$.cardBridges[1]").value("beidconnect"));
+                .andExpect(jsonPath("$.cardBridges.length()").value(1))
+                .andExpect(jsonPath("$.cardBridges[0]").value("web-eid"));
 
         JsonNode prepared = prepare(post(PORTAL + "/card-signature/prepare").header(TOKEN, p.tokenA()).with(ip()));
         assertThat(prepared.get("documentDigest").asString()).isEqualTo(SignatureWorkingDocuments.digestOf(p.source()));

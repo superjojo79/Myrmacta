@@ -464,7 +464,7 @@ APP_SIGNATURE_MAX_DEADLINE=90d       # facultatif, plafond de ce que le BPMN peu
 ### Signature par carte eID (TODO §138)
 
 Fournisseur `eid` : le signataire signe avec sa carte eID belge, sans agent propre à Myrmacta sur son poste.
-La carte se lit par un pont navigateur (Web eID ou BeIDConnect) ; à défaut, le signataire signe hors de
+La carte se lit par le pont navigateur Web eID ; à défaut, le signataire signe hors de
 Myrmacta et téléverse le PDF. Une seule instance active, comme les autres fournisseurs. Le parcours est décrit
 dans `docs/specs/30-signature-electronique.md`.
 
@@ -491,7 +491,7 @@ APP_SIGNATURE_EID_TRUST_ANCHORS_FILE=/chemin/absolu/autorites-eid.pem   # obliga
 | Prérequis | Détail |
 |---|---|
 | `APP_SIGNATURE_PROVIDER=eid` | un seul fournisseur actif par instance |
-| `APP_SIGNATURE_EID_BRIDGES=web-eid` | **recommandé** : BeIDConnect ne fonctionne pas sur un domaine Myrmacta (voir ci-dessous) |
+| `APP_SIGNATURE_EID_BRIDGES=web-eid` | valeur par défaut : BeIDConnect ne fonctionne pas sur un domaine Myrmacta (voir ci-dessous) |
 | HTTPS réel | Web eID refuse une page en HTTP, `http://localhost` compris ; certificat reconnu par le navigateur du signataire |
 | Fichier PEM des autorités | racines **et** intermédiaires « Citizen CA » (Web eID ne rend que le certificat du signataire) |
 | Sortie HTTP vers l'OCSP et les CRL | adresses lues dans les certificats : `ocsp.eidpki.belgium.be`, `crl.eidpki.belgium.be` (cartes récentes), `ocsp.eid.belgium.be`, `crl.eid.belgium.be` (cartes plus anciennes) |
@@ -517,8 +517,9 @@ certificat. Le PIN reste dans le logiciel Web eID ; la page ne le voit pas.
 
 **Pourquoi pas BeIDConnect.** L'extension BeIDConnect publiée dans les boutiques (1.0.7) n'injecte son script que sur
 `*.belgium.be`, `*.fgov.be` et quelques domaines fédéraux : sur le domaine d'une commune, la page ne détecte aucun
-logiciel, quel que soit le navigateur (constat de recette, voir le §138). Le code du pont reste en place, mais
-`beidconnect` ne sert à rien tant que BOSA n'ouvre pas son extension. Ses sources publiques (`Fedict/fts-beidconnect`)
+logiciel, quel que soit le navigateur (constat de recette, voir le §138). BeIDConnect est donc abandonné au profit
+de Web eID, et n'est plus proposé par défaut. Le code du pont reste en place : `beidconnect` ne sert à rien tant que
+BOSA n'ouvre pas son extension. Ses sources publiques (`Fedict/fts-beidconnect`)
 autorisent tous les sites : elles ne reflètent pas le build publié.
 
 - **Autorités de confiance (obligatoire).** Le fichier PEM contient, à la suite, les racines belges et les
@@ -531,9 +532,10 @@ autorisent tous les sites : elles ne reflètent pas le build publié.
   `http://crt.eidpki.belgium.be/eid/eidc202408.crt`) ; comparer leur empreinte avec la copie lue sur une carte, et
   ajouter les nouvelles « Citizen CA » au fil de leur émission. Sans fichier lisible qui contient au moins un
   certificat, l'instance refuse de démarrer.
-- **Ponts navigateur.** `APP_SIGNATURE_EID_BRIDGES` (défaut `web-eid,beidconnect`) donne les ponts proposés dans
-  la page, dans cet ordre. Liste vide : signature dans la page non offerte. Valeur inconnue : démarrage refusé. Sans pont
-  autorisé, le téléversement doit être activé, sinon démarrage refusé. Valeur recommandée : `web-eid`.
+- **Ponts navigateur.** `APP_SIGNATURE_EID_BRIDGES` (défaut `web-eid`) donne les ponts proposés dans la page, dans
+  cet ordre ; `beidconnect` est encore reconnu mais inutile hors des domaines fédéraux. Liste vide : signature dans la
+  page non offerte. Valeur inconnue : démarrage refusé. Sans pont autorisé, le téléversement doit être activé, sinon
+  démarrage refusé.
 
   | | Web eID | BeIDConnect |
   |---|---|---|
@@ -541,9 +543,9 @@ autorisent tous les sites : elles ne reflètent pas le build publié.
   | Sites acceptés | tous, en HTTPS réel | **domaines fédéraux seulement** (extension publiée 1.0.7) : inutilisable pour Myrmacta |
   | Saisie du PIN | dans la fenêtre du logiciel Web eID, hors de la page | sur un lecteur à clavier ; sinon dans la page |
 
-- **PIN saisi dans la page.** Le PIN n'est jamais envoyé au serveur ni conservé. Avec BeIDConnect sur un lecteur
-  ordinaire, la page demande le PIN, le passe à l'extension et le garde en mémoire le temps de l'appel. Avec
-  `APP_SIGNATURE_EID_BRIDGES=web-eid`, la page ne demande jamais le PIN.
+- **PIN saisi dans la page.** Le PIN n'est jamais envoyé au serveur ni conservé. Avec le défaut (`web-eid`), la page
+  ne demande jamais le PIN. Seul `beidconnect` sur un lecteur ordinaire la ferait demander le PIN, le passer à
+  l'extension et le garder en mémoire le temps de l'appel.
 - **HTTPS réel.** Le portail doit être servi en HTTPS réel pour que la carte soit utilisable (Web eID l'exige) ;
   une page ouverte en HTTP affiche un message de connexion sécurisée à la place.
 - **Révocation.** Une fois la chaîne du certificat vérifiée, Myrmacta interroge son état de révocation (OCSP, sinon
@@ -571,14 +573,14 @@ autorisent tous les sites : elles ne reflètent pas le build publié.
 - **Recette.** Le 2026-11-18 (issue #98), une vraie carte récente (ECDSA P-384) a signé par Web eID dans Edge et
   Brave, côté agent (« Mes signatures ») : signatures acceptées, `QES`, révocation par OCSP. Côté portail, le
   parcours complet a été joué avec la même carte et s'est conclu par le refus attendu (`DUPLICATE_SIGNER`, une carte
-  ne signe qu'une fois un document). Restent à recetter : une signature de portail acceptée (seconde carte), carte
+  ne signe qu'une fois un document). Recette close le 2026-11-20 (§138) ; n'ont pas été recettés : une signature de portail acceptée (seconde carte), carte
   ancienne (RSA), Chrome et Firefox, lecteur à clavier, horodatage, ouverture du PDF final dans Adobe Acrobat Reader. Avant un usage réel sur une
   nouvelle instance, signez une demande de test et contrôlez la preuve produite.
 
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `APP_SIGNATURE_EID_TRUST_ANCHORS_FILE` | vide (obligatoire avec `eid`) | fichier PEM des autorités de confiance |
-| `APP_SIGNATURE_EID_BRIDGES` | `web-eid,beidconnect` | ponts proposés dans la page, dans l'ordre d'essai |
+| `APP_SIGNATURE_EID_BRIDGES` | `web-eid` | ponts proposés dans la page, dans l'ordre d'essai |
 | `APP_SIGNATURE_EID_UPLOAD_ENABLED` | `false` | active le téléversement d'un PDF signé hors de Myrmacta (voir l'encadré) |
 | `APP_SIGNATURE_EID_MAX_UPLOAD_BYTES` | 0 : `max-document-bytes` + 2 Mio | taille maximale d'un PDF signé téléversé |
 | `APP_SIGNATURE_EID_REVOCATION_TIMEOUT` | `10s` | délai total de l'appel de révocation |

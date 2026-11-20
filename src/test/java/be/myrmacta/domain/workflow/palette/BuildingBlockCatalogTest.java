@@ -151,7 +151,7 @@ class BuildingBlockCatalogTest {
         }
         assertThat(BuildingBlockCatalog.VALUE_SOURCES).containsExactlyInAnyOrder(
                 "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
-                "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas");
+                "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas", "eboxSenders");
     }
 
     /** Issue #19 (TODO §123) — la brique « Notifier » référence un gabarit, facultatif, avec variante et langue. */

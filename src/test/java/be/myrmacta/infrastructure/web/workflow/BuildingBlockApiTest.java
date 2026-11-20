@@ -68,7 +68,7 @@ class BuildingBlockApiTest {
 
     @Test
     void workflowAdminGetsTheReferenceListsOfTheAdministrationSources() throws Exception {
-        for (String source : new String[] {"documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables"}) {
+        for (String source : new String[] {"documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables", "eboxSenders"}) {
             mockMvc.perform(get("/api/bpmn-building-blocks/references/" + source).with(as("WORKFLOW_ADMIN")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray());

@@ -70,7 +70,7 @@ public final class BlockAttributeRules {
     private static final Set<String> UNVERIFIED_AT_DEPLOY = Set.of("notificationTemplates");
     private static final Pattern VARIABLE_SOURCE = Pattern.compile("variable:[A-Za-z][A-Za-z0-9_]{0,59}");
 
-    private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
+    private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks", "eboxSenders");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 

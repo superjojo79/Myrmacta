@@ -76,6 +76,7 @@ class FlowableBpmnParserAdapterBlockTest {
             case INTEGER -> String.valueOf(p.min());
             case SOURCE_REF -> "variable:generatedDocumentId";
             case REFERENCE -> "connectorInstances".equals(p.valueSource()) || "notificationWebhooks".equals(p.valueSource())
+                    || "eboxSenders".equals(p.valueSource())
                     ? UUID.randomUUID().toString() : "key1";
             case SIGNERS -> "";
             case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) || "eboxEnvoiLangue".equals(p.name()) ? "fr"

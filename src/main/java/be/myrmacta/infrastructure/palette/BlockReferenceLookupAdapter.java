@@ -33,6 +33,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
 
+    /**
+     * TODO §155 (revue H1, D-EBOX-SEND-BLOCK) — comptes expéditeurs eBox : source propre à la brique « Envoyer en eBox ». Un tel
+     * type n'est jamais une cible de « Appeler un connecteur » : la brique générique enverrait sans clé stable, sans variables
+     * réservées ni preuve versée au dossier.
+     */
+    static final String EBOX_SENDERS = "eboxSenders";
+    static final String EBOX_SENDER_TYPE = "ebox-outbound";
+    private static final java.util.Set<String> BLOCK_ONLY_TYPES = java.util.Set.of(EBOX_SENDER_TYPE);
+
     private final DocumentTemplateRepository templates;
     private final NotificationTemplateRepository notificationTemplates;
     private final ConnectorInstanceRepository connectors;
@@ -69,6 +78,11 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
             case "notificationTemplates" -> activeNotificationTemplates(tenantId);
             case "connectorInstances" -> connectors.listByTenantId(tenantId).stream()
                     .filter(this::isUsableService)
+                    .filter(c -> !BLOCK_ONLY_TYPES.contains(c.connectorType()))
+                    .map(c -> new BlockReference(c.id().toString(), c.name()))
+                    .toList();
+            case EBOX_SENDERS -> connectors.listByTenantId(tenantId).stream()
+                    .filter(c -> c.enabled() && EBOX_SENDER_TYPE.equals(c.connectorType()))
                     .map(c -> new BlockReference(c.id().toString(), c.name()))
                     .toList();
             case "notificationWebhooks" -> webhooks.listByTenantId(tenantId).stream()
@@ -95,6 +109,12 @@ class BlockReferenceLookupAdapter implements BlockReferenceLookupPort {
             case "connectorInstances" -> uuid(value)
                     .flatMap(id -> connectors.findByIdAndTenantId(id, tenantId))
                     .filter(this::isServiceType)
+                    .filter(c -> !BLOCK_ONLY_TYPES.contains(c.connectorType()))
+                    .map(c -> c.enabled() ? ReferenceStatus.ACTIVE : ReferenceStatus.INACTIVE)
+                    .orElse(ReferenceStatus.MISSING);
+            case EBOX_SENDERS -> uuid(value)
+                    .flatMap(id -> connectors.findByIdAndTenantId(id, tenantId))
+                    .filter(c -> EBOX_SENDER_TYPE.equals(c.connectorType()))
                     .map(c -> c.enabled() ? ReferenceStatus.ACTIVE : ReferenceStatus.INACTIVE)
                     .orElse(ReferenceStatus.MISSING);
             case "notificationWebhooks" -> uuid(value)

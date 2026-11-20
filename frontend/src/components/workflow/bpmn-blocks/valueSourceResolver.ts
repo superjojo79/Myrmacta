@@ -10,7 +10,7 @@ import type { ValueOption } from './types'
 // `null` = source non listable (saisie libre : la vérification se fait au déploiement) ; un échec réseau
 // renvoie aussi `null` sans lever (D-PALETTE-FALLBACK).
 
-const SERVER_SOURCES = new Set(['documentTemplates', 'connectorInstances', 'notificationWebhooks', 'dmnTables'])
+const SERVER_SOURCES = new Set(['documentTemplates', 'connectorInstances', 'notificationWebhooks', 'dmnTables', 'eboxSenders'])
 
 export interface ResolveContext {
   /** Clé du process ouvert dans l'éditeur (pour `workflowStatuses`). */

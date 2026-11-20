@@ -79,7 +79,7 @@ export function diagnoseParameter(
   return out
 }
 
-const UUID_SOURCES = new Set(['connectorInstances', 'notificationWebhooks'])
+const UUID_SOURCES = new Set(['connectorInstances', 'notificationWebhooks', 'eboxSenders'])
 const UUID_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KEY_FORM = /^[A-Za-z0-9_.:-]+$/
 /** Même grammaire que `PortalRecipientSource` côté serveur (TODO §93). */

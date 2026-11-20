@@ -20,7 +20,7 @@ public final class BuildingBlockCatalog {
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
-            "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas");
+            "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas", "eboxSenders");
 
     private static final int SHORT = 200;
     private static final int LONG = 4000;
@@ -125,7 +125,7 @@ public final class BuildingBlockCatalog {
                             + "contrôle du consentement. Pose eboxIssue (ENVOYE, DEJA_ENVOYE, VOIE_SECOURS), eboxSecoursRequis et "
                             + "eboxVoieSecours, qu'une passerelle lit pour suivre la voie de secours. Toujours asynchrone.",
                     BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.asyncDelegate("eboxSendTask"),
-                    reference("connectorInstanceId", "Connecteur eBox (envoi)", true, "connectorInstances",
+                    reference("connectorInstanceId", "Connecteur eBox (envoi)", true, "eboxSenders",
                             "Instance du connecteur ebox-outbound : compte expéditeur de la commune."),
                     enumSingle("eboxEnvoiTypeDestinataire", "Type de destinataire", true, List.of("ENTREPRISE", "CITOYEN"),
                             "ENTREPRISE : numéro BCE ; CITOYEN : numéro de registre national (NISS)."),

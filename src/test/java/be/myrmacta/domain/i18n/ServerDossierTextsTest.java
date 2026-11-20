@@ -26,6 +26,23 @@ class ServerDossierTextsTest {
                 .isEqualTo("Un courrier (DOS-C) répond au fil du dossier DOS-F.");
     }
 
+    /** #131 — libellés des pièces ajoutées au dossier par la génération et la signature. */
+    @Test
+    void producedDocumentLabelsInFrench() {
+        assertThat(ServerDossierTexts.generatedDocumentLabel(Locale.FRENCH, "Joindre la convention"))
+                .isEqualTo("Document généré — Joindre la convention");
+        assertThat(ServerDossierTexts.signedDocumentLabel(Locale.FRENCH)).isEqualTo("Document signé");
+        assertThat(ServerDossierTexts.signatureProofLabel(Locale.FRENCH)).isEqualTo("Preuve de signature");
+    }
+
+    @Test
+    void producedDocumentLabelsInEnglish() {
+        assertThat(ServerDossierTexts.generatedDocumentLabel(Locale.ENGLISH, "Attach the agreement"))
+                .isEqualTo("Generated document — Attach the agreement");
+        assertThat(ServerDossierTexts.signedDocumentLabel(Locale.ENGLISH)).isEqualTo("Signed document");
+        assertThat(ServerDossierTexts.signatureProofLabel(Locale.UK)).isEqualTo("Signature proof");
+    }
+
     @Test
     void anUnsupportedLocaleFallsBackToFrench() {
         assertThat(ServerDossierTexts.supplierReplyLabel(Locale.forLanguageTag("nl"), "DOS-1")).isEqualTo("Réponse DOS-1");

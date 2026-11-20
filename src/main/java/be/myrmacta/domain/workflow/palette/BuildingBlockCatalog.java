@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 8;
+    public static final int VERSION = 9;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
@@ -107,6 +107,16 @@ public final class BuildingBlockCatalog {
                             "Instance du connecteur eBox Enterprise qui a lu le message."),
                     text("eboxActionId", "Action", 200,
                             "Identifiant de l'action à confirmer ; vide : la seule action encore ouverte du message.")),
+            // TODO §151 (D-EBOX-MOVE) — range le message traité dans une partition de l'eBox que l'instance ne lit pas.
+            block("ebox-move", "Classer le message eBox",
+                    "Déplace le message eBox du courrier vers une autre partition de l'eBox (ex. myrmacta-traite), que les agents "
+                            + "du portail voient comme pris en charge. Message : variables eboxRegistre et eboxMessageId, ou champs "
+                            + "de même nom du dossier.",
+                    BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.delegate("eboxMoveTask"),
+                    reference("connectorInstanceId", "Connecteur eBox", true, "connectorInstances",
+                            "Instance du connecteur eBox Enterprise qui a lu le message."),
+                    text("eboxPartitionCible", "Partition cible", 100,
+                            "Identifiant de la partition de destination ; jamais une partition lue par l'instance.", true)),
             // TODO §115 (D-DEADLINE-TIMER) — écrit echeance, echeanceRappel et echeanceDepassee, que portent les minuteurs.
             block("compute-deadline", "Calculer une échéance",
                     "Calcule l'échéance depuis un champ date du dossier ou un délai, et pose les variables echeanceRappel et "

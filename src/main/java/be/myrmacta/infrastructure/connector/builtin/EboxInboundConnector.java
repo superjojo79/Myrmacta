@@ -74,10 +74,11 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     static final int MAX_LOOKBACK_DAYS = 90;
     static final ZoneId EBOX_ZONE = ZoneId.of("Europe/Brussels");
     static final String MARK_ACTION_EXECUTED = "markActionExecuted";
+    static final String MOVE_TO_PARTITION = "moveToPartition";
 
     /** Variables posées par la plateforme : un mapping ne peut pas les écraser. */
     static final Set<String> PLATFORM_VARIABLES = Set.of("eboxMessageId", "eboxRegistre", "eboxPartition", "eboxEntreprise",
-            "eboxExpediteur", "eboxApplication", "eboxTypeMessage", "eboxObjet", "eboxRecuLe", "eboxExpireLe", "eboxRecommande",
+            "eboxExpediteur", "eboxApplication", "eboxTypeMessage", "eboxObjet", "eboxRecuLe", "eboxExpireLe", "eboxRecommande", "eboxTypeRecommande",
             "eboxActionRequise", "eboxReponseAutorisee", "eboxDateLimiteReponse", "eboxCorps", "eboxPiecesNonImportees");
 
     private static final Pattern ENTERPRISE_NUMBER = Pattern.compile("[01]\\d{9}");
@@ -86,6 +87,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     private static final Pattern MESSAGE_ID = Pattern.compile("[^\\p{Cntrl}]{1,200}");
     private static final Pattern HOST_SUFFIX = Pattern.compile("[a-z0-9-]+(\\.[a-z0-9-]+)+");
     private static final Set<String> LANGUAGES = Set.of("fr", "nl", "de");
+    private static final Set<String> REGISTERED_TYPES = Set.of("nonQualifiedRegisteredMail", "qualifiedRegisteredMailNotification");
     private static final Logger log = LoggerFactory.getLogger(EboxInboundConnector.class);
 
     private final EboxClient client;
@@ -148,6 +150,9 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
                                 + "l'eBox n'est jamais consulté (télécharger la pièce principale marque le message comme lu)"),
                 new ConfigField("registryUrl", "Document Provider Registry", ConfigFieldType.URL, true, null, List.of(),
                         "https, ex. https://services.socialsecurity.be/REST/ebox/enterprise/federation/documentProviderRegistry/v1"),
+                new ConfigField("partitionApiUrl", "API Partition (vérification)", ConfigFieldType.URL, false, null, List.of(),
+                        "Facultatif, https, ex. https://services.socialsecurity.be/REST/ebox/enterprise/partition/v1. Une partition "
+                                + "configurée absente de l'eBox est signalée et n'est pas lue"),
                 new ConfigField("allowedHostSuffixes", "Domaines autorisés", ConfigFieldType.STRING, false, DEFAULT_SUFFIXES, List.of(),
                         "Le jeton n'est envoyé qu'aux hôtes qui finissent par l'un de ces domaines (registre, registres de messages, "
                                 + "jeton)"),
@@ -183,6 +188,10 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         List<String> suffixes = suffixes(config);
         requireAllowedHost(text(config, "registryUrl"), suffixes, "registryUrl");
         requireAllowedHost(text(config, "oauthTokenUrl"), suffixes, "oauthTokenUrl");
+        String partitionApi = param(config, "partitionApiUrl");
+        if (!partitionApi.isEmpty()) {
+            requireAllowedHost(partitionApi, suffixes, "partitionApiUrl");
+        }
         Object method = config.get("oauthClientAuthMethod");
         if (method != null && !OAuth2TokenProvider.METHOD_JWT.equals(String.valueOf(method))) {
             throw new ConnectorValidationException("eBox only supports oauthClientAuthMethod " + OAuth2TokenProvider.METHOD_JWT);
@@ -214,14 +223,43 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         } catch (ConnectorValidationException invalid) {
             throw new IllegalStateException(invalid.getMessage());
         }
+        List<String> partitions = existingPartitions(run);
         for (Endpoint endpoint : endpoints(run)) {
-            for (String partition : run.partitions) {
+            for (String partition : partitions) {
                 if (run.taken >= inbound.maxMessagesPerPoll()) {
                     return;
                 }
                 readPartition(run, endpoint, partition);
             }
         }
+    }
+
+    /**
+     * TODO §151 (D-EBOX-PARTITION-CHECK) — les partitions configurées que l'eBox connaît (API Partition 1.3, lecture seule).
+     * Une partition inconnue est signalée et n'est pas lue ; si la liste ne peut pas être lue, rien n'est retiré.
+     */
+    private List<String> existingPartitions(Run run) {
+        String api = param(run.config, "partitionApiUrl");
+        if (api.isEmpty()) {
+            return run.partitions;
+        }
+        Set<String> known;
+        try {
+            known = new LinkedHashSet<>(run.authorized(() -> client.partitions(api, run.access, run.enterpriseNumber)));
+        } catch (RuntimeException unavailable) {
+            log.warn("{}: instance {} could not check its partitions ({}), all configured partitions are read", TYPE,
+                    run.instance.id(), unavailable.getClass().getSimpleName());
+            return run.partitions;
+        }
+        List<String> existing = new ArrayList<>();
+        for (String partition : run.partitions) {
+            if (known.contains(partition)) {
+                existing.add(partition);
+            } else {
+                log.warn("{}: instance {} skips partition {}: the eBox has no such partition", TYPE, run.instance.id(), partition);
+            }
+        }
+        return existing;
     }
 
     /**
@@ -233,7 +271,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input, ConnectorCallContext context) {
         // Revue de clôture : ni l'API d'administration ni l'API M2M ne confirment une action eBox, seul un process le fait.
         if (context == null || !context.fromProcess()) {
-            throw new IllegalArgumentException(TYPE + ": " + MARK_ACTION_EXECUTED + " is only available from a process step");
+            throw new IllegalArgumentException(TYPE + ": service operations are only available from a process step");
         }
         return execute(instance, input);
     }
@@ -243,8 +281,9 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         Objects.requireNonNull(instance, "instance");
         Map<String, Object> params = input == null ? Map.of() : input;
         String operation = param(params, "operation");
-        if (!MARK_ACTION_EXECUTED.equals(operation)) {
-            throw new IllegalArgumentException(TYPE + " supports only the operation " + MARK_ACTION_EXECUTED);
+        if (!MARK_ACTION_EXECUTED.equals(operation) && !MOVE_TO_PARTITION.equals(operation)) {
+            throw new IllegalArgumentException(TYPE + " supports only the operations " + MARK_ACTION_EXECUTED + " and "
+                    + MOVE_TO_PARTITION);
         }
         String registryId = param(params, "registry");
         String messageId = param(params, "messageId");
@@ -252,6 +291,16 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         if (!REGISTRY_ID.matcher(registryId).matches() || !MESSAGE_ID.matcher(messageId).matches()
                 || (!actionId.isEmpty() && !MESSAGE_ID.matcher(actionId).matches())) {
             throw new IllegalArgumentException(TYPE + ": registry and messageId are required (eboxRegistre, eboxMessageId)");
+        }
+        String target = param(params, "targetPartition");
+        if (MOVE_TO_PARTITION.equals(operation)) {
+            if (!PARTITION.matcher(target).matches()) {
+                throw new IllegalArgumentException(TYPE + ": targetPartition is required and must be a partition id");
+            }
+            if (partitions(instance.config()).contains(target)) {
+                // Classer dans une partition lue la ferait relire et retirerait le message de la vue des agents du portail.
+                throw new IllegalArgumentException(TYPE + ": targetPartition must not be one of the partitions read by this instance");
+            }
         }
         Run run;
         try {
@@ -267,6 +316,14 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
                 .filter(candidate -> candidate.registryId().equals(registryId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(TYPE + ": message registry " + registryId + " has no active endpoint"));
+        if (MOVE_TO_PARTITION.equals(operation)) {
+            run.authorized(() -> {
+                client.moveToPartition(endpoint.url(), run.access, messageId, target);
+                return null;
+            });
+            log.info("{}: instance {} moved a message of registry {} to partition {}", TYPE, instance.id(), registryId, target);
+            return Map.of("eboxClasse", true, "eboxPartitionCible", target);
+        }
         if (actionId.isEmpty()) {
             List<JsonNode> statuses = run.authorized(() -> client.actionStatuses(endpoint.url(), run.access, messageId));
             List<String> open = statuses.stream()
@@ -537,8 +594,13 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         putText(variables, "eboxRecuLe", message.path("receiptDate"));
         putText(variables, "eboxExpireLe", message.path("expirationDate"));
         putText(variables, "eboxDateLimiteReponse", message.path("replyDueDate"));
-        variables.put("eboxRecommande", message.path("isRegisteredMail").asBoolean(false)
-                || !message.path("registeredMailType").asString("").isBlank());
+        // TODO §151 (D-EBOX-REGISTERED) — « notApplicable » n'est pas un recommandé.
+        String registeredType = message.path("registeredMailType").asString("");
+        boolean registered = !registeredType.isBlank() && !"notApplicable".equals(registeredType);
+        variables.put("eboxRecommande", message.path("isRegisteredMail").asBoolean(false) || registered);
+        if (registered && REGISTERED_TYPES.contains(registeredType)) {
+            variables.put("eboxTypeRecommande", registeredType);
+        }
         variables.put("eboxActionRequise", message.path("hasMessageActions").asBoolean(false));
         variables.put("eboxReponseAutorisee", message.path("isReplyAuthorized").asBoolean(false));
         if (body != null && !body.isBlank()) {

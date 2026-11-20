@@ -66,7 +66,7 @@ class HandleSignatureCallbackUseCaseImplTest {
                 mock(WorkflowParticipantPort.class), mock(SendNotificationUseCase.class));
         SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
                 mock(DossierElementRepository.class), addElement, notifier, metrics, listener,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), java.util.Locale.FRENCH);
         useCase = new HandleSignatureCallbackUseCaseImpl(repository, handler, port, metrics, Clock.fixed(NOW, ZoneOffset.UTC));
         request = request(UUID.randomUUID(), SignatureMode.PARALLEL).withProviderReference("hosted:1");
         signers = SignatureProgression.start(SignatureMode.PARALLEL, List.of(

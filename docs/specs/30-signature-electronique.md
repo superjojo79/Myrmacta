@@ -128,7 +128,10 @@ Le signataire n'a pas de compte : il passe par le **portail tokenisé** livré (
   (métadonnées : identifiant de la demande, rôle `SIGNED_DOCUMENT` ou `SIGNATURE_PROOF`,
   `simulated`). **Aucune nouvelle valeur d'`ElementType`** : pas d'impact sur l'export CSV, l'affichage
   ni le schéma. Le marqueur doit être filtrable côté API pour que l'UI distingue document source,
-  document signé et preuve.
+  document signé et preuve. Leur libellé (« Document signé » / « Signed document », « Preuve de
+  signature » / « Signature proof », suivi de « (SIMULATION) » pour le stub) est écrit à l'ajout
+  dans la langue par défaut du tenant, `app.i18n.default-locale` (D-I18N-DOSSIER-TEXT, issue #131) ;
+  un libellé déjà enregistré ne change pas. Le contenu du PDF de preuve eID reste en français.
 - **Purge et rétention** : la purge de dossier doit supprimer les demandes, documents signés et
   preuves (même leçon que D-PORTAL-PURGE : le graphe de `ProcessPurgeOutboxUseCaseImpl` doit
   couvrir les nouvelles tables).
@@ -204,9 +207,17 @@ profil de production sans le second drapeau.
 
 - **Ancre.** Le PDF porte `{{sN|signature|85|37}}` pour chaque rang N à partir de 1. Yousign ne
   renvoie que le nombre d'ancres reconnues : deux repères du même rang ne comptent pas pour deux
-  signataires. La demande passe `FAILED` et le brouillon est annulé au mieux si un rang n'a pas le
-  sien, ou si ce nombre est inférieur au nombre de signataires (D-SIGNATURE-ANCHOR). DocuSign pose
-  un onglet SignHere sur la même chaîne et échoue de son côté si elle est absente.
+  signataires. La demande passe `FAILED` si un rang n'a pas le sien, ou si ce nombre est inférieur
+  au nombre de signataires (D-SIGNATURE-ANCHOR). DocuSign pose un onglet SignHere sur la même chaîne
+  et échoue de son côté si elle est absente.
+- **Brouillon Yousign.** Tout échec après la création de la demande (dépôt, ancre, signataire,
+  activation) la supprime chez Yousign (`DELETE`, un brouillon ne s'annule pas) ; si la suppression
+  est refusée, elle est annulée. Ce nettoyage est au mieux, journalisé, et laisse remonter l'erreur
+  d'origine (D-SIGNATURE-DRAFT-CLEANUP, [§153](../decisions/153-yousign-nettoyage-du-brouillon.md)).
+- **Langue du signataire Yousign.** La page de signature et les messages Yousign suivent la langue du
+  tenant (`app.i18n.default-locale`), comme les invitations envoyées par Myrmacta : `fr` ou `en`,
+  repli `fr`. La demande ne porte pas de langue propre ; DocuSign n'en envoie pas, celle du compte
+  s'applique (D-SIGNATURE-SIGNER-LOCALE, [§154](../decisions/154-yousign-langue-du-signataire.md)).
 - **Lien.** Il n'est pas conservé à la création. Le portail le demande à l'ouverture de la page.
   « Mes signatures » le demande au clic (`GET /api/signatures/mine/{signerId}/signing-url`), pas
   dans la liste. `signingUrl` est nul tant que le lien n'est pas prêt (tour séquentiel, attente) et

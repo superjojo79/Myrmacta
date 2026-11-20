@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.signature;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,7 +15,8 @@ interface YousignClient {
     /** {@code totalAnchors} : ancres reconnues dans le PDF ({@code parse_anchors}). */
     Upload uploadSignablePdf(UUID requestId, String filename, byte[] pdf);
 
-    UUID addSigner(UUID requestId, String firstName, String lastName, String email);
+    /** {@code locale} : langue de la page et des messages Yousign du signataire (D-SIGNATURE-SIGNER-LOCALE). */
+    UUID addSigner(UUID requestId, String firstName, String lastName, String email, Locale locale);
 
     void activate(UUID requestId);
 
@@ -24,7 +26,11 @@ interface YousignClient {
      */
     Optional<String> signatureLink(UUID requestId, int signerPosition);
 
+    /** Annule une demande en approbation ou en cours ; l'API v3 refuse l'annulation d'un brouillon. */
     void cancel(UUID requestId);
+
+    /** Supprime une demande encore en brouillon (#133) ; l'API v3 refuse la suppression d'une demande en cours. */
+    void deleteDraft(UUID requestId);
 
     byte[] downloadSignedPdf(UUID requestId);
 

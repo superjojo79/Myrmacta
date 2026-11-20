@@ -4,9 +4,12 @@ import be.myrmacta.domain.dossier.model.AccessContext;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.document.port.out.DocumentStoragePort;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.workflow.WorkflowVariables;
+import be.myrmacta.infrastructure.config.I18nProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -20,15 +23,19 @@ public class AttachGeneratedDocumentTask implements JavaDelegate {
     private final TenantProperties tenantProperties;
     private final DocumentStoragePort documentStoragePort;
     private final AddDossierElementUseCase addDossierElementUseCase;
+    private final Locale locale;
 
+    /** @param i18n langue du tenant : libellé de la pièce (D-I18N-DOSSIER-TEXT), pas la langue du document */
     public AttachGeneratedDocumentTask(
             TenantProperties tenantProperties,
             DocumentStoragePort documentStoragePort,
-            AddDossierElementUseCase addDossierElementUseCase) {
+            AddDossierElementUseCase addDossierElementUseCase,
+            I18nProperties i18n) {
         this.tenantProperties = Objects.requireNonNull(tenantProperties, "tenantProperties");
         this.documentStoragePort = Objects.requireNonNull(documentStoragePort, "documentStoragePort");
         this.addDossierElementUseCase =
                 Objects.requireNonNull(addDossierElementUseCase, "addDossierElementUseCase");
+        this.locale = Objects.requireNonNull(i18n, "i18n").locale();
     }
 
     /**
@@ -68,7 +75,7 @@ public class AttachGeneratedDocumentTask implements JavaDelegate {
         if (activityName == null || activityName.isBlank()) {
             activityName = execution.getCurrentActivityId();
         }
-        String label = "Document généré — " + activityName;
+        String label = ServerDossierTexts.generatedDocumentLabel(this.locale, activityName);
         addDossierElementUseCase.add(
                 new AddDossierElementUseCase.AddCommand(
                         UUID.fromString(dossierIdVar.toString()),

@@ -12,6 +12,7 @@ import java.text.Normalizer;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -37,6 +38,8 @@ final class YousignHttpClient implements YousignClient {
         };
     }
 
+    private static final Set<String> SIGNER_LOCALES = Set.of("fr", "en");
+    private static final String FALLBACK_SIGNER_LOCALE = "fr";
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final int MAX_JSON_BYTES = 1024 * 1024;
     private static final int MAX_BINARY_BYTES = 20 * 1024 * 1024;
@@ -90,18 +93,27 @@ final class YousignHttpClient implements YousignClient {
     }
 
     @Override
-    public UUID addSigner(UUID requestId, String firstName, String lastName, String email) {
+    public UUID addSigner(UUID requestId, String firstName, String lastName, String email, Locale locale) {
         ObjectNode info = JSON.createObjectNode();
         info.put("first_name", clip(firstName, 255));
         info.put("last_name", clip(lastName, 255));
         info.put("email", email);
-        info.put("locale", "fr");
+        info.put("locale", signerLocale(locale));
         ObjectNode body = JSON.createObjectNode();
         body.set("info", info);
         body.put("signature_level", "electronic_signature");
         body.put("signature_authentication_mode", "no_otp");
         JsonNode created = postJson("/signature_requests/" + requestId + "/signers", body.toString());
         return uuid(created, "id");
+    }
+
+    /**
+     * D-SIGNATURE-SIGNER-LOCALE (#132) — code {@code info.locale} Yousign. Seules les langues d'un tenant Myrmacta
+     * (D-I18N-LANGS : français, anglais) sont envoyées ; toute autre langue, ou aucune, retombe sur le français.
+     */
+    static String signerLocale(Locale locale) {
+        String language = locale == null ? "" : locale.getLanguage();
+        return SIGNER_LOCALES.contains(language) ? language : FALLBACK_SIGNER_LOCALE;
     }
 
     @Override
@@ -127,6 +139,16 @@ final class YousignHttpClient implements YousignClient {
     @Override
     public void cancel(UUID requestId) {
         postJson("/signature_requests/" + requestId + "/cancel", "{\"reason\":\"other\"}");
+    }
+
+    /** {@code DELETE} sans {@code permanent_delete} : Yousign garde la trace du brouillon supprimé. Réponse 204 sans corps. */
+    @Override
+    public void deleteDraft(UUID requestId) {
+        HttpRequest request = authorized(uri("/signature_requests/" + requestId)).DELETE().build();
+        HttpResponse<byte[]> response = exchange(request, MAX_JSON_BYTES);
+        if (response.statusCode() / 100 != 2) {
+            throw new YousignCallException("Yousign answered HTTP " + response.statusCode());
+        }
     }
 
     @Override

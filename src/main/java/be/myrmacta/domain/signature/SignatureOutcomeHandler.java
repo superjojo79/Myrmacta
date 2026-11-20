@@ -6,6 +6,7 @@ import be.myrmacta.domain.dossier.model.DossierElement;
 import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.signature.model.SignatureOutcome;
 import be.myrmacta.domain.signature.model.SignatureRequest;
 import be.myrmacta.domain.signature.model.Signer;
@@ -19,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -49,7 +51,9 @@ public final class SignatureOutcomeHandler {
     private final SignatureMetricsPort metrics;
     private final SignatureOutcomeListener listener;
     private final Clock clock;
+    private final Locale locale;
 
+    /** @param locale langue du tenant : libellés des pièces ajoutées au dossier (D-I18N-DOSSIER-TEXT) */
     public SignatureOutcomeHandler(
             String tenantId,
             SignatureRequestRepository repository,
@@ -60,7 +64,8 @@ public final class SignatureOutcomeHandler {
             SignatureNotifier notifier,
             SignatureMetricsPort metrics,
             SignatureOutcomeListener listener,
-            Clock clock) {
+            Clock clock,
+            Locale locale) {
         this.tenantId = Objects.requireNonNull(tenantId, "tenantId");
         this.repository = Objects.requireNonNull(repository, "repository");
         this.port = Objects.requireNonNull(port, "port");
@@ -71,6 +76,7 @@ public final class SignatureOutcomeHandler {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
         this.listener = Objects.requireNonNull(listener, "listener");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.locale = Objects.requireNonNull(locale, "locale");
     }
 
     /**
@@ -171,10 +177,11 @@ public final class SignatureOutcomeHandler {
 
     private void attachArtifacts(SignatureRequest request, List<String> stored) {
         SignaturePort.SignedArtifacts artifacts = port.fetchArtifacts(request.providerReference());
-        addProduced(request, "Document signé", artifacts.signedDocument(), artifacts.signedContentType(),
-                ROLE_SIGNED_DOCUMENT, artifacts.simulated(), stored);
+        addProduced(request, ServerDossierTexts.signedDocumentLabel(locale), artifacts.signedDocument(),
+                artifacts.signedContentType(), ROLE_SIGNED_DOCUMENT, artifacts.simulated(), stored);
         if (artifacts.proof() != null && artifacts.proof().length > 0) {
-            addProduced(request, "Preuve de signature", artifacts.proof(), artifacts.proofContentType(),
+            addProduced(request, ServerDossierTexts.signatureProofLabel(locale), artifacts.proof(),
+                    artifacts.proofContentType(),
                     ROLE_SIGNATURE_PROOF, artifacts.simulated(), stored);
         }
     }

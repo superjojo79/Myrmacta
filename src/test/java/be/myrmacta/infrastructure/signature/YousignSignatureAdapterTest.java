@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -52,7 +53,7 @@ class YousignSignatureAdapterTest {
         assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, "Ada Lovelace")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("anchor");
-        assertThat(client.calls).contains("cancel").doesNotContain("activate");
+        assertThat(client.calls).contains("delete").doesNotContain("activate");
     }
 
     /** Deux fois l'ancre du rang 1 : Yousign compte 2, mais le rang 2 n'a pas la sienne. */
@@ -64,7 +65,75 @@ class YousignSignatureAdapterTest {
         assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace", "Bob")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("anchor");
-        assertThat(client.calls).contains("cancel").doesNotContain("activate");
+        assertThat(client.calls).contains("delete").doesNotContain("activate");
+    }
+
+    /** #133 — un dépôt refusé après la création supprime le brouillon et laisse remonter l'erreur d'origine. */
+    @Test
+    void uploadFailureDeletesTheDraftAndRethrowsTheOriginalError() {
+        client.failOn = "upload";
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, "Ada Lovelace")))
+                .isSameAs(client.failure);
+        assertThat(client.calls).containsExactly("create:false", "upload", "delete");
+    }
+
+    @Test
+    void signerFailureDeletesTheDraftAndRethrowsTheOriginalError() throws IOException {
+        client.anchors = 2;
+        client.failOn = "signer:Bob:-";
+        byte[] pdf = pdf("{{s1|signature|85|37}}", "{{s2|signature|85|37}}");
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace", "Bob")))
+                .isSameAs(client.failure);
+        assertThat(client.calls).endsWith("signer:Bob:-", "delete").doesNotContain("activate");
+    }
+
+    @Test
+    void activationFailureDeletesTheDraftAndRethrowsTheOriginalError() throws IOException {
+        client.failOn = "activate";
+        byte[] pdf = pdf("{{s1|signature|85|37}}");
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace")))
+                .isSameAs(client.failure);
+        assertThat(client.calls).endsWith("activate", "delete");
+    }
+
+    /**
+     * #133 — l'activation a pu aboutir chez Yousign malgré l'erreur (délai dépassé) : la demande n'est plus un brouillon
+     * et refuse la suppression ; elle est alors annulée. Un nettoyage qui échoue lui-même ne masque pas l'erreur.
+     */
+    @Test
+    void failedDeletionFallsBackToCancel_andAFailingCleanupNeverHidesTheOriginalError() throws IOException {
+        client.failOn = "activate";
+        client.deleteFails = true;
+        client.cancelFails = true;
+        byte[] pdf = pdf("{{s1|signature|85|37}}");
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace")))
+                .isSameAs(client.failure);
+        assertThat(client.calls).endsWith("activate", "delete", "cancel");
+    }
+
+    @Test
+    void creationFailureHasNoDraftToClean() {
+        client.failOn = "create:false";
+
+        assertThatThrownBy(() -> adapter.submit(command(SignatureMode.PARALLEL, "Ada Lovelace")))
+                .isSameAs(client.failure);
+        assertThat(client.calls).containsExactly("create:false");
+    }
+
+    /** #132 — chaque signataire est créé dans la langue du tenant ({@code app.i18n.default-locale}). */
+    @Test
+    void signersAreCreatedInTheTenantLanguage() throws IOException {
+        client.anchors = 2;
+        YousignSignatureAdapter english = new YousignSignatureAdapter(client, Locale.ENGLISH);
+        byte[] pdf = pdf("{{s1|signature|85|37}}", "{{s2|signature|85|37}}");
+
+        english.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace", "Bob"));
+
+        assertThat(client.locales).containsExactly(Locale.ENGLISH, Locale.ENGLISH);
     }
 
     @Test
@@ -120,29 +189,42 @@ class YousignSignatureAdapterTest {
     private static final class FakeYousign implements YousignClient {
         static final UUID REQUEST_ID = UUID.fromString("0ef334d2-7f36-4643-8a2a-4283b4a3e4a4");
         final List<String> calls = new ArrayList<>();
+        final List<Locale> locales = new ArrayList<>();
+        final YousignCallException failure = new YousignCallException("Yousign answered HTTP 400");
         int anchors = 1;
+        String failOn;
+        boolean deleteFails;
+        boolean cancelFails;
+
+        private void record(String call) {
+            calls.add(call);
+            if (call.equals(failOn)) {
+                throw failure;
+            }
+        }
 
         @Override
         public UUID createSignatureRequest(String name, boolean orderedSigners, String externalId, String expirationDate) {
-            calls.add("create:" + orderedSigners);
+            record("create:" + orderedSigners);
             return REQUEST_ID;
         }
 
         @Override
         public Upload uploadSignablePdf(UUID requestId, String filename, byte[] pdf) {
-            calls.add("upload");
+            record("upload");
             return new Upload(UUID.randomUUID(), anchors);
         }
 
         @Override
-        public UUID addSigner(UUID requestId, String firstName, String lastName, String email) {
-            calls.add("signer:" + firstName + ":" + lastName);
+        public UUID addSigner(UUID requestId, String firstName, String lastName, String email, Locale locale) {
+            locales.add(locale);
+            record("signer:" + firstName + ":" + lastName);
             return UUID.randomUUID();
         }
 
         @Override
         public void activate(UUID requestId) {
-            calls.add("activate");
+            record("activate");
         }
 
         @Override
@@ -153,6 +235,17 @@ class YousignSignatureAdapterTest {
         @Override
         public void cancel(UUID requestId) {
             calls.add("cancel");
+            if (cancelFails) {
+                throw new YousignCallException("Yousign answered HTTP 400");
+            }
+        }
+
+        @Override
+        public void deleteDraft(UUID requestId) {
+            calls.add("delete");
+            if (deleteFails) {
+                throw new YousignCallException("Yousign answered HTTP 405");
+            }
         }
 
         @Override

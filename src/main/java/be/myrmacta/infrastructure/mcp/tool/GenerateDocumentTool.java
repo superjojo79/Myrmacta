@@ -13,13 +13,16 @@ import be.myrmacta.domain.dossier.model.ElementType;
 import be.myrmacta.domain.dossier.port.in.AddDossierElementUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierTypeUseCase;
 import be.myrmacta.domain.dossier.port.in.GetDossierUseCase;
+import be.myrmacta.domain.i18n.ServerDossierTexts;
 import be.myrmacta.domain.workflow.WorkflowVariables;
 import be.myrmacta.infrastructure.config.DocumentGenerationProperties;
+import be.myrmacta.infrastructure.config.I18nProperties;
 import be.myrmacta.infrastructure.config.TenantProperties;
 import be.myrmacta.infrastructure.mcp.McpAccessContextFactory;
 import be.myrmacta.infrastructure.web.document.DocumentGenerationRateLimitExceededException;
 import be.myrmacta.infrastructure.web.document.DocumentGenerationRateLimiter;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -41,6 +44,8 @@ public class GenerateDocumentTool {
     private final McpAccessContextFactory accessContextFactory;
     private final DocumentGenerationRateLimiter rateLimiter;
     private final DocumentGenerationProperties documentGenerationProperties;
+    /** Langue du tenant : libellé de la pièce (D-I18N-DOSSIER-TEXT), pas la langue demandée pour le document. */
+    private final Locale locale;
 
     public GenerateDocumentTool(
             GetDossierUseCase getDossierUseCase,
@@ -52,7 +57,9 @@ public class GenerateDocumentTool {
             TenantProperties tenantProperties,
             McpAccessContextFactory accessContextFactory,
             DocumentGenerationRateLimiter rateLimiter,
-            DocumentGenerationProperties documentGenerationProperties) {
+            DocumentGenerationProperties documentGenerationProperties,
+            I18nProperties i18n) {
+        this.locale = Objects.requireNonNull(i18n, "i18n").locale();
         this.getDossierUseCase = Objects.requireNonNull(getDossierUseCase, "getDossierUseCase");
         this.getDossierTypeUseCase = Objects.requireNonNull(getDossierTypeUseCase, "getDossierTypeUseCase");
         this.accessPolicy = Objects.requireNonNull(accessPolicy, "accessPolicy");
@@ -141,7 +148,7 @@ public class GenerateDocumentTool {
                 new AddDossierElementUseCase.AddCommand(
                         id,
                         ElementType.PRODUCED_DOC,
-                        "Document généré — " + key,
+                        ServerDossierTexts.generatedDocumentLabel(this.locale, key),
                         storageRef,
                         metadata,
                         actor.userId(),

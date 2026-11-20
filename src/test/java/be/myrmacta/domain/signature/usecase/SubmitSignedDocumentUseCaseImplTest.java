@@ -111,7 +111,7 @@ class SubmitSignedDocumentUseCaseImplTest {
         SignatureAccessResolver resolver = new SignatureAccessResolver(repository, tokenPort, dossiers, clock);
         SignatureOutcomeHandler handler = new SignatureOutcomeHandler(TENANT, repository, port, storage,
                 mock(DossierElementRepository.class), addElement, notifier, mock(SignatureMetricsPort.class), listener,
-                clock);
+                clock, java.util.Locale.FRENCH);
         useCase = new SubmitSignedDocumentUseCaseImpl(TENANT, repository, uploads, resolver, handler, port,
                 availability, storage, new SignatureTransaction0(), clock);
         blobs.put("source", SOURCE);

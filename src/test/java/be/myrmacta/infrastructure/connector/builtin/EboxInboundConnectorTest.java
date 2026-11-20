@@ -240,6 +240,53 @@ class EboxInboundConnectorTest {
     }
 
     @Test
+    void aConfiguredPartitionUnknownToTheEboxIsNotRead() {
+        Map<String, Object> config = config();
+        config.put("partitionApiUrl", "https://services.socialsecurity.be/REST/ebox/enterprise/partition/v1");
+        ebox.knownPartitions = List.of("myrmacta");
+
+        poll(config);
+
+        assertThat(ebox.listedPartitions).containsOnly("myrmacta");
+    }
+
+    @Test
+    void anUnavailablePartitionListRemovesNothing() {
+        Map<String, Object> config = config();
+        config.put("partitionApiUrl", "https://services.socialsecurity.be/REST/ebox/enterprise/partition/v1");
+        ebox.partitionsUnavailable = true;
+
+        poll(config);
+
+        assertThat(ebox.listedPartitions).contains("myrmacta", "myrmacta-rh");
+    }
+
+    @Test
+    void thePartitionApiMustBeOnAnAllowedDomain() {
+        Map<String, Object> config = config();
+        config.put("partitionApiUrl", "https://evil.example.com/partition/v1");
+
+        assertThatThrownBy(() -> connector.validate(config)).isInstanceOf(ConnectorValidationException.class)
+                .hasMessageContaining("partitionApiUrl");
+    }
+
+    @Test
+    void theRegisteredMailTypeIsExposed_notApplicableIsNotRegistered() {
+        ObjectMapperNode qualified = message("m-q", "myrmacta", "2026-11-19T08:00:00+01:00");
+        qualified.values.put("registeredMailType", "qualifiedRegisteredMailNotification");
+        ObjectMapperNode plain = message("m-p", "myrmacta", "2026-11-19T09:00:00+01:00");
+        plain.values.put("registeredMailType", "notApplicable");
+        ebox.add("myrmacta", qualified);
+        ebox.add("myrmacta", plain);
+
+        List<WorkflowTriggerEvent> events = poll(config());
+
+        assertThat(events.get(0).variables()).containsEntry("eboxRecommande", true)
+                .containsEntry("eboxTypeRecommande", "qualifiedRegisteredMailNotification");
+        assertThat(events.get(1).variables()).containsEntry("eboxRecommande", false).doesNotContainKey("eboxTypeRecommande");
+    }
+
+    @Test
     void aMessageWithoutPartitionIsTreatedAsForeign() {
         ObjectMapperNode message = message("m-main", "myrmacta", "2026-11-19T08:00:00+01:00");
         message.values.put("recipient", Map.of("eboxType", "enterprise", "enterpriseNumber", "0212345678"));
@@ -492,6 +539,33 @@ class EboxInboundConnectorTest {
     }
 
     @Test
+    void aTakenMessageIsMovedToAPartitionThatIsNotRead() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+
+        Map<String, Object> result = connector.execute(instance(config()), Map.of("operation", "moveToPartition", "registry",
+                "socsec_v3", "messageId", "m-1", "targetPartition", "myrmacta-traite"));
+
+        assertThat(result).containsEntry("eboxClasse", true);
+        assertThat(ebox.moved).containsExactly("m-1->myrmacta-traite");
+    }
+
+    @Test
+    void aMoveToAReadPartitionOrOfAnUntakenMessageIsRefused() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+
+        assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "moveToPartition", "registry", "socsec_v3",
+                "messageId", "m-1", "targetPartition", "myrmacta-rh"))).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be one of the partitions read");
+        assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "moveToPartition", "registry", "socsec_v3",
+                "messageId", "m-404", "targetPartition", "myrmacta-traite"))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "moveToPartition", "registry", "socsec_v3",
+                "messageId", "m-1", "targetPartition", "bad partition"))).isInstanceOf(IllegalArgumentException.class);
+        assertThat(ebox.moved).isEmpty();
+    }
+
+    @Test
     void anUnknownOperationOrAMissingMessageIsRefused() {
         assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "delete", "registry", "socsec_v3",
                 "messageId", "m-1"))).isInstanceOf(IllegalArgumentException.class);
@@ -573,6 +647,9 @@ class EboxInboundConnectorTest {
         final List<String> onBehalfOf = new ArrayList<>();
         final List<JsonNode> actionStatuses = new ArrayList<>();
         final List<String> confirmed = new ArrayList<>();
+        final List<String> moved = new ArrayList<>();
+        List<String> knownPartitions = List.of("myrmacta", "myrmacta-rh");
+        boolean partitionsUnavailable;
         boolean unauthorizedOnce;
 
         void add(String partition, ObjectMapperNode message) {
@@ -620,6 +697,22 @@ class EboxInboundConnectorTest {
             seen(access);
             bodies.add(messageId);
             return Optional.of(json.valueToTree(Map.of("fr", "Veuillez trouver ci-joint votre avis.", "nl", "Zie bijlage.")));
+        }
+
+        @Override
+        public List<String> partitions(String partitionApiUrl, Access access, String enterpriseNumber) {
+            seen(access);
+            assertThat(enterpriseNumber).isEqualTo("0212345678");
+            if (partitionsUnavailable) {
+                throw new EboxClient.EboxTransportException("ebox answered HTTP 503");
+            }
+            return knownPartitions;
+        }
+
+        @Override
+        public void moveToPartition(String endpointUrl, Access access, String messageId, String targetPartition) {
+            seen(access);
+            moved.add(messageId + "->" + targetPartition);
         }
 
         @Override

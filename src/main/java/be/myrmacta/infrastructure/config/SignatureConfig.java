@@ -71,8 +71,10 @@ public class SignatureConfig {
     /** TODO §109 (D-SIGNATURE-PROVIDER) — un seul adaptateur actif, ici Yousign. */
     @Bean
     @ConditionalOnProperty(prefix = "app.signature", name = "provider", havingValue = "yousign")
-    SignaturePort yousignSignaturePort(TenantProperties tenantProperties, ConnectorInstanceRepository instances) {
-        return new YousignSignatureAdapter(tenantProperties.id(), instances);
+    SignaturePort yousignSignaturePort(
+            TenantProperties tenantProperties, ConnectorInstanceRepository instances, I18nProperties i18n) {
+        // D-SIGNATURE-SIGNER-LOCALE : le signataire reçoit la langue du tenant.
+        return new YousignSignatureAdapter(tenantProperties.id(), instances, i18n.locale());
     }
 
     /** TODO §109 (D-SIGNATURE-PROVIDER) — un seul adaptateur actif, ici DocuSign. */

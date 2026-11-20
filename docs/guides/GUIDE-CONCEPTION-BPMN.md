@@ -769,7 +769,11 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
 
 - **Quand.** La brique **Envoyer en eBox** (`${eboxSendTask}`) publie un PDF du dossier (une décision, un courrier) dans
   l'eBox d'une entreprise (numéro BCE) ou d'un citoyen (NISS), au nom de la commune. Elle est **toujours asynchrone**
-  (`flowable:async="true"`, exigé au déploiement) : l'appel à l'eBox ne tient pas dans une complétion de tâche.
+  (`flowable:async="true"`, exigé au déploiement et vérifié à l'exécution) : l'appel à l'eBox ne tient pas dans une
+  complétion de tâche.
+- **Seul chemin d'envoi.** Seule cette brique envoie un message eBox. L'étape « Appeler un connecteur »
+  (`${connectorServiceTask}`) ne peut pas viser une instance `ebox-outbound`, même avec une requête écrite dans le BPMN : le
+  déploiement la refuse, et le connecteur refuse tout appel.
 - **Avant elle.** Générez le document puis joignez-le au dossier (« Générer un document », « Joindre le document ») : seul un
   document **produit et joint au dossier courant**, en PDF, peut partir. Il faut aussi une instance de connecteur
   `ebox-outbound` (compte expéditeur, voir le guide utilisateur).
@@ -784,7 +788,7 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   | `eboxEnvoiObjet` | oui | objet du message, une ligne (500 caractères au plus) |
   | `eboxEnvoiApplication`, `eboxEnvoiTypeMessage` | oui | `senderApplicationId` et `messageTypeId` attribués à l'onboarding |
   | `eboxEnvoiLangue` | oui | `fr`, `nl`, `de`, ou `dossierField:<champ>` / `variable:<nom>` qui porte la langue du dossier |
-  | `eboxEnvoiRecommande` | non | `OUI` : envoi recommandé, preuve de dépôt versée au dossier (pièce « Preuve de dépôt eBox ») |
+  | `eboxEnvoiRecommande` | non | `OUI` : envoi recommandé, preuve de dépôt versée une fois au dossier (pièce « Preuve de dépôt eBox ») |
   | `eboxEnvoiSecours` | oui | voie de secours que le process suivra : `PAPER` ou `EMAIL` |
 
 - **Consentement.** Avant chaque envoi, la brique constate l'état du destinataire. Un citoyen sans consentement ou sans eBox
@@ -805,10 +809,20 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   Après la brique, une passerelle exclusive suit la voie de secours sur `${eboxSecoursRequis == true}` (exemple :
   `exemples/envoi-ebox/`).
 - **Issue incertaine.** Si l'eBox ne répond pas (délai, erreur 5xx), aucune variable n'est posée : l'étape échoue et devient
-  un incident. Rejouez-le depuis l'administration : la même clé d'idempotence (dossier, étape, document) empêche tout double
-  envoi. Un refus de l'eBox (4xx) ou un document invalide fait aussi échouer l'étape, sans rien publier.
-- **Boucle.** Dans une boucle multi-instance, chaque tour a sa clé. La même étape vers un autre destinataire, pour le même
-  document, est refusée : générez un nouveau document.
+  un incident. Rejouez-le depuis l'administration : la même clé d'idempotence (dossier, étape, document, tour de boucle,
+  destinataire) empêche tout double envoi. Un refus de l'eBox (4xx) ou un document invalide fait aussi échouer l'étape, sans
+  rien publier. Si l'étape échoue après la publication (par exemple dans une passerelle qui la suit), la nouvelle tentative
+  relit l'issue du journal (`eboxEnvoiRejoue` vrai) sans republier.
+- **Après une voie de secours.** Le même dossier, la même étape et le même document redonnent la même clé : le journal rejoue
+  la voie de secours, même si le destinataire a ouvert son eBox depuis. Pour retenter l'eBox, régénérez le document ou
+  envoyez-le depuis une autre étape.
+- **Plusieurs destinataires.** La brique elle-même n'est jamais multi-instance (refusé au déploiement). Placez-la dans un
+  **sous-processus multi-instance, avec la passerelle à l'intérieur** : le sous-processus boucle sur la liste des
+  destinataires (`flowable:collection`, `flowable:elementVariable="bce"`), la brique lit `variable:bce`, et la passerelle qui
+  la suit, dans le même sous-processus, lit l'issue de son tour. Les variables de la brique sont alors locales au tour : elles
+  ne remontent pas au process.
+- **Boucle.** Chaque tour, et chaque destinataire, a sa clé : un tour n'en rejoue jamais un autre. La clé porte le numéro BCE,
+  ou une empreinte HMAC du NISS, jamais le NISS en clair.
 - **Journal.** Chaque envoi, doublon ou voie de secours laisse une ligne dans le journal d'audit des envois, que la base
   refuse de modifier (registre §155).
 

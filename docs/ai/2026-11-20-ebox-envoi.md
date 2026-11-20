@@ -67,11 +67,11 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1 | Modèle commun + extension citoyen, port et cas d'usage d'envoi, voie entreprise contre faux serveur (publication, recommandé et preuve, préférence eBox), stub citoyen, consentement et voie de secours, journal d'audit en ajout seul | livré (branche `feat/ebox-envoi`, non poussée) | — |
-| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, formulaire admin générique, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape+document, variables `eboxIssue`, `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process (`EboxSendIT`) | livré (branche `feat/ebox-envoi-lot2`, non poussée) | — |
+| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, formulaire admin générique, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape+document+tour+destinataire, variables `eboxIssue`, `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process (`EboxSendIT`) | livré (branche `feat/ebox-envoi-lot2`, non poussée) | — |
 | 3 | Selon les réponses : `nonQualifiedRegisteredMail` (Q2), paiement entreprise (Q4), voie citoyen Smals (Q5), consultation du journal (export pour BOSA, rôle `TENANT_ADMIN`, ATREQ03) | à faire | — |
 | 4 | Adaptateur citoyen BOSA réel (après NDA), recette en acceptation | bloqué (accès) | — |
 
-Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q5 et Q11, puis lot 3.
+Prochaine action : relecture des correctifs de la revue du lot 2 ; réponses de Benoit à Q1 à Q5 et Q11, puis lot 3.
 
 ### Défauts prudents du lot 2 (aucune question ouverte tranchée, à confirmer)
 
@@ -84,13 +84,23 @@ Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q
 - **Issue incertaine** : aucune variable posée, l'étape échoue (incident rejouable, même clé), conforme à
   D-EBOX-SEND-IDEMPOTENCE ; la brique est toujours asynchrone (exigé au déploiement).
 - **Document** : seulement un `PRODUCED_DOC` PDF du dossier de l'étape (pas une pièce déposée), comme signature et e-mail.
-- **Clé** : le destinataire n'entre pas dans la clé (pas de NISS retrouvable) ; même étape, même document, autre destinataire :
-  refus, pas de second envoi.
-- **Appel direct** : le connecteur refuse l'API d'administration, l'API M2M et `connectorInput` (seule une requête construite
-  par le BPMN passe).
+- **Clé** (après revue H2) : le destinataire entre dans la clé par sa référence d'audit : BCE en clair, HMAC du NISS (clé
+  dérivée de `app.connector.crypto.master-key` et du tenant, comme le journal) ; jamais le NISS en clair. Tour de boucle lu
+  par héritage (`loopCounter` du sous-processus multi-instance englobant).
+- **Appel direct** (après revue H1) : le connecteur refuse tout appel, étape « Appeler un connecteur » à requête littérale
+  comprise ; la brique appelle le cas d'usage elle-même ; la source `eboxSenders` la sert, `connectorInstances` exclut le type.
+- **Boucle** (après revue H2) : brique multi-instance refusée au déploiement et à l'exécution ; motif documenté : sous-processus
+  multi-instance avec la passerelle à l'intérieur ; variables locales au tour (l'exécution qui porte `loopCounter` en local),
+  au process hors boucle.
+- **Après une voie de secours** (revue B3) : même dossier, étape et document redonnent la même clé, le journal rejoue la voie
+  de secours ; régénérer le document ou passer par une autre étape (guide).
 - **Variables réservées** : les six variables de résultat (une complétion ne peut pas simuler un envoi) ; paramètres préfixés
   `eboxEnvoi*` pour ne pas se confondre avec les variables `ebox*` d'un message reçu (`eboxObjet`, `eboxRecommande`…).
-- **Preuve de dépôt** : pièce `ATTACHMENT` JSON non classée (« Preuve de dépôt eBox — <étape> »).
+- **Preuve de dépôt** : pièce `ATTACHMENT` JSON non classée (« Preuve de dépôt eBox — <étape> »), métadonnée
+  `eboxIdempotencyKey`. Revue B1 demandait « seulement si non rejoué » : appliqué tel quel, une tentative qui échoue après le
+  dépôt perd la preuve (la pièce recule avec la transaction, le journal reste, le rejeu ne la reverse pas). Défaut prudent
+  retenu : un rejeu ne verse la preuve que si aucune pièce du dossier ne porte sa clé (pas de doublon, pas de perte) ; prouvé
+  par `EboxSendLoopAndReplayIT`. À confirmer par la relecture.
 
 ## Preuves
 
@@ -104,6 +114,7 @@ Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q
 | 2026-11-20 | lot 2 : `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 479 tests, 0 échec, 0 erreur, 5 ignorés (un premier passage : `OutboxRelayIT` en échec, instable, vert seul et au second verify complet, sans lien avec le lot) |
 | 2026-11-20 | lot 2 : `cd frontend && npm run lint && npm run test && npx playwright test` | lint vert ; Vitest 1 161 tests ; Playwright 207 tests |
 | 2026-11-20 | lot 2 : `scripts/check-docs.sh` | vert |
+| 2026-11-20 | revue du lot 2 : `mvnw test -Dtest='EboxSendDelegateTest,EboxOutboundConnectorTest,BlockReferenceLookupAdapterTest,BuildingBlockCatalogTest,FlowableBpmnParserAdapterBlockTest,BlockAttributeRulesTest,HttpEboxEnterpriseChannelTest'` puis `EboxSendIT,EboxSendLoopAndReplayIT` | 130 tests, 0 échec ; puis 4 tests, 0 échec. Mutation (clé sans destinataire, tour lu en local, variables au process, preuve jamais versée au rejeu) : `EboxSendLoopAndReplayIT` échoue (2 sur 3) |
 
 ## Revue de clôture
 
@@ -119,3 +130,9 @@ Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q
 | B3 suffixes d'hôtes réglés par l'admin du tenant | basse | Q11 |
 | B4 201 lu par `exchange` sans test | basse | test unitaire |
 | CI PIT (JDK 25) : ordre de `Map.of` dans le JSON publié | — | `LinkedHashMap`, test par nœuds JSON |
+| Lot 2, H1 : « Appeler un connecteur » à requête littérale (`processWithBuiltRequest`) pouvait viser `ebox-outbound` | haute | le connecteur refuse tout appel ; la brique appelle `SendEboxMessageUseCase` ; source `eboxSenders`, `connectorInstances` exclut le type (refus au déploiement) ; `EboxOutboundConnectorTest`, `BlockReferenceLookupAdapterTest`, `EboxSendLoopAndReplayIT` |
+| Lot 2, H2 : brique en multi-instance : même clé pour chaque destinataire, `loopCounter` lu en local, variables écrasées | haute | brique multi-instance refusée (déploiement, exécution) ; HMAC du destinataire et tour hérité dans la clé ; variables locales au tour ; motif « sous-processus multi-instance, passerelle à l'intérieur » au guide ; `EboxSendLoopAndReplayIT` (deux BCE, l'un sans eBox) |
+| Lot 2, M1 : seul le déploiement exigeait l'asynchrone | moyenne | contrôle à l'exécution dans `EboxSendDelegate` ; `EboxSendIT` asynchrone, jobs exécutés par le test |
+| Lot 2, B1 : preuve versée de nouveau au rejeu | basse | versée au rejeu seulement si absente du dossier (voir les défauts prudents) |
+| Lot 2, B2 : pas de test d'un vrai rejeu de job | basse | `EboxSendLoopAndReplayIT` : job en échec après la publication, nouvelle tentative, une publication, une ligne `PUBLISHED`, une preuve |
+| Lot 2, B3 : rejeu de la voie de secours non documenté | basse | phrase au guide (« Après une voie de secours ») |

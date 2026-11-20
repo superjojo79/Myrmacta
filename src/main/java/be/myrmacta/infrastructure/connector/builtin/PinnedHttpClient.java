@@ -167,9 +167,21 @@ public final class PinnedHttpClient {
      */
     public static Fetched get(String url, InetAddress pin, Map<String, String> headers, Duration connect, Duration socketRead,
             Duration total, long maxBytes) throws IOException {
+        return exchange("GET", url, pin, headers, null, connect, socketRead, total, maxBytes);
+    }
+
+    /**
+     * TODO §150 (D-EBOX-ACTION) — même appel borné pour une méthode avec corps ({@code PATCH} d'une action eBox). Seul un 200
+     * rend un corps ; un 204 revient avec un corps vide.
+     */
+    public static Fetched exchange(String method, String url, InetAddress pin, Map<String, String> headers, byte[] body,
+            Duration connect, Duration socketRead, Duration total, long maxBytes) throws IOException {
         long deadline = System.nanoTime() + total.toNanos();
-        ClassicRequestBuilder builder = ClassicRequestBuilder.get(url);
+        ClassicRequestBuilder builder = ClassicRequestBuilder.create(method).setUri(url);
         headers.forEach(builder::setHeader);
+        if (body != null) {
+            builder.setEntity(new ByteArrayEntity(body, null));
+        }
         ClassicHttpRequest request = builder.build();
         try (CloseableHttpClient client = client(pin, hostOf(url), Timeout.of(connect), Timeout.of(socketRead), null)) {
             // Le délai de lecture ne borne que l'attente d'un octet : un serveur qui goutte-à-goutte ses en-têtes le

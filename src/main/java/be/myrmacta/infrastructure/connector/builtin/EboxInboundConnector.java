@@ -8,6 +8,7 @@ import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector;
+import be.myrmacta.domain.connector.model.ServiceConnector;
 import be.myrmacta.domain.connector.model.WorkflowTriggerEvent;
 import be.myrmacta.domain.mailroom.model.EboxTakenMessage;
 import be.myrmacta.domain.mailroom.port.out.EboxReadJournal;
@@ -54,9 +55,12 @@ import tools.jackson.databind.ObjectMapper;
  * Provider Registry et le jeton ne part que vers des hôtes autorisés (D-EBOX-REGISTRY-HOSTS). Un message est inscrit au journal
  * dans la transaction qui crée le courrier (D-EBOX-JOURNAL) ; la lecture reprend à la veille du dernier jour lu entièrement
  * (D-EBOX-WINDOW). Rien n'est modifié dans l'eBox, sinon l'état « lu » que l'API pose au téléchargement de la pièce principale.
+ *
+ * <p>Côté SERVICE, une seule opération : {@code markActionExecuted} confirme l'action demandée par l'expéditeur d'un message que
+ * cette instance a pris en charge (D-EBOX-ACTION).
  */
 @Component
-public class EboxInboundConnector implements ConnectorDefinition, PollingTriggerConnector {
+public class EboxInboundConnector implements ConnectorDefinition, PollingTriggerConnector, ServiceConnector {
 
     static final String TYPE = "ebox-inbound";
     static final String DEFAULT_SCOPE = "scope:document:management:consult:ws-eboxrestentreprise:documentconsumer";
@@ -68,6 +72,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     static final int DEFAULT_LOOKBACK_DAYS = 14;
     static final int MAX_LOOKBACK_DAYS = 90;
     static final ZoneId EBOX_ZONE = ZoneId.of("Europe/Brussels");
+    static final String MARK_ACTION_EXECUTED = "markActionExecuted";
 
     /** Variables posées par la plateforme : un mapping ne peut pas les écraser. */
     static final Set<String> PLATFORM_VARIABLES = Set.of("eboxMessageId", "eboxRegistre", "eboxPartition", "eboxEntreprise",
@@ -122,12 +127,12 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
     @Override
     public String getLabel() {
-        return "eBox Enterprise (lecture, interrogation)";
+        return "eBox Enterprise (lecture, interrogation, action faite)";
     }
 
     @Override
     public ConnectorCapability getCapability() {
-        return ConnectorCapability.TRIGGER;
+        return ConnectorCapability.BOTH;
     }
 
     @Override
@@ -200,6 +205,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     @Override
     public void poll(ConnectorInstanceData instance, EventDelivery delivery) {
         Objects.requireNonNull(instance, "instance");
+        Objects.requireNonNull(delivery, "delivery");
         Run run;
         try {
             validate(instance.config());
@@ -215,6 +221,65 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
                 readPartition(run, endpoint, partition);
             }
         }
+    }
+
+    /**
+     * TODO §150 (D-EBOX-ACTION) — confirme l'action d'un message pris en charge par une instance de ce tenant et de cette eBox
+     * ({@code PATCH .../messageActions/{actionId}}, {@code isExecuted: true}). Sans {@code actionId}, l'action est la seule encore
+     * ouverte du message. Toute erreur remonte : l'étape BPMN échoue et son incident se rejoue.
+     */
+    @Override
+    public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input) {
+        Objects.requireNonNull(instance, "instance");
+        Map<String, Object> params = input == null ? Map.of() : input;
+        String operation = param(params, "operation");
+        if (!MARK_ACTION_EXECUTED.equals(operation)) {
+            throw new IllegalArgumentException(TYPE + " supports only the operation " + MARK_ACTION_EXECUTED);
+        }
+        String registryId = param(params, "registry");
+        String messageId = param(params, "messageId");
+        String actionId = param(params, "actionId");
+        if (!REGISTRY_ID.matcher(registryId).matches() || !MESSAGE_ID.matcher(messageId).matches()
+                || (!actionId.isEmpty() && !MESSAGE_ID.matcher(actionId).matches())) {
+            throw new IllegalArgumentException(TYPE + ": registry and messageId are required (eboxRegistre, eboxMessageId)");
+        }
+        Run run;
+        try {
+            validate(instance.config());
+            run = new Run(instance, null);
+        } catch (ConnectorValidationException invalid) {
+            throw new IllegalStateException(invalid.getMessage());
+        }
+        if (journal.alreadyTaken(instance.tenantId(), run.enterpriseNumber, registryId, List.of(messageId)).isEmpty()) {
+            throw new IllegalArgumentException(TYPE + ": the message was not taken from this eBox by this tenant");
+        }
+        Endpoint endpoint = endpoints(run).stream()
+                .filter(candidate -> candidate.registryId().equals(registryId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(TYPE + ": message registry " + registryId + " has no active endpoint"));
+        if (actionId.isEmpty()) {
+            List<JsonNode> statuses = run.authorized(() -> client.actionStatuses(endpoint.url(), run.access, messageId));
+            List<String> open = statuses.stream()
+                    .filter(status -> !status.path("isExecuted").asBoolean(false))
+                    .map(status -> status.path("messageActionId").asString(""))
+                    .filter(id -> MESSAGE_ID.matcher(id).matches())
+                    .toList();
+            if (open.isEmpty() && !statuses.isEmpty()) {
+                return Map.of("eboxActionExecutee", true, "eboxActionDejaFaite", true);
+            }
+            if (open.size() != 1) {
+                throw new IllegalStateException(TYPE + ": the message has " + open.size()
+                        + " open actions; name the one to confirm with actionId");
+            }
+            actionId = open.getFirst();
+        }
+        String confirmed = actionId;
+        run.authorized(() -> {
+            client.markActionExecuted(endpoint.url(), run.access, messageId, confirmed);
+            return null;
+        });
+        log.info("{}: instance {} confirmed an action of a message of registry {}", TYPE, instance.id(), registryId);
+        return Map.of("eboxActionExecutee", true, "eboxActionId", confirmed);
     }
 
     /** Un point d'accès en version 3.x d'un registre de messages, actif aujourd'hui. */
@@ -485,7 +550,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
         private Run(ConnectorInstanceData instance, EventDelivery delivery) {
             this.instance = instance;
-            this.delivery = Objects.requireNonNull(delivery, "delivery");
+            this.delivery = delivery;
             this.config = instance.config();
             this.oauthInstance = new ConnectorInstanceData(instance.id(), instance.tenantId(), instance.name(), instance.connectorType(),
                     instance.enabled(), oauthConfig(config));
@@ -681,6 +746,11 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         if (!value.isBlank() && value.length() <= 200) {
             variables.put(key, value);
         }
+    }
+
+    private static String param(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        return value == null ? "" : String.valueOf(value).strip();
     }
 
     private static String text(Map<String, Object> config, String key) {

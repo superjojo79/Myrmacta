@@ -16,7 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * TODO §150 — faux serveur eBox Enterprise en boucle locale : jeton OAuth v5, Document Provider Registry, un registre de
- * messages en 3.8 (liste filtrée par partition, pièces, corps). Les réponses suivent les schémas publics (specs non versionnées).
+ * messages en 3.8 (liste filtrée par partition, pièces, corps, une action « act-1 » par message). Les réponses suivent les schémas publics (specs non versionnées).
  */
 final class FakeEboxServer implements AutoCloseable {
 
@@ -28,6 +28,8 @@ final class FakeEboxServer implements AutoCloseable {
     private final List<Message> messages = new CopyOnWriteArrayList<>();
     final List<String> requests = new CopyOnWriteArrayList<>();
     final List<String> authorizations = new CopyOnWriteArrayList<>();
+    /** Actions confirmées, {@code messageId/actionId}. */
+    final List<String> executedActions = new CopyOnWriteArrayList<>();
 
     FakeEboxServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -90,6 +92,19 @@ final class FakeEboxServer implements AutoCloseable {
             return;
         }
         for (Message message : messages) {
+            if (path.equals(prefix + "/" + message.id() + "/messageActions") && "GET".equals(exchange.getRequestMethod())) {
+                send(exchange, 200, "application/json", JSON.writeValueAsBytes(List.of(Map.of("messageActionId", "act-1",
+                        "isExecuted", executedActions.contains(message.id() + "/act-1")))));
+                return;
+            }
+            if (path.equals(prefix + "/" + message.id() + "/messageActions/act-1") && "PATCH".equals(exchange.getRequestMethod())) {
+                String patch = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                if (patch.contains("\"isExecuted\":true")) {
+                    executedActions.add(message.id() + "/act-1");
+                }
+                send(exchange, 204, "application/json", new byte[0]);
+                return;
+            }
             if (path.equals(prefix + "/" + message.id() + "/attachments/a-1/content")) {
                 send(exchange, 200, "application/octet-stream", message.pdf());
                 return;

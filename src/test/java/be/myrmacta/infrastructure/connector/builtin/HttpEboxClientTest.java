@@ -31,6 +31,8 @@ class HttpEboxClientTest {
     private final Map<String, Response> routes = new ConcurrentHashMap<>();
     private final Map<String, String> lastHeaders = new ConcurrentHashMap<>();
     private volatile String lastQuery;
+    private volatile String lastMethod;
+    private volatile String lastBody;
     private HttpServer server;
     private String base;
     private HttpEboxClient client;
@@ -58,6 +60,8 @@ class HttpEboxClientTest {
 
     private void handle(HttpExchange exchange) throws IOException {
         lastQuery = exchange.getRequestURI().getRawQuery();
+        lastMethod = exchange.getRequestMethod();
+        lastBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         exchange.getRequestHeaders().forEach((name, values) -> lastHeaders.put(name.toLowerCase(), values.getFirst()));
         Response response = routes.getOrDefault(exchange.getRequestURI().getRawPath(), new Response(404, "application/problem+json",
                 "{\"title\":\"not found\"}".getBytes(StandardCharsets.UTF_8)));
@@ -147,6 +151,37 @@ class HttpEboxClientTest {
 
         assertThatThrownBy(() -> client.attachment(base, new Access("t", null), "m-9", "a-9", 10))
                 .isInstanceOfSatisfying(EboxResourceException.class, refused -> assertThat(refused.status).isEqualTo(404));
+    }
+
+    @Test
+    void anActionIsConfirmedByAMergePatch() {
+        routes.put("/REST/ebox/ebox/messages/m%201/messageActions/act%2F1", new Response(204, "application/json", new byte[0]));
+
+        client.markActionExecuted(base, new Access("t", "0212345678"), "m 1", "act/1");
+
+        assertThat(lastMethod).isEqualTo("PATCH");
+        assertThat(lastBody).isEqualTo("{\"isExecuted\":true}");
+        assertThat(lastHeaders).containsEntry("content-type", "application/merge-patch+json")
+                .containsEntry("authorization", "Bearer t")
+                .containsEntry("on-behalf-of-enterprise-number", "0212345678");
+    }
+
+    @Test
+    void aRefusedActionIsAResourceError() {
+        routes.put("/REST/ebox/ebox/messages/m-1/messageActions/a-1", new Response(400, "application/problem+json",
+                "{}".getBytes(StandardCharsets.UTF_8)));
+
+        assertThatThrownBy(() -> client.markActionExecuted(base, new Access("t", null), "m-1", "a-1"))
+                .isInstanceOfSatisfying(EboxResourceException.class, refused -> assertThat(refused.status).isEqualTo(400));
+    }
+
+    @Test
+    void actionStatusesAreAnArray_emptyWhenTheRegistryHasNone() {
+        assertThat(client.actionStatuses(base, new Access("t", null), "m-1")).isEmpty();
+        json("/ebox/messages/m-1/messageActions", "[{\"messageActionId\":\"a-1\",\"isExecuted\":false}]");
+
+        assertThat(client.actionStatuses(base, new Access("t", null), "m-1"))
+                .extracting(node -> node.path("messageActionId").asString()).containsExactly("a-1");
     }
 
     @Test

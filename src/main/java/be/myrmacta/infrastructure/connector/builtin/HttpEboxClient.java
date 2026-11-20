@@ -89,12 +89,45 @@ class HttpEboxClient implements EboxClient {
         }
     }
 
+    @Override
+    public List<JsonNode> actionStatuses(String endpointUrl, Access access, String messageId) {
+        JsonNode json;
+        try {
+            json = tree(fetch(trim(endpointUrl) + "/ebox/messages/" + seg(messageId) + "/messageActions", access, MAX_JSON_BYTES,
+                    "application/json"));
+        } catch (EboxResourceException missing) {
+            if (missing.status == 404) {
+                return List.of();
+            }
+            throw missing;
+        }
+        if (!json.isArray()) {
+            throw new EboxTransportException("ebox answered a non-array list of message actions");
+        }
+        List<JsonNode> items = new ArrayList<>();
+        json.forEach(items::add);
+        return items;
+    }
+
+    @Override
+    public void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId) {
+        String url = trim(endpointUrl) + "/ebox/messages/" + seg(messageId) + "/messageActions/" + seg(actionId);
+        call("PATCH", url, access, "{\"isExecuted\":true}".getBytes(StandardCharsets.UTF_8), MAX_JSON_BYTES, "application/json");
+    }
+
     private JsonNode json(String url, Access access) {
-        byte[] bytes = fetch(url, access, MAX_JSON_BYTES, "application/json");
+        JsonNode node = tree(fetch(url, access, MAX_JSON_BYTES, "application/json"));
+        if (!node.isObject()) {
+            throw new EboxTransportException("ebox answered a non-object JSON document");
+        }
+        return node;
+    }
+
+    private JsonNode tree(byte[] bytes) {
         try {
             JsonNode node = mapper.readTree(bytes);
-            if (node == null || !node.isObject()) {
-                throw new EboxTransportException("ebox answered a non-object JSON document");
+            if (node == null) {
+                throw new EboxTransportException("ebox answered an empty JSON document");
             }
             return node;
         } catch (JacksonException unreadable) {
@@ -103,6 +136,11 @@ class HttpEboxClient implements EboxClient {
     }
 
     private byte[] fetch(String url, Access access, long maxBytes, String accept) {
+        return call("GET", url, access, null, maxBytes, accept);
+    }
+
+    /** Appel borné ; {@code body} non nul part en {@code application/merge-patch+json}. Un 204 rend un tableau vide. */
+    private byte[] call(String method, String url, Access access, byte[] body, long maxBytes, String accept) {
         OutboundUrlGuard.PinnedEndpoint endpoint;
         try {
             endpoint = guard.resolveSafe(url);
@@ -115,9 +153,13 @@ class HttpEboxClient implements EboxClient {
         if (access.onBehalfOf() != null) {
             headers.put(ON_BEHALF_OF, access.onBehalfOf());
         }
+        if (body != null) {
+            headers.put("Content-Type", "application/merge-patch+json");
+        }
         PinnedHttpClient.Fetched fetched;
         try {
-            fetched = PinnedHttpClient.get(url, endpoint.address(), headers, connectTimeout, readTimeout, totalTimeout, maxBytes);
+            fetched = PinnedHttpClient.exchange(method, url, endpoint.address(), headers, body, connectTimeout, readTimeout,
+                    totalTimeout, maxBytes);
         } catch (IOException failure) {
             if ("response too large".equals(failure.getMessage())) {
                 // Une pièce trop grosse ne bloque pas le registre : seul ce document est écarté.
@@ -129,10 +171,13 @@ class HttpEboxClient implements EboxClient {
         if (status == 200) {
             return fetched.body();
         }
+        if (status == 204 && body != null) {
+            return new byte[0];
+        }
         if (status == 401) {
             throw new EboxUnauthorizedException();
         }
-        if (status == 403 || status == 404 || status == 410) {
+        if (status == 403 || status == 404 || status == 410 || (body != null && (status == 400 || status == 409))) {
             throw new EboxResourceException(status);
         }
         throw new EboxTransportException("ebox answered HTTP " + status);

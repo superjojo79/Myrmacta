@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import be.myrmacta.domain.connector.model.ConnectorCapability;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector.EventDelivery;
@@ -368,6 +369,89 @@ class EboxInboundConnectorTest {
 
     // --- outillage ----------------------------------------------------------------------------------------------------
 
+    // --- action faite (SERVICE) --------------------------------------------------------------------------------------
+
+    private Map<String, Object> markAction(String messageId, String actionId) {
+        Map<String, Object> input = new HashMap<>();
+        input.put("operation", "markActionExecuted");
+        input.put("registry", "socsec_v3");
+        input.put("messageId", messageId);
+        if (actionId != null) {
+            input.put("actionId", actionId);
+        }
+        return connector.execute(instance(config()), input);
+    }
+
+    private JsonNode actionStatus(String id, boolean executed) {
+        return json.valueToTree(Map.of("messageActionId", id, "isExecuted", executed));
+    }
+
+    @Test
+    void theConnectorIsAlsoAServiceForTheActionDoneStep() {
+        assertThat(connector.getCapability()).isEqualTo(ConnectorCapability.BOTH);
+    }
+
+    @Test
+    void theNamedActionOfATakenMessageIsConfirmedOnItsRegistry() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+
+        assertThat(markAction("m-1", "act-1")).containsEntry("eboxActionExecutee", true).containsEntry("eboxActionId", "act-1");
+        assertThat(ebox.confirmed).containsExactly(ENDPOINT + " m-1/act-1");
+    }
+
+    @Test
+    void withoutActionIdTheOnlyOpenActionIsConfirmed() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.actionStatuses.add(actionStatus("done-before", true));
+        ebox.actionStatuses.add(actionStatus("act-2", false));
+
+        markAction("m-1", null);
+
+        assertThat(ebox.confirmed).containsExactly(ENDPOINT + " m-1/act-2");
+    }
+
+    @Test
+    void withoutActionIdSeveralOpenActionsAreAmbiguousAndAllDoneIsANoOp() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.actionStatuses.add(actionStatus("a", false));
+        ebox.actionStatuses.add(actionStatus("b", false));
+        assertThatThrownBy(() -> markAction("m-1", null)).isInstanceOf(IllegalStateException.class).hasMessageContaining("2 open actions");
+
+        ebox.actionStatuses.clear();
+        ebox.actionStatuses.add(actionStatus("a", true));
+        assertThat(markAction("m-1", null)).containsEntry("eboxActionDejaFaite", true);
+        assertThat(ebox.confirmed).isEmpty();
+    }
+
+    @Test
+    void aMessageThisTenantDidNotTakeIsNeverTouched() {
+        assertThatThrownBy(() -> markAction("m-404", "act-1")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not taken");
+        assertThat(ebox.confirmed).isEmpty();
+        assertThat(ebox.tokensSeen).isEmpty();
+    }
+
+    @Test
+    void anUnknownOperationOrAMissingMessageIsRefused() {
+        assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "delete", "registry", "socsec_v3",
+                "messageId", "m-1"))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "markActionExecuted")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void theActionOfARegistryWithoutActiveEndpointFails() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.registries.clear();
+
+        assertThatThrownBy(() -> markAction("m-1", "act-1")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no active endpoint");
+    }
+
     private String cursorKey(String partition) {
         return instance(config()).id() + "/socsec_v3/" + partition;
     }
@@ -430,6 +514,8 @@ class EboxInboundConnectorTest {
         final List<String> bodies = new ArrayList<>();
         final List<String> tokensSeen = new ArrayList<>();
         final List<String> onBehalfOf = new ArrayList<>();
+        final List<JsonNode> actionStatuses = new ArrayList<>();
+        final List<String> confirmed = new ArrayList<>();
         boolean unauthorizedOnce;
 
         void add(String partition, ObjectMapperNode message) {
@@ -477,6 +563,18 @@ class EboxInboundConnectorTest {
             seen(access);
             bodies.add(messageId);
             return Optional.of(json.valueToTree(Map.of("fr", "Veuillez trouver ci-joint votre avis.", "nl", "Zie bijlage.")));
+        }
+
+        @Override
+        public List<JsonNode> actionStatuses(String endpointUrl, Access access, String messageId) {
+            seen(access);
+            return actionStatuses;
+        }
+
+        @Override
+        public void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId) {
+            seen(access);
+            confirmed.add(endpointUrl + " " + messageId + "/" + actionId);
         }
     }
 

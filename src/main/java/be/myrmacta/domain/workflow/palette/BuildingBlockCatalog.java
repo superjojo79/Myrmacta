@@ -16,7 +16,7 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 7;
+    public static final int VERSION = 8;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
@@ -98,6 +98,15 @@ public final class BuildingBlockCatalog {
                     "En tête du tri : une réponse à un e-mail connu rejoint le dossier de son fil (lien, pièces, avertissement, "
                             + "message courrierRecu) ; sinon le courrier poursuit vers le routage.",
                     BlockCategory.DOSSIER, BlockElement.SERVICE_TASK, BlockMarker.delegate("attachToThreadTask")),
+            // TODO §150 (D-EBOX-ACTION) — confirme à l'eBox l'action demandée par l'expéditeur d'un message reçu.
+            block("ebox-action-done", "Marquer l'action eBox comme faite",
+                    "Confirme à l'eBox Enterprise que l'action demandée par l'expéditeur du message est faite. Le message vient "
+                            + "des variables eboxRegistre et eboxMessageId du courrier, ou des champs de même nom du dossier.",
+                    BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.delegate("eboxActionDoneTask"),
+                    reference("connectorInstanceId", "Connecteur eBox", true, "connectorInstances",
+                            "Instance du connecteur eBox Enterprise qui a lu le message."),
+                    text("eboxActionId", "Action", 200,
+                            "Identifiant de l'action à confirmer ; vide : la seule action encore ouverte du message.")),
             // TODO §115 (D-DEADLINE-TIMER) — écrit echeance, echeanceRappel et echeanceDepassee, que portent les minuteurs.
             block("compute-deadline", "Calculer une échéance",
                     "Calcule l'échéance depuis un champ date du dossier ou un délai, et pose les variables echeanceRappel et "

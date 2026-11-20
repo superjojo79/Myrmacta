@@ -112,6 +112,7 @@ class MailRoomExampleIT {
     @Autowired private MockMvc mockMvc;
     @Autowired private ConnectorTriggerRuntime triggerRuntime;
     @Autowired private RuntimeService runtimeService;
+    @Autowired private EboxInboundConnector eboxConnector;
     @Autowired private TaskService taskService;
     @Autowired private HistoryService historyService;
     @Autowired private ManagementService managementService;
@@ -321,6 +322,12 @@ class MailRoomExampleIT {
                     .hasSize(1);
             assertThat(jdbc.queryForObject("select read_until from ebox_read_cursor where connector_instance_id = ? and partition_id = ?",
                     LocalDate.class, instance.id(), "myrmacta")).isNotNull();
+
+            // TODO §150 (D-EBOX-ACTION) — l'étape « Marquer l'action eBox comme faite » confirme la seule action ouverte.
+            String messageId = String.valueOf(runtimeService.getVariable(sorting.getId(), "eboxMessageId"));
+            assertThat(eboxConnector.execute(instance, Map.of("operation", "markActionExecuted", "registry", "socsec_v3",
+                    "messageId", messageId))).containsEntry("eboxActionId", "act-1");
+            assertThat(ebox.executedActions).containsExactly(messageId + "/act-1");
         }
     }
 

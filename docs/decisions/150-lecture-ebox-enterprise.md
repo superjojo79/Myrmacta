@@ -34,6 +34,18 @@ d'acceptation n'est pas accessible pendant le développement.
 - **D-EBOX-AUTH.** OAuth v5 : `client_credentials` avec `client_assertion` signée par la clé du certificat X.509
   (`OAuth2TokenProvider`, mode `PRIVATE_KEY_JWT`, imposé par le connecteur). La forme exacte attendue par la sécurité
   sociale (en-têtes et revendications du JWT) reste à confirmer en acceptation.
+- **D-EBOX-ACTION.** La brique « Marquer l'action eBox comme faite » (`eboxActionDoneTask`) confirme l'action qu'un
+  expéditeur demande sur un message (`PATCH /ebox/messages/{id}/messageActions/{actionId}`, `isExecuted: true`, corps
+  `application/merge-patch+json`). Le connecteur `ebox-inbound` devient `BOTH` : son unique opération de service,
+  `markActionExecuted`, ne touche qu'un message **inscrit au journal** pour ce tenant et cette eBox, sur le point d'accès
+  actif de son registre. Le connecteur (`connectorInstanceId`, de type `ebox-inbound`) et l'action (`eboxActionId`) sont
+  des attributs littéraux du BPMN. Le message vient des variables `eboxRegistre` et `eboxMessageId` du courrier, sinon des
+  champs de même nom du dossier courant : le routage ne passe aucune variable au process métier, mais il copie les champs
+  non sensibles déclarés sur les deux types. Sans `eboxActionId`, la brique confirme la seule action encore ouverte
+  (`GET .../messageActions`) ; plusieurs actions ouvertes font échouer l'étape, et une action déjà faite la laisse passer.
+  Toute erreur de l'eBox remonte : l'étape échoue et son incident se rejoue. Écartés : « Appeler un connecteur » avec une
+  requête construite (la cible viendrait de variables modifiables sans garde propre à l'eBox) et une table qui relie le
+  dossier au message (changeset de plus pour une information que les champs portent déjà).
 - **Specs non versionnées.** Les YAML de l'ONSS (licence « e-Box » sans clause de redistribution) ne sont pas copiés
   dans le dépôt : les tests utilisent des réponses écrites à la main, conformes aux schémas, et cette fiche garde les
   liens : [index des specs](https://dev.eboxenterprise.be/docs/spec/specifications).
@@ -41,4 +53,5 @@ d'acceptation n'est pas accessible pendant le développement.
 **Hors périmètre.** Gestion des partitions et accusés des recommandés (lot 2), envoi (#13), rattachement des réponses
 (#11), recette en acceptation.
 
-**Impacte.** `docs/specs/49-digital-mail-room.md`, `docs/specs/06-connecteurs.md`, `exemples/digital-mail-room/`.
+**Impacte.** `docs/specs/49-digital-mail-room.md`, `docs/specs/06-connecteurs.md`, `docs/guides/GUIDE-CONCEPTION-BPMN.md`,
+`exemples/digital-mail-room/`.

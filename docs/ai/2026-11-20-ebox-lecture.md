@@ -99,11 +99,12 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 0 | Cadrage (ce document) | livré (validé le 2026-11-20) | |
-| 1a | Connecteur, client HTTP, journal et curseur, tests | livré (PR en revue) | à venir |
-| 1b | Brique « Marquer l'action comme faite », démo, spec et guides | à faire | |
+| 1a | Connecteur, client HTTP, journal et curseur, tests | livré (PR en revue) | #139 |
+| 1b | Brique « Marquer l'action eBox comme faite » (D-EBOX-ACTION), spec et guides | livré, revue de clôture en cours | #139 |
 | 2 | Partitions et accusés des recommandés | à faire | |
 
-Prochaine action : lot 1b (brique « Marquer l'action comme faite », démo, section eBox du guide). Le lot 2 (partition management 3.0)
+Prochaine action : revue indépendante de clôture, puis suppression de ce document et `Closes #12`. La démo (Q4) sort du
+lot 1b : la démo mail room tourne en un seul processus, un faux serveur eBox y demande un choix à part (issue dédiée). Le lot 2 (partition management 3.0)
 pourra créer la partition dédiée et ses règles de routage depuis Myrmacta ; en lot 1, l'administrateur la crée sur le
 portail eBox.
 

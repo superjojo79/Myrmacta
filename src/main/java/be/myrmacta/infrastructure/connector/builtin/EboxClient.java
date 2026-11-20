@@ -6,8 +6,8 @@ import java.util.Optional;
 import tools.jackson.databind.JsonNode;
 
 /**
- * TODO §150 — accès en lecture à l'eBox Enterprise (e-Box REST 3.8, Document Provider Registry 1.2), rôle
- * <em>Document Consumer</em>. Les URL reçues ont déjà passé les contrôles du connecteur (https, suffixe d'hôte autorisé) ;
+ * TODO §150 — accès à l'eBox Enterprise (e-Box REST 3.8, Document Provider Registry 1.2), rôle
+ * <em>Document Consumer</em> : lecture, et confirmation d'une action demandée par l'expéditeur. Les URL reçues ont déjà passé les contrôles du connecteur (https, suffixe d'hôte autorisé) ;
  * l'implémentation les repasse par {@code OutboundUrlGuard} à chaque appel.
  */
 interface EboxClient {
@@ -29,6 +29,15 @@ interface EboxClient {
 
     /** {@code GET /ebox/messages/{id}/body} : une chaîne par langue ; vide si le registre n'en sert pas (404). */
     Optional<JsonNode> body(String endpointUrl, Access access, String messageId);
+
+    /**
+     * TODO §150 (D-EBOX-ACTION) — {@code GET /ebox/messages/{id}/messageActions} : l'état de chaque action du message ; vide si
+     * le registre n'en déclare pas (404, opération facultative).
+     */
+    List<JsonNode> actionStatuses(String endpointUrl, Access access, String messageId);
+
+    /** {@code PATCH /ebox/messages/{id}/messageActions/{actionId}} avec {@code isExecuted: true}. */
+    void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId);
 
     /** Jeton refusé (401) : le connecteur le renouvelle une fois. */
     final class EboxUnauthorizedException extends IllegalStateException {

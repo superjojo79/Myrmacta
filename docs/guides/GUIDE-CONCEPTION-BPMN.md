@@ -434,10 +434,10 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Dix-huit briques, chacune = **un seul
+palette, le panneau, la validation au déploiement et les agents. Dix-neuf briques, chacune = **un seul
 élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
 quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies), dix-sept avec
-« Router le courrier » et « Rattacher au fil » (TODO §113), dix-huit avec « Calculer une échéance » (TODO §115) :
+« Router le courrier » et « Rattacher au fil » (TODO §113), dix-huit avec « Calculer une échéance » (TODO §115), dix-neuf avec « Marquer l'action eBox comme faite » (TODO §150) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -448,6 +448,7 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Créer un dossier enfant | `serviceTask` | `${createChildDossierTask}` |
 | Rattacher au fil | `serviceTask` | `${attachToThreadTask}` |
 | Router le courrier | `serviceTask` | `${routeMailTask}` |
+| Marquer l'action eBox comme faite | `serviceTask` | `${eboxActionDoneTask}` |
 | Calculer une échéance | `serviceTask` | `${computeDeadlineTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
@@ -735,6 +736,20 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   traverse sinon tout le process pendant son démarrage, avant que celui-ci ne soit confirmé.
 - **Ouvrir le courrier.** Un courrier créé par un connecteur naît `DRAFT` : ouvrez-le (`OUVERT`), puis mettez-le en cours
   (`EN_COURS`) avant de pouvoir le clôturer.
+
+### Confirmer l'action demandée par un message eBox (TODO §150)
+
+- **Quand.** Un message de l'eBox Enterprise peut demander une action au destinataire (`eboxActionRequise` vaut `true`). Une
+  fois l'action faite, la brique **Marquer l'action eBox comme faite** (`${eboxActionDoneTask}`) le confirme à l'eBox, qui
+  l'affiche à l'expéditeur.
+- **Paramètres.** `connectorInstanceId` (obligatoire) : l'instance `ebox-inbound` qui a lu le message. `eboxActionId`
+  (facultatif) : l'action à confirmer ; vide, la brique confirme la seule action encore ouverte du message.
+- **Le message.** Dans le process du courrier, la brique lit les variables `eboxRegistre` et `eboxMessageId`. Dans le
+  process du dossier métier ouvert par le routage, elle lit les champs de même nom du dossier : déclarez-les sur le type
+  `COURRIER` et sur le type métier, et remplissez-les par le mapping du connecteur (`"eboxRegistre": "$.registre"`,
+  `"eboxMessageId": "$.message.messageId"`). Le routage copie les champs non sensibles de même nom.
+- **Garde.** Seul un message lu par ce tenant dans cette eBox peut être confirmé. Une erreur de l'eBox fait échouer l'étape :
+  placez-la en asynchrone pour que l'incident se rejoue depuis l'administration.
 
 ### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lots 3a et 3b)
 

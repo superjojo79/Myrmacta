@@ -3,7 +3,7 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] ouvert (2026-11-20, issue [#13](https://github.com/superjojo79/Myrmacta/issues/13), sous [#14](https://github.com/superjojo79/Myrmacta/issues/14)).
-Lot 1 livré sur la branche `feat/ebox-envoi` ; suite et questions ouvertes : document de travail
+Lot 1 livré sur la branche `feat/ebox-envoi`, lot 2 (type de connecteur et brique) sur `feat/ebox-envoi-lot2` ; suite et questions ouvertes : document de travail
 `docs/ai/2026-11-20-ebox-envoi.md`. Lecture de l'eBox : [§150](150-lecture-ebox-enterprise.md).
 
 **Constat.** Une commune publie depuis un dossier une décision ou un courrier dans l'eBox d'une entreprise (numéro BCE) ou
@@ -63,6 +63,20 @@ le développement : tout est testé contre un faux serveur.
   configurable (`app.ebox.citizen-stub.consent`, défaut `NO_CONSENT`) : par défaut aucun citoyen n'a consenti, rien n'est
   « publié », le process suit la voie de secours. Réglée à `CONSENTED` (démo, tests), elle simule une publication dont la trace
   porte la méthode `STUB` et l'URL `stub://ebox-citizen/…`, reconnaissable au journal. Le vrai adaptateur BOSA la remplacera.
+- **D-EBOX-SEND-BLOCK** (lot 2). Le compte expéditeur est un type de connecteur `ebox-outbound` (SERVICE) dont la
+  configuration est contrôlée à l'enregistrement par les règles de `EboxOutboundSettings`. Son unique opération n'est ouverte
+  qu'à une étape de process dont la requête est construite par le BPMN déployé : la brique **« Envoyer en eBox »**
+  (`eboxSendTask`). Ni l'API d'administration, ni l'API M2M, ni une variable `connectorInput` posée par un utilisateur n'envoient
+  un message. La brique est **toujours asynchrone** (exigé au déploiement) ; ses paramètres sont des attributs littéraux préfixés
+  `eboxEnvoi*` (distincts des variables `ebox*` d'un message reçu). Le document est un `PRODUCED_DOC` PDF du dossier de l'étape
+  (même règle que la signature et la pièce jointe d'e-mail). Clé d'idempotence : `myr1-` + SHA-256 de (dossier, étape, document,
+  tour de boucle) ; le destinataire n'y entre pas (un NISS ne doit pas se retrouver depuis une empreinte non salée), la même
+  étape vers un autre destinataire est donc refusée. Variables posées, **réservées** (une complétion de tâche ne peut pas faire
+  croire à un envoi et sauter la voie de secours) : `eboxIssue` (`ENVOYE`, `DEJA_ENVOYE`, `VOIE_SECOURS`), `eboxLivraison`,
+  `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`. Une issue incertaine ne pose rien : l'étape
+  échoue (incident rejouable, même clé). La preuve de dépôt d'un recommandé est versée au dossier comme pièce JSON.
+  **Défaut prudent (Q11, à confirmer)** : `allowedHostSuffixes` ne fait que restreindre un plafond fixé par la plateforme
+  (`socialsecurity.be`, `fgov.be`, `belgium.be`) ; un administrateur ne peut plus envoyer le jeton vers un autre domaine.
 - **Specs non versionnées** (licence « e-Box » sans clause de redistribution), comme au §150 : réponses du faux serveur écrites
   à la main, conformes aux schémas ; [index des specs](https://dev.eboxenterprise.be/docs/spec/specifications),
   [audit trail ATREQ](https://dev.eboxenterprise.be/docs/dp/audit_trail/).
@@ -74,5 +88,6 @@ exclusive) ; accès d'une commune à Registered Mail 1.1 (spec destinée aux ins
 la spec 3.8) ou BOSA ; scope du jeton pour la fédération ; durée de conservation (10 ans à partir du 1er janvier suivant) et
 purge d'une table que la base interdit de toucher ; séparation du rôle de migration et du rôle applicatif (limite du journal) ; usage du NISS (autorisation, #13).
 
-**Impacte.** `docs/specs/06-connecteurs.md` (type `ebox-outbound`, lot 2), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (étape
-« Envoyer en eBox », lot 2), `docs/guides/GUIDE-UTILISATEUR.md` (écran du connecteur, lot 2).
+**Impacte.** `docs/specs/06-connecteurs.md` (type `ebox-outbound`), `docs/specs/49-digital-mail-room.md` (canal sortant),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (brique « Envoyer en eBox »), `docs/guides/GUIDE-UTILISATEUR.md` (type de connecteur,
+formulaire générique), `exemples/envoi-ebox/` (BPMN avec passerelle vers la voie de secours). Aucune variable d'environnement.

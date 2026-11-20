@@ -36,7 +36,7 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Q8. Clé du HMAC du NISS dérivée de la clé maîtresse des connecteurs : une rotation de cette clé coupe la comparaison avec les lignes anciennes. | a) clé maîtresse (fait) ; b) clé dédiée `APP_EBOX_AUDIT_HASH_KEY` | a tant que la rotation n'est pas outillée ; la version `SSIN_HMAC_V1` permet de passer à b | hypothèse |
 | Q9. Autorisation d'usage du NISS pour cibler un citoyen (même sujet que CSAM, archive #210) | — | prérequis juridique avant toute mise en production de la voie citoyen | ouverte (#13) |
 | Q10. Le rôle applicatif possède `ebox_send_audit` et peut désactiver ses déclencheurs (revue M1). Séparer un rôle de migration ? | a) limite documentée (fait) ; b) rôle de migration propriétaire, rôle applicatif en `INSERT`/`SELECT` sur le journal ; c) b pour toutes les tables | b ou c avant la validation BOSA ; touche `provision-tenant.sh`, Liquibase (datasource dédiée) et le déploiement | ouverte (Benoit) |
-| Q11. `allowedHostSuffixes` de l'instance `ebox-outbound` est réglé par l'administrateur du tenant (revue B3) : un admin pourrait envoyer le jeton ailleurs. | a) laisser (fait, comme §150) ; b) liste fixée par la plateforme ; c) intersection plateforme ∩ tenant | c au lot 2, avec l'écran du connecteur | ouverte |
+| Q11. `allowedHostSuffixes` de l'instance `ebox-outbound` est réglé par l'administrateur du tenant (revue B3) : un admin pourrait envoyer le jeton ailleurs. | a) laisser (fait, comme §150) ; b) liste fixée par la plateforme ; c) intersection plateforme ∩ tenant | c au lot 2, avec l'écran du connecteur | hypothèse (c, plafond fixé dans le code : `EboxOutboundSettings.PLATFORM_SUFFIXES`) → §155 D-EBOX-SEND-BLOCK, à confirmer (Benoit) |
 
 ## Conception
 
@@ -67,11 +67,30 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1 | Modèle commun + extension citoyen, port et cas d'usage d'envoi, voie entreprise contre faux serveur (publication, recommandé et preuve, préférence eBox), stub citoyen, consentement et voie de secours, journal d'audit en ajout seul | livré (branche `feat/ebox-envoi`, non poussée) | — |
-| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, écran admin, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape, variables `eboxIssue`, `eboxVoieSecours`, `eboxMessageId`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process | à faire | — |
+| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, formulaire admin générique, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape+document, variables `eboxIssue`, `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process (`EboxSendIT`) | livré (branche `feat/ebox-envoi-lot2`, non poussée) | — |
 | 3 | Selon les réponses : `nonQualifiedRegisteredMail` (Q2), paiement entreprise (Q4), voie citoyen Smals (Q5), consultation du journal (export pour BOSA, rôle `TENANT_ADMIN`, ATREQ03) | à faire | — |
 | 4 | Adaptateur citoyen BOSA réel (après NDA), recette en acceptation | bloqué (accès) | — |
 
-Prochaine action : réponses de Benoit à Q1 à Q5, puis lot 2.
+Prochaine action : revue indépendante du lot 2 ; réponses de Benoit à Q1 à Q5 et Q11, puis lot 3.
+
+### Défauts prudents du lot 2 (aucune question ouverte tranchée, à confirmer)
+
+- **Q11** : plafond de domaines fixé par la plateforme (`socialsecurity.be`, `fgov.be`, `belgium.be`), la liste du tenant ne
+  fait que le restreindre (option c, sans variable d'environnement). Lever le plafond demande un changement de code.
+- **Q1 (H1)** inchangée : une entreprise non exclusive reçoit l'eBox et `eboxSecoursRequis` vaut `true` (copie).
+- **Q2, Q3** : la brique expose `eboxEnvoiRecommande` (Registered Mail 1.1, sans mandat) ; sans `registeredMailUrl`, refus.
+- **Q4** : ni paiement ni corps ni annexes dans la brique (le PDF principal porte le contenu) ; le modèle les garde.
+- **Q5** : la voie citoyen n'a aucun réglage par instance (stub global, `NO_CONSENT` par défaut).
+- **Issue incertaine** : aucune variable posée, l'étape échoue (incident rejouable, même clé), conforme à
+  D-EBOX-SEND-IDEMPOTENCE ; la brique est toujours asynchrone (exigé au déploiement).
+- **Document** : seulement un `PRODUCED_DOC` PDF du dossier de l'étape (pas une pièce déposée), comme signature et e-mail.
+- **Clé** : le destinataire n'entre pas dans la clé (pas de NISS retrouvable) ; même étape, même document, autre destinataire :
+  refus, pas de second envoi.
+- **Appel direct** : le connecteur refuse l'API d'administration, l'API M2M et `connectorInput` (seule une requête construite
+  par le BPMN passe).
+- **Variables réservées** : les six variables de résultat (une complétion ne peut pas simuler un envoi) ; paramètres préfixés
+  `eboxEnvoi*` pour ne pas se confondre avec les variables `ebox*` d'un message reçu (`eboxObjet`, `eboxRecommande`…).
+- **Preuve de dépôt** : pièce `ATTACHMENT` JSON non classée (« Preuve de dépôt eBox — <étape> »).
 
 ## Preuves
 

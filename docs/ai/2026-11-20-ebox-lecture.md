@@ -19,6 +19,8 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
   - un message = un courrier : métadonnées natives (expéditeur BCE, application, type, objet, dates de réception et
     d'expiration, recommandé, action requise, `isReplyAuthorized`) en variables et champs, pièces jointes importées et
     passées à l'antivirus par `ConnectorTriggerRuntime` ;
+  - lecture limitée aux partitions dédiées à Myrmacta (Q1) : liste de partitions **obligatoire** dans la configuration de
+    l'instance, chaque appel filtré par `recipientPartition` ; le reste de l'eBox n'est jamais lu ni marqué comme lu ;
   - journal des messages traités par instance (identifiant de registre + `messageId`) : pas de double traitement ;
   - étape BPMN « Marquer l'action comme faite » (`PATCH /ebox/messages/{id}/messageActions/{actionId}`) ;
   - faux serveur eBox pour les tests et la démo de l'exemple `digital-mail-room`.
@@ -36,6 +38,8 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
   5. Le jeton OAuth est demandé par `client_assertion` signée ; aucun secret n'apparaît dans les journaux.
   6. L'étape « Marquer l'action comme faite » appelle le PATCH ; une erreur de l'eBox crée un incident rejouable.
   7. Isolation : l'instance d'un tenant ne lit qu'avec les identifiants de ce tenant.
+  8. Une instance sans partition configurée est refusée à l'enregistrement ; un message hors des partitions configurées
+     n'est jamais demandé au serveur (vérifié sur le faux serveur).
 - Contraintes : stack figée (aucune nouvelle dépendance d'exécution ; WireMock en test seulement si besoin) ; un schéma par
   tenant ; persistance JPA (§122) ; secrets chiffrés au repos (`ConnectorSecretCipher`) ; anti-SSRF des URL de registre
   (`PinnedHttpClient`) ; exposition MCP : aucune nouvelle, le courrier se cherche déjà par `search_dossiers` ;
@@ -46,7 +50,7 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
 
 | Question | Options | Recommandation | Statut |
 |---|---|---|---|
-| Q1. Télécharger la pièce principale marque le message comme lu dans l'eBox (spec 3.8, `isRead`). Les agents qui suivent encore l'eBox sur le portail perdent ce repère. | A. Accepter : Myrmacta devient le point d'entrée, filtre facultatif sur des partitions. B. Ne lire que les métadonnées et télécharger à la demande (risque de perte à l'expiration). C. Ne lire que des partitions dédiées à Myrmacta. | A, avec un filtre facultatif `recipientPartition` dans la configuration (qui couvre C) | ouverte (posée à Benoit) |
+| Q1. Télécharger la pièce principale marque le message comme lu dans l'eBox (spec 3.8, `isRead`). Les agents qui suivent encore l'eBox sur le portail perdent ce repère. | A. Accepter : Myrmacta devient le point d'entrée, filtre facultatif sur des partitions. B. Ne lire que les métadonnées et télécharger à la demande (risque de perte à l'expiration). C. Ne lire que des partitions dédiées à Myrmacta. | A, avec un filtre facultatif `recipientPartition` dans la configuration (qui couvre C) | tranchée par Benoit le 2026-11-20 : **C**, partitions dédiées obligatoires (point du registre à créer à la conception) |
 | Q2. Licence des specs (« e-Box », digitalbelgium.be, sans clause de redistribution) | A. Committer les YAML. B. Garder les liens versionnés, écrire des stubs JSON à la main, et un test de contrat facultatif qui télécharge les YAML. | B | hypothèse |
 | Q3. Fenêtre d'interrogation : l'API filtre `receivedAfter` au jour près | A. Relire depuis J-1 de la dernière lecture réussie, dédoublonner par le journal. B. Ne lire que les non lus (`read=false`). | A (B casse dès qu'un agent ouvre un message sur le portail) | hypothèse |
 | Q4. Faux serveur de démo | A. Conteneur WireMock dans le compose de l'exemple, avec des fichiers de mappings. B. Contrôleur dans l'application sous un profil `demo`. | A (rien dans l'application livrée) | hypothèse |
@@ -74,7 +78,9 @@ Issue : #12 (parent #14) · Spec du domaine : docs/specs/49-digital-mail-room.md
 | 1 | Lecture de bout en bout contre le faux serveur | à faire | |
 | 2 | Partitions et accusés des recommandés | à faire | |
 
-Prochaine action : obtenir la réponse à Q1 et la validation du cadrage, puis concevoir le lot 1.
+Prochaine action : validation du cadrage par Benoit, puis conception du lot 1. Le lot 2 (partition management 3.0)
+pourra créer la partition dédiée et ses règles de routage depuis Myrmacta ; en lot 1, l'administrateur la crée sur le
+portail eBox.
 
 ## Preuves
 

@@ -8,33 +8,12 @@ import be.myrmacta.domain.connector.model.ConnectorDefinition;
 import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.ServiceConnector;
-import be.myrmacta.domain.document.port.out.DocumentStoragePort;
-import be.myrmacta.domain.dossier.model.DossierElement;
-import be.myrmacta.domain.dossier.model.ElementType;
-import be.myrmacta.domain.dossier.port.out.DossierElementRepository;
-import be.myrmacta.domain.ebox.model.EboxDocument;
-import be.myrmacta.domain.ebox.model.EboxLanguage;
-import be.myrmacta.domain.ebox.model.EboxOutgoingMessage;
-import be.myrmacta.domain.ebox.model.EboxRecipient;
-import be.myrmacta.domain.ebox.model.EboxSendAuditEntry.Outcome;
-import be.myrmacta.domain.ebox.model.EboxSendOutcome;
-import be.myrmacta.domain.ebox.model.EboxSenderAccount;
-import be.myrmacta.domain.ebox.model.FallbackChannel;
-import be.myrmacta.domain.ebox.model.SendEboxCommand;
 import be.myrmacta.domain.ebox.port.in.SendEboxMessageUseCase;
 import be.myrmacta.infrastructure.notification.OutboundUrlGuard;
-import java.nio.charset.StandardCharsets;
-import java.text.Normalizer;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,10 +21,11 @@ import org.springframework.stereotype.Component;
  * publication, de la fédération et du recommandé, mandat, client OAuth v5 et clé du certificat, chiffrée au repos). La
  * configuration est celle que lit {@link EboxOutboundSettings} à l'envoi, contrôlée ici à l'enregistrement par les mêmes règles.
  *
- * <p>Côté SERVICE, une seule opération : envoyer la pièce principale d'un dossier par {@link SendEboxMessageUseCase}. Elle n'est
- * ouverte qu'à une étape de process dont la requête est construite par le BPMN déployé (brique « Envoyer en eBox ») : ni l'API
- * d'administration, ni l'API M2M, ni une variable {@code connectorInput} posée par un utilisateur n'envoient un message. Le
- * document doit être un document produit ({@code PRODUCED_DOC}) du dossier de l'étape, et un PDF.
+ * <p>Ce connecteur n'envoie rien lui-même (revue H1, D-EBOX-SEND-BLOCK) : tout appel est refusé, qu'il vienne de l'API
+ * d'administration, de l'API M2M ou d'une étape « Appeler un connecteur », même avec une requête littérale du BPMN. Seule la
+ * brique « Envoyer en eBox » ({@code eboxSendTask}) envoie, en appelant {@link SendEboxMessageUseCase} avec cette instance comme
+ * compte expéditeur. Au déploiement, la source de référence {@code connectorInstances} n'offre pas ce type : une étape
+ * {@code connectorServiceTask} qui le vise est refusée ; la brique le choisit par la source {@code eboxSenders}.
  *
  * <p>La voie citoyen n'a pas encore de réglage par instance : l'API de l'eBox citoyen n'est pas connue (stub,
  * D-EBOX-SEND-CITIZEN-STUB) ; ses champs s'ajouteront avec le vrai adaptateur.
@@ -54,22 +34,11 @@ import org.springframework.stereotype.Component;
 public class EboxOutboundConnector implements ConnectorDefinition, ServiceConnector {
 
     static final String TYPE = EboxOutboundSettings.TYPE;
-    static final String PDF = "application/pdf";
-    private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
-    private static final Pattern NOT_ALLOWED = Pattern.compile("[^\\p{L}\\p{N} ._()'-]");
-    private static final int MAX_FILE_NAME = 100;
-    private static final Logger log = LoggerFactory.getLogger(EboxOutboundConnector.class);
+    static final String REFUSED = TYPE + ": this connector never sends by itself; use the « Envoyer en eBox » process step";
 
-    private final SendEboxMessageUseCase send;
-    private final DossierElementRepository elements;
-    private final DocumentStoragePort storage;
     private final OutboundUrlGuard guard;
 
-    public EboxOutboundConnector(SendEboxMessageUseCase send, DossierElementRepository elements, DocumentStoragePort storage,
-            OutboundUrlGuard guard) {
-        this.send = Objects.requireNonNull(send, "send");
-        this.elements = Objects.requireNonNull(elements, "elements");
-        this.storage = Objects.requireNonNull(storage, "storage");
+    public EboxOutboundConnector(OutboundUrlGuard guard) {
         this.guard = Objects.requireNonNull(guard, "guard");
     }
 
@@ -134,100 +103,17 @@ public class EboxOutboundConnector implements ConnectorDefinition, ServiceConnec
         OAuth2ConfigSupport.validate(oauth, guard);
     }
 
-    @Override
-    public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input) {
-        throw new IllegalArgumentException(TYPE + ": sending is only available from the « Envoyer en eBox » process step");
-    }
-
     /**
-     * Envoie le document et rend les variables de process de la brique (voir {@code EboxSendDelegate}). Une issue incertaine
-     * ({@link be.myrmacta.domain.ebox.model.EboxSendUncertainException}) ou un refus remonte : l'étape échoue et se rejoue avec la
-     * même clé d'idempotence.
+     * Revue H1 : refuse tout appel, y compris d'une étape de process dont la requête est construite par le BPMN déployé. Seule
+     * la brique « Envoyer en eBox » envoie, en appelant {@link SendEboxMessageUseCase} elle-même.
      */
     @Override
+    public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input) {
+        throw new IllegalArgumentException(REFUSED);
+    }
+
+    @Override
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input, ConnectorCallContext context) {
-        Objects.requireNonNull(instance, "instance");
-        if (context == null || !context.fromProcess() || !context.requestBuiltByProcess() || context.dossierId() == null) {
-            return execute(instance, input);
-        }
-        Map<String, Object> params = input == null ? Map.of() : input;
-        UUID dossierId = context.dossierId();
-        EboxRecipient recipient = switch (text(params, "recipientType")) {
-            case "ENTREPRISE" -> new EboxRecipient.Enterprise(text(params, "recipient"));
-            case "CITOYEN" -> new EboxRecipient.Citizen(text(params, "recipient"));
-            default -> throw new IllegalArgumentException(TYPE + ": recipientType must be ENTREPRISE or CITOYEN");
-        };
-        FallbackChannel fallback = switch (text(params, "fallbackChannel")) {
-            case "PAPER" -> FallbackChannel.PAPER;
-            case "EMAIL" -> FallbackChannel.EMAIL;
-            default -> throw new IllegalArgumentException(TYPE + ": fallbackChannel must be PAPER or EMAIL");
-        };
-        EboxOutgoingMessage message = EboxOutgoingMessage.builder(recipient, text(params, "senderApplicationId"),
-                        text(params, "messageTypeId"), EboxLanguage.of(text(params, "language")), text(params, "subject"))
-                .document(document(instance.tenantId(), dossierId, text(params, "documentRef")))
-                .registered(Boolean.TRUE.equals(params.get("registered")))
-                .build();
-        EboxSendOutcome outcome = send.send(new SendEboxCommand(new EboxSenderAccount(instance.id()), message,
-                text(params, "idempotencyKey"), dossierId, fallback));
-        log.info("{}: instance {} sent dossier {} through the {} route: {}", TYPE, instance.id(), dossierId, message.route(),
-                outcome.outcome());
-        return variables(outcome);
-    }
-
-    /** Variables de process documentées (GUIDE-CONCEPTION-BPMN, brique « Envoyer en eBox »). */
-    static Map<String, Object> variables(EboxSendOutcome outcome) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("eboxIssue", switch (outcome.outcome()) {
-            case PUBLISHED -> "ENVOYE";
-            case DUPLICATE -> "DEJA_ENVOYE";
-            case FALLBACK -> "VOIE_SECOURS";
-            case UNCERTAIN -> throw new IllegalStateException("an uncertain eBox outcome is never returned to the process");
-        });
-        result.put("eboxLivraison", outcome.delivery().name());
-        result.put("eboxSecoursRequis", outcome.delivery().needsFallback());
-        result.put("eboxVoieSecours", outcome.fallbackChannel() == null ? "" : outcome.fallbackChannel().name());
-        result.put("eboxEnvoiMessageId", outcome.providerMessageId() == null ? "" : outcome.providerMessageId());
-        result.put("eboxEnvoiRejoue", outcome.replayed());
-        if (outcome.proof() != null) {
-            result.put("eboxPreuveDepot", outcome.proof().json());
-        }
-        return result;
-    }
-
-    /** Pièce principale : un document produit de ce dossier, en PDF. Les messages ne citent jamais la référence. */
-    private EboxDocument document(String tenantId, UUID dossierId, String ref) {
-        DossierElement element = elements.findByDossierIdOrderByAddedAtAsc(dossierId).stream()
-                .filter(e -> e.type() == ElementType.PRODUCED_DOC && ref.equals(e.storageRef()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(TYPE + ": the document is not a produced document of this dossier "
-                        + "(generate it, then attach it to the dossier first)"));
-        byte[] content;
-        try {
-            content = storage.retrieve(tenantId, ref);
-        } catch (RuntimeException unreadable) {
-            throw new IllegalStateException(TYPE + ": the document could not be read");
-        }
-        if (content == null || content.length < PDF_MAGIC.length
-                || !Arrays.equals(Arrays.copyOf(content, PDF_MAGIC.length), PDF_MAGIC)) {
-            throw new IllegalArgumentException(TYPE + ": the document is not a PDF");
-        }
-        return new EboxDocument(fileName(element.label()), PDF, content, true);
-    }
-
-    static String fileName(String label) {
-        String nfc = Normalizer.normalize(label == null ? "" : label.strip(), Normalizer.Form.NFC);
-        String name = NOT_ALLOWED.matcher(nfc).replaceAll("_").replaceFirst("^[. ]+", "");
-        if (name.codePointCount(0, name.length()) > MAX_FILE_NAME) {
-            name = name.substring(0, name.offsetByCodePoints(0, MAX_FILE_NAME)).strip();
-        }
-        if (name.isEmpty()) {
-            name = "document";
-        }
-        return name.toLowerCase(java.util.Locale.ROOT).endsWith(".pdf") ? name : name + ".pdf";
-    }
-
-    private static String text(Map<String, Object> params, String key) {
-        Object value = params.get(key);
-        return value == null ? "" : String.valueOf(value).strip();
+        throw new IllegalArgumentException(REFUSED);
     }
 }

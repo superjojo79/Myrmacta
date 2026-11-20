@@ -205,10 +205,17 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
      * même clé d'idempotence.
      */
     private static void assertEboxSendAsynchronous(FlowElement element) {
-        if ("eboxSendTask".equals(blockDelegate(element))
-                && (!(element instanceof ServiceTask serviceTask) || !serviceTask.isAsynchronous())) {
+        if (!"eboxSendTask".equals(blockDelegate(element))) {
+            return;
+        }
+        if (!(element instanceof ServiceTask serviceTask) || !serviceTask.isAsynchronous()) {
             throw new InvalidBpmnException("BPMN activity " + element.getId()
                     + ": the eBox send block must be asynchronous (flowable:async=\"true\")");
+        }
+        // Revue H2 : multi-instance, ses variables iraient au process et la passerelle ne verrait que le dernier tour.
+        if (serviceTask.getLoopCharacteristics() != null) {
+            throw new InvalidBpmnException("BPMN activity " + element.getId() + ": the eBox send block must not be multi-instance; "
+                    + "loop with a multi-instance sub-process that holds the block and its gateway");
         }
     }
 

@@ -134,6 +134,18 @@ class FlowableBpmnParserAdapterBlockTest {
         assertRefused(asynchronous.replace(" flowable:async=\"true\"", ""), "must be asynchronous");
     }
 
+    /**
+     * TODO §155 (revue H2) — une brique multi-instance poserait ses variables au niveau du process : la passerelle ne verrait que le
+     * dernier tour. La boucle se fait par un sous-processus multi-instance, passerelle à l'intérieur.
+     */
+    @Test
+    void theEboxSendBlockIsNeverMultiInstanceItself() {
+        String element = sampleXml(BuildingBlockCatalog.byId("ebox-send").orElseThrow()).replace("</serviceTask>",
+                "<multiInstanceLoopCharacteristics isSequential=\"true\"><loopCardinality>2</loopCardinality>"
+                        + "</multiInstanceLoopCharacteristics></serviceTask>");
+        assertRefused(element, "multi-instance");
+    }
+
     /** Issue #19 (CS5, TODO §123) — vrai parseur : un gabarit exclut objet et corps, exige EMAIL seul et un destinataire. */
     @Test
     void aNotificationTemplateIsAcceptedOnlyWithEmailAloneAndNoLiteralText() {

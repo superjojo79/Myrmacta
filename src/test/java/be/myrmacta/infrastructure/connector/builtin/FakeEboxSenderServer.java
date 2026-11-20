@@ -22,21 +22,22 @@ import tools.jackson.databind.json.JsonMapper;
  * TODO §155 — faux serveur d'envoi eBox Enterprise en boucle locale : jeton OAuth v5 (assertion exigée, scope noté),
  * e-Box Federation 1.4 ({@code eboxPreferences/search}), publication e-Box REST 3.8 ({@code POST /ebox/messages}, 409 sur une clé
  * d'idempotence déjà vue, comme la spec l'annonce) et Registered Mail 1.1 (recommandé, preuve de dépôt). Les réponses suivent les
- * schémas publics (specs non versionnées, licence sans redistribution).
+ * schémas publics (specs non versionnées, licence sans redistribution). Public : les tests du moteur (brique « Envoyer en
+ * eBox ») s'en servent aussi.
  */
-final class FakeEboxSenderServer implements AutoCloseable {
+public final class FakeEboxSenderServer implements AutoCloseable {
 
     /** Une requête reçue, corps compris (lu en ISO-8859-1 pour garder les octets). */
-    record Received(String method, String path, String query, Map<String, String> headers, String body) {}
+    public record Received(String method, String path, String query, Map<String, String> headers, String body) {}
 
     private static final ObjectMapper JSON = JsonMapper.builder().build();
     private static final Pattern CUSTOMER_REFERENCE = Pattern.compile("\"customerReference\":\"([^\"]+)\"");
 
     private final HttpServer server;
-    final List<Received> requests = new CopyOnWriteArrayList<>();
+    public final List<Received> requests = new CopyOnWriteArrayList<>();
     final List<String> scopes = new CopyOnWriteArrayList<>();
     /** BCE connus de la fédération et leur préférence {@code exclusivelyEbox}. */
-    final Map<String, Boolean> preferences = new ConcurrentHashMap<>();
+    public final Map<String, Boolean> preferences = new ConcurrentHashMap<>();
     private final Set<String> seenKeys = ConcurrentHashMap.newKeySet();
     private final Map<String, String> proofs = new ConcurrentHashMap<>();
     /** Statut imposé au prochain {@code POST /ebox/messages} (0 : comportement normal). */
@@ -54,7 +55,7 @@ final class FakeEboxSenderServer implements AutoCloseable {
     private int published;
     private int tokens;
 
-    FakeEboxSenderServer() throws IOException {
+    public FakeEboxSenderServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", this::handle);
         server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(4));
@@ -65,23 +66,23 @@ final class FakeEboxSenderServer implements AutoCloseable {
         return "http://localhost:" + server.getAddress().getPort();
     }
 
-    String tokenUrl() {
+    public String tokenUrl() {
         return base() + "/REST/oauth/v5/token";
     }
 
-    String publicationUrl() {
+    public String publicationUrl() {
         return base() + "/REST/ebox/enterprise/messageRegistry/v3";
     }
 
-    String federationUrl() {
+    public String federationUrl() {
         return base() + "/REST/ebox/enterprise/federation/v1";
     }
 
-    String registeredMailUrl() {
+    public String registeredMailUrl() {
         return base() + "/REST/registeredMail/v1";
     }
 
-    List<Received> requestsTo(String pathSuffix) {
+    public List<Received> requestsTo(String pathSuffix) {
         return requests.stream().filter(r -> r.path().endsWith(pathSuffix)).toList();
     }
 

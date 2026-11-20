@@ -5,8 +5,8 @@
 
   <!--
     TODO §155 (lot 2) : « Envoyer en eBox » sur le moteur réel, vers un citoyen (voie citoyen simulée, sans consentement par
-    défaut). Synchrone ici pour que le test lise l'issue sans attendre l'exécuteur ; la palette et le déploiement Myrmacta
-    l'exigent asynchrone. L'instance de connecteur est remplacée par le test (__INSTANCE__).
+    défaut). Asynchrone comme la palette et le déploiement l'exigent (revue M1) : le test exécute le job lui-même. L'instance de
+    connecteur est remplacée par le test (__INSTANCE__).
   -->
   <process id="eboxSend" name="Envoi eBox" isExecutable="true">
     <startEvent id="esStart"/>
@@ -15,7 +15,7 @@
     <sequenceFlow id="esFlow2" sourceRef="esWait" targetRef="esAttach"/>
     <serviceTask id="esAttach" name="Joindre la décision" flowable:delegateExpression="${attachGeneratedDocumentTask}"/>
     <sequenceFlow id="esFlow3" sourceRef="esAttach" targetRef="esSend"/>
-    <serviceTask id="esSend" name="Envoyer en eBox"
+    <serviceTask id="esSend" name="Envoyer en eBox" flowable:async="true"
                  flowable:delegateExpression="${eboxSendTask}"
                  flowable:connectorInstanceId="__INSTANCE__"
                  flowable:eboxEnvoiTypeDestinataire="CITOYEN"

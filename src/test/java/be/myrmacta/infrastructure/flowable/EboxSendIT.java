@@ -11,6 +11,7 @@ import be.myrmacta.domain.dossier.port.out.DossierRepository;
 import be.myrmacta.domain.ebox.model.EboxRecipient;
 import be.myrmacta.domain.ebox.model.EboxSendAuditEntry;
 import be.myrmacta.domain.ebox.port.out.EboxSendAuditTrail;
+import be.myrmacta.infrastructure.ebox.EboxRecipientHmac;
 import be.myrmacta.support.OidcClientTestConfiguration;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -31,9 +33,9 @@ import org.springframework.context.annotation.Import;
 /**
  * TODO §155 (lot 2) — chaîne complète de la brique « Envoyer en eBox » : délégué, connecteur {@code ebox-outbound}, cas d'usage,
  * voie citoyen simulée (sans consentement par défaut), journal d'audit PostgreSQL, passerelle vers la voie de secours, rejeu de
- * l'étape sans second envoi.
+ * l'étape sans second envoi. L'étape est asynchrone (revue M1) : le test exécute son job.
  */
-@SpringBootTest
+@SpringBootTest(properties = "flowable.async-executor-activate=false")
 @Import(OidcClientTestConfiguration.class)
 class EboxSendIT {
 
@@ -44,6 +46,8 @@ class EboxSendIT {
     @Autowired private RepositoryService repositoryService;
     @Autowired private RuntimeService runtimeService;
     @Autowired private TaskService taskService;
+    @Autowired private ManagementService managementService;
+    @Autowired private EboxRecipientHmac recipients;
     @Autowired private DossierRepository dossiers;
     @Autowired private DocumentStoragePort storage;
     @Autowired private ConnectorInstanceRepository instances;
@@ -82,7 +86,8 @@ class EboxSendIT {
         assertThat(variables).containsEntry("eboxIssue", "VOIE_SECOURS").containsEntry("eboxLivraison", "FALLBACK")
                 .containsEntry("eboxSecoursRequis", true).containsEntry("eboxVoieSecours", "EMAIL")
                 .containsEntry("eboxEnvoiMessageId", "").containsEntry("eboxEnvoiRejoue", false);
-        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "esSend", ref, null);
+        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "esSend", ref, null,
+                recipients.citizen(TENANT, NISS));
         EboxSendAuditEntry.Summary logged = audit.last(TENANT, key, new EboxRecipient.Citizen(NISS)).orElseThrow();
         assertThat(logged.outcome()).isEqualTo(EboxSendAuditEntry.Outcome.FALLBACK);
 
@@ -96,6 +101,8 @@ class EboxSendIT {
         String pi = runtimeService.startProcessInstanceByKey("eboxSend",
                 Map.of("dossierId", dossier.id().toString(), "generatedDocumentId", ref)).getId();
         taskService.complete(taskService.createTaskQuery().processInstanceId(pi).taskDefinitionKey("esWait").singleResult().getId());
+        assertThat(taskService.createTaskQuery().processInstanceId(pi).count()).as("the send step waits for its job").isZero();
+        managementService.executeJob(managementService.createJobQuery().processInstanceId(pi).singleResult().getId());
         return pi;
     }
 }

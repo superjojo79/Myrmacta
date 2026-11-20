@@ -15,10 +15,10 @@ class BuildingBlockCatalogTest {
     private final List<BuildingBlock> blocks = BuildingBlockCatalog.all();
 
     @Test
-    void containsTheEighteenBlocksWithUniqueIds() {
+    void containsTheNineteenBlocksWithUniqueIds() {
         assertThat(blocks).extracting(BuildingBlock::id).containsExactly(
                 "generate-document", "attach-document", "call-connector", "notify", "create-child-dossier",
-                "route-mail", "attach-to-thread", "compute-deadline", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
+                "route-mail", "attach-to-thread", "ebox-action-done", "compute-deadline", "set-dossier-status", "set-workflow-status", "dmn-decision", "evaluate-expression", "map-fields", "search-dossiers",
                 "ai-precheck", "user-question",
                 "external-task", "request-signature");
         assertThat(new HashSet<>(blocks.stream().map(BuildingBlock::id).toList())).hasSize(blocks.size());
@@ -93,7 +93,7 @@ class BuildingBlockCatalogTest {
         assertThat(request.required()).isFalse();
         assertThat(request.multiline()).isTrue();
         assertThat(request.maxLength()).isEqualTo(2000);
-        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(7);
+        assertThat(BuildingBlockCatalog.VERSION).isEqualTo(8);
     }
 
     @Test
@@ -112,6 +112,7 @@ class BuildingBlockCatalogTest {
         assertThat(required("external-task")).containsExactly("portalRecipient", "schemaKey");
         assertThat(required("request-signature")).containsExactly("signatureDocument", "signers");
         assertThat(required("attach-document")).isEmpty();
+        assertThat(required("ebox-action-done")).containsExactly("connectorInstanceId");
     }
 
     @Test

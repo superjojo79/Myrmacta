@@ -33,7 +33,9 @@ public final class AllowedBpmnDelegates {
             // TODO §113 (issue #217, lot 2b) : bloc « Router le courrier » (décision DMN → dossier métier lié ou file de tri).
             "routeMailTask",
             // TODO §113 (issue #217, lot 3a) : bloc « Rattacher au fil » (réponse à un e-mail connu → dossier du fil).
-            "attachToThreadTask");
+            "attachToThreadTask",
+            // TODO §150 (D-EBOX-ACTION) : bloc « Marquer l'action eBox comme faite » (PATCH de l'action d'un message reçu).
+            "eboxActionDoneTask");
 
     private AllowedBpmnDelegates() {}
 

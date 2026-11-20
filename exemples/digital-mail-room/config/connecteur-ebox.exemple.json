@@ -1,0 +1,33 @@
+{
+  "_commentaire": "Exemple NON créé sur l'instance (§150). Lit les partitions de l'eBox Enterprise de la commune qui sont dédiées à Myrmacta (créer la partition « myrmacta » et ses règles de routage sur le portail eBox) ; le reste de l'eBox n'est jamais consulté. Chaque message devient un courrier (canal EBOX) qui suit le même tri que l'e-mail. Renseigner le numéro BCE, le client OAuth v5 obtenu à l'onboarding Document Consumer (ONSS), la clé privée du certificat (PEM PKCS#8) et son empreinte. onBehalfOf=true si Myrmacta lit pour la commune en prestataire technique (mandat Mahis).",
+  "name": "eBox Enterprise de la commune",
+  "connectorType": "ebox-inbound",
+  "enabled": true,
+  "config": {
+    "enterpriseNumber": "0212345678",
+    "onBehalfOf": false,
+    "partitions": "myrmacta",
+    "registryUrl": "https://services.socialsecurity.be/REST/ebox/enterprise/federation/documentProviderRegistry/v1",
+    "allowedHostSuffixes": "socialsecurity.be,fgov.be,belgium.be",
+    "initialLookbackDays": 14,
+    "language": "fr",
+    "pollSeconds": 900,
+    "oauthTokenUrl": "https://services.socialsecurity.be/REST/oauth/v5/token",
+    "oauthClientId": "<client OAuth v5>",
+    "oauthPrivateKey": "<clé privée PEM PKCS#8>",
+    "oauthCertThumbprint": "<empreinte SHA-256 du certificat>",
+    "oauthScope": "scope:document:management:consult:ws-eboxrestentreprise:documentconsumer",
+    "processKey": "triCourrier",
+    "dossierTypeCode": "COURRIER",
+    "mapping": {
+      "fields": {
+        "expediteur": "$.expediteur",
+        "objet": "$.objet",
+        "texte": "$.corps"
+      }
+    },
+    "defaultFields": {
+      "canal": "EBOX"
+    }
+  }
+}

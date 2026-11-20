@@ -172,10 +172,12 @@ public final class PinnedHttpClient {
 
     /**
      * TODO §150 (D-EBOX-ACTION) — même appel borné pour une méthode avec corps ({@code PATCH} d'une action eBox). Seul un 200
-     * rend un corps ; un 204 revient avec un corps vide.
+     * rend un corps ; un 204 revient avec un corps vide. TODO §155 (D-EBOX-SEND-IDEMPOTENCE) : une méthode avec corps lit aussi
+     * celui d'un 201 (publication eBox, {@code PublicationStatusMessage}).
      */
     public static Fetched exchange(String method, String url, InetAddress pin, Map<String, String> headers, byte[] body,
             Duration connect, Duration socketRead, Duration total, long maxBytes) throws IOException {
+        boolean readCreated = body != null;
         long deadline = System.nanoTime() + total.toNanos();
         ClassicRequestBuilder builder = ClassicRequestBuilder.create(method).setUri(url);
         headers.forEach(builder::setHeader);
@@ -192,7 +194,7 @@ public final class PinnedHttpClient {
                 client.close(CloseMode.IMMEDIATE);
             }, total.toMillis(), TimeUnit.MILLISECONDS);
             try {
-                return read(client, request, maxBytes, deadline);
+                return read(client, request, maxBytes, deadline, readCreated);
             } catch (IOException | RuntimeException failure) {
                 if (expired.get()) {
                     throw new IOException("timed out");
@@ -204,15 +206,16 @@ public final class PinnedHttpClient {
         }
     }
 
-    private static Fetched read(CloseableHttpClient client, ClassicHttpRequest request, long maxBytes, long deadline)
-            throws IOException {
+    private static Fetched read(CloseableHttpClient client, ClassicHttpRequest request, long maxBytes, long deadline,
+            boolean readCreated) throws IOException {
         ClassicHttpResponse response = client.executeOpen(null, request, null);
         // Fermer un flux « chunked » ou à longueur fixe lit d'abord ce qui reste : sur un abandon, la connexion se
         // coupe tout de suite, sans quoi un serveur lent garde l'appel ouvert bien au-delà du délai.
         boolean complete = false;
         try {
             int status = response.getCode();
-            if (status != 200 || response.getEntity() == null) {
+            boolean readable = status == 200 || (readCreated && status == 201);
+            if (!readable || response.getEntity() == null) {
                 return new Fetched(status, new byte[0]);
             }
             if (response.getEntity().getContentLength() > maxBytes) {

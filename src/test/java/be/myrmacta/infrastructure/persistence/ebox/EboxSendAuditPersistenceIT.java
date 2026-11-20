@@ -43,6 +43,7 @@ class EboxSendAuditPersistenceIT {
     @Autowired private EboxSendAuditTrail audit;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SendEboxMessageUseCase sendEbox;
+    @Autowired private be.myrmacta.domain.ebox.port.out.EboxSendReservations reservations;
 
     @Test
     void theWiredUseCaseSendsACitizenThroughTheStub_whichFallsBackByDefault() {
@@ -98,6 +99,18 @@ class EboxSendAuditPersistenceIT {
         assertThat((String) row.get("recipient_ref")).matches("[0-9a-f]{64}");
         assertThat(audit.last(TENANT, key, citizen).orElseThrow().sameRecipient()).isTrue();
         assertThat(audit.last(TENANT, key, new EboxRecipient.Citizen("85073003427")).orElseThrow().sameRecipient()).isFalse();
+    }
+
+    @Test
+    void aRegisteredMailKeyIsReservedOncePerTenant_untilReleased() {
+        String key = "k-" + UUID.randomUUID();
+
+        assertThat(reservations.reserve(TENANT, key, Instant.now())).isTrue();
+        assertThat(reservations.reserve(TENANT, key, Instant.now())).isFalse();
+        assertThat(reservations.reserve("other_tenant", key, Instant.now())).isTrue();
+
+        reservations.release(TENANT, key);
+        assertThat(reservations.reserve(TENANT, key, Instant.now())).isTrue();
     }
 
     @Test

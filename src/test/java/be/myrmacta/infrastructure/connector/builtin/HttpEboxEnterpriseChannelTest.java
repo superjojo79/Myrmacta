@@ -21,6 +21,7 @@ import be.myrmacta.domain.ebox.model.EboxSenderAccount;
 import be.myrmacta.domain.ebox.model.FallbackChannel;
 import be.myrmacta.domain.ebox.model.SendEboxCommand;
 import be.myrmacta.domain.ebox.port.out.EboxSendAuditTrail;
+import be.myrmacta.domain.ebox.port.out.EboxSendReservations;
 import be.myrmacta.domain.ebox.usecase.SendEboxMessageUseCaseImpl;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.connector.builtin.FakeEboxSenderServer.Received;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -161,12 +163,44 @@ class HttpEboxEnterpriseChannelTest {
                 .containsEntry("authorization", "Bearer fake-send-token-1");
         assertThat(post.headers().get("content-type")).startsWith("multipart/form-data; boundary=myrmacta-");
         String body = new String(post.body().getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-        assertThat(body).contains("name=\"messageToPublish\"", "\"recipient\":{\"eboxType\":\"enterprise\",\"enterpriseNumber\":\"0212345678\"}",
-                "\"subject\":{\"nl\":\"Uw vergunning\"}", "\"bodyContent\":{\"nl\":\"Zie bijlage\"}", "\"isReplyAuthorized\":true",
-                "\"originalMessageId\":\"dossier-42:send-1\"", "\"httpPartName\":\"upfile1\"", "\"isMainContent\":true",
-                "\"digestMethod\":\"sha_256\"", "name=\"upfile1\"; filename=\"beslissing é.pdf\"",
-                "filename*=UTF-8''beslissing%20%C3%A9.pdf", "name=\"upfile2\"; filename=\"bijlage.pdf\"", "%PDF-1.7 décision");
-        assertThat(body).doesNotContain("\"nl\":null", "\"fr\"");
+        assertThat(body).contains("name=\"upfile1\"; filename=\"beslissing é.pdf\"", "filename*=UTF-8''beslissing%20%C3%A9.pdf",
+                "name=\"upfile2\"; filename=\"bijlage.pdf\"", "%PDF-1.7 décision");
+        // Comparaison de nœuds JSON, indépendante de l'ordre des clés.
+        JsonNode sent = jsonPart(body, "messageToPublish");
+        var json = JsonMapper.builder().build();
+        assertThat(sent.get("recipient")).isEqualTo(json.readTree("{\"enterpriseNumber\":\"0212345678\",\"eboxType\":\"enterprise\"}"));
+        assertThat(sent.get("subject")).isEqualTo(json.readTree("{\"nl\":\"Uw vergunning\"}"));
+        assertThat(sent.get("bodyContent")).isEqualTo(json.readTree("{\"nl\":\"Zie bijlage\"}"));
+        assertThat(sent.get("isBodyMainContent").asBoolean()).isFalse();
+        assertThat(sent.get("isReplyAuthorized").asBoolean()).isTrue();
+        assertThat(sent.get("originalMessageId").asString()).isEqualTo("dossier-42:send-1");
+        assertThat(sent.get("senderApplicationId").asString()).isEqualTo("myrmacta-commune");
+        assertThat(sent.get("messageTypeId").asString()).isEqualTo("decision");
+        JsonNode first = sent.get("attachments").get(0);
+        assertThat(first.get("httpPartName").asString()).isEqualTo("upfile1");
+        assertThat(first.get("isMainContent").asBoolean()).isTrue();
+        assertThat(first.get("digest").get("digestMethod").asString()).isEqualTo("sha_256");
+        assertThat(first.get("digest").get("digestValue").asString())
+                .isEqualTo(Base64.getUrlEncoder().withoutPadding().encodeToString(sha256(PDF)));
+        assertThat(sent.get("attachments").get(1).get("isMainContent").asBoolean()).isFalse();
+        assertThat(sent.has("fr")).isFalse();
+    }
+
+    /** Partie JSON {@code name} d'un corps multipart, lue en arbre. */
+    private static JsonNode jsonPart(String body, String name) {
+        String marker = "name=\"" + name + "\"\r\nContent-Type: application/json\r\n\r\n";
+        int start = body.indexOf(marker);
+        assertThat(start).as("part %s", name).isNotNegative();
+        int from = start + marker.length();
+        return JsonMapper.builder().build().readTree(body.substring(from, body.indexOf("\r\n--", from)));
+    }
+
+    private static byte[] sha256(byte[] bytes) {
+        try {
+            return java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     @Test
@@ -292,7 +326,19 @@ class HttpEboxEnterpriseChannelTest {
                 return entries.stream().filter(e -> e.idempotencyKey().equals(key)).reduce((a, b) -> b).map(e -> e.summary(recipient));
             }
         };
-        SendEboxMessageUseCaseImpl useCase = new SendEboxMessageUseCaseImpl(TENANT, List.of(channel), audit,
+        java.util.Set<String> reserved = new java.util.HashSet<>();
+        EboxSendReservations reservations = new EboxSendReservations() {
+            @Override
+            public boolean reserve(String tenantId, String key, Instant at) {
+                return reserved.add(key);
+            }
+
+            @Override
+            public void release(String tenantId, String key) {
+                reserved.remove(key);
+            }
+        };
+        SendEboxMessageUseCaseImpl useCase = new SendEboxMessageUseCaseImpl(TENANT, List.of(channel), audit, reservations,
                 Clock.fixed(Instant.parse("2026-11-20T12:00:00Z"), ZoneOffset.UTC));
         SendEboxCommand command = new SendEboxCommand(SENDER, message().build(), "k-flow", null, FallbackChannel.PAPER);
 
@@ -312,6 +358,76 @@ class HttpEboxEnterpriseChannelTest {
         assertThat(retried.outcome()).isEqualTo(Outcome.PUBLISHED);
         assertThat(entries).extracting(EboxSendAuditEntry::outcome)
                 .containsExactly(Outcome.PUBLISHED, Outcome.UNCERTAIN, Outcome.PUBLISHED);
+    }
+
+    @Test
+    void theJsonSentIsStable_whateverTheJvm() {
+        // Régression (CI PIT, JDK 25) : Map.of itère dans un ordre propre à chaque JVM ; le JSON doit suivre l'ordre déclaré.
+        channel.publish(TENANT, SENDER, message().build(), "k-order");
+
+        String body = new String(ebox.requestsTo("/ebox/messages").getFirst().body().getBytes(StandardCharsets.ISO_8859_1),
+                StandardCharsets.UTF_8);
+        assertThat(body).containsSubsequence("\"recipient\":{\"eboxType\":\"enterprise\",\"enterpriseNumber\":\"0212345678\"}",
+                "\"httpPartName\":\"upfile1\",\"isMainContent\":true,\"digest\":{\"digestMethod\":\"sha_256\",\"digestValue\":");
+        assertThat(body.indexOf("name=\"messageToPublish\"")).isLessThan(body.indexOf("name=\"upfile1\""));
+    }
+
+    @Test
+    void theMultipartBodyHasExactlyItsAnnouncedLength_andEachDocumentOnce() {
+        channel.publish(TENANT, SENDER, message().build(), "k-size");
+
+        Received post = ebox.requestsTo("/ebox/messages").getFirst();
+        byte[] raw = post.body().getBytes(StandardCharsets.ISO_8859_1);
+        assertThat(Integer.parseInt(post.headers().get("content-length"))).isEqualTo(raw.length);
+        String body = new String(raw, StandardCharsets.UTF_8);
+        assertThat(body.split("%PDF-1.7 décision", -1)).hasSize(2);
+        assertThat(body).endsWith("--\r\n");
+    }
+
+    @Test
+    void anAcceptedButUnusableAnswerIsUncertain() {
+        ebox.nextPublicationBody = "not json";
+        assertThat(channel.publish(TENANT, SENDER, message().build(), "k-b1a").status()).isEqualTo(EboxPublication.Status.UNCERTAIN);
+
+        ebox.nextPublicationBody = "{\"messageId\":\"" + "x".repeat(201) + "\"}";
+        EboxPublication tooLong = channel.publish(TENANT, SENDER, message().build(), "k-b1b");
+        assertThat(tooLong.status()).isEqualTo(EboxPublication.Status.UNCERTAIN);
+        assertThat(tooLong.responseCode()).isEqualTo(201);
+
+        ebox.nextRegisteredBody = "{\"customerReference\":\"k-b1c\",\"messageId\":\"rm-x\"}";
+        assertThat(channel.publish(TENANT, SENDER, message().registered(true).build(), "k-b1c").status())
+                .isEqualTo(EboxPublication.Status.UNCERTAIN);
+    }
+
+    @Test
+    void aTooLongClientIdIsRefused() {
+        config.put("oauthClientId", "c".repeat(201));
+
+        assertThatThrownBy(() -> channel.consent(TENANT, SENDER, RECIPIENT)).hasMessageContaining("oauthClientId");
+        assertThat(ebox.requests).isEmpty();
+    }
+
+    @Test
+    void aFederation404IsAFailure_notAnEnterpriseWithoutEbox() {
+        ebox.federationStatus = 404;
+
+        assertThatThrownBy(() -> channel.consent(TENANT, SENDER, RECIPIENT))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("HTTP 404");
+    }
+
+    @Test
+    void theProofOfARegisteredMailIsReadBackByIdOrByReference() {
+        EboxPublication sent = channel.publish(TENANT, SENDER, message().registered(true).build(), "k-read");
+
+        EboxPublication byId = channel.registeredProof(TENANT, SENDER, "k-read", sent.providerMessageId()).orElseThrow();
+        EboxPublication byReference = channel.registeredProof(TENANT, SENDER, "k-read", null).orElseThrow();
+
+        assertThat(byId.proof().providerMessageId()).isEqualTo(sent.providerMessageId());
+        assertThat(byId.proof().signatureSha256()).isEqualTo(sent.proof().signatureSha256());
+        assertThat(byReference.status()).isEqualTo(EboxPublication.Status.DUPLICATE);
+        assertThat(ebox.requestsTo("/proofsOfDispatch/" + sent.providerMessageId())).hasSize(1);
+        assertThat(channel.registeredProof(TENANT, SENDER, "k-none", null)).isEmpty();
+        assertThat(channel.registeredProof(TENANT, SENDER, "k-read", "rm-unknown")).isEmpty();
     }
 
     /** Dépôt d'instances minimal : une seule instance, dont le type et l'état se règlent par {@code __type}/{@code __enabled}. */

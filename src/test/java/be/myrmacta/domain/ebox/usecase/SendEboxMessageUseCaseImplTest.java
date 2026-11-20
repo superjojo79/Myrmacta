@@ -9,9 +9,11 @@ import be.myrmacta.domain.ebox.model.EboxDelivery;
 import be.myrmacta.domain.ebox.model.EboxDocument;
 import be.myrmacta.domain.ebox.model.EboxLanguage;
 import be.myrmacta.domain.ebox.model.EboxOutgoingMessage;
+import be.myrmacta.domain.ebox.model.EboxProofOfDispatch;
 import be.myrmacta.domain.ebox.model.EboxPublication;
 import be.myrmacta.domain.ebox.model.EboxPublicationRejectedException;
 import be.myrmacta.domain.ebox.model.EboxRecipient;
+import be.myrmacta.domain.ebox.model.EboxRegisteredMailUnresolvedException;
 import be.myrmacta.domain.ebox.model.EboxRoute;
 import be.myrmacta.domain.ebox.model.EboxSendAuditEntry;
 import be.myrmacta.domain.ebox.model.EboxSendAuditEntry.Outcome;
@@ -22,6 +24,7 @@ import be.myrmacta.domain.ebox.model.FallbackChannel;
 import be.myrmacta.domain.ebox.model.SendEboxCommand;
 import be.myrmacta.domain.ebox.port.out.EboxChannel;
 import be.myrmacta.domain.ebox.port.out.EboxSendAuditTrail;
+import be.myrmacta.domain.ebox.port.out.EboxSendReservations;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,8 +47,9 @@ class SendEboxMessageUseCaseImplTest {
     private final FakeChannel enterprise = new FakeChannel(EboxRoute.ENTERPRISE);
     private final FakeChannel citizen = new FakeChannel(EboxRoute.CITIZEN);
     private final FakeAudit audit = new FakeAudit();
-    private final SendEboxMessageUseCaseImpl useCase =
-            new SendEboxMessageUseCaseImpl(TENANT, List.of(enterprise, citizen), audit, Clock.fixed(NOW, ZoneOffset.UTC));
+    private final FakeReservations reservations = new FakeReservations();
+    private final SendEboxMessageUseCaseImpl useCase = new SendEboxMessageUseCaseImpl(TENANT, List.of(enterprise, citizen), audit,
+            reservations, Clock.fixed(NOW, ZoneOffset.UTC));
 
     private static EboxOutgoingMessage message(EboxRecipient recipient) {
         return EboxOutgoingMessage.builder(recipient, "myrmacta-commune", "decision", EboxLanguage.FR, "Votre permis")
@@ -179,15 +183,109 @@ class SendEboxMessageUseCaseImplTest {
         assertThatThrownBy(() -> new SendEboxCommand(SENDER, message(ENTERPRISE), "x".repeat(101), null, FallbackChannel.PAPER))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new SendEboxMessageUseCaseImpl(TENANT, List.of(enterprise, new FakeChannel(EboxRoute.ENTERPRISE)),
-                audit, Clock.systemUTC())).isInstanceOf(IllegalArgumentException.class);
+                audit, reservations, Clock.systemUTC())).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void aRouteWithoutChannelIsRefused() {
         SendEboxMessageUseCaseImpl enterpriseOnly =
-                new SendEboxMessageUseCaseImpl(TENANT, List.of(enterprise), audit, Clock.fixed(NOW, ZoneOffset.UTC));
+                new SendEboxMessageUseCaseImpl(TENANT, List.of(enterprise), audit, reservations, Clock.fixed(NOW, ZoneOffset.UTC));
 
         assertThatThrownBy(() -> enterpriseOnly.send(command(CITIZEN, "k-9"))).isInstanceOf(IllegalStateException.class);
+    }
+
+    private static SendEboxCommand registered(String key) {
+        EboxOutgoingMessage message = EboxOutgoingMessage.builder(ENTERPRISE, "myrmacta-commune", "decision", EboxLanguage.FR,
+                "Votre permis").document(new EboxDocument("decision.pdf", "application/pdf", new byte[] {1, 2}, true))
+                .registered(true).build();
+        return new SendEboxCommand(SENDER, message, key, null, FallbackChannel.PAPER);
+    }
+
+    @Test
+    void aWithdrawnConsentAfterAnUncertainAttemptLeadsToTheFallback_notToTheEbox() {
+        citizen.level = Level.CONSENTED;
+        citizen.next = EboxPublication.Status.UNCERTAIN;
+        assertThatThrownBy(() -> useCase.send(command(CITIZEN, "k-m3"))).isInstanceOf(EboxSendUncertainException.class);
+
+        citizen.level = Level.NO_CONSENT;
+        EboxSendOutcome retried = useCase.send(command(CITIZEN, "k-m3"));
+
+        assertThat(retried.outcome()).isEqualTo(Outcome.FALLBACK);
+        assertThat(retried.delivery()).isEqualTo(EboxDelivery.FALLBACK);
+        assertThat(citizen.published).containsExactly("k-m3");
+        assertThat(audit.entries).extracting(EboxSendAuditEntry::outcome).containsExactly(Outcome.UNCERTAIN, Outcome.FALLBACK);
+    }
+
+    @Test
+    void aRegisteredMailIsNeverResentAfterAnUncertainAttempt_itsProofIsLookedUp() {
+        enterprise.level = Level.EXCLUSIVE_EBOX;
+        enterprise.next = EboxPublication.Status.UNCERTAIN;
+        assertThatThrownBy(() -> useCase.send(registered("k-rm"))).isInstanceOf(EboxSendUncertainException.class);
+
+        assertThatThrownBy(() -> useCase.send(registered("k-rm"))).isInstanceOf(EboxRegisteredMailUnresolvedException.class);
+        assertThat(enterprise.published).containsExactly("k-rm");
+
+        enterprise.proofs.put("k-rm", "rm-7");
+        EboxSendOutcome found = useCase.send(registered("k-rm"));
+
+        assertThat(found.outcome()).isEqualTo(Outcome.DUPLICATE);
+        assertThat(found.providerMessageId()).isEqualTo("rm-7");
+        assertThat(found.proof().providerMessageId()).isEqualTo("rm-7");
+        assertThat(enterprise.published).containsExactly("k-rm");
+        assertThat(audit.entries).extracting(EboxSendAuditEntry::outcome).containsExactly(Outcome.UNCERTAIN, Outcome.DUPLICATE);
+    }
+
+    @Test
+    void aConcurrentRegisteredAttemptDoesNotSendWhileTheKeyIsReserved() {
+        enterprise.level = Level.EXCLUSIVE_EBOX;
+        reservations.reserve(TENANT, "k-busy", NOW);
+
+        assertThatThrownBy(() -> useCase.send(registered("k-busy"))).isInstanceOf(EboxRegisteredMailUnresolvedException.class);
+        assertThat(enterprise.published).isEmpty();
+        assertThat(audit.entries).isEmpty();
+    }
+
+    @Test
+    void aRefusedRegisteredMailReleasesItsKey() {
+        enterprise.level = Level.EXCLUSIVE_EBOX;
+        enterprise.reject = true;
+        assertThatThrownBy(() -> useCase.send(registered("k-refused"))).isInstanceOf(EboxPublicationRejectedException.class);
+        assertThat(reservations.keys).isEmpty();
+
+        enterprise.reject = false;
+        assertThat(useCase.send(registered("k-refused")).outcome()).isEqualTo(Outcome.PUBLISHED);
+        assertThat(reservations.keys).containsExactly(TENANT + "/k-refused");
+    }
+
+    @Test
+    void theReplayOfAPublishedRegisteredMailReadsItsProofBack() {
+        enterprise.level = Level.EXCLUSIVE_EBOX;
+        EboxSendOutcome first = useCase.send(registered("k-proof"));
+        enterprise.proofs.put("k-proof", first.providerMessageId());
+
+        EboxSendOutcome again = useCase.send(registered("k-proof"));
+
+        assertThat(again.replayed()).isTrue();
+        assertThat(again.proof()).isNotNull();
+        assertThat(again.proof().providerMessageId()).isEqualTo(first.providerMessageId());
+        assertThat(enterprise.proofLookups).containsExactly("k-proof/" + first.providerMessageId());
+
+        enterprise.proofs.clear();
+        assertThatThrownBy(() -> useCase.send(registered("k-proof"))).hasMessageContaining("could not be read back");
+    }
+
+    private static final class FakeReservations implements EboxSendReservations {
+        final java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+
+        @Override
+        public boolean reserve(String tenantId, String idempotencyKey, Instant at) {
+            return keys.add(tenantId + "/" + idempotencyKey);
+        }
+
+        @Override
+        public void release(String tenantId, String idempotencyKey) {
+            keys.remove(tenantId + "/" + idempotencyKey);
+        }
     }
 
     private static final class FakeChannel implements EboxChannel {
@@ -198,6 +296,9 @@ class SendEboxMessageUseCaseImplTest {
         boolean reject;
         int consentChecks;
         final List<String> published = new ArrayList<>();
+        /** Preuves connues : clé d'idempotence vers identifiant rendu. */
+        final java.util.Map<String, String> proofs = new java.util.HashMap<>();
+        final List<String> proofLookups = new ArrayList<>();
 
         FakeChannel(EboxRoute route) {
             this.route = route;
@@ -230,6 +331,19 @@ class SendEboxMessageUseCaseImplTest {
                 case DUPLICATE -> new EboxPublication(next, null, 409, trace, null);
                 case UNCERTAIN -> new EboxPublication(next, null, EboxPublication.TIMEOUT, trace, null);
             };
+        }
+
+        @Override
+        public Optional<EboxPublication> registeredProof(String tenantId, EboxSenderAccount sender, String idempotencyKey,
+                String providerMessageId) {
+            proofLookups.add(idempotencyKey + "/" + providerMessageId);
+            String id = proofs.get(idempotencyKey);
+            if (id == null || (providerMessageId != null && !providerMessageId.equals(id))) {
+                return Optional.empty();
+            }
+            EboxPublication.Trace trace = new EboxPublication.Trace("GET", "https://ebox.example/proofsOfDispatch", "client", null, null);
+            return Optional.of(new EboxPublication(EboxPublication.Status.DUPLICATE, id, 200, trace,
+                    new EboxProofOfDispatch(idempotencyKey, id, "f".repeat(64), "{}")));
         }
     }
 

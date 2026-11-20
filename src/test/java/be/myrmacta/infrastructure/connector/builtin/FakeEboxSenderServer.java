@@ -43,6 +43,12 @@ final class FakeEboxSenderServer implements AutoCloseable {
     volatile int nextPublicationStatus;
     /** Délai imposé au prochain {@code POST /ebox/messages}, en millisecondes. */
     volatile long nextPublicationDelayMillis;
+    /** Corps imposé au prochain 201 de {@code POST /ebox/messages} (null : corps normal). */
+    volatile String nextPublicationBody;
+    /** Corps imposé au prochain 200 de {@code POST /registeredMails} (null : preuve normale). */
+    volatile String nextRegisteredBody;
+    /** Statut imposé à la fédération (0 : comportement normal). */
+    volatile int federationStatus;
     /** Nombre de 401 à rendre avant d'accepter le jeton. */
     volatile int unauthorizedBeforeAccept;
     private int published;
@@ -106,6 +112,10 @@ final class FakeEboxSenderServer implements AutoCloseable {
             return;
         }
         if (path.equals("/REST/ebox/enterprise/federation/v1/eboxPreferences/search")) {
+            if (federationStatus != 0) {
+                send(exchange, federationStatus, "{}");
+                return;
+            }
             Map<?, ?> search = JSON.readValue(body, Map.class);
             List<Map<String, Object>> found = new ArrayList<>();
             for (Object bce : (List<?>) search.get("eboxIdValueList")) {
@@ -139,13 +149,27 @@ final class FakeEboxSenderServer implements AutoCloseable {
                 return;
             }
             published++;
-            send(exchange, 201, "{\"messageId\":\"ebox-msg-" + published + "\",\"expirationDate\":\"2027-11-20T00:00:00+01:00\"}");
+            String forcedBody = nextPublicationBody;
+            nextPublicationBody = null;
+            send(exchange, 201, forcedBody != null ? forcedBody
+                    : "{\"messageId\":\"ebox-msg-" + published + "\",\"expirationDate\":\"2027-11-20T00:00:00+01:00\"}");
             return;
         }
         if (path.equals("/REST/registeredMail/v1/proofsOfDispatch")) {
             String reference = URLDecoder.decode(query.replace("customerReference=", ""), StandardCharsets.UTF_8);
             String proof = proofs.get(reference);
             send(exchange, 200, "{\"items\":[" + (proof == null ? "" : proof) + "]}");
+            return;
+        }
+        if (path.startsWith("/REST/registeredMail/v1/proofsOfDispatch/")) {
+            String id = URLDecoder.decode(path.substring("/REST/registeredMail/v1/proofsOfDispatch/".length()), StandardCharsets.UTF_8);
+            for (String proof : proofs.values()) {
+                if (proof.contains("\"messageId\":\"" + id + "\"")) {
+                    send(exchange, 200, proof);
+                    return;
+                }
+            }
+            send(exchange, 404, "{}");
             return;
         }
         if (path.equals("/REST/registeredMail/v1/registeredMails")) {
@@ -158,6 +182,12 @@ final class FakeEboxSenderServer implements AutoCloseable {
             String proof = JSON.writeValueAsString(Map.of("customerReference", reference.group(1), "messageId", "rm-" + published,
                     "type", "decision", "documents", List.of(Map.of("httpPartName", "mainContent", "downloadFileName", "decision.pdf",
                             "mediaType", "application/pdf")), "signature", "signed-proof-" + published));
+            String forcedProof = nextRegisteredBody;
+            nextRegisteredBody = null;
+            if (forcedProof != null) {
+                send(exchange, 200, forcedProof);
+                return;
+            }
             proofs.put(reference.group(1), proof);
             send(exchange, 200, proof);
             return;

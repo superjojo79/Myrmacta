@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 055-ebox-send-reservation
+      author: myrmacta
+      comment: >-
+        TODO §155 (D-EBOX-SEND-REGISTERED) — réservation unique d'une clé d'idempotence de recommandé par tenant, posée avant
+        l'appel à Registered Mail 1.1 (qui n'a pas d'en-tête Idempotency-Key) : une seule tentative dépose.
+      changes:
+        - createTable:
+            tableName: ebox_send_reservation
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_ebox_send_reservation, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: idempotency_key, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: reserved_at, type: timestamp with time zone, constraints: {nullable: false}}
+        - addUniqueConstraint:
+            tableName: ebox_send_reservation
+            columnNames: tenant_id, idempotency_key
+            constraintName: uq_ebox_send_reservation_key

@@ -14,7 +14,6 @@ import be.myrmacta.domain.ebox.model.EboxSenderAccount;
 import be.myrmacta.domain.ebox.port.out.EboxChannel;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
 import be.myrmacta.infrastructure.notification.OutboundUrlGuard;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URLEncoder;
@@ -31,7 +30,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -63,6 +64,8 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
     static final long MAX_JSON_BYTES = 1024L * 1024;
     static final String ON_BEHALF_OF = "On-Behalf-Of-Enterprise-Number";
     static final String CONSENT_SOURCE = "federation-1.4";
+    static final int MAX_MESSAGE_ID = 200;
+    private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
 
     private final ConnectorInstanceRepository instances;
     private final OutboundUrlGuard guard;
@@ -101,19 +104,13 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
     public EboxConsent consent(String tenantId, EboxSenderAccount sender, EboxRecipient recipient) {
         String bce = enterprise(recipient).enterpriseNumber();
         EboxOutboundSettings settings = settings(tenantId, sender);
-        Map<String, Object> search = new LinkedHashMap<>();
-        search.put("eboxType", "ENTERPRISE");
-        search.put("eboxIdType", "EnterpriseNumber");
-        search.put("eboxIdValueList", List.of(bce));
-        byte[] body = json(search);
+        byte[] body = json(ordered("eboxType", "ENTERPRISE", "eboxIdType", "EnterpriseNumber", "eboxIdValueList", List.of(bce)));
         Response response = authorized(settings.publicationOauth(), token -> {
             Map<String, String> headers = headers(token, settings.onBehalfOf(), "application/json");
             headers.put("Content-Type", "application/json");
             return call("POST", settings.federationUrl() + "/eboxPreferences/search", headers, body);
         });
-        if (response.status() == 404) {
-            return new EboxConsent(EboxConsent.Level.NO_EBOX, clock.instant(), CONSENT_SOURCE);
-        }
+        // Seul un 200 qui ne cite pas l'entreprise vaut « pas d'eBox » ; un 404 (point d'accès absent, mauvaise URL) est une panne.
         if (response.status() != 200) {
             throw new IllegalStateException("ebox federation answered HTTP " + response.status());
         }
@@ -140,14 +137,47 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
                 : publishMessage(settings, recipient, message, idempotencyKey);
     }
 
+    /**
+     * TODO §155 (D-EBOX-SEND-REGISTERED) — {@code GET /proofsOfDispatch/{messageId}} si l'identifiant est connu, sinon
+     * {@code GET /proofsOfDispatch?customerReference=} ; un 404 ou une liste vide : aucune preuve.
+     */
+    @Override
+    public Optional<EboxPublication> registeredProof(String tenantId, EboxSenderAccount sender, String idempotencyKey,
+            String providerMessageId) {
+        EboxOutboundSettings settings = settings(tenantId, sender);
+        if (settings.registeredMailUrl() == null) {
+            throw new IllegalStateException("registered mail is not configured for this eBox sender (registeredMailUrl)");
+        }
+        if (providerMessageId == null) {
+            return registeredProof(settings, idempotencyKey);
+        }
+        String base = settings.registeredMailUrl() + "/proofsOfDispatch";
+        String url = base + "/" + URLEncoder.encode(providerMessageId, StandardCharsets.UTF_8).replace("+", "%20");
+        Response response = authorized(settings.registeredMailOauth(),
+                token -> call("GET", url, headers(token, null, "application/json"), null));
+        if (response.status() == 404) {
+            return Optional.empty();
+        }
+        if (response.status() != 200) {
+            throw new IllegalStateException("registered mail answered HTTP " + response.status() + " to the proof lookup");
+        }
+        EboxProofOfDispatch proof = proof(tree(response.body()), idempotencyKey);
+        if (proof == null || !providerMessageId.equals(proof.providerMessageId())) {
+            throw new IllegalStateException("registered mail answered an unusable proof of dispatch");
+        }
+        EboxPublication.Trace trace = new EboxPublication.Trace("GET", base, settings.clientId(), null, null);
+        return Optional.of(new EboxPublication(EboxPublication.Status.DUPLICATE, proof.providerMessageId(), 200, trace, proof));
+    }
+
     private EboxPublication publishMessage(EboxOutboundSettings settings, EboxRecipient.Enterprise recipient,
             EboxOutgoingMessage message, String idempotencyKey) {
         String lang = message.language().code();
+        // Cartes ordonnées : Map.of itère dans un ordre propre à chaque JVM, le JSON envoyé doit être stable.
         Map<String, Object> toPublish = new LinkedHashMap<>();
-        toPublish.put("recipient", Map.of("eboxType", "enterprise", "enterpriseNumber", recipient.enterpriseNumber()));
+        toPublish.put("recipient", ordered("eboxType", "enterprise", "enterpriseNumber", recipient.enterpriseNumber()));
         toPublish.put("senderApplicationId", message.senderApplicationId());
         toPublish.put("messageTypeId", message.messageTypeId());
-        toPublish.put("subject", Map.of(lang, message.subject()));
+        toPublish.put("subject", ordered(lang, message.subject()));
         toPublish.put("originalMessageId", idempotencyKey);
         if (message.expirationDate() != null) {
             toPublish.put("expirationDate", message.expirationDate().toString());
@@ -157,13 +187,13 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
         int index = 0;
         for (EboxDocument document : message.documents()) {
             String part = "upfile" + (++index);
-            attachments.add(Map.of("httpPartName", part, "isMainContent", document.mainContent(), "digest",
-                    Map.of("digestMethod", "sha_256", "digestValue", base64Url(document.sha256()))));
+            attachments.add(ordered("httpPartName", part, "isMainContent", document.mainContent(), "digest",
+                    ordered("digestMethod", "sha_256", "digestValue", base64Url(document.sha256()))));
             multipart.file(part, document);
         }
         toPublish.put("attachments", attachments);
         if (message.body() != null) {
-            toPublish.put("bodyContent", Map.of(lang, message.body()));
+            toPublish.put("bodyContent", ordered(lang, message.body()));
             toPublish.put("isBodyMainContent", false);
         }
         if (message.replyAuthorized()) {
@@ -172,7 +202,7 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
                 toPublish.put("replyDueDate", message.replyDueDate().toString());
             }
         }
-        multipart.json("messageToPublish", json(toPublish));
+        multipart.jsonFirst("messageToPublish", json(toPublish));
         byte[] body = multipart.finish();
         String url = settings.publicationUrl() + "/ebox/messages";
         Holder<String> tokenUsed = new Holder<>();
@@ -187,11 +217,11 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
                 sha256Hex(tokenUsed.value));
         return switch (response.status()) {
             case 201, 200 -> {
-                String id = tree(response.body()).path("messageId").asString("");
-                if (id.isBlank()) {
-                    yield new EboxPublication(EboxPublication.Status.UNCERTAIN, null, response.status(), trace, null);
-                }
-                yield new EboxPublication(EboxPublication.Status.PUBLISHED, id, response.status(), trace, null);
+                // Accepté mais inexploitable (JSON illisible, identifiant absent ou trop long) : issue inconnue, journalisée.
+                String id = messageId(readOrNull(response.body()));
+                yield id == null
+                        ? new EboxPublication(EboxPublication.Status.UNCERTAIN, null, response.status(), trace, null)
+                        : new EboxPublication(EboxPublication.Status.PUBLISHED, id, response.status(), trace, null);
             }
             case 409 -> new EboxPublication(EboxPublication.Status.DUPLICATE, null, 409, trace, null);
             default -> outcomeOfFailure(response.status(), trace);
@@ -203,20 +233,15 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
         if (settings.registeredMailUrl() == null) {
             throw new EboxPublicationRejectedException("registered mail is not configured for this eBox sender (registeredMailUrl)");
         }
-        String proofsUrl = settings.registeredMailUrl() + "/proofsOfDispatch?customerReference="
-                + URLEncoder.encode(idempotencyKey, StandardCharsets.UTF_8);
-        Response existing = authorized(settings.registeredMailOauth(),
-                token -> call("GET", proofsUrl, headers(token, null, "application/json"), null));
-        if (existing.status() == 200) {
-            JsonNode items = tree(existing.body()).path("items");
-            if (items.isArray() && !items.isEmpty()) {
-                EboxPublication.Trace trace = new EboxPublication.Trace("GET", settings.registeredMailUrl() + "/proofsOfDispatch",
-                        settings.clientId(), null, null);
-                EboxProofOfDispatch proof = proof(items.get(0), idempotencyKey);
-                return new EboxPublication(EboxPublication.Status.DUPLICATE, proof.providerMessageId(), 200, trace, proof);
-            }
-        } else if (existing.status() != 404) {
-            throw new IllegalStateException("registered mail answered HTTP " + existing.status() + " to the proof lookup");
+        Optional<EboxPublication> existing;
+        try {
+            existing = registeredProof(settings, idempotencyKey);
+        } catch (IllegalStateException lookupFailed) {
+            // Rien n'est parti : la recherche précède l'envoi.
+            throw new EboxPublicationRejectedException("registered mail proof lookup failed before sending");
+        }
+        if (existing.isPresent()) {
+            return existing.get();
         }
         String lang = message.language().code();
         Multipart multipart = new Multipart();
@@ -224,17 +249,18 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
         int annex = 0;
         for (EboxDocument document : message.documents()) {
             String part = document.mainContent() ? "mainContent" : "annex" + (++annex);
-            metadata.add(Map.of("httpPartName", part, "digest", Map.of("method", "sha256", "value", base64Url(document.sha256()))));
+            metadata.add(ordered("httpPartName", part, "digest",
+                    ordered("method", "sha256", "value", base64Url(document.sha256()))));
             multipart.file(part, document);
         }
         Map<String, Object> toPublish = new LinkedHashMap<>();
-        toPublish.put("recipient", Map.of("eboxType", "enterprise", "enterpriseNumber", recipient.enterpriseNumber()));
+        toPublish.put("recipient", ordered("eboxType", "enterprise", "enterpriseNumber", recipient.enterpriseNumber()));
         toPublish.put("senderApplicationId", message.senderApplicationId());
         toPublish.put("messageTypeId", message.messageTypeId());
-        toPublish.put("subject", Map.of(lang, message.subject()));
+        toPublish.put("subject", ordered(lang, message.subject()));
         toPublish.put("customerReference", idempotencyKey);
         toPublish.put("documentsMetaData", metadata);
-        multipart.json("registeredMailToPublish", json(toPublish));
+        multipart.jsonFirst("registeredMailToPublish", json(toPublish));
         byte[] body = multipart.finish();
         String url = settings.registeredMailUrl() + "/registeredMails";
         Holder<String> tokenUsed = new Holder<>();
@@ -246,20 +272,77 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
         });
         EboxPublication.Trace trace = new EboxPublication.Trace("POST", url, settings.clientId(), null, sha256Hex(tokenUsed.value));
         if (response.status() == 200 || response.status() == 201) {
-            EboxProofOfDispatch proof = proof(tree(response.body()), idempotencyKey);
-            return new EboxPublication(EboxPublication.Status.PUBLISHED, proof.providerMessageId(), response.status(), trace, proof);
+            EboxProofOfDispatch proof = proof(readOrNull(response.body()), idempotencyKey);
+            return proof == null
+                    ? new EboxPublication(EboxPublication.Status.UNCERTAIN, null, response.status(), trace, null)
+                    : new EboxPublication(EboxPublication.Status.PUBLISHED, proof.providerMessageId(), response.status(), trace,
+                            proof);
         }
         return outcomeOfFailure(response.status(), trace);
     }
 
-    private EboxProofOfDispatch proof(JsonNode node, String idempotencyKey) {
-        String messageId = node.path("messageId").asString("");
-        String signature = node.path("signature").asString("");
-        String reference = node.path("customerReference").asString("");
-        if (messageId.isBlank() || signature.isBlank() || !idempotencyKey.equals(reference)) {
+    private Optional<EboxPublication> registeredProof(EboxOutboundSettings settings, String idempotencyKey) {
+        String base = settings.registeredMailUrl() + "/proofsOfDispatch";
+        String url = base + "?customerReference=" + URLEncoder.encode(idempotencyKey, StandardCharsets.UTF_8);
+        Response response = authorized(settings.registeredMailOauth(),
+                token -> call("GET", url, headers(token, null, "application/json"), null));
+        if (response.status() == 404) {
+            return Optional.empty();
+        }
+        if (response.status() != 200) {
+            throw new IllegalStateException("registered mail answered HTTP " + response.status() + " to the proof lookup");
+        }
+        JsonNode items = tree(response.body()).path("items");
+        if (!items.isArray() || items.isEmpty()) {
+            return Optional.empty();
+        }
+        EboxProofOfDispatch proof = proof(items.get(0), idempotencyKey);
+        if (proof == null) {
             throw new IllegalStateException("registered mail answered an unusable proof of dispatch");
         }
-        return new EboxProofOfDispatch(reference, messageId, sha256Hex(signature), node.toString());
+        EboxPublication.Trace trace = new EboxPublication.Trace("GET", base, settings.clientId(), null, null);
+        return Optional.of(new EboxPublication(EboxPublication.Status.DUPLICATE, proof.providerMessageId(), 200, trace, proof));
+    }
+
+    /** Preuve exploitable, ou {@code null} : identifiant absent ou hors bornes, signature absente, autre référence, trop grosse. */
+    private static EboxProofOfDispatch proof(JsonNode node, String idempotencyKey) {
+        if (node == null || !node.isObject()) {
+            return null;
+        }
+        String messageId = messageId(node);
+        String signature = node.path("signature").asString("");
+        String reference = node.path("customerReference").asString("");
+        String json = node.toString();
+        if (messageId == null || signature.isBlank() || !idempotencyKey.equals(reference)
+                || json.length() > EboxProofOfDispatch.MAX_JSON) {
+            return null;
+        }
+        return new EboxProofOfDispatch(reference, messageId, sha256Hex(signature), json);
+    }
+
+    /** {@code messageId} utilisable : présent, au plus 200 caractères, sans caractère de contrôle ; sinon {@code null}. */
+    private static String messageId(JsonNode node) {
+        if (node == null || !node.isObject()) {
+            return null;
+        }
+        String id = node.path("messageId").asString("").strip();
+        return id.isEmpty() || id.length() > MAX_MESSAGE_ID || CONTROL.matcher(id).find() ? null : id;
+    }
+
+    private JsonNode readOrNull(byte[] body) {
+        try {
+            return mapper.readTree(body);
+        } catch (JacksonException unreadable) {
+            return null;
+        }
+    }
+
+    private static Map<String, Object> ordered(Object... keysAndValues) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < keysAndValues.length; i += 2) {
+            map.put((String) keysAndValues[i], keysAndValues[i + 1]);
+        }
+        return map;
     }
 
     private static EboxPublication outcomeOfFailure(int status, EboxPublication.Trace trace) {
@@ -372,36 +455,64 @@ class HttpEboxEnterpriseChannel implements EboxChannel {
         }
     }
 
-    /** Corps {@code multipart/form-data} : une partie JSON et des fichiers, noms déjà contrôlés par le modèle. */
+    /**
+     * Corps {@code multipart/form-data} : une partie JSON en tête puis les fichiers, noms déjà contrôlés par le modèle. Une pièce
+     * peut peser 100 Mo : le corps est un seul tableau à la taille exacte, où chaque pièce est copiée une fois depuis le document
+     * ({@link EboxDocument#copyInto}), sans flux ni copie intermédiaire.
+     */
     private static final class Multipart {
         private final String boundary = "myrmacta-" + UUID.randomUUID();
-        private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        private final List<byte[]> heads = new ArrayList<>();
+        private final List<EboxDocument> documents = new ArrayList<>();
+        private byte[] jsonHead;
+        private byte[] json;
 
         String contentType() {
             return "multipart/form-data; boundary=" + boundary;
         }
 
-        void json(String name, byte[] json) {
-            head("Content-Disposition: form-data; name=\"" + name + "\"\r\nContent-Type: application/json\r\n");
-            out.writeBytes(json);
-            out.writeBytes(CRLF);
+        void jsonFirst(String name, byte[] value) {
+            jsonHead = head("Content-Disposition: form-data; name=\"" + name + "\"\r\nContent-Type: application/json\r\n");
+            json = value;
         }
 
         void file(String name, EboxDocument document) {
-            head("Content-Disposition: form-data; name=\"" + name + "\"; filename=\"" + document.fileName() + "\"; filename*=UTF-8''"
-                    + URLEncoder.encode(document.fileName(), StandardCharsets.UTF_8).replace("+", "%20") + "\r\nContent-Type: "
-                    + document.mediaType() + "\r\n");
-            out.writeBytes(document.content());
-            out.writeBytes(CRLF);
+            heads.add(head("Content-Disposition: form-data; name=\"" + name + "\"; filename=\"" + document.fileName()
+                    + "\"; filename*=UTF-8''" + URLEncoder.encode(document.fileName(), StandardCharsets.UTF_8).replace("+", "%20")
+                    + "\r\nContent-Type: " + document.mediaType() + "\r\n"));
+            documents.add(document);
         }
 
         byte[] finish() {
-            out.writeBytes(("--" + boundary + "--\r\n").getBytes(StandardCharsets.US_ASCII));
-            return out.toByteArray();
+            byte[] end = ("--" + boundary + "--\r\n").getBytes(StandardCharsets.US_ASCII);
+            long size = (long) jsonHead.length + json.length + CRLF.length + end.length;
+            for (int i = 0; i < documents.size(); i++) {
+                size += heads.get(i).length + documents.get(i).size() + CRLF.length;
+            }
+            if (size > Integer.MAX_VALUE - 16) {
+                throw new EboxPublicationRejectedException("eBox request body is too large");
+            }
+            byte[] body = new byte[(int) size];
+            int at = put(body, 0, jsonHead);
+            at = put(body, at, json);
+            at = put(body, at, CRLF);
+            for (int i = 0; i < documents.size(); i++) {
+                at = put(body, at, heads.get(i));
+                documents.get(i).copyInto(body, at);
+                at += (int) documents.get(i).size();
+                at = put(body, at, CRLF);
+            }
+            put(body, at, end);
+            return body;
         }
 
-        private void head(String headers) {
-            out.writeBytes(("--" + boundary + "\r\n" + headers + "\r\n").getBytes(StandardCharsets.UTF_8));
+        private byte[] head(String headers) {
+            return ("--" + boundary + "\r\n" + headers + "\r\n").getBytes(StandardCharsets.UTF_8);
+        }
+
+        private static int put(byte[] target, int at, byte[] bytes) {
+            System.arraycopy(bytes, 0, target, at, bytes.length);
+            return at + bytes.length;
         }
 
         private static final byte[] CRLF = "\r\n".getBytes(StandardCharsets.US_ASCII);

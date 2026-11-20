@@ -127,4 +127,20 @@ class EboxOutgoingMessageTest {
         assertThat(document.sha256Hex()).hasSize(64);
         assertThat(List.of(document.size())).containsExactly(4L);
     }
+
+    @Test
+    void aDocumentIsWrittenWithoutIntermediateCopy_andItsDigestIsComputedOnce() {
+        EboxDocument document = new EboxDocument("a.pdf", "application/pdf", "%PDF".getBytes(StandardCharsets.US_ASCII), true);
+        byte[] target = new byte[6];
+
+        document.copyInto(target, 1);
+        target[1] = 'X';
+
+        assertThat(new String(target, 1, 4, StandardCharsets.US_ASCII)).isEqualTo("X" + "PDF");
+        assertThat(document.content()[0]).isEqualTo((byte) '%');
+        byte[] digest = document.sha256();
+        digest[0] ^= 1;
+        assertThat(document.sha256()).isNotEqualTo(digest);
+        assertThat(document.sha256Hex()).isEqualTo("315d429b7714cedb6ad04ac31240145257692630457f3c88253c5beceac76027");
+    }
 }

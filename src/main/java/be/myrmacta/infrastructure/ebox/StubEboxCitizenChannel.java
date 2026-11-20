@@ -10,6 +10,7 @@ import be.myrmacta.domain.ebox.port.out.EboxChannel;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,13 @@ public class StubEboxCitizenChannel implements EboxChannel {
         log.warn("eBox citizen channel is a stub: message {} was not sent to any real eBox", idempotencyKey);
         return new EboxPublication(EboxPublication.Status.PUBLISHED, "stub-" + UUID.randomUUID(), 201,
                 new EboxPublication.Trace("STUB", STUB_URL, null, null, null), null);
+    }
+
+    /** Le stub ne dépose aucun recommandé : il n'a aucune preuve à rendre. */
+    @Override
+    public Optional<EboxPublication> registeredProof(String tenantId, EboxSenderAccount sender, String idempotencyKey,
+            String providerMessageId) {
+        return Optional.empty();
     }
 
     private static void citizen(EboxRecipient recipient) {

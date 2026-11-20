@@ -305,6 +305,32 @@ class PinnedHttpClientTest {
         assertThat(response.body()).isEmpty();
     }
 
+    /** TODO §155 (D-EBOX-SEND-IDEMPOTENCE) — {@code exchange} lit le corps d'un 201 pour une méthode avec corps, pas pour un GET. */
+    @Test
+    void exchangeReadsACreatedBodyOnlyForAMethodWithABody() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/created", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] body = "{\"messageId\":\"m-1\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(201, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        String url = "http://localhost:" + server.getAddress().getPort() + "/created";
+        java.net.InetAddress loopback = java.net.InetAddress.getByName("127.0.0.1");
+
+        PinnedHttpClient.Fetched posted = PinnedHttpClient.exchange("POST", url, loopback, java.util.Map.of(), new byte[] {1},
+                Duration.ofSeconds(2), Duration.ofSeconds(2), Duration.ofSeconds(5), 1_000);
+        PinnedHttpClient.Fetched got = PinnedHttpClient.get(url, loopback, Duration.ofSeconds(2), Duration.ofSeconds(2),
+                Duration.ofSeconds(5), 1_000);
+
+        assertThat(posted.status()).isEqualTo(201);
+        assertThat(new String(posted.body(), java.nio.charset.StandardCharsets.UTF_8)).isEqualTo("{\"messageId\":\"m-1\"}");
+        assertThat(got.status()).isEqualTo(201);
+        assertThat(got.body()).isEmpty();
+    }
+
     @Test
     void readTimeoutBoundsTheBody() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

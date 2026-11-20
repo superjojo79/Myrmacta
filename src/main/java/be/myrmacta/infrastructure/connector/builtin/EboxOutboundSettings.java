@@ -41,6 +41,9 @@ record EboxOutboundSettings(
     static final String DEFAULT_REGISTERED_MAIL_SCOPE = "scope:ksz-bcss:registered:epost-rest:registeredmailsender";
     static final String DEFAULT_SUFFIXES = "socialsecurity.be,fgov.be,belgium.be";
 
+    /** Même borne que la colonne {@code client_id} du journal d'audit. */
+    static final int MAX_CLIENT_ID = 200;
+    private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
     private static final Pattern BCE = Pattern.compile("[01]\\d{9}");
     private static final Pattern HOST_SUFFIX = Pattern.compile("[a-z0-9-]+(\\.[a-z0-9-]+)+");
 
@@ -61,12 +64,17 @@ record EboxOutboundSettings(
         if (!onBehalfOf.isEmpty() && !BCE.matcher(onBehalfOf).matches()) {
             throw new IllegalStateException("onBehalfOf must be a ten-digit CBE number starting with 0 or 1");
         }
+        String clientId = text(config, "oauthClientId");
+        if (clientId.isEmpty() || clientId.length() > MAX_CLIENT_ID || CONTROL.matcher(clientId).find()) {
+            throw new IllegalStateException("oauthClientId is required, at most " + MAX_CLIENT_ID + " characters, without control "
+                    + "characters");
+        }
         Object method = config.get("oauthClientAuthMethod");
         if (method != null && !OAuth2TokenProvider.METHOD_JWT.equals(String.valueOf(method))) {
             throw new IllegalStateException("eBox only supports oauthClientAuthMethod " + OAuth2TokenProvider.METHOD_JWT);
         }
         return new EboxOutboundSettings(publication, federation, registered, onBehalfOf.isEmpty() ? null : onBehalfOf,
-                text(config, "oauthClientId"), oauth(instance, text(config, "oauthScope"), DEFAULT_SCOPE),
+                clientId, oauth(instance, text(config, "oauthScope"), DEFAULT_SCOPE),
                 oauth(instance, text(config, "registeredMailScope"), DEFAULT_REGISTERED_MAIL_SCOPE));
     }
 

@@ -90,6 +90,19 @@ class HttpEboxClient implements EboxClient {
     }
 
     @Override
+    public List<String> partitions(String partitionApiUrl, Access access, String enterpriseNumber) {
+        JsonNode json = json(trim(partitionApiUrl) + "/ebox/" + seg(enterpriseNumber) + "/partitions", access);
+        List<String> ids = new ArrayList<>();
+        json.path("items").forEach(item -> {
+            String id = item.path("id").asString("");
+            if (!id.isBlank()) {
+                ids.add(id);
+            }
+        });
+        return ids;
+    }
+
+    @Override
     public List<JsonNode> actionStatuses(String endpointUrl, Access access, String messageId) {
         JsonNode json;
         try {
@@ -112,7 +125,15 @@ class HttpEboxClient implements EboxClient {
     @Override
     public void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId) {
         String url = trim(endpointUrl) + "/ebox/messages/" + seg(messageId) + "/messageActions/" + seg(actionId);
-        call("PATCH", url, access, "{\"isExecuted\":true}".getBytes(StandardCharsets.UTF_8), MAX_JSON_BYTES, "application/json");
+        call("PATCH", url, access, "{\"isExecuted\":true}".getBytes(StandardCharsets.UTF_8), "application/merge-patch+json");
+    }
+
+    @Override
+    public void moveToPartition(String endpointUrl, Access access, String messageId, String targetPartition) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("messageIds", List.of(messageId));
+        request.put("targetRecipientPartitionId", targetPartition);
+        call("POST", trim(endpointUrl) + "/ebox/messages/changePartition", access, mapper.writeValueAsBytes(request), "application/json");
     }
 
     private JsonNode json(String url, Access access) {
@@ -136,11 +157,16 @@ class HttpEboxClient implements EboxClient {
     }
 
     private byte[] fetch(String url, Access access, long maxBytes, String accept) {
-        return call("GET", url, access, null, maxBytes, accept);
+        return call("GET", url, access, null, null, maxBytes, accept);
     }
 
-    /** Appel borné ; {@code body} non nul part en {@code application/merge-patch+json}. Un 204 rend un tableau vide. */
-    private byte[] call(String method, String url, Access access, byte[] body, long maxBytes, String accept) {
+    /** Écriture sans corps de réponse attendu (204). */
+    private void call(String method, String url, Access access, byte[] body, String contentType) {
+        call(method, url, access, body, contentType, MAX_JSON_BYTES, "application/json");
+    }
+
+    /** Appel borné ; {@code body} non nul part avec {@code contentType}. Un 204 rend un tableau vide. */
+    private byte[] call(String method, String url, Access access, byte[] body, String contentType, long maxBytes, String accept) {
         OutboundUrlGuard.PinnedEndpoint endpoint;
         try {
             endpoint = guard.resolveSafe(url);
@@ -154,7 +180,7 @@ class HttpEboxClient implements EboxClient {
             headers.put(ON_BEHALF_OF, access.onBehalfOf());
         }
         if (body != null) {
-            headers.put("Content-Type", "application/merge-patch+json");
+            headers.put("Content-Type", contentType);
         }
         PinnedHttpClient.Fetched fetched;
         try {

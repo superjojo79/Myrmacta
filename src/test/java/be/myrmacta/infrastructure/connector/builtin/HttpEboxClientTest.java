@@ -154,6 +154,24 @@ class HttpEboxClientTest {
     }
 
     @Test
+    void aMessageIsMovedByChangePartition() {
+        routes.put("/REST/ebox/ebox/messages/changePartition", new Response(204, "application/json", new byte[0]));
+
+        client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite");
+
+        assertThat(lastMethod).isEqualTo("POST");
+        assertThat(lastBody).isEqualTo("{\"messageIds\":[\"m-1\"],\"targetRecipientPartitionId\":\"myrmacta-traite\"}");
+        assertThat(lastHeaders).containsEntry("content-type", "application/json");
+    }
+
+    @Test
+    void partitionsAreListedByEnterpriseNumber() {
+        json("/ebox/0212345678/partitions", "{\"items\":[{\"id\":\"myrmacta\"},{\"id\":\"\"},{\"id\":\"rh\"}]}");
+
+        assertThat(client.partitions(base, new Access("t", null), "0212345678")).containsExactly("myrmacta", "rh");
+    }
+
+    @Test
     void anActionIsConfirmedByAMergePatch() {
         routes.put("/REST/ebox/ebox/messages/m%201/messageActions/act%2F1", new Response(204, "application/json", new byte[0]));
 

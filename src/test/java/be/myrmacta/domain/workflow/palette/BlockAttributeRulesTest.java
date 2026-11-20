@@ -237,7 +237,7 @@ class BlockAttributeRulesTest {
                 "relationType", "targetDossierStatus", "targetWorkflowStatus", "formula", "formulaResult", "fieldMapping",
                 "searchCriteria", "searchCountResult", "searchFirstReferenceResult", "precheckPieces", "precheckFields",
                 "precheckQuestions", "precheckRules", "precheckResult", "connectorRequest", "groupeTri", "champEcheance", "delaiJours",
-                "rappelJours", "delaiOuvrable", "rappelOuvrable", "eboxActionId");
+                "rappelJours", "delaiOuvrable", "rappelOuvrable", "eboxActionId", "eboxPartitionCible");
     }
 
     /** TODO §102 (lot B, R1, R4, R5) — brique « Rechercher des dossiers » : forme validée au déploiement. */

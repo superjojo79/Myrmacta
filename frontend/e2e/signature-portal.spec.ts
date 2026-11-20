@@ -307,7 +307,7 @@ test('E2E-SIG-21 without any bridge the page says so and the upload still works'
   const alert = page.getByRole('alert')
   await expect(alert).toContainText('Aucun logiciel eID')
   await expect(alert).toContainText('Web eID')
-  await expect(alert).toContainText('BeIDConnect')
+  await expect(alert).not.toContainText('BeIDConnect')
   expect(calls).toEqual([])
 
   await page.getByLabel('Document signé (PDF)').setInputFiles(SIGNED_PDF)
@@ -412,7 +412,7 @@ test('E2E-SIG-26 default case: card only, no upload block, and the message witho
 
   await page.getByRole('button', { name: 'Signer avec ma carte eID' }).click()
   const alert = page.getByRole('alert')
-  await expect(alert).toContainText('Installez Web eID ou BeIDConnect')
+  await expect(alert).toContainText('Installez Web eID (extension du navigateur')
   await expect(alert).toContainText('contactez la personne qui vous a envoyé le lien')
   await expect(alert).not.toContainText('autre moyen')
   expect(calls).toEqual([])

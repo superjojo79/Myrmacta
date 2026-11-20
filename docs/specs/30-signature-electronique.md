@@ -34,9 +34,9 @@
 >
 > **Fournisseurs livrés le 2026-10-28** ([PR #247](https://github.com/superjojo79/Myrmacta/pull/247),
 > TODO §109, issue #191) : Yousign et DocuSign, un seul actif par instance. Le niveau eIDAS reste
-> celui du compte chez le fournisseur. Le fournisseur `eid` (signature par carte eID, TODO §138) n'en fait pas
-> partie : il reste ouvert (TODO §138) ; son pont navigateur est le parcours principal, le téléversement un repli
-> désactivé par défaut. Détail en fin de spec.
+> celui du compte chez le fournisseur. Le fournisseur `eid` (signature par carte eID, TODO §138, clos le 2026-11-20)
+> n'en fait pas partie : son pont navigateur Web eID est le parcours principal, le téléversement un repli désactivé
+> par défaut. Détail en fin de spec.
 
 ---
 
@@ -228,21 +228,20 @@ profil de production sans le second drapeau.
     décision affichée est celle de la réception du retour.
 
   Contrainte du bac à sable : il refuse tout signataire hors de l'organisation du compte Yousign.
-- **Hors lot.** Parcours eID et horodatage BOSA. Valeur juridique : celle du compte chez le
+- **Hors lot.** Parcours eID (fournisseur `eid`, ci-dessous). Valeur juridique : celle du compte chez le
   fournisseur, pas un niveau choisi par Myrmacta.
 
 ## Implémentation — fournisseur eid (TODO §138)
 
-Statut : §138 ouvert. Le fournisseur `eid` (`app.signature.provider=eid`) signe avec une carte eID belge, sans agent
+Statut : §138 clos le 2026-11-20 (recette réelle, issue #98) : Web eID retenu, BeIDConnect abandonné. Le fournisseur `eid` (`app.signature.provider=eid`) signe avec une carte eID belge, sans agent
 propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 (D-EID-TRANSPORT).
 
-- **Pont navigateur, parcours principal.** Dans la page, Web eID puis BeIDConnect signent, selon
-  `app.signature.eid.bridges` (défaut `web-eid,beidconnect`). Le serveur calcule le condensé, la carte signe, et le
+- **Pont navigateur, parcours principal.** Dans la page, Web eID signe, selon `app.signature.eid.bridges` (défaut
+  `web-eid` ; `beidconnect` reste reconnu). Le serveur calcule le condensé, la carte signe, et le
   serveur assemble lui-même le PDF à partir de la valeur de signature rendue (signature invisible, mise à jour
   incrémentale). Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
-  **Seul Web eID est utilisable en pratique** : l'extension BeIDConnect publiée (1.0.7) ne s'active que sur des
-  domaines fédéraux (`*.belgium.be`, `*.fgov.be`…), constat de recette du 2026-11-18 (§138). Valeur recommandée :
-  `web-eid`.
+  **BeIDConnect est abandonné** : l'extension publiée (1.0.7) ne s'active que sur des domaines fédéraux
+  (`*.belgium.be`, `*.fgov.be`…), constat de recette du 2026-11-18 (§138). Son code reste en place, hors du défaut.
 - **Deux fenêtres Web eID.** Avec Web eID, la page appelle `get-signing-certificate` (le logiciel natif fait choisir le
   certificat), puis `prepare` côté serveur (le condensé PAdES inclut le certificat), puis `sign` (le logiciel natif
   réaffiche le certificat et demande le PIN). Le signataire voit donc deux fenêtres successives ; c'est le protocole de
@@ -300,7 +299,7 @@ propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 
   Brave : signatures d'agent acceptées (`PAdES-BASELINE-B`, `SHA384withECDSA`, QcCompliance et QcSSCD reconnus,
   révocation par OCSP, chaîne complétée par les intermédiaires du fichier d'autorités) ; parcours du portail joué
   jusqu'au refus attendu `DUPLICATE_SIGNER` (même carte). BeIDConnect : non détecté sur un domaine Myrmacta.
-- **Limites.** Restent à recetter : signature de portail acceptée avec une seconde carte, carte ancienne (RSA),
+- **Limites.** Non recettés à la clôture : signature de portail acceptée avec une seconde carte, carte ancienne (RSA),
   Chrome et Firefox, lecteur à clavier, horodatage, PDF final dans Adobe Acrobat Reader. La signature se fait
   document par document : pas de signature en lot à ce jour (voir §138, « Signature en lot »). Le téléversement, désactivé par défaut, a deux
   contournements connus non corrigés et peut refuser à tort des PDF d'outils réels (voir §138, « Limites connues »).

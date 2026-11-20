@@ -1,8 +1,9 @@
 # §138 — Signature par carte eID : pont navigateur (parcours principal), téléversement en repli désactivé par défaut
 
-> **Statut :** ouvert · point de premier niveau · [registre](README.md)
+> **Statut :** clos · point de premier niveau · [registre](README.md)
 
-[ ] ouvert (2026-11-13, issue [#10](https://github.com/superjojo79/Myrmacta/issues/10)). Livraison par lots.
+[x] clos (2026-11-20, recette [#98](https://github.com/superjojo79/Myrmacta/issues/98)) ; ouvert le 2026-11-13, issue
+[#10](https://github.com/superjojo79/Myrmacta/issues/10). Livraison par lots. Voir « Clôture » en fin de point.
 Le document de travail `docs/ai/` a été retiré pendant la livraison ; son contenu utile est repris dans la spec 30 et ici. Le socle reste celui du
 [§72](072-signature-electronique-socle-generique-et-stub.md) ; les fournisseurs hébergés restent ceux du
 [§109](109-fournisseurs-de-signature-yousign-et-docusign.md).
@@ -139,9 +140,9 @@ lignes WebHID à mTLS du tableau sont déduites, pas lues dans une spécificatio
   supprimé. Non corrigé. Le pont n'est pas exposé à ce cas : le serveur assemble lui-même le PDF.
 - **(b)** Un même champ de signature peut être inscrit sur plusieurs pages alors qu'une seule est contrôlée. Une
   apparence peut alors être posée sur du texte. Non corrigé. Même remarque sur le pont.
-- La recette n'est pas terminée : issue [#98](https://github.com/superjojo79/Myrmacta/issues/98). Ce point se clôt
-  avec elle. Restent : signature de portail acceptée (seconde carte), carte RSA, Chrome et Firefox, lecteur à clavier,
-  horodatage, PDF final dans Adobe Acrobat Reader.
+- Non recettés à la clôture (issue [#98](https://github.com/superjojo79/Myrmacta/issues/98) close le 2026-11-20) :
+  signature de portail acceptée (seconde carte), carte RSA, Chrome et Firefox, lecteur à clavier, horodatage, PDF final
+  dans Adobe Acrobat Reader.
 
 ## Recette du 2026-11-18 (issue #98)
 
@@ -203,6 +204,20 @@ les deux contre-revues par un autre modèle, le premier ayant atteint sa limite 
 
 Versions lues : bibliothèque `web-eid.js` 2.1.0, extension Web eID 2.5.0, application Web eID 2.10.0,
 BeIDConnect 2.12. La prise en charge de la carte belge par Web eID vient de `libelectronic-id`.
+
+## Clôture (2026-11-20)
+
+La recette réelle (issue [#98](https://github.com/superjojo79/Myrmacta/issues/98), constats R1 à R4) a conduit
+l'utilisateur à **abandonner l'option BOSA (pont BeIDConnect) au profit de Web eID**, seul pont retenu. Décision de
+l'utilisateur du 2026-11-20 :
+
+- `app.signature.eid.bridges` vaut par défaut `web-eid` (au lieu de `web-eid,beidconnect`). D-EID-BRIDGE et D-EID-PIN
+  restent valables pour Web eID ; leur volet BeIDConnect ne s'applique plus qu'à l'exploitant qui ajoute
+  explicitement `beidconnect`.
+- Le code du pont BeIDConnect (page, choix du lecteur, saisie du PIN dans la page) est **gardé**, hors du défaut, au
+  cas où BOSA ouvrirait son extension.
+- Les points non recettés (voir « Limites connues ») restent des limites connues, sans issue ouverte à la clôture.
+- La suite du téléversement (règle fermée ou retrait) n'est pas tranchée ici : il reste désactivé par défaut.
 
 **Impacte.** `docs/specs/30-signature-electronique.md`, `docs/decisions/identifiants.md`,
 `docs/guides/DEPLOIEMENT.md`, `docs/guides/GETTING-STARTED.md`, `docs/guides/GUIDE-UTILISATEUR.md`,

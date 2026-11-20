@@ -116,8 +116,8 @@ const pilotage: typeof fr = {
         submit: 'Confirm the PIN',
         cancel: 'Cancel',
       },
-      noBridgeAlone: 'No eID software was detected on your computer. Install Web eID or BeIDConnect (browser extension and eID software), then try again. If the problem persists, contact the person who sent you the link.',
-      noBridge: 'No eID software was detected on your computer. Install Web eID or BeIDConnect (browser extension and eID software), then try again, or use the other way below.',
+      noBridgeAlone: 'No eID software was detected on your computer. Install Web eID (browser extension and Web eID app) and the Belgian eID software, then try again. If the problem persists, contact the person who sent you the link.',
+      noBridge: 'No eID software was detected on your computer. Install Web eID (browser extension and Web eID app) and the Belgian eID software, then try again, or use the other way below.',
       errors: {
         unavailableAlone: 'The eID software does not respond. Check that it is installed and running, then try again. If the problem persists, contact the person who sent you the link.',
         unavailable: 'The eID software does not respond. Check that it is installed and running, then try again, or use the other way below.',

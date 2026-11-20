@@ -177,8 +177,14 @@ public record SignatureProperties(
             List<String> bridges,
             boolean uploadEnabled) {
 
-        /** Ponts navigateur reconnus (D-EID-BRIDGE), dans l'ordre d'essai par défaut. */
+        /** Ponts navigateur reconnus (D-EID-BRIDGE). */
         static final List<String> KNOWN_BRIDGES = List.of("web-eid", "beidconnect");
+
+        /**
+         * Ponts proposés par défaut : Web eID seul. L'extension BeIDConnect publiée ne s'active que sur des domaines
+         * fédéraux (recette du 2026-11-18, §138) ; l'exploitant peut encore l'ajouter.
+         */
+        static final List<String> DEFAULT_BRIDGES = List.of("web-eid");
 
         public Eid {
             trustAnchorsFile = trustAnchorsFile == null || trustAnchorsFile.isBlank() ? null : trustAnchorsFile.trim();
@@ -191,10 +197,10 @@ public record SignatureProperties(
             bridges = normalizedBridges(bridges);
         }
 
-        /** Absent : les deux ponts ; vide : signature dans la page non offerte ; valeur inconnue : démarrage refusé. */
+        /** Absent : Web eID seul ; vide : signature dans la page non offerte ; valeur inconnue : démarrage refusé. */
         private static List<String> normalizedBridges(List<String> raw) {
             if (raw == null) {
-                return KNOWN_BRIDGES;
+                return DEFAULT_BRIDGES;
             }
             List<String> out = new java.util.ArrayList<>();
             for (String value : raw) {

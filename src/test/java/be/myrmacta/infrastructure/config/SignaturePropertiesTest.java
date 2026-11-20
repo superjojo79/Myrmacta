@@ -88,9 +88,9 @@ class SignaturePropertiesTest {
     }
 
     @Test
-    void cardBridgesDefaultToBothInOrderAndCanBeReducedEmptiedOrRefused() {
-        // TODO §138 (D-EID-BRIDGE)
-        assertThat(of("eid", null, null).eid().bridges()).containsExactly("web-eid", "beidconnect");
+    void cardBridgesDefaultToWebEidAndCanBeExtendedEmptiedOrRefused() {
+        // TODO §138 (D-EID-BRIDGE) : BeIDConnect reste reconnu mais n'est plus proposé par défaut (recette #98).
+        assertThat(of("eid", null, null).eid().bridges()).containsExactly("web-eid");
         assertThat(eidWith(List.of(" BeIDConnect ", "web-eid", "beidconnect")).bridges())
                 .containsExactly("beidconnect", "web-eid");
         assertThat(eidWith(List.of()).bridges()).isEmpty();

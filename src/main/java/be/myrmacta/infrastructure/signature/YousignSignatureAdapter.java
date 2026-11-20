@@ -7,6 +7,7 @@ import be.myrmacta.domain.signature.port.out.SignaturePort;
 import be.myrmacta.infrastructure.connector.builtin.SignatureCallbackConnector;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -29,17 +30,25 @@ public final class YousignSignatureAdapter implements SignaturePort {
     private final String tenantId;
     private final ConnectorInstanceRepository instances;
     private final YousignClient fixed;
+    private final Locale signerLocale;
 
-    public YousignSignatureAdapter(String tenantId, ConnectorInstanceRepository instances) {
+    /** @param signerLocale langue du tenant ({@code app.i18n.default-locale}), donnée à chaque signataire */
+    public YousignSignatureAdapter(String tenantId, ConnectorInstanceRepository instances, Locale signerLocale) {
         this.tenantId = tenantId;
         this.instances = instances;
         this.fixed = null;
+        this.signerLocale = signerLocale;
     }
 
     YousignSignatureAdapter(YousignClient client) {
+        this(client, Locale.FRENCH);
+    }
+
+    YousignSignatureAdapter(YousignClient client, Locale signerLocale) {
         this.tenantId = null;
         this.instances = null;
         this.fixed = client;
+        this.signerLocale = signerLocale;
     }
 
     @Override
@@ -79,7 +88,7 @@ public final class YousignSignatureAdapter implements SignaturePort {
             }
             for (SubmitSigner signer : command.signers()) {
                 String[] name = nameParts(signer.displayName());
-                client.addSigner(requestId, name[0], name[1], signer.email());
+                client.addSigner(requestId, name[0], name[1], signer.email(), signerLocale);
             }
             client.activate(requestId);
         } catch (RuntimeException ex) {

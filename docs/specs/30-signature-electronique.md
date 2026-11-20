@@ -211,6 +211,10 @@ profil de production sans le second drapeau.
   activation) la supprime chez Yousign (`DELETE`, un brouillon ne s'annule pas) ; si la suppression
   est refusée, elle est annulée. Ce nettoyage est au mieux, journalisé, et laisse remonter l'erreur
   d'origine (D-SIGNATURE-DRAFT-CLEANUP, [§151](../decisions/151-yousign-nettoyage-du-brouillon.md)).
+- **Langue du signataire Yousign.** La page de signature et les messages Yousign suivent la langue du
+  tenant (`app.i18n.default-locale`), comme les invitations envoyées par Myrmacta : `fr` ou `en`,
+  repli `fr`. La demande ne porte pas de langue propre ; DocuSign n'en envoie pas, celle du compte
+  s'applique (D-SIGNATURE-SIGNER-LOCALE, [§152](../decisions/152-yousign-langue-du-signataire.md)).
 - **Lien.** Il n'est pas conservé à la création. Le portail le demande à l'ouverture de la page.
   « Mes signatures » le demande au clic (`GET /api/signatures/mine/{signerId}/signing-url`), pas
   dans la liste. `signingUrl` est nul tant que le lien n'est pas prêt (tour séquentiel, attente) et

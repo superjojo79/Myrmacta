@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -123,6 +124,18 @@ class YousignSignatureAdapterTest {
         assertThat(client.calls).containsExactly("create:false");
     }
 
+    /** #132 — chaque signataire est créé dans la langue du tenant ({@code app.i18n.default-locale}). */
+    @Test
+    void signersAreCreatedInTheTenantLanguage() throws IOException {
+        client.anchors = 2;
+        YousignSignatureAdapter english = new YousignSignatureAdapter(client, Locale.ENGLISH);
+        byte[] pdf = pdf("{{s1|signature|85|37}}", "{{s2|signature|85|37}}");
+
+        english.submit(command(SignatureMode.PARALLEL, pdf, "Ada Lovelace", "Bob"));
+
+        assertThat(client.locales).containsExactly(Locale.ENGLISH, Locale.ENGLISH);
+    }
+
     @Test
     void doneEventBecomesSigned() {
         Map<String, Object> payload = Map.of(
@@ -176,6 +189,7 @@ class YousignSignatureAdapterTest {
     private static final class FakeYousign implements YousignClient {
         static final UUID REQUEST_ID = UUID.fromString("0ef334d2-7f36-4643-8a2a-4283b4a3e4a4");
         final List<String> calls = new ArrayList<>();
+        final List<Locale> locales = new ArrayList<>();
         final YousignCallException failure = new YousignCallException("Yousign answered HTTP 400");
         int anchors = 1;
         String failOn;
@@ -202,7 +216,8 @@ class YousignSignatureAdapterTest {
         }
 
         @Override
-        public UUID addSigner(UUID requestId, String firstName, String lastName, String email) {
+        public UUID addSigner(UUID requestId, String firstName, String lastName, String email, Locale locale) {
+            locales.add(locale);
             record("signer:" + firstName + ":" + lastName);
             return UUID.randomUUID();
         }

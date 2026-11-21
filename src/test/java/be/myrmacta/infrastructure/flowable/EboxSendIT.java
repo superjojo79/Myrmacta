@@ -86,7 +86,7 @@ class EboxSendIT {
         assertThat(variables).containsEntry("eboxIssue", "VOIE_SECOURS").containsEntry("eboxLivraison", "FALLBACK")
                 .containsEntry("eboxSecoursRequis", true).containsEntry("eboxVoieSecours", "EMAIL")
                 .containsEntry("eboxEnvoiMessageId", "").containsEntry("eboxEnvoiRejoue", false);
-        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "esSend", ref, null,
+        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "esSend", ref,
                 recipients.citizen(TENANT, NISS));
         EboxSendAuditEntry.Summary logged = audit.last(TENANT, key, new EboxRecipient.Citizen(NISS)).orElseThrow();
         assertThat(logged.outcome()).isEqualTo(EboxSendAuditEntry.Outcome.FALLBACK);

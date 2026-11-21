@@ -153,44 +153,47 @@ class EboxSendDelegateTest {
         verify(send, never()).send(any());
     }
 
-    /** Revue H2 : chaque destinataire et chaque tour de boucle ont leur clé ; le NISS n'entre jamais en clair. */
+    /**
+     * Revue H2 puis M1' : chaque destinataire a sa clé, le tour de boucle n'y entre pas (une liste réordonnée ou complétée au
+     * rebouclage ne renvoie pas aux destinataires déjà servis) ; le NISS n'entre jamais en clair.
+     */
     @Test
-    void theKeyNamesTheDossierStepDocumentLoopTurnAndRecipient() {
-        String first = EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, null, "0212345678");
-        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, null, "0212345678")).isEqualTo(first);
-        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, null, "0207654321")).isNotEqualTo(first);
-        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", "tenant_dev/doc-2", null, "0212345678"))
-                .isNotEqualTo(first);
-        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "autre", REF, null, "0212345678")).isNotEqualTo(first);
-        assertThat(EboxSendDelegate.idempotencyKey(UUID.randomUUID(), "envoiEbox", REF, null, "0212345678")).isNotEqualTo(first);
-        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, 1, "0212345678")).isNotEqualTo(first);
+    void theKeyNamesTheDossierStepDocumentAndRecipient() {
+        String first = EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, "0212345678");
+        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, "0212345678")).isEqualTo(first);
+        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, "0207654321")).isNotEqualTo(first);
+        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", "tenant_dev/doc-2", "0212345678")).isNotEqualTo(first);
+        assertThat(EboxSendDelegate.idempotencyKey(DOSSIER, "autre", REF, "0212345678")).isNotEqualTo(first);
+        assertThat(EboxSendDelegate.idempotencyKey(UUID.randomUUID(), "envoiEbox", REF, "0212345678")).isNotEqualTo(first);
         assertThat(first).hasSize(69);
     }
 
     @Test
-    void theLoopTurnIsInheritedFromTheEnclosingSubProcessAndTheCitizenIsHashed() {
+    void theLoopTurnDoesNotEnterTheKeyAndTheCitizenIsHashed() {
         attributes.put("eboxEnvoiTypeDestinataire", "CITOYEN");
         attributes.put("eboxEnvoiDestinataire", "variable:niss");
         when(execution.getVariable("niss")).thenReturn("85073003328");
         when(execution.getVariable("loopCounter")).thenReturn(1);
+        when(execution.getVariableLocal("loopCounter")).thenReturn(1);
         element();
 
         delegate.execute(execution);
 
         String hashed = recipients.citizen(TENANT, "85073003328");
         assertThat(hashed).doesNotContain("85073003328").hasSize(64);
-        assertThat(sent().idempotencyKey())
-                .isEqualTo(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, 1, hashed))
-                .isNotEqualTo(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, null, hashed));
+        assertThat(sent().idempotencyKey()).isEqualTo(EboxSendDelegate.idempotencyKey(DOSSIER, "envoiEbox", REF, hashed));
     }
 
     /** Revue H2 : dans un sous-processus multi-instance, les variables vont au tour, pas au process. */
     @Test
     void insideAMultiInstanceSubProcessTheVariablesAreLocalToTheTurn() {
+        DelegateExecution root = mock(DelegateExecution.class);
         DelegateExecution turn = mock(DelegateExecution.class);
         DelegateExecution child = mock(DelegateExecution.class);
         when(execution.getParent()).thenReturn(child);
         when(child.getParent()).thenReturn(turn);
+        when(turn.getParent()).thenReturn(root);
+        when(root.isMultiInstanceRoot()).thenReturn(true);
         when(turn.getVariableLocal("loopCounter")).thenReturn(0);
         element();
 
@@ -201,6 +204,22 @@ class EboxSendDelegateTest {
         verify(turn).setVariableLocal("eboxEnvoiRejoue", false);
         verify(execution, never()).setVariable(anyString(), any());
         verify(child, never()).setVariableLocal(anyString(), any());
+    }
+
+    /** Revue B3' : une variable locale {@code loopCounter} posée hors d'un tour de multi-instance ne déplace pas les variables. */
+    @Test
+    void aLoopCounterOutsideAMultiInstanceTurnIsIgnored() {
+        DelegateExecution parent = mock(DelegateExecution.class);
+        DelegateExecution grandParent = mock(DelegateExecution.class);
+        when(execution.getParent()).thenReturn(parent);
+        when(parent.getVariableLocal("loopCounter")).thenReturn(3);
+        when(parent.getParent()).thenReturn(grandParent);
+        element();
+
+        delegate.execute(execution);
+
+        verify(execution).setVariable("eboxIssue", "ENVOYE");
+        verify(parent, never()).setVariableLocal(anyString(), any());
     }
 
     @Test

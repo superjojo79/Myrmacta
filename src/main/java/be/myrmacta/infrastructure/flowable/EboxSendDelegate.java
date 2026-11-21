@@ -53,9 +53,9 @@ import org.springframework.stereotype.Component;
  * ({@code PRODUCED_DOC}) du dossier courant, en PDF. L'étape doit être asynchrone et non multi-instance (revue M1), contrôlé au
  * déploiement et ici.
  *
- * <p>Clé d'idempotence : {@code myr1-} + SHA-256 de (dossier, étape, document, tour de boucle hérité, référence du
- * destinataire : BCE, ou HMAC du NISS, jamais le NISS). Un rejeu de l'étape ne publie jamais deux fois ; chaque destinataire
- * d'une boucle a sa clé (revue H2).
+ * <p>Clé d'idempotence : {@code myr1-} + SHA-256 de (dossier, étape, document, référence du destinataire : BCE, ou HMAC du
+ * NISS, jamais le NISS). Un rejeu de l'étape ne publie jamais deux fois ; chaque destinataire d'une boucle a sa clé (revue
+ * H2), indépendante de son rang dans la liste (revue M1').
  *
  * <p>Variables posées : {@code eboxIssue} ({@code ENVOYE}, {@code DEJA_ENVOYE}, {@code VOIE_SECOURS}), {@code eboxLivraison},
  * {@code eboxSecoursRequis}, {@code eboxVoieSecours}, {@code eboxEnvoiMessageId}, {@code eboxEnvoiRejoue}. Dans un
@@ -143,7 +143,7 @@ class EboxSendDelegate implements JavaDelegate {
                 .registered("OUI".equals(DeployedActivityParameters.getLiteral(execution, REGISTERED)))
                 .build();
         String key = idempotencyKey(dossierId, execution.getCurrentActivityId(), documentRef,
-                execution.getVariable(LOOP_COUNTER), recipients.reference(tenantId, recipient));
+                recipients.reference(tenantId, recipient));
         EboxSendOutcome outcome = send.send(new SendEboxCommand(new EboxSenderAccount(instanceId), message, key, dossierId,
                 fallback));
         log.info("eboxSendTask: dossier {} step {} sent through the {} route: {}{}", dossierId, execution.getCurrentActivityId(),
@@ -178,10 +178,13 @@ class EboxSendDelegate implements JavaDelegate {
         return result;
     }
 
-    /** Clé stable : dossier, étape, document, tour de boucle et référence du destinataire (BCE ou HMAC du NISS) ; 69 caractères. */
-    static String idempotencyKey(UUID dossierId, String activityId, String documentRef, Object loop, String recipientReference) {
-        String material = dossierId + "|" + activityId + "|" + documentRef + "|" + (loop == null ? "" : loop) + "|"
-                + recipientReference;
+    /**
+     * Clé stable : dossier, étape, document et référence du destinataire (BCE ou HMAC du NISS) ; 69 caractères. Le tour de
+     * boucle n'y entre pas (revue M1') : une liste de destinataires réordonnée ou complétée au rebouclage ne renvoie rien aux
+     * destinataires déjà servis.
+     */
+    static String idempotencyKey(UUID dossierId, String activityId, String documentRef, String recipientReference) {
+        String material = dossierId + "|" + activityId + "|" + documentRef + "|" + recipientReference;
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(material.getBytes(StandardCharsets.UTF_8));
             return KEY_PREFIX + HexFormat.of().formatHex(digest);
@@ -191,12 +194,13 @@ class EboxSendDelegate implements JavaDelegate {
     }
 
     /**
-     * Exécution du tour d'un sous-processus multi-instance englobant (celle qui porte {@code loopCounter} en local), sinon
-     * {@code null} : les variables vont alors au process.
+     * Exécution du tour d'un sous-processus multi-instance englobant (celle qui porte {@code loopCounter} en local et dont le
+     * parent est la racine du multi-instance), sinon {@code null} : les variables vont alors au process.
      */
     static DelegateExecution loopScope(DelegateExecution execution) {
         for (DelegateExecution current = execution; current != null; current = current.getParent()) {
-            if (current.getVariableLocal(LOOP_COUNTER) != null) {
+            if (current.getVariableLocal(LOOP_COUNTER) != null && current.getParent() != null
+                    && current.getParent().isMultiInstanceRoot()) {
                 return current;
             }
         }

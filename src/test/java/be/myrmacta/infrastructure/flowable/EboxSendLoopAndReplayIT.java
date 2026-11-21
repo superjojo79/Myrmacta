@@ -194,8 +194,8 @@ class EboxSendLoopAndReplayIT {
         assertThat(jobs).hasSize(2);
         jobs.forEach(job -> managementService.executeJob(job.getId()));
 
-        String published = EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, 0, WITH_EBOX);
-        String fallback = EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, 1, WITHOUT_EBOX);
+        String published = EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, WITH_EBOX);
+        String fallback = EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, WITHOUT_EBOX);
         assertThat(published).isNotEqualTo(fallback);
         assertThat(audit.last(TENANT, published, new EboxRecipient.Enterprise(WITH_EBOX)).orElseThrow().outcome())
                 .isEqualTo(EboxSendAuditEntry.Outcome.PUBLISHED);
@@ -210,6 +210,39 @@ class EboxSendLoopAndReplayIT {
         assertThat(runtimeService.getVariableLocal(pi, "eboxIssue")).as("the outcome stays in its turn").isNull();
         taskService.complete(task.getId());
         assertThat(taskService.createTaskQuery().processInstanceId(pi).singleResult().getTaskDefinitionKey()).isEqualTo("lDone");
+    }
+
+    /**
+     * Revue M1' : au rebouclage, la liste des destinataires est complétée et réordonnée ([A, B] puis [C, A, B]) avec le même
+     * document : seul le nouveau destinataire reçoit la décision.
+     */
+    @Test
+    void aReorderedOrExtendedRecipientListOnlySendsToTheNewRecipient() {
+        String third = "0412345678";
+        ebox.preferences.put(WITHOUT_EBOX, true);
+        ebox.preferences.put(third, true);
+        Dossier dossier = dossier();
+        String ref = storage.store(TENANT, "application/pdf", PDF);
+
+        runLoop(dossier, ref, List.of(WITH_EBOX, WITHOUT_EBOX));
+        assertThat(ebox.requestsTo("/ebox/messages")).hasSize(2);
+
+        String again = runLoop(dossier, ref, List.of(third, WITH_EBOX, WITHOUT_EBOX));
+
+        assertThat(ebox.requestsTo("/ebox/messages")).as("only the new recipient is published").hasSize(3)
+                .last().satisfies(request -> assertThat(request.headers())
+                        .containsEntry("idempotency-key", EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, third)));
+        assertThat(audit.last(TENANT, EboxSendDelegate.idempotencyKey(dossier.id(), "lSend", ref, WITH_EBOX),
+                new EboxRecipient.Enterprise(WITH_EBOX)).orElseThrow().outcome()).isEqualTo(EboxSendAuditEntry.Outcome.PUBLISHED);
+        assertThat(taskService.createTaskQuery().processInstanceId(again).singleResult().getTaskDefinitionKey()).isEqualTo("lDone");
+    }
+
+    private String runLoop(Dossier dossier, String ref, List<String> bces) {
+        String pi = runtimeService.startProcessInstanceByKey("eboxSendLoop", Map.of("dossierId", dossier.id().toString(),
+                "generatedDocumentId", ref, "bces", new ArrayList<>(bces))).getId();
+        complete(pi, "lWait");
+        managementService.createJobQuery().processInstanceId(pi).list().forEach(job -> managementService.executeJob(job.getId()));
+        return pi;
     }
 
     /** Revue B2 et B1 : le job échoue après la publication ; la nouvelle tentative ne republie pas et verse la preuve une fois. */
@@ -230,7 +263,7 @@ class EboxSendLoopAndReplayIT {
         managementService.moveTimerToExecutableJob(retry.getId());
         managementService.executeJob(retry.getId());
 
-        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "rSend", ref, null, WITH_EBOX);
+        String key = EboxSendDelegate.idempotencyKey(dossier.id(), "rSend", ref, WITH_EBOX);
         assertThat(ebox.requestsTo("/registeredMails")).as("published once").hasSize(1);
         assertThat(entityManager.createQuery("select count(e) from EboxSendAuditJpaEntity e where e.tenantId = :tenant "
                         + "and e.idempotencyKey = :key and e.outcome = 'PUBLISHED'", Long.class)

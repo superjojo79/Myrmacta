@@ -809,8 +809,9 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   Après la brique, une passerelle exclusive suit la voie de secours sur `${eboxSecoursRequis == true}` (exemple :
   `exemples/envoi-ebox/`).
 - **Issue incertaine.** Si l'eBox ne répond pas (délai, erreur 5xx), aucune variable n'est posée : l'étape échoue et devient
-  un incident. Rejouez-le depuis l'administration : la même clé d'idempotence (dossier, étape, document, tour de boucle,
-  destinataire) empêche tout double envoi. Un refus de l'eBox (4xx) ou un document invalide fait aussi échouer l'étape, sans
+  un incident. Rejouez-le depuis l'administration : la même clé d'idempotence (dossier, étape, document, destinataire)
+  empêche tout double envoi. Si vous corrigez le destinataire avant de rejouer, la clé change : le message part au nouveau
+  destinataire, et l'ancien a pu le recevoir (l'issue était incertaine, pas un échec). Un refus de l'eBox (4xx) ou un document invalide fait aussi échouer l'étape, sans
   rien publier. Si l'étape échoue après la publication (par exemple dans une passerelle qui la suit), la nouvelle tentative
   relit l'issue du journal (`eboxEnvoiRejoue` vrai) sans republier.
 - **Après une voie de secours.** Le même dossier, la même étape et le même document redonnent la même clé : le journal rejoue
@@ -821,8 +822,10 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   destinataires (`flowable:collection`, `flowable:elementVariable="bce"`), la brique lit `variable:bce`, et la passerelle qui
   la suit, dans le même sous-processus, lit l'issue de son tour. Les variables de la brique sont alors locales au tour : elles
   ne remontent pas au process.
-- **Boucle.** Chaque tour, et chaque destinataire, a sa clé : un tour n'en rejoue jamais un autre. La clé porte le numéro BCE,
-  ou une empreinte HMAC du NISS, jamais le NISS en clair.
+- **Boucle.** Chaque destinataire a sa clé, quel que soit son rang dans la liste : si la liste est réordonnée ou complétée au
+  rebouclage (par exemple `[A, B]` puis `[C, A, B]`, même document), seul `C` reçoit le message ; `A` et `B` relisent leur
+  issue du journal (`eboxEnvoiRejoue` vrai). Le même destinataire deux fois dans la liste ne reçoit qu'un message. La clé
+  porte le numéro BCE, ou une empreinte HMAC du NISS, jamais le NISS en clair.
 - **Journal.** Chaque envoi, doublon ou voie de secours laisse une ligne dans le journal d'audit des envois, que la base
   refuse de modifier (registre §155).
 

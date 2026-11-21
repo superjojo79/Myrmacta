@@ -33,7 +33,7 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Q5. Voie citoyen : la spec 3.8 déclare aussi un serveur `/REST/ebox/citizen/messageRegistry/v3` (Smals). Passer par Smals si le secteur citoyen est déclaré à l'onboarding, ou par BOSA ? | a) Smals (même adaptateur, X.509) ; b) BOSA (stub actuel) ; c) les deux | Demander à BOSA/ONSS ; le port permet c sans toucher au domaine | ouverte |
 | Q6. Scope OAuth de l'appel Federation (`eboxPreferences/search`, `citizenEboxConsents/search`) : la spec 1.4 n'en déclare aucun. | scope de publication (fait) ou scope dédié | à confirmer en acceptation | hypothèse |
 | Q7. Conservation du journal : 10 ans à partir du 1er janvier suivant (ATREQ01) ; la base interdit toute suppression. | a) jamais de purge en V1 ; b) purge par un rôle PostgreSQL dédié qui désactive le déclencheur | a en V1, b quand la première échéance approche (2037) | ouverte |
-| Q8. Clé du HMAC du NISS dérivée de la clé maîtresse des connecteurs : une rotation de cette clé coupe la comparaison avec les lignes anciennes. | a) clé maîtresse (fait) ; b) clé dédiée `APP_EBOX_AUDIT_HASH_KEY` | a tant que la rotation n'est pas outillée ; la version `SSIN_HMAC_V1` permet de passer à b | hypothèse |
+| Q8. Clé du HMAC du NISS dérivée de la clé maîtresse des connecteurs : une rotation de cette clé coupe la comparaison avec les lignes anciennes. | a) clé maîtresse (fait) ; b) clé dédiée `APP_EBOX_AUDIT_HASH_KEY` | a tant que la rotation n'est pas outillée ; la version `SSIN_HMAC_V1` permet de passer à b ; la clé d'idempotence citoyen en dépend : ne changer la clé maîtresse qu'en l'absence d'incident d'envoi eBox en attente (§155, revue B2') | hypothèse |
 | Q9. Autorisation d'usage du NISS pour cibler un citoyen (même sujet que CSAM, archive #210) | — | prérequis juridique avant toute mise en production de la voie citoyen | ouverte (#13) |
 | Q10. Le rôle applicatif possède `ebox_send_audit` et peut désactiver ses déclencheurs (revue M1). Séparer un rôle de migration ? | a) limite documentée (fait) ; b) rôle de migration propriétaire, rôle applicatif en `INSERT`/`SELECT` sur le journal ; c) b pour toutes les tables | b ou c avant la validation BOSA ; touche `provision-tenant.sh`, Liquibase (datasource dédiée) et le déploiement | ouverte (Benoit) |
 | Q11. `allowedHostSuffixes` de l'instance `ebox-outbound` est réglé par l'administrateur du tenant (revue B3) : un admin pourrait envoyer le jeton ailleurs. | a) laisser (fait, comme §150) ; b) liste fixée par la plateforme ; c) intersection plateforme ∩ tenant | c au lot 2, avec l'écran du connecteur | hypothèse (c, plafond fixé dans le code : `EboxOutboundSettings.PLATFORM_SUFFIXES`) → §155 D-EBOX-SEND-BLOCK, à confirmer (Benoit) |
@@ -67,7 +67,7 @@ registre : [§155](../decisions/155-envoi-ebox-citoyen-et-entreprise.md), [§150
 | Lot | Contenu | Statut | PR |
 |---|---|---|---|
 | 1 | Modèle commun + extension citoyen, port et cas d'usage d'envoi, voie entreprise contre faux serveur (publication, recommandé et preuve, préférence eBox), stub citoyen, consentement et voie de secours, journal d'audit en ajout seul | livré (branche `feat/ebox-envoi`, non poussée) | — |
-| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, formulaire admin générique, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape+document+tour+destinataire, variables `eboxIssue`, `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process (`EboxSendIT`) | livré (branche `feat/ebox-envoi-lot2`, non poussée) | — |
+| 2 | Type de connecteur `ebox-outbound` (schéma de configuration, validation, libellés FR/EN du catalogue §142, formulaire admin générique, guide) ; brique BPMN « Envoyer en eBox » (pièce PDF du dossier, langue du dossier, clé d'idempotence dossier+étape+document+destinataire, variables `eboxIssue`, `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`, `eboxEnvoiMessageId`, `eboxEnvoiRejoue`, preuve de dépôt versée au dossier) ; exemple BPMN avec passerelle vers la voie de secours ; test traversant la chaîne process (`EboxSendIT`) | livré (branche `feat/ebox-envoi-lot2`, non poussée) | — |
 | 3 | Selon les réponses : `nonQualifiedRegisteredMail` (Q2), paiement entreprise (Q4), voie citoyen Smals (Q5), consultation du journal (export pour BOSA, rôle `TENANT_ADMIN`, ATREQ03) | à faire | — |
 | 4 | Adaptateur citoyen BOSA réel (après NDA), recette en acceptation | bloqué (accès) | — |
 
@@ -85,8 +85,8 @@ Prochaine action : relecture des correctifs de la revue du lot 2 ; réponses de 
   D-EBOX-SEND-IDEMPOTENCE ; la brique est toujours asynchrone (exigé au déploiement).
 - **Document** : seulement un `PRODUCED_DOC` PDF du dossier de l'étape (pas une pièce déposée), comme signature et e-mail.
 - **Clé** (après revue H2) : le destinataire entre dans la clé par sa référence d'audit : BCE en clair, HMAC du NISS (clé
-  dérivée de `app.connector.crypto.master-key` et du tenant, comme le journal) ; jamais le NISS en clair. Tour de boucle lu
-  par héritage (`loopCounter` du sous-processus multi-instance englobant).
+  dérivée de `app.connector.crypto.master-key` et du tenant, comme le journal) ; jamais le NISS en clair. Le tour de boucle n'y entre plus (revue M1') : une liste réordonnée ou complétée au rebouclage ne
+  renvoie rien aux destinataires déjà servis.
 - **Appel direct** (après revue H1) : le connecteur refuse tout appel, étape « Appeler un connecteur » à requête littérale
   comprise ; la brique appelle le cas d'usage elle-même ; la source `eboxSenders` la sert, `connectorInstances` exclut le type.
 - **Boucle** (après revue H2) : brique multi-instance refusée au déploiement et à l'exécution ; motif documenté : sous-processus
@@ -114,6 +114,7 @@ Prochaine action : relecture des correctifs de la revue du lot 2 ; réponses de 
 | 2026-11-20 | lot 2 : `./mvnw -Dmaven.compiler.release=21 -Dskip.frontend=true verify` | BUILD SUCCESS : 5 479 tests, 0 échec, 0 erreur, 5 ignorés (un premier passage : `OutboxRelayIT` en échec, instable, vert seul et au second verify complet, sans lien avec le lot) |
 | 2026-11-20 | lot 2 : `cd frontend && npm run lint && npm run test && npx playwright test` | lint vert ; Vitest 1 161 tests ; Playwright 207 tests |
 | 2026-11-20 | lot 2 : `scripts/check-docs.sh` | vert |
+| 2026-11-21 | seconde passe : `mvnw test -Dtest='EboxSendDelegateTest,EboxSendIT,EboxSendLoopAndReplayIT'` | 17 tests, 0 échec ; mutation (tour remis dans la clé) : 3 sur 4 de `EboxSendLoopAndReplayIT` échouent |
 | 2026-11-20 | revue du lot 2 : `mvnw test -Dtest='EboxSendDelegateTest,EboxOutboundConnectorTest,BlockReferenceLookupAdapterTest,BuildingBlockCatalogTest,FlowableBpmnParserAdapterBlockTest,BlockAttributeRulesTest,HttpEboxEnterpriseChannelTest'` puis `EboxSendIT,EboxSendLoopAndReplayIT` | 130 tests, 0 échec ; puis 4 tests, 0 échec. Mutation (clé sans destinataire, tour lu en local, variables au process, preuve jamais versée au rejeu) : `EboxSendLoopAndReplayIT` échoue (2 sur 3) |
 
 ## Revue de clôture
@@ -136,3 +137,7 @@ Prochaine action : relecture des correctifs de la revue du lot 2 ; réponses de 
 | Lot 2, B1 : preuve versée de nouveau au rejeu | basse | versée au rejeu seulement si absente du dossier (voir les défauts prudents) |
 | Lot 2, B2 : pas de test d'un vrai rejeu de job | basse | `EboxSendLoopAndReplayIT` : job en échec après la publication, nouvelle tentative, une publication, une ligne `PUBLISHED`, une preuve |
 | Lot 2, B3 : rejeu de la voie de secours non documenté | basse | phrase au guide (« Après une voie de secours ») |
+| Lot 2, seconde passe, M1' : `loopCounter` dans la clé, liste réordonnée ou complétée au rebouclage = second envoi | moyenne | tour retiré de la clé (le destinataire y est) ; `loopScope` garde le placement des variables ; `EboxSendLoopAndReplayIT.aReorderedOrExtendedRecipientListOnlySendsToTheNewRecipient` ; guide corrigé |
+| Lot 2, seconde passe, B1' : destinataire corrigé avant le rejeu d'une issue incertaine | basse | phrase au guide (nouveau destinataire servi, l'ancien a pu recevoir) |
+| Lot 2, seconde passe, B2' : rotation de la clé maîtresse et clé d'idempotence citoyen | basse | §155 et Q8 : pas de rotation avec un incident d'envoi en attente |
+| Lot 2, seconde passe, B3' : `loopScope` sans contrôle du tour | basse | exige `getParent().isMultiInstanceRoot()` ; test unitaire |

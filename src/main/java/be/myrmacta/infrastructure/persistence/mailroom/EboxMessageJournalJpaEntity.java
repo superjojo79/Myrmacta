@@ -1,5 +1,6 @@
 package be.myrmacta.infrastructure.persistence.mailroom;
 
+import be.myrmacta.domain.mailroom.model.EboxTakenMessage;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -41,5 +42,9 @@ class EboxMessageJournalJpaEntity {
 
     String messageId() {
         return messageId;
+    }
+
+    EboxTakenMessage toDomain() {
+        return new EboxTakenMessage(tenantId, enterpriseNumber, registryId, messageId, partition, connectorInstanceId, takenAt);
     }
 }

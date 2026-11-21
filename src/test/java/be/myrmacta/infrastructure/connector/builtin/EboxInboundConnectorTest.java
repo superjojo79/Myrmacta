@@ -10,6 +10,7 @@ import be.myrmacta.domain.connector.model.ConnectorInstanceData;
 import be.myrmacta.domain.connector.model.ConnectorValidationException;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector.EventDelivery;
 import be.myrmacta.domain.connector.model.WorkflowTriggerEvent;
+import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.mailroom.model.EboxTakenMessage;
 import be.myrmacta.domain.mailroom.port.out.EboxReadJournal;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
@@ -57,6 +58,7 @@ class EboxInboundConnectorTest {
     private final ObjectMapper json = JsonMapper.builder().build();
     private final FakeEbox ebox = new FakeEbox();
     private final MemoryJournal journal = new MemoryJournal();
+    private final List<ConnectorInstanceData> instances = new ArrayList<>();
     private final List<String> tokenRequests = new ArrayList<>();
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-20T09:00:00Z"));
     private EboxInboundConnector connector;
@@ -85,7 +87,7 @@ class EboxInboundConnectorTest {
         };
         OAuth2TokenProvider tokens = new OAuth2TokenProvider(guard, json, new ConnectorProperties(null, null, null, null, null, null),
                 tokenSender, clock);
-        return new EboxInboundConnector(ebox, journal, new SimpleJsonPathMapper(), json, guard, inbound, tokens,
+        return new EboxInboundConnector(ebox, journal, new MemoryInstances(), new SimpleJsonPathMapper(), json, guard, inbound, tokens,
                 TransactionOperations.withoutTransaction(), clock);
     }
 
@@ -258,7 +260,37 @@ class EboxInboundConnectorTest {
 
         poll(config);
 
-        assertThat(ebox.listedPartitions).contains("myrmacta", "myrmacta-rh");
+        assertThat(ebox.listedPartitions).containsExactlyInAnyOrder("myrmacta", "myrmacta-rh");
+    }
+
+    @Test
+    void anEmptyPartitionListRemovesNothing() {
+        Map<String, Object> config = config();
+        config.put("partitionApiUrl", "https://services.socialsecurity.be/REST/ebox/enterprise/partition/v1");
+        ebox.knownPartitions = List.of();
+
+        poll(config);
+
+        assertThat(ebox.listedPartitions).containsExactlyInAnyOrder("myrmacta", "myrmacta-rh");
+    }
+
+    @Test
+    void aRefusedTokenIsRenewedOnceForThePartitionCheck() {
+        Map<String, Object> config = config();
+        config.put("partitionApiUrl", "https://services.socialsecurity.be/REST/ebox/enterprise/partition/v1");
+        ebox.knownPartitions = List.of("myrmacta");
+        poll(config);
+        // Un jeton n'est renouvelé de force qu'après quelques minutes (OAuth2TokenProvider).
+        clock.set(clock.instant().plus(Duration.ofMinutes(5)));
+        ebox.listedPartitions.clear();
+        ebox.tokensSeen.clear();
+        ebox.unauthorizedOnce = true;
+
+        poll(config);
+
+        assertThat(tokenRequests).hasSize(2);
+        assertThat(ebox.tokensSeen.subList(0, 2)).containsExactly("token-1", "token-2");
+        assertThat(ebox.listedPartitions).containsExactly("myrmacta");
     }
 
     @Test
@@ -565,6 +597,120 @@ class EboxInboundConnectorTest {
         assertThat(ebox.moved).isEmpty();
     }
 
+    private Map<String, Object> move(String messageId, String target) {
+        return connector.execute(instance(config()), Map.of("operation", "moveToPartition", "registry", "socsec_v3", "messageId",
+                messageId, "targetPartition", target));
+    }
+
+    @Test
+    void aReplayedMoveOfAMessageAlreadyInTheTargetSucceeds() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        for (int status : List.of(400, 404, 409)) {
+            ebox.moveRefusal = status;
+            ebox.currentPartition.put("m-1", "myrmacta-traite");
+
+            assertThat(move("m-1", "myrmacta-traite")).as("HTTP " + status).containsEntry("eboxClasse", true)
+                    .containsEntry("eboxDejaClasse", true);
+        }
+        assertThat(ebox.reread).containsExactly("m-1", "m-1", "m-1");
+    }
+
+    @Test
+    void aRefusedMoveOfAMessageOutsideTheTargetFailsWithAnExplicitMessage() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.currentPartition.put("m-1", "myrmacta");
+
+        ebox.moveRefusal = 409;
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HTTP 409").hasMessageContaining("myrmacta-traite");
+        ebox.moveRefusal = 400;
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HTTP 400");
+        ebox.moveRefusal = 404;
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HTTP 404").hasMessageContaining("does not exist");
+        ebox.currentPartition.remove("m-1");
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HTTP 404").hasMessageContaining("no longer");
+        ebox.moveRefusal = 410;
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("HTTP 410").hasMessageContaining("no longer");
+        assertThat(ebox.moved).isEmpty();
+    }
+
+    @Test
+    void aServerErrorOnAMoveFailsWithoutRereading() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        ebox.moveTransportFailure = true;
+
+        assertThatThrownBy(() -> move("m-1", "myrmacta-traite")).isInstanceOf(EboxClient.EboxTransportException.class);
+        assertThat(ebox.reread).isEmpty();
+    }
+
+    @Test
+    void theNormalMoveIsNotMarkedAsAlreadyDone() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+
+        assertThat(move("m-1", "myrmacta-traite")).containsEntry("eboxClasse", true).containsEntry("eboxDejaClasse", false);
+        assertThat(ebox.reread).isEmpty();
+    }
+
+    @Test
+    void aMoveToAPartitionReadByAnotherActiveInstanceOfTheSameEboxIsRefused() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        Map<String, Object> archives = config();
+        archives.put("partitions", "archives");
+        instances.add(new ConnectorInstanceData(UUID.randomUUID(), "t1", "eBox archives", "ebox-inbound", true, archives));
+
+        assertThatThrownBy(() -> move("m-1", "archives")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("read by an active ebox-inbound instance");
+        assertThat(ebox.moved).isEmpty();
+    }
+
+    @Test
+    void aPartitionReadByADisabledInstanceAnotherEboxOrAnotherTypeIsAValidTarget() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        poll(config());
+        Map<String, Object> archives = config();
+        archives.put("partitions", "archives");
+        instances.add(new ConnectorInstanceData(UUID.randomUUID(), "t1", "eBox éteinte", "ebox-inbound", false, archives));
+        Map<String, Object> otherEbox = new HashMap<>(archives);
+        otherEbox.put("enterpriseNumber", "0999999999");
+        instances.add(new ConnectorInstanceData(UUID.randomUUID(), "t1", "autre eBox", "ebox-inbound", true, otherEbox));
+        instances.add(new ConnectorInstanceData(UUID.randomUUID(), "t1", "REST", "http-rest", true, Map.of("partitions", "archives")));
+        instances.add(new ConnectorInstanceData(UUID.randomUUID(), "t1", "invalide", "ebox-inbound", true, Map.of()));
+
+        assertThat(move("m-1", "archives")).containsEntry("eboxClasse", true);
+        assertThat(ebox.moved).containsExactly("m-1->archives");
+    }
+
+    @Test
+    void aMessageTakenFromAPartitionThisInstanceDoesNotReadIsNotMoved() {
+        journal.taken.add(new EboxTakenMessage("t1", "0212345678", "socsec_v3", "m-9", "archives", UUID.randomUUID(),
+                Instant.parse("2026-11-20T08:00:00Z")));
+
+        assertThatThrownBy(() -> move("m-9", "myrmacta-traite")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not read from a partition of this instance");
+        assertThat(ebox.moved).isEmpty();
+    }
+
+    @Test
+    void aMappingCannotSetTheResultVariablesOfTheEboxSteps() {
+        ebox.add("myrmacta", message("m-1", "myrmacta", "2026-11-19T08:00:00+01:00"));
+        Map<String, Object> config = config();
+        config.put("mapping", Map.of("variables", Map.of("eboxClasse", "$.registre", "eboxDejaClasse", "$.registre",
+                "eboxActionExecutee", "$.registre", "eboxActionDejaFaite", "$.registre")));
+
+        WorkflowTriggerEvent event = poll(config).getFirst();
+
+        assertThat(event.variables()).doesNotContainKeys("eboxClasse", "eboxDejaClasse", "eboxActionExecutee", "eboxActionDejaFaite");
+    }
+
     @Test
     void anUnknownOperationOrAMissingMessageIsRefused() {
         assertThatThrownBy(() -> connector.execute(instance(config()), Map.of("operation", "delete", "registry", "socsec_v3",
@@ -648,6 +794,10 @@ class EboxInboundConnectorTest {
         final List<JsonNode> actionStatuses = new ArrayList<>();
         final List<String> confirmed = new ArrayList<>();
         final List<String> moved = new ArrayList<>();
+        final List<String> reread = new ArrayList<>();
+        final Map<String, String> currentPartition = new HashMap<>();
+        int moveRefusal;
+        boolean moveTransportFailure;
         List<String> knownPartitions = List.of("myrmacta", "myrmacta-rh");
         boolean partitionsUnavailable;
         boolean unauthorizedOnce;
@@ -712,7 +862,22 @@ class EboxInboundConnectorTest {
         @Override
         public void moveToPartition(String endpointUrl, Access access, String messageId, String targetPartition) {
             seen(access);
+            if (moveTransportFailure) {
+                throw new EboxClient.EboxTransportException("ebox answered HTTP 503");
+            }
+            if (moveRefusal != 0) {
+                throw new EboxClient.EboxResourceException(moveRefusal);
+            }
             moved.add(messageId + "->" + targetPartition);
+        }
+
+        @Override
+        public Optional<JsonNode> message(String endpointUrl, Access access, String messageId) {
+            seen(access);
+            reread.add(messageId);
+            String partition = currentPartition.get(messageId);
+            return partition == null ? Optional.empty()
+                    : Optional.of(json.valueToTree(Map.of("messageId", messageId, "recipient", Map.of("partition", partition))));
         }
 
         @Override
@@ -725,6 +890,37 @@ class EboxInboundConnectorTest {
         public void markActionExecuted(String endpointUrl, Access access, String messageId, String actionId) {
             seen(access);
             confirmed.add(endpointUrl + " " + messageId + "/" + actionId);
+        }
+    }
+
+    /** Instances du tenant : celle du test, puis celles que le test ajoute. */
+    private final class MemoryInstances implements ConnectorInstanceRepository {
+        @Override
+        public ConnectorInstanceData save(ConnectorInstanceData data) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Optional<ConnectorInstanceData> findByIdAndTenantId(UUID id, String tenantId) {
+            return listByTenantId(tenantId).stream().filter(candidate -> candidate.id().equals(id)).findFirst();
+        }
+
+        @Override
+        public Optional<ConnectorInstanceData> findByIdAndTenantIdIncludingDeleted(UUID id, String tenantId) {
+            return findByIdAndTenantId(id, tenantId);
+        }
+
+        @Override
+        public List<ConnectorInstanceData> listByTenantId(String tenantId) {
+            List<ConnectorInstanceData> all = new ArrayList<>();
+            all.add(instance(config()));
+            all.addAll(instances);
+            return all.stream().filter(candidate -> candidate.tenantId().equals(tenantId)).toList();
+        }
+
+        @Override
+        public void softDelete(UUID id, String tenantId) {
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -742,6 +938,12 @@ class EboxInboundConnectorTest {
                 }
             }
             return found;
+        }
+
+        @Override
+        public Optional<EboxTakenMessage> taken(String tenantId, String enterpriseNumber, String registryId, String messageId) {
+            return taken.stream().filter(message -> message.tenantId().equals(tenantId) && message.enterpriseNumber().equals(enterpriseNumber)
+                    && message.registryId().equals(registryId) && message.messageId().equals(messageId)).findFirst();
         }
 
         @Override

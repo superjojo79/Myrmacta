@@ -3,6 +3,7 @@ package be.myrmacta.infrastructure.persistence.mailroom;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -21,6 +22,9 @@ interface SpringDataEboxMessageJournalRepository extends JpaRepository<EboxMessa
             @Param("enterpriseNumber") String enterpriseNumber,
             @Param("registryId") String registryId,
             @Param("messageIds") Collection<String> messageIds);
+
+    Optional<EboxMessageJournalJpaEntity> findByTenantIdAndEnterpriseNumberAndRegistryIdAndMessageId(
+            String tenantId, String enterpriseNumber, String registryId, String messageId);
 
     /**
      * {@code on conflict do nothing} plutôt qu'une violation de clé : sous PostgreSQL une violation avorte la transaction de

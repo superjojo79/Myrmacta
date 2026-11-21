@@ -9,10 +9,13 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -32,6 +35,13 @@ class HttpEboxClient implements EboxClient {
     static final String ON_BEHALF_OF = "On-Behalf-Of-Enterprise-Number";
     /** Statut posé sur une réponse qui dépasse sa borne de taille. */
     static final int TOO_LARGE = 413;
+    /** Pages de {@code GET /ebox/{bce}/partitions} : 1 000 partitions au plus, bien au-delà d'une eBox réelle. */
+    static final int PARTITION_PAGE_SIZE = 100;
+    static final int PARTITION_MAX_PAGES = 10;
+    /** Statut prêté à un {@code changePartition} accepté dont le corps signale l'échec du message. */
+    static final int MOVE_FAILED = 409;
+    private static final Set<String> FAILED_STATUSES = Set.of("failed", "failure", "error", "rejected", "refused", "notmoved",
+            "notfound", "ko");
 
     private final OutboundUrlGuard guard;
     private final ObjectMapper mapper;
@@ -91,15 +101,49 @@ class HttpEboxClient implements EboxClient {
 
     @Override
     public List<String> partitions(String partitionApiUrl, Access access, String enterpriseNumber) {
-        JsonNode json = json(trim(partitionApiUrl) + "/ebox/" + seg(enterpriseNumber) + "/partitions", access);
-        List<String> ids = new ArrayList<>();
-        json.path("items").forEach(item -> {
-            String id = item.path("id").asString("");
-            if (!id.isBlank()) {
-                ids.add(id);
+        String url = trim(partitionApiUrl) + "/ebox/" + seg(enterpriseNumber) + "/partitions";
+        Set<String> ids = new LinkedHashSet<>();
+        int seen = 0;
+        for (int page = 1; page <= PARTITION_MAX_PAGES; page++) {
+            JsonNode json = json(url + "?page=" + page + "&pageSize=" + PARTITION_PAGE_SIZE, access);
+            JsonNode items = json.path("items");
+            if (!items.isArray()) {
+                throw new EboxTransportException("ebox answered a partition list without items");
             }
-        });
-        return ids;
+            int before = ids.size();
+            for (JsonNode item : items) {
+                String id = item.path("id").asString("");
+                if (!id.isBlank()) {
+                    ids.add(id);
+                }
+            }
+            seen += items.size();
+            JsonNode total = json.path("totalItems");
+            if (!total.canConvertToInt()) {
+                if (items.size() < PARTITION_PAGE_SIZE) {
+                    return List.copyOf(ids);
+                }
+            } else if (seen >= total.asInt()) {
+                return List.copyOf(ids);
+            }
+            if (items.isEmpty() || (page > 1 && ids.size() == before)) {
+                // Le service ne pagine pas, ou rend toujours la même page : la liste ne sera jamais complète.
+                throw new EboxTransportException("ebox answered an incomplete partition list");
+            }
+        }
+        throw new EboxTransportException("ebox answered more than " + PARTITION_MAX_PAGES + " pages of partitions");
+    }
+
+    @Override
+    public Optional<JsonNode> message(String endpointUrl, Access access, String messageId) {
+        try {
+            return Optional.of(json(trim(endpointUrl) + "/ebox/messages/" + seg(messageId), access));
+        } catch (EboxResourceException missing) {
+            if (missing.status == 404 || missing.status == 410) {
+                return Optional.empty();
+            }
+            throw missing;
+        }
     }
 
     @Override
@@ -133,7 +177,69 @@ class HttpEboxClient implements EboxClient {
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("messageIds", List.of(messageId));
         request.put("targetRecipientPartitionId", targetPartition);
-        call("POST", trim(endpointUrl) + "/ebox/messages/changePartition", access, mapper.writeValueAsBytes(request), "application/json");
+        byte[] answer = call("POST", trim(endpointUrl) + "/ebox/messages/changePartition", access, mapper.writeValueAsBytes(request),
+                "application/json", MAX_JSON_BYTES, "application/json");
+        if (answer.length == 0) {
+            return;
+        }
+        JsonNode json;
+        try {
+            json = mapper.readTree(answer);
+        } catch (JacksonException unreadable) {
+            // Le statut dit le succès ; un corps illisible ne porte aucun échec par message.
+            return;
+        }
+        if (json != null && reportsFailure(json, messageId)) {
+            throw new EboxResourceException(MOVE_FAILED, "ebox reported that the message was not moved");
+        }
+    }
+
+    /**
+     * TODO §151 (D-EBOX-MOVE) — le contrat de réponse de {@code changePartition} n'est pas confirmé (§151, hypothèse) : un échec
+     * par message est reconnu à un tableau ou objet non vide sous une clé d'échec ({@code failed…}, {@code error…},
+     * {@code rejected…}, {@code notMoved…}), ou à une entrée de résultat de ce message marquée en échec ({@code success} ou
+     * {@code moved} à faux, {@code status} d'échec ou numérique de 400 et plus).
+     */
+    private static boolean reportsFailure(JsonNode json, String messageId) {
+        if (json.isArray()) {
+            return entriesReportFailure(json, messageId);
+        }
+        if (!json.isObject()) {
+            return false;
+        }
+        for (Map.Entry<String, JsonNode> field : json.properties()) {
+            String name = field.getKey().toLowerCase(Locale.ROOT);
+            JsonNode value = field.getValue();
+            boolean failureKey = name.contains("fail") || name.contains("error") || name.contains("reject") || name.contains("notmoved")
+                    || name.contains("unprocessed");
+            if (failureKey && ((value.isContainer() && !value.isEmpty()) || value.asBoolean(false))) {
+                return true;
+            }
+            if (value.isArray() && entriesReportFailure(value, messageId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean entriesReportFailure(JsonNode entries, String messageId) {
+        for (JsonNode entry : entries) {
+            if (!entry.isObject()) {
+                continue;
+            }
+            JsonNode id = entry.path("messageId");
+            if (!id.isMissingNode() && !messageId.equals(id.asString(""))) {
+                continue;
+            }
+            JsonNode status = entry.path("status");
+            if (entry.path("success").isBoolean() && !entry.path("success").asBoolean()
+                    || entry.path("moved").isBoolean() && !entry.path("moved").asBoolean()
+                    || status.isNumber() && status.asInt() >= 400
+                    || status.isString() && FAILED_STATUSES.contains(status.asString().toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private JsonNode json(String url, Access access) {
@@ -197,8 +303,9 @@ class HttpEboxClient implements EboxClient {
         if (status == 200) {
             return fetched.body();
         }
-        if (status == 204 && body != null) {
-            return new byte[0];
+        if ((status == 202 || status == 204) && body != null) {
+            // Écriture acceptée : un 202 peut porter un corps, que l'appelant lit.
+            return status == 202 ? fetched.body() : new byte[0];
         }
         if (status == 401) {
             throw new EboxUnauthorizedException();

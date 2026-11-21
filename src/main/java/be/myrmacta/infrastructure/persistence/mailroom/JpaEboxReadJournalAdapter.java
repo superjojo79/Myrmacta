@@ -39,6 +39,13 @@ class JpaEboxReadJournalAdapter implements EboxReadJournal {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<EboxTakenMessage> taken(String tenantId, String enterpriseNumber, String registryId, String messageId) {
+        return journal.findByTenantIdAndEnterpriseNumberAndRegistryIdAndMessageId(tenantId, enterpriseNumber, registryId, messageId)
+                .map(EboxMessageJournalJpaEntity::toDomain);
+    }
+
+    @Override
     @Transactional
     public boolean recordTaken(EboxTakenMessage message) {
         return journal.insertIfAbsent(UUID.randomUUID(), message.tenantId(), message.enterpriseNumber(), message.registryId(),

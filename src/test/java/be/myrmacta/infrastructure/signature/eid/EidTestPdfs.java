@@ -147,6 +147,98 @@ public final class EidTestPdfs {
         }
     }
 
+    /** Repère de signature en texte blanc : page à partir de 0, abscisse et ligne de base en espace utilisateur PDF. */
+    public record Anchor(int page, int rank, float x, float baselineY, boolean white) {
+        public Anchor(int page, int rank, float x, float baselineY) {
+            this(page, rank, x, baselineY, true);
+        }
+
+        /** Repère écrit en noir : visible, donc zone non vierge. */
+        public Anchor black() {
+            return new Anchor(page, rank, x, baselineY, false);
+        }
+    }
+
+    /**
+     * PDF dont les repères {@code {{sN|signature|85|37}}} sont écrits en blanc (comme dans les vrais modèles). Une
+     * CropBox décalée de {@code cropOffset} points sur les deux axes (retrait de la MediaBox A4) si elle est non nulle.
+     */
+    public static byte[] basePdfWithAnchors(int pages, float cropOffset, Anchor... anchors) {
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (int i = 0; i < pages; i++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                if (cropOffset > 0) {
+                    page.setCropBox(new PDRectangle(cropOffset, cropOffset, PDRectangle.A4.getWidth() - 2 * cropOffset,
+                            PDRectangle.A4.getHeight() - 2 * cropOffset));
+                }
+                document.addPage(page);
+                try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                    content.beginText();
+                    content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                    content.newLineAtOffset(72, 760);
+                    content.showText("Contrat de test Myrmacta - page " + (i + 1));
+                    content.endText();
+                    for (Anchor anchor : anchors) {
+                        if (anchor.page() != i) {
+                            continue;
+                        }
+                        if (anchor.white()) {
+                            content.setNonStrokingColor(1f, 1f, 1f);
+                        } else {
+                            content.setNonStrokingColor(0f, 0f, 0f);
+                        }
+                        content.beginText();
+                        content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+                        content.newLineAtOffset(anchor.x(), anchor.baselineY());
+                        content.showText("{{s" + anchor.rank() + "|signature|85|37}}");
+                        content.endText();
+                    }
+                }
+            }
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Même PDF avec une annotation de lien de rectangle donné sur la page (à partir de 0). */
+    public static byte[] withLink(byte[] pdf, int pageIndex, PDRectangle rect) {
+        try (PDDocument document = Loader.loadPDF(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink link =
+                    new org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink();
+            link.setRectangle(rect);
+            document.getPage(pageIndex).getAnnotations().add(link);
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Même PDF avec MediaBox et CropBox données à la page 0 (le contenu ne bouge pas en espace utilisateur). */
+    public static byte[] withBoxes(byte[] pdf, PDRectangle media, PDRectangle crop) {
+        try (PDDocument document = Loader.loadPDF(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            document.getPage(0).setMediaBox(media);
+            document.getPage(0).setCropBox(crop);
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    /** Même PDF, la page donnée (à partir de 0) tournée de 90 degrés. */
+    public static byte[] withRotatedPage(byte[] pdf, int pageIndex) {
+        try (PDDocument document = Loader.loadPDF(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            document.getPage(pageIndex).setRotation(90);
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     public static byte[] basePdf() {
         return basePdf("Contrat de test Myrmacta", 1);
     }

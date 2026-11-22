@@ -27,7 +27,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** TODO §150 et §151 (D-EBOX-ACTION, D-EBOX-MOVE) — briques « Marquer l'action eBox comme faite » et « Classer le message eBox ». */
+/** TODO §150 (D-EBOX-ACTION) — brique « Marquer l'action eBox comme faite ». */
 class EboxActionDoneDelegateTest {
 
     private static final String TENANT = "tenant_dev";
@@ -71,31 +71,6 @@ class EboxActionDoneDelegateTest {
 
         verify(execute).execute(INSTANCE, TENANT, Map.of("operation", "markActionExecuted", "registry", "socsec_v3", "messageId", "m-2"),
                 ConnectorCallContext.process(DOSSIER));
-    }
-
-    @Test
-    void theMoveStepSendsTheLiteralTargetPartition() {
-        element(INSTANCE.toString(), null);
-        attribute((ServiceTask) execution.getCurrentFlowElement(), "eboxPartitionCible", "myrmacta-traite");
-        when(execution.getVariable("eboxRegistre")).thenReturn("socsec_v3");
-        when(execution.getVariable("eboxMessageId")).thenReturn("m-1");
-        when(execute.execute(any(), any(), anyMap(), any())).thenReturn(Map.of("eboxClasse", true));
-
-        new EboxMoveDelegate(execute, instances, dossiers, new TenantProperties(TENANT)).execute(execution);
-
-        verify(execute).execute(INSTANCE, TENANT, Map.of("operation", "moveToPartition", "registry", "socsec_v3", "messageId", "m-1",
-                "targetPartition", "myrmacta-traite"), ConnectorCallContext.process(DOSSIER));
-        verify(execution).setVariable("eboxClasse", true);
-    }
-
-    @Test
-    void theMoveStepNeedsALiteralTarget() {
-        element(INSTANCE.toString(), null);
-        when(execution.getVariable("eboxPartitionCible")).thenReturn("myrmacta");
-
-        assertThatThrownBy(() -> new EboxMoveDelegate(execute, instances, dossiers, new TenantProperties(TENANT)).execute(execution))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("eboxPartitionCible");
-        verify(execute, never()).execute(any(), any(), anyMap(), any());
     }
 
     @Test

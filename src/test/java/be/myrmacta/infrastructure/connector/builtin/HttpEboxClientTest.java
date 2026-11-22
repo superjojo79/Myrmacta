@@ -19,6 +19,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,8 +65,10 @@ class HttpEboxClientTest {
         lastMethod = exchange.getRequestMethod();
         lastBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         exchange.getRequestHeaders().forEach((name, values) -> lastHeaders.put(name.toLowerCase(), values.getFirst()));
-        Response response = routes.getOrDefault(exchange.getRequestURI().getRawPath(), new Response(404, "application/problem+json",
-                "{\"title\":\"not found\"}".getBytes(StandardCharsets.UTF_8)));
+        String path = exchange.getRequestURI().getRawPath();
+        // Une route peut viser une requête précise (chemin?requête), sinon le chemin seul.
+        Response response = routes.getOrDefault(path + "?" + lastQuery, routes.getOrDefault(path, new Response(404,
+                "application/problem+json", "{\"title\":\"not found\"}".getBytes(StandardCharsets.UTF_8))));
         exchange.getResponseHeaders().add("Content-Type", response.contentType());
         exchange.sendResponseHeaders(response.status(), response.body().length == 0 ? -1 : response.body().length);
         exchange.getResponseBody().write(response.body());
@@ -169,6 +173,94 @@ class HttpEboxClientTest {
         json("/ebox/0212345678/partitions", "{\"items\":[{\"id\":\"myrmacta\"},{\"id\":\"\"},{\"id\":\"rh\"}]}");
 
         assertThat(client.partitions(base, new Access("t", null), "0212345678")).containsExactly("myrmacta", "rh");
+    }
+
+    @Test
+    void partitionsAreReadPageByPage() {
+        String first = IntStream.range(0, 100).mapToObj(i -> "{\"id\":\"p" + i + "\"}")
+                .collect(Collectors.joining(","));
+        json("/ebox/0212345678/partitions?page=1&pageSize=100", "{\"items\":[" + first + "],\"totalItems\":101}");
+        json("/ebox/0212345678/partitions?page=2&pageSize=100", "{\"items\":[{\"id\":\"myrmacta\"}],\"totalItems\":101}");
+
+        List<String> partitions = client.partitions(base, new Access("t", null), "0212345678");
+
+        assertThat(partitions).hasSize(101).contains("p0", "p99", "myrmacta");
+        assertThat(lastQuery).isEqualTo("page=2&pageSize=100");
+    }
+
+    @Test
+    void aPartitionListWithoutItemsCannotBeChecked() {
+        json("/ebox/0212345678/partitions", "{\"totalItems\":0}");
+        assertThatThrownBy(() -> client.partitions(base, new Access("t", null), "0212345678"))
+                .isInstanceOf(EboxTransportException.class);
+
+        json("/ebox/0212345678/partitions", "{\"items\":{\"id\":\"myrmacta\"}}");
+        assertThatThrownBy(() -> client.partitions(base, new Access("t", null), "0212345678"))
+                .isInstanceOf(EboxTransportException.class);
+    }
+
+    @Test
+    void aPartialPartitionListThatIgnoresPagingCannotBeChecked() {
+        // Le service rend toujours la même page : la liste ne sera jamais complète.
+        json("/ebox/0212345678/partitions", "{\"items\":[{\"id\":\"rh\"}],\"totalItems\":3}");
+
+        assertThatThrownBy(() -> client.partitions(base, new Access("t", null), "0212345678"))
+                .isInstanceOf(EboxTransportException.class);
+    }
+
+    @Test
+    void anEmptyPartitionListIsReturnedEmpty() {
+        json("/ebox/0212345678/partitions", "{\"items\":[],\"totalItems\":0}");
+
+        assertThat(client.partitions(base, new Access("t", null), "0212345678")).isEmpty();
+    }
+
+    @Test
+    void anAcceptedMoveIsASuccess() {
+        routes.put("/REST/ebox/ebox/messages/changePartition", new Response(202, "application/json", new byte[0]));
+        client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite");
+
+        routes.put("/REST/ebox/ebox/messages/changePartition", new Response(200, "application/json",
+                "{\"items\":[{\"messageId\":\"m-1\",\"status\":\"moved\"}]}".getBytes(StandardCharsets.UTF_8)));
+        client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite");
+    }
+
+    @Test
+    void aMoveAnsweredWithAFailureForTheMessageFails() {
+        for (String failure : List.of("{\"failedMessageIds\":[\"m-1\"]}",
+                "{\"errors\":[{\"messageId\":\"m-1\",\"code\":\"notFound\"}]}",
+                "{\"items\":[{\"messageId\":\"m-1\",\"status\":\"failed\"}]}",
+                "{\"results\":[{\"messageId\":\"m-1\",\"success\":false}]}",
+                "[{\"messageId\":\"m-1\",\"moved\":false}]")) {
+            routes.put("/REST/ebox/ebox/messages/changePartition", new Response(200, "application/json",
+                    failure.getBytes(StandardCharsets.UTF_8)));
+
+            assertThatThrownBy(() -> client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite"))
+                    .as(failure)
+                    .isInstanceOfSatisfying(EboxResourceException.class, refused -> assertThat(refused.status).isEqualTo(409));
+        }
+    }
+
+    @Test
+    void aRefusedMoveIsAResourceError_aServerErrorIsATransportError() {
+        for (int status : List.of(400, 404, 409, 410)) {
+            routes.put("/REST/ebox/ebox/messages/changePartition", new Response(status, "application/problem+json",
+                    "{}".getBytes(StandardCharsets.UTF_8)));
+            assertThatThrownBy(() -> client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite"))
+                    .isInstanceOfSatisfying(EboxResourceException.class, refused -> assertThat(refused.status).isEqualTo(status));
+        }
+        routes.put("/REST/ebox/ebox/messages/changePartition", new Response(503, "text/plain", new byte[0]));
+        assertThatThrownBy(() -> client.moveToPartition(base, new Access("t", null), "m-1", "myrmacta-traite"))
+                .isInstanceOf(EboxTransportException.class).hasMessage("ebox answered HTTP 503");
+    }
+
+    @Test
+    void aMessageIsReadById_absentWhenTheEboxNoLongerHasIt() {
+        assertThat(client.message(base, new Access("t", null), "m 1")).isEmpty();
+        json("/ebox/messages/m%201", "{\"messageId\":\"m 1\",\"recipient\":{\"partition\":\"myrmacta-traite\"}}");
+
+        assertThat(client.message(base, new Access("t", null), "m 1")).get()
+                .extracting(node -> node.path("recipient").path("partition").asString()).isEqualTo("myrmacta-traite");
     }
 
     @Test

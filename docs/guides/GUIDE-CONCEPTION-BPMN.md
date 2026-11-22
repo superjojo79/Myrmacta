@@ -759,9 +759,14 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   autre partition de l'eBox, par exemple `myrmacta-traite`. Les agents qui suivent l'eBox sur le portail voient ainsi ce
   qui est pris en charge.
 - **Paramètres.** `connectorInstanceId` (obligatoire) : l'instance `ebox-inbound` qui a lu le message.
-  `eboxPartitionCible` (obligatoire) : la partition de destination. Elle doit exister dans l'eBox et ne jamais faire partie
-  des partitions lues par l'instance.
-- **Le message, la garde et les erreurs** suivent les mêmes règles que « Marquer l'action eBox comme faite ».
+  `eboxPartitionCible` (obligatoire, lettres, chiffres et `. _ : -`, 100 caractères au plus, vérifié au déploiement) : la
+  partition de destination. Elle doit exister dans l'eBox (créez-la sur le portail, avec ses règles : Myrmacta n'en crée
+  pas) et ne doit être lue par aucune instance `ebox-inbound` active de cette eBox.
+- **Le message, la garde et les erreurs** suivent les mêmes règles que « Marquer l'action eBox comme faite ». En plus, le
+  message doit avoir été lu dans une partition de l'instance indiquée.
+- **Résultat.** `eboxClasse` vaut vrai. Un incident rejoué après un premier déplacement réussi trouve le message déjà dans la
+  cible : l'étape passe et `eboxDejaClasse` vaut vrai. Une cible inconnue (HTTP 404) ou un message expiré (HTTP 410) font
+  échouer l'étape avec un message qui le dit.
 - **Recommandés.** `eboxRecommande` signale un recommandé et `eboxTypeRecommande` en donne le type
   (`nonQualifiedRegisteredMail` ou `qualifiedRegisteredMailNotification`) : la table de routage peut les lire.
 

@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 054-ebox-send-audit
+      author: myrmacta
+      comment: >-
+        TODO §155 (D-EBOX-SEND-AUDIT) — journal d'audit des envois eBox, en ajout seul : une fonction et trois déclencheurs
+        refusent toute modification, suppression ou vidage de la table (ATREQ01). Le NISS d'un citoyen n'y est jamais en clair.
+      changes:
+        - createTable:
+            tableName: ebox_send_audit
+            columns:
+              - column: {name: id, type: uuid, constraints: {primaryKey: true, primaryKeyName: pk_ebox_send_audit, nullable: false}}
+              - column: {name: tenant_id, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: recorded_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: sender_instance_id, type: uuid, constraints: {nullable: false}}
+              - column: {name: route, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: recipient_ref, type: varchar(64), constraints: {nullable: false}}
+              - column: {name: recipient_ref_kind, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: idempotency_key, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: dossier_id, type: uuid}
+              - column: {name: correlation_id, type: varchar(100)}
+              - column: {name: sender_application_id, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: message_type_id, type: varchar(100), constraints: {nullable: false}}
+              - column: {name: language, type: varchar(2), constraints: {nullable: false}}
+              - column: {name: registered, type: boolean, constraints: {nullable: false}}
+              - column: {name: documents, type: jsonb, constraints: {nullable: false}}
+              - column: {name: consent_level, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: consent_checked_at, type: timestamp with time zone, constraints: {nullable: false}}
+              - column: {name: consent_source, type: varchar(50), constraints: {nullable: false}}
+              - column: {name: delivery, type: varchar(32), constraints: {nullable: false}}
+              - column: {name: fallback_channel, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: outcome, type: varchar(16), constraints: {nullable: false}}
+              - column: {name: request_method, type: varchar(10)}
+              - column: {name: request_url, type: varchar(2000)}
+              - column: {name: response_code, type: integer}
+              - column: {name: client_id, type: varchar(200)}
+              - column: {name: on_behalf_of, type: varchar(10)}
+              - column: {name: token_hash, type: varchar(64)}
+              - column: {name: provider_message_id, type: varchar(200)}
+              - column: {name: proof_signature_sha256, type: varchar(64)}
+        - createIndex:
+            tableName: ebox_send_audit
+            indexName: ix_ebox_send_audit_key
+            columns:
+              - column: {name: tenant_id}
+              - column: {name: idempotency_key}
+              - column: {name: recorded_at}
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: >-
+              create function ebox_send_audit_append_only() returns trigger language plpgsql as $$
+              begin
+                raise exception 'ebox_send_audit is append-only (%)', tg_op using errcode = 'insufficient_privilege';
+              end;
+              $$
+        - sql:
+            dbms: postgresql
+            sql: >-
+              create trigger ebox_send_audit_no_update before update on ebox_send_audit
+              for each row execute function ebox_send_audit_append_only()
+        - sql:
+            dbms: postgresql
+            sql: >-
+              create trigger ebox_send_audit_no_delete before delete on ebox_send_audit
+              for each row execute function ebox_send_audit_append_only()
+        - sql:
+            dbms: postgresql
+            sql: >-
+              create trigger ebox_send_audit_no_truncate before truncate on ebox_send_audit
+              for each statement execute function ebox_send_audit_append_only()
+      rollback:
+        - sql:
+            sql: drop table ebox_send_audit
+        - sql:
+            sql: drop function ebox_send_audit_append_only()

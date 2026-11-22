@@ -5,7 +5,9 @@ import java.util.List;
 /**
  * Lecture minimale des ressources du tenant référencées par les briques (TODO §73, D-PALETTE-REFERENCES et
  * D-PALETTE-DEPLOY-REFERENCES). Sources listables : {@code documentTemplates}, {@code connectorInstances},
- * {@code notificationWebhooks} et {@code dmnTables} (dernière version déployée de chaque clé, LC1-suite). Sources
+ * {@code notificationWebhooks}, {@code dmnTables} (dernière version déployée de chaque clé, LC1-suite) et
+ * {@code eboxSenders} (instances {@code ebox-outbound}, réservées à la brique « Envoyer en eBox », exclues de
+ * {@code connectorInstances} — TODO §155). Sources
  * vérifiables : ces quatre-là + {@code dossierTypes} et {@code workflowTypes}.
  */
 public interface BlockReferenceLookupPort {

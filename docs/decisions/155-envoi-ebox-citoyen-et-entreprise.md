@@ -3,7 +3,7 @@
 > **Statut :** ouvert · point de premier niveau · [registre](README.md)
 
 [ ] ouvert (2026-11-20, issue [#13](https://github.com/superjojo79/Myrmacta/issues/13), sous [#14](https://github.com/superjojo79/Myrmacta/issues/14)).
-Lot 1 livré sur la branche `feat/ebox-envoi` ; suite et questions ouvertes : document de travail
+Lot 1 livré sur la branche `feat/ebox-envoi`, lot 2 (type de connecteur et brique) sur `feat/ebox-envoi-lot2` ; suite et questions ouvertes : document de travail
 `docs/ai/2026-11-20-ebox-envoi.md`. Lecture de l'eBox : [§150](150-lecture-ebox-enterprise.md).
 
 **Constat.** Une commune publie depuis un dossier une décision ou un courrier dans l'eBox d'une entreprise (numéro BCE) ou
@@ -58,11 +58,33 @@ le développement : tout est testé contre un faux serveur.
   | `idempotency_key`, `dossier_id`, `correlation_id`, `sender_application_id`, `message_type_id`, `language`, `registered`, `outcome` | contexte de l'envoi | rejeu, rattachement au dossier |
 
   Ni objet, ni corps, ni contenu de pièce (ATREQ02, minimalité). La clé du HMAC est dérivée de
-  `app.connector.crypto.master-key` et du tenant (pas de nouvelle variable d'environnement).
+  `app.connector.crypto.master-key` et du tenant (pas de nouvelle variable d'environnement). Q8 : la clé d'idempotence d'un
+  envoi à un citoyen dépend de ce HMAC (D-EBOX-SEND-BLOCK) ; ne changer la clé maîtresse des connecteurs que lorsqu'aucun
+  incident d'envoi eBox n'est en attente, sinon le rejeu calcule une autre clé et peut envoyer une seconde fois.
 - **D-EBOX-SEND-CITIZEN-STUB.** Faute d'API citoyen connue, la voie citoyen est une implémentation générique et
   configurable (`app.ebox.citizen-stub.consent`, défaut `NO_CONSENT`) : par défaut aucun citoyen n'a consenti, rien n'est
   « publié », le process suit la voie de secours. Réglée à `CONSENTED` (démo, tests), elle simule une publication dont la trace
   porte la méthode `STUB` et l'URL `stub://ebox-citizen/…`, reconnaissable au journal. Le vrai adaptateur BOSA la remplacera.
+- **D-EBOX-SEND-BLOCK** (lot 2, corrigé après revue). Le compte expéditeur est un type de connecteur `ebox-outbound`
+  (SERVICE) dont la configuration est contrôlée à l'enregistrement par les règles de `EboxOutboundSettings`. Le connecteur
+  **n'envoie rien** : il refuse tout appel, y compris d'une étape « Appeler un connecteur » dont la requête est écrite dans le
+  BPMN. Seule la brique **« Envoyer en eBox »** (`eboxSendTask`) envoie, en appelant elle-même `SendEboxMessageUseCase`. Au
+  déploiement, la brique choisit son instance par la source de référence `eboxSenders` ; la source `connectorInstances`
+  d'« Appeler un connecteur » n'offre pas ce type, qui y est donc refusé. La brique est **toujours asynchrone** et **jamais
+  multi-instance elle-même** (exigé au déploiement, revérifié à l'exécution) ; ses paramètres sont des attributs littéraux
+  préfixés `eboxEnvoi*` (distincts des variables `ebox*` d'un message reçu). Le document est un `PRODUCED_DOC` PDF du dossier
+  de l'étape (même règle que la signature et la pièce jointe d'e-mail). Clé d'idempotence : `myr1-` + SHA-256 de (dossier,
+  étape, document, référence du destinataire) ; la référence est le numéro BCE, ou le HMAC du NISS de D-EBOX-SEND-AUDIT,
+  jamais le NISS en clair. Chaque destinataire d'une boucle a donc sa clé ; le tour de boucle n'y entre pas, si bien qu'une
+  liste réordonnée ou complétée au rebouclage ne renvoie rien aux destinataires déjà servis. Plusieurs destinataires :
+  sous-processus multi-instance qui contient la brique et sa passerelle ; les variables de la brique sont alors locales au
+  tour. Variables posées, **réservées** (une complétion de tâche ne peut pas faire croire à un envoi et sauter la voie de
+  secours) : `eboxIssue` (`ENVOYE`, `DEJA_ENVOYE`, `VOIE_SECOURS`), `eboxLivraison`, `eboxSecoursRequis`, `eboxVoieSecours`,
+  `eboxEnvoiMessageId`, `eboxEnvoiRejoue`. Une issue incertaine ne pose rien : l'étape échoue (incident rejouable, même clé).
+  La preuve de dépôt d'un recommandé est versée au dossier comme pièce JSON marquée par la clé ; un rejeu ne la verse que si
+  aucune pièce du dossier ne porte cette clé (elle a pu reculer avec la tentative qui a déposé).
+  **Défaut prudent (Q11, à confirmer)** : `allowedHostSuffixes` ne fait que restreindre un plafond fixé par la plateforme
+  (`socialsecurity.be`, `fgov.be`, `belgium.be`) ; un administrateur ne peut plus envoyer le jeton vers un autre domaine.
 - **Specs non versionnées** (licence « e-Box » sans clause de redistribution), comme au §150 : réponses du faux serveur écrites
   à la main, conformes aux schémas ; [index des specs](https://dev.eboxenterprise.be/docs/spec/specifications),
   [audit trail ATREQ](https://dev.eboxenterprise.be/docs/dp/audit_trail/).
@@ -74,5 +96,6 @@ exclusive) ; accès d'une commune à Registered Mail 1.1 (spec destinée aux ins
 la spec 3.8) ou BOSA ; scope du jeton pour la fédération ; durée de conservation (10 ans à partir du 1er janvier suivant) et
 purge d'une table que la base interdit de toucher ; séparation du rôle de migration et du rôle applicatif (limite du journal) ; usage du NISS (autorisation, #13).
 
-**Impacte.** `docs/specs/06-connecteurs.md` (type `ebox-outbound`, lot 2), `docs/guides/GUIDE-CONCEPTION-BPMN.md` (étape
-« Envoyer en eBox », lot 2), `docs/guides/GUIDE-UTILISATEUR.md` (écran du connecteur, lot 2).
+**Impacte.** `docs/specs/06-connecteurs.md` (type `ebox-outbound`), `docs/specs/49-digital-mail-room.md` (canal sortant),
+`docs/guides/GUIDE-CONCEPTION-BPMN.md` (brique « Envoyer en eBox »), `docs/guides/GUIDE-UTILISATEUR.md` (type de connecteur,
+formulaire générique), `exemples/envoi-ebox/` (BPMN avec passerelle vers la voie de secours). Aucune variable d'environnement.

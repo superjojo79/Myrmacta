@@ -26,6 +26,12 @@ export const RESERVED_START_VARIABLES = [
   'generatedDocumentId',
   'echeanceRappel',
   'echeanceDepassee',
+  'eboxIssue',
+  'eboxLivraison',
+  'eboxSecoursRequis',
+  'eboxVoieSecours',
+  'eboxEnvoiMessageId',
+  'eboxEnvoiRejoue',
 ]
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/

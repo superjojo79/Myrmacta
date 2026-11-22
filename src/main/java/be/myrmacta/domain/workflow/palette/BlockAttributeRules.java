@@ -25,6 +25,8 @@ public final class BlockAttributeRules {
     private static final Pattern KEY = Pattern.compile("[A-Za-z0-9_.:-]+");
     /** Même grammaire que le dépôt des gabarits de notification (issue #43). Ne remplace pas {@link #KEY}. */
     private static final Pattern NOTIFICATION_TEMPLATE_KEY = Pattern.compile("[a-z0-9][a-z0-9-]{0,99}");
+    /** TODO §155 (D-EBOX-SEND-BLOCK) — langues d'un message eBox ({@code LocalizedString}). */
+    private static final Set<String> EBOX_LANGUAGES = Set.of("fr", "nl", "de");
     private static final Set<String> KEY_TEXT = Set.of("documentVariant", "documentLocale");
     /** TODO §151 (D-EBOX-MOVE) — identifiant de partition eBox, même grammaire que la configuration du connecteur. */
     private static final Pattern EBOX_PARTITION = Pattern.compile("[A-Za-z0-9._:-]{1,100}");
@@ -38,7 +40,7 @@ public final class BlockAttributeRules {
      */
     private static final Set<String> LITERAL_ONLY_DELEGATES =
             Set.of("businessExpressionTask", "fieldMappingTask", "dossierSearchTask", "aiPrecheckTask", "computeDeadlineTask",
-                    "eboxActionDoneTask", "eboxMoveTask");
+                    "eboxActionDoneTask", "eboxMoveTask", "eboxSendTask");
 
     /** TODO §102 (lot B, R4) — noms de variables écrites par la brique « Rechercher des dossiers ». */
     private static final Set<String> RESULT_VARIABLE_PARAMETERS =
@@ -70,7 +72,7 @@ public final class BlockAttributeRules {
     private static final Set<String> UNVERIFIED_AT_DEPLOY = Set.of("notificationTemplates");
     private static final Pattern VARIABLE_SOURCE = Pattern.compile("variable:[A-Za-z][A-Za-z0-9_]{0,59}");
 
-    private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks");
+    private static final Set<String> UUID_SOURCES = Set.of("connectorInstances", "notificationWebhooks", "eboxSenders");
     private static final Pattern UUID_FORM =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
@@ -323,6 +325,10 @@ public final class BlockAttributeRules {
                 }
                 if ("notificationAttachmentName".equals(parameter.name())) {
                     checkFileName(owner, value);
+                }
+                if ("eboxEnvoiLangue".equals(parameter.name()) && !EBOX_LANGUAGES.contains(value)
+                        && PortalRecipientSource.parse(value).isEmpty()) {
+                    throw new InvalidBpmnException(owner + " must be fr, nl, de, dossierField:<name> or variable:<name>");
                 }
             }
             case SOURCE_REF -> {

@@ -199,6 +199,26 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         }
     }
 
+    /**
+     * TODO §155 (lot 2, D-EBOX-SEND-BLOCK) — la brique « Envoyer en eBox » est asynchrone : l'appel à l'eBox (jusqu'à plusieurs
+     * minutes) ne tient jamais dans la transaction d'une complétion de tâche, et son échec devient un incident rejouable avec la
+     * même clé d'idempotence.
+     */
+    private static void assertEboxSendAsynchronous(FlowElement element) {
+        if (!"eboxSendTask".equals(blockDelegate(element))) {
+            return;
+        }
+        if (!(element instanceof ServiceTask serviceTask) || !serviceTask.isAsynchronous()) {
+            throw new InvalidBpmnException("BPMN activity " + element.getId()
+                    + ": the eBox send block must be asynchronous (flowable:async=\"true\")");
+        }
+        // Revue H2 : multi-instance, ses variables iraient au process et la passerelle ne verrait que le dernier tour.
+        if (serviceTask.getLoopCharacteristics() != null) {
+            throw new InvalidBpmnException("BPMN activity " + element.getId() + ": the eBox send block must not be multi-instance; "
+                    + "loop with a multi-instance sub-process that holds the block and its gateway");
+        }
+    }
+
     @Override
     public List<PrecheckBlock> extractPrecheckBlocks(byte[] bpmnXml) {
         BpmnModel model;
@@ -662,6 +682,7 @@ class FlowableBpmnParserAdapter implements BpmnParserPort {
         assertBusinessExpression(element);
         assertFieldMapping(element);
         precheckBlock(element);
+        assertEboxSendAsynchronous(element);
         if (element instanceof HasExecutionListeners hasListeners) {
             assertSafeListeners(element.getId(), hasListeners.getExecutionListeners());
         }

@@ -41,8 +41,9 @@ class FlowableBpmnParserAdapterBlockTest {
         if (type != null) {
             attributes.append(" flowable:type=\"").append(type).append("\"");
         }
-        if ("aiPrecheckTask".equals(delegate)) {
-            attributes.append(" flowable:async=\"true\""); // TODO §106 (D-PRECHECK-BLOCK) : toujours asynchrone
+        if (block.marker().async()) {
+            // TODO §106 (D-PRECHECK-BLOCK), §155 (D-EBOX-SEND-BLOCK) : toujours asynchrone
+            attributes.append(" flowable:async=\"true\"");
         }
         for (BlockParameter p : block.parameters()) {
             if (p.name().equals("notificationTemplate") || p.name().equals("notificationVariant")
@@ -75,9 +76,10 @@ class FlowableBpmnParserAdapterBlockTest {
             case INTEGER -> String.valueOf(p.min());
             case SOURCE_REF -> "variable:generatedDocumentId";
             case REFERENCE -> "connectorInstances".equals(p.valueSource()) || "notificationWebhooks".equals(p.valueSource())
+                    || "eboxSenders".equals(p.valueSource())
                     ? UUID.randomUUID().toString() : "key1";
             case SIGNERS -> "";
-            case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) ? "fr"
+            case TEXT -> "documentVariant".equals(p.name()) || "documentLocale".equals(p.name()) || "eboxEnvoiLangue".equals(p.name()) ? "fr"
                     : "fieldMapping".equals(p.name()) ? "score = connectorResult.json.score"
                     : "searchCriteria".equals(p.name()) ? "email = dossierField:email"
                     : "searchCountResult".equals(p.name()) ? "nbTrouves"
@@ -121,6 +123,27 @@ class FlowableBpmnParserAdapterBlockTest {
 
     private static String service(String delegate, String attributes) {
         return "<serviceTask id=\"act\" flowable:delegateExpression=\"${" + delegate + "}\" " + attributes + "/>";
+    }
+
+    /** TODO §155 (D-EBOX-SEND-BLOCK) — l'envoi eBox appelle un service externe : jamais dans la transaction d'une complétion. */
+    @Test
+    void theEboxSendBlockMustBeAsynchronous() {
+        BuildingBlock send = BuildingBlockCatalog.byId("ebox-send").orElseThrow();
+        String asynchronous = sampleXml(send);
+        assertThat(adapter.extractProcessDefinitionKey(bpmn(asynchronous))).isEqualTo("testProcess");
+        assertRefused(asynchronous.replace(" flowable:async=\"true\"", ""), "must be asynchronous");
+    }
+
+    /**
+     * TODO §155 (revue H2) — une brique multi-instance poserait ses variables au niveau du process : la passerelle ne verrait que le
+     * dernier tour. La boucle se fait par un sous-processus multi-instance, passerelle à l'intérieur.
+     */
+    @Test
+    void theEboxSendBlockIsNeverMultiInstanceItself() {
+        String element = sampleXml(BuildingBlockCatalog.byId("ebox-send").orElseThrow()).replace("</serviceTask>",
+                "<multiInstanceLoopCharacteristics isSequential=\"true\"><loopCardinality>2</loopCardinality>"
+                        + "</multiInstanceLoopCharacteristics></serviceTask>");
+        assertRefused(element, "multi-instance");
     }
 
     /** Issue #19 (CS5, TODO §123) — vrai parseur : un gabarit exclut objet et corps, exige EMAIL seul et un destinataire. */

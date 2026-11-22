@@ -56,6 +56,31 @@ class BlockReferenceLookupAdapterTest {
         when(trigger.getCapability()).thenReturn(ConnectorCapability.TRIGGER);
         when(catalog.get("http-rest")).thenReturn(service);
         when(catalog.get("kafka")).thenReturn(trigger);
+        when(catalog.get("ebox-outbound")).thenReturn(service);
+    }
+
+    /**
+     * TODO §155 (revue H1, D-EBOX-SEND-BLOCK) — un compte expéditeur eBox ne sert qu'à la brique « Envoyer en eBox » : jamais
+     * proposé ni accepté au déploiement pour « Appeler un connecteur », seul proposé et accepté pour la brique d'envoi.
+     */
+    @Test
+    void anEboxSenderIsOnlyAReferenceOfTheEboxSendBlock() {
+        UUID erp = UUID.randomUUID();
+        UUID sender = UUID.randomUUID();
+        when(connectors.listByTenantId(TENANT)).thenReturn(List.of(
+                new ConnectorInstanceData(erp, TENANT, "ERP", "http-rest", true, Map.of()),
+                new ConnectorInstanceData(sender, TENANT, "eBox", "ebox-outbound", true, Map.of()),
+                new ConnectorInstanceData(UUID.randomUUID(), TENANT, "eBox off", "ebox-outbound", false, Map.of())));
+        when(connectors.findByIdAndTenantId(erp, TENANT)).thenReturn(java.util.Optional.of(
+                new ConnectorInstanceData(erp, TENANT, "ERP", "http-rest", true, Map.of())));
+        when(connectors.findByIdAndTenantId(sender, TENANT)).thenReturn(java.util.Optional.of(
+                new ConnectorInstanceData(sender, TENANT, "eBox", "ebox-outbound", true, Map.of())));
+
+        assertThat(adapter.list(TENANT, "connectorInstances")).containsExactly(new BlockReference(erp.toString(), "ERP"));
+        assertThat(adapter.list(TENANT, "eboxSenders")).containsExactly(new BlockReference(sender.toString(), "eBox"));
+        assertThat(adapter.status(TENANT, "connectorInstances", sender.toString())).isEqualTo(ReferenceStatus.MISSING);
+        assertThat(adapter.status(TENANT, "eboxSenders", sender.toString())).isEqualTo(ReferenceStatus.ACTIVE);
+        assertThat(adapter.status(TENANT, "eboxSenders", erp.toString())).isEqualTo(ReferenceStatus.MISSING);
     }
 
     private static DocumentTemplate template(String key, String label, TemplateStatus status) {

@@ -18,7 +18,9 @@ public final class ListBlockReferencesUseCaseImpl implements ListBlockReferences
      * restent lues à leur API.
      */
     static final Set<String> SERVED_SOURCES = Set.of(
-            "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dmnTables");
+            "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dmnTables",
+            // TODO §155 (D-EBOX-SEND-BLOCK) : comptes expéditeurs eBox, réservés à la brique « Envoyer en eBox ».
+            "eboxSenders");
 
     private final String tenantId;
     private final BlockReferenceLookupPort lookup;

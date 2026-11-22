@@ -25,7 +25,7 @@ vi.mock('@/api/taskQuestionSchemas', () => ({
 describe('resolveValueSource (S-FE-3, S-FE-4)', () => {
   beforeEach(() => vi.mocked(axios.get).mockReset())
 
-  it.each(['documentTemplates', 'connectorInstances', 'notificationWebhooks'])(
+  it.each(['documentTemplates', 'connectorInstances', 'notificationWebhooks', 'eboxSenders'])(
     '%s passe par l’endpoint de références',
     async (source) => {
       vi.mocked(axios.get).mockResolvedValue({ data: [{ value: 'a', label: 'A' }] })

@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 
 /**
  * TODO §155 (D-EBOX-SEND-CHANNELS) — configuration d'un compte expéditeur eBox Enterprise, lue dans une instance de connecteur de
- * type {@value #TYPE} (secrets chiffrés au repos comme ceux des autres connecteurs). Le type de connecteur et son écran arrivent
- * au lot 2 ; ce lot lit et valide sa configuration.
+ * type {@value #TYPE} (secrets chiffrés au repos comme ceux des autres connecteurs). Le type de connecteur
+ * ({@link EboxOutboundConnector}) valide la même configuration à l'enregistrement.
  *
  * <ul>
  *   <li>{@code publicationUrl} : registre de messages de l'ONSS (e-Box REST 3.8, {@code POST /ebox/messages}) ;</li>
@@ -40,6 +40,11 @@ record EboxOutboundSettings(
     static final String DEFAULT_SCOPE = "scope:document:management:consult:ws-eboxrestentreprise:publicationsender";
     static final String DEFAULT_REGISTERED_MAIL_SCOPE = "scope:ksz-bcss:registered:epost-rest:registeredmailsender";
     static final String DEFAULT_SUFFIXES = "socialsecurity.be,fgov.be,belgium.be";
+    /**
+     * TODO §155 (Q11, défaut prudent du lot 2, à confirmer) — plafond fixé par la plateforme : la liste du tenant ne fait que le
+     * restreindre (intersection), un administrateur ne peut pas envoyer le jeton vers un autre domaine.
+     */
+    static final List<String> PLATFORM_SUFFIXES = List.of("socialsecurity.be", "fgov.be", "belgium.be");
 
     /** Même borne que la colonne {@code client_id} du journal d'audit. */
     static final int MAX_CLIENT_ID = 200;
@@ -76,6 +81,11 @@ record EboxOutboundSettings(
         return new EboxOutboundSettings(publication, federation, registered, onBehalfOf.isEmpty() ? null : onBehalfOf,
                 clientId, oauth(instance, text(config, "oauthScope"), DEFAULT_SCOPE),
                 oauth(instance, text(config, "registeredMailScope"), DEFAULT_REGISTERED_MAIL_SCOPE));
+    }
+
+    /** Contrôle d'une configuration avant enregistrement : mêmes règles qu'à l'envoi. */
+    static void validate(Map<String, Object> config, OutboundUrlGuard guard) {
+        of(new ConnectorInstanceData(new java.util.UUID(0, 0), "-", "-", TYPE, true, config), guard);
     }
 
     /** Une configuration OAuth par scope : le cache de jetons les distingue par empreinte de configuration. */
@@ -131,6 +141,11 @@ record EboxOutboundSettings(
             if (!suffix.isEmpty()) {
                 if (!HOST_SUFFIX.matcher(suffix).matches()) {
                     throw new IllegalStateException("allowedHostSuffixes contains an invalid domain");
+                }
+                String candidate = suffix;
+                if (PLATFORM_SUFFIXES.stream().noneMatch(p -> candidate.equals(p) || candidate.endsWith("." + p))) {
+                    throw new IllegalStateException("allowedHostSuffixes may only list domains within "
+                            + String.join(", ", PLATFORM_SUFFIXES));
                 }
                 suffixes.add(suffix);
             }

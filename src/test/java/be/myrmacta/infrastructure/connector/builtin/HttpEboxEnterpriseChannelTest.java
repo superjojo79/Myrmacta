@@ -297,6 +297,20 @@ class HttpEboxEnterpriseChannelTest {
         assertThat(ebox.requests).isEmpty();
     }
 
+    /** TODO §155 (Q11, défaut prudent du lot 2) — le tenant ne peut que restreindre la liste de domaines de la plateforme. */
+    @Test
+    void theTenantCannotWidenThePlatformDomains() {
+        config.put("allowedHostSuffixes", "socialsecurity.be,attacker.example");
+        assertThatThrownBy(() -> channel.consent(TENANT, SENDER, RECIPIENT))
+                .hasMessageContaining("allowedHostSuffixes").hasMessageContaining("socialsecurity.be");
+        config.put("allowedHostSuffixes", "be");
+        assertThatThrownBy(() -> channel.consent(TENANT, SENDER, RECIPIENT)).hasMessageContaining("allowedHostSuffixes");
+        assertThat(ebox.requests).isEmpty();
+        config.put("allowedHostSuffixes", "services.socialsecurity.be");
+        ebox.preferences.put("0212345678", true);
+        assertThat(channel.consent(TENANT, SENDER, RECIPIENT)).isNotNull();
+    }
+
     @Test
     void theInstanceMustBeAnEnabledEboxSender_andTheRecipientAnEnterprise() {
         assertThatThrownBy(() -> channel.consent(TENANT, new EboxSenderAccount(UUID.randomUUID()), RECIPIENT))

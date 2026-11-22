@@ -16,11 +16,11 @@ import java.util.Set;
 public final class BuildingBlockCatalog {
 
     /** Incrémenté à chaque changement de contenu du catalogue (contrat MCP / client). */
-    public static final int VERSION = 9;
+    public static final int VERSION = 10;
 
     public static final Set<String> VALUE_SOURCES = Set.of(
             "documentTemplates", "notificationTemplates", "connectorInstances", "notificationWebhooks", "dossierTypes",
-            "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas");
+            "workflowTypes", "workflowStatuses", "dmnTables", "questionSchemas", "eboxSenders");
 
     private static final int SHORT = 200;
     private static final int LONG = 4000;
@@ -117,6 +117,35 @@ public final class BuildingBlockCatalog {
                             "Instance du connecteur eBox Enterprise qui a lu le message."),
                     text("eboxPartitionCible", "Partition cible", 100,
                             "Identifiant de la partition de destination ; jamais une partition lue par l'instance.", true)),
+            // TODO §155 (lot 2, D-EBOX-SEND-BLOCK) — publie un document produit du dossier dans l'eBox d'une entreprise ou d'un
+            // citoyen ; toujours asynchrone. Écrit eboxIssue, eboxLivraison, eboxSecoursRequis, eboxVoieSecours,
+            // eboxEnvoiMessageId et eboxEnvoiRejoue.
+            block("ebox-send", "Envoyer en eBox",
+                    "Publie un PDF produit et joint au dossier dans l'eBox d'une entreprise (BCE) ou d'un citoyen (NISS), après "
+                            + "contrôle du consentement. Pose eboxIssue (ENVOYE, DEJA_ENVOYE, VOIE_SECOURS), eboxSecoursRequis et "
+                            + "eboxVoieSecours, qu'une passerelle lit pour suivre la voie de secours. Toujours asynchrone.",
+                    BlockCategory.INTEGRATION, BlockElement.SERVICE_TASK, BlockMarker.asyncDelegate("eboxSendTask"),
+                    reference("connectorInstanceId", "Connecteur eBox (envoi)", true, "eboxSenders",
+                            "Instance du connecteur ebox-outbound : compte expéditeur de la commune."),
+                    enumSingle("eboxEnvoiTypeDestinataire", "Type de destinataire", true, List.of("ENTREPRISE", "CITOYEN"),
+                            "ENTREPRISE : numéro BCE ; CITOYEN : numéro de registre national (NISS)."),
+                    new BlockParameter("eboxEnvoiDestinataire", "Destinataire", ParameterType.SOURCE_REF, ParameterBinding.ATTRIBUTE,
+                            true, null, List.of(), SHORT, null, null,
+                            "dossierField:<champ> ou variable:<nom> qui porte le numéro BCE ou le NISS."),
+                    new BlockParameter("eboxEnvoiDocument", "Document", ParameterType.SOURCE_REF, ParameterBinding.ATTRIBUTE, true,
+                            null, List.of(), SHORT, null, null,
+                            "variable:<nom> (ex. generatedDocumentId) ou dossierField:<nom> : PDF produit et joint au dossier."),
+                    text("eboxEnvoiObjet", "Objet", 500, "Objet du message, une ligne.", true),
+                    text("eboxEnvoiApplication", "Application expéditrice", 100,
+                            "senderApplicationId attribué à l'onboarding (lettres, chiffres, ._:-).", true),
+                    text("eboxEnvoiTypeMessage", "Type de message", 100,
+                            "messageTypeId déclaré à l'onboarding (lettres, chiffres, ._:-).", true),
+                    text("eboxEnvoiLangue", "Langue", 80,
+                            "fr, nl ou de, ou dossierField:<champ> / variable:<nom> qui porte la langue du dossier.", true),
+                    enumSingle("eboxEnvoiRecommande", "Recommandé", false, List.of("NON", "OUI"),
+                            "OUI : envoi recommandé (Registered Mail), preuve de dépôt versée au dossier. Absent : NON."),
+                    enumSingle("eboxEnvoiSecours", "Voie de secours", true, List.of("PAPER", "EMAIL"),
+                            "Voie que le process suit si l'eBox ne suffit pas (pas de consentement, pas d'eBox, copie).")),
             // TODO §115 (D-DEADLINE-TIMER) — écrit echeance, echeanceRappel et echeanceDepassee, que portent les minuteurs.
             block("compute-deadline", "Calculer une échéance",
                     "Calcule l'échéance depuis un champ date du dossier ou un délai, et pose les variables echeanceRappel et "

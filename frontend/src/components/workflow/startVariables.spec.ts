@@ -35,6 +35,12 @@ describe('validateStartVariables (TODO §93)', () => {
       'generatedDocumentId',
       'echeanceRappel',
       'echeanceDepassee',
+      'eboxIssue',
+      'eboxLivraison',
+      'eboxSecoursRequis',
+      'eboxVoieSecours',
+      'eboxEnvoiMessageId',
+      'eboxEnvoiRejoue',
     ])
     const rows = RESERVED_START_VARIABLES.map((name) => ({ name, value: 'x' }))
     expect(Object.values(validateStartVariables(rows).errors)).toEqual(

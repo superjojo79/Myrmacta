@@ -48,7 +48,7 @@ class BuildingBlockApiTest {
             mockMvc.perform(get("/api/bpmn-building-blocks").with(as(role)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.version").value(BuildingBlockCatalog.VERSION))
-                    .andExpect(jsonPath("$.blocks.length()").value(20))
+                    .andExpect(jsonPath("$.blocks.length()").value(21))
                     .andExpect(jsonPath("$.blocks[0].id").value("generate-document"))
                     .andExpect(jsonPath("$.blocks[0].parameters[0].name").value("documentType"))
                     // D3b : l'éditeur ne propose une zone de texte que pour les paramètres multilignes publiés par le catalogue.
@@ -68,7 +68,7 @@ class BuildingBlockApiTest {
 
     @Test
     void workflowAdminGetsTheReferenceListsOfTheAdministrationSources() throws Exception {
-        for (String source : new String[] {"documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables"}) {
+        for (String source : new String[] {"documentTemplates", "connectorInstances", "notificationWebhooks", "dmnTables", "eboxSenders"}) {
             mockMvc.perform(get("/api/bpmn-building-blocks/references/" + source).with(as("WORKFLOW_ADMIN")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray());

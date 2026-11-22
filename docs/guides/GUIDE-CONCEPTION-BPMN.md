@@ -434,10 +434,10 @@ Contraintes :
 
 L'éditeur (`/admin/bpmn-editor`) charge le **catalogue des briques** exposé par le serveur
 (`GET /api/bpmn-building-blocks`, outil MCP `list_bpmn_building_blocks`) : une seule source pour la
-palette, le panneau, la validation au déploiement et les agents. Vingt briques, chacune = **un seul
+palette, le panneau, la validation au déploiement et les agents. Vingt et une briques, chacune = **un seul
 élément BPMN** pré-configuré (D-PALETTE-GRANULARITY). Douze briques depuis LC2 (§3sexies), treize depuis D3b (§3septies),
 quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vérification IA (§3nonies), dix-sept avec
-« Router le courrier » et « Rattacher au fil » (TODO §113), dix-huit avec « Calculer une échéance » (TODO §115), dix-neuf avec « Marquer l'action eBox comme faite » (TODO §150), vingt avec « Classer le message eBox » (TODO §151) :
+« Router le courrier » et « Rattacher au fil » (TODO §113), dix-huit avec « Calculer une échéance » (TODO §115), dix-neuf avec « Marquer l'action eBox comme faite » (TODO §150), vingt avec « Classer le message eBox » (TODO §151), vingt et une avec « Envoyer en eBox » (TODO §155) :
 
 | Brique | Élément | Marqueur XML reconnu |
 |---|---|---|
@@ -450,6 +450,7 @@ quatorze avec « Rechercher des dossiers » (§3octies), quinze avec la pré-vé
 | Router le courrier | `serviceTask` | `${routeMailTask}` |
 | Marquer l'action eBox comme faite | `serviceTask` | `${eboxActionDoneTask}` |
 | Classer le message eBox | `serviceTask` | `${eboxMoveTask}` |
+| Envoyer en eBox | `serviceTask` (asynchrone) | `${eboxSendTask}` |
 | Calculer une échéance | `serviceTask` | `${computeDeadlineTask}` |
 | Changer le statut du dossier | `serviceTask` | `${updateDossierStatusTask}` |
 | Changer le statut du workflow | `serviceTask` | `${updateWorkflowLinkStatusTask}` |
@@ -768,6 +769,70 @@ Exemple complet : [`exemples/digital-mail-room/tri-courrier.bpmn20.xml`](../../e
   échouer l'étape avec un message qui le dit.
 - **Recommandés.** `eboxRecommande` signale un recommandé et `eboxTypeRecommande` en donne le type
   (`nonQualifiedRegisteredMail` ou `qualifiedRegisteredMailNotification`) : la table de routage peut les lire.
+
+### Envoyer un document dans l'eBox d'une entreprise ou d'un citoyen (TODO §155)
+
+- **Quand.** La brique **Envoyer en eBox** (`${eboxSendTask}`) publie un PDF du dossier (une décision, un courrier) dans
+  l'eBox d'une entreprise (numéro BCE) ou d'un citoyen (NISS), au nom de la commune. Elle est **toujours asynchrone**
+  (`flowable:async="true"`, exigé au déploiement et vérifié à l'exécution) : l'appel à l'eBox ne tient pas dans une
+  complétion de tâche.
+- **Seul chemin d'envoi.** Seule cette brique envoie un message eBox. L'étape « Appeler un connecteur »
+  (`${connectorServiceTask}`) ne peut pas viser une instance `ebox-outbound`, même avec une requête écrite dans le BPMN : le
+  déploiement la refuse, et le connecteur refuse tout appel.
+- **Avant elle.** Générez le document puis joignez-le au dossier (« Générer un document », « Joindre le document ») : seul un
+  document **produit et joint au dossier courant**, en PDF, peut partir. Il faut aussi une instance de connecteur
+  `ebox-outbound` (compte expéditeur, voir le guide utilisateur).
+- **Paramètres** (tous littéraux dans le BPMN ; une variable de même nom est ignorée) :
+
+  | Attribut | Obligatoire | Contenu |
+  |---|---|---|
+  | `connectorInstanceId` | oui | instance `ebox-outbound` |
+  | `eboxEnvoiTypeDestinataire` | oui | `ENTREPRISE` ou `CITOYEN` |
+  | `eboxEnvoiDestinataire` | oui | `dossierField:<champ>` ou `variable:<nom>` : numéro BCE ou NISS |
+  | `eboxEnvoiDocument` | oui | `variable:generatedDocumentId` ou `dossierField:<champ>` : le PDF |
+  | `eboxEnvoiObjet` | oui | objet du message, une ligne (500 caractères au plus) |
+  | `eboxEnvoiApplication`, `eboxEnvoiTypeMessage` | oui | `senderApplicationId` et `messageTypeId` attribués à l'onboarding |
+  | `eboxEnvoiLangue` | oui | `fr`, `nl`, `de`, ou `dossierField:<champ>` / `variable:<nom>` qui porte la langue du dossier |
+  | `eboxEnvoiRecommande` | non | `OUI` : envoi recommandé, preuve de dépôt versée une fois au dossier (pièce « Preuve de dépôt eBox ») |
+  | `eboxEnvoiSecours` | oui | voie de secours que le process suivra : `PAPER` ou `EMAIL` |
+
+- **Consentement.** Avant chaque envoi, la brique constate l'état du destinataire. Un citoyen sans consentement ou sans eBox
+  ne reçoit rien dans l'eBox. Une entreprise sans eBox non plus. Une entreprise qui n'a pas choisi l'eBox comme canal exclusif
+  la reçoit, **et** le process doit envoyer une copie par la voie de secours (hypothèse H1 du registre §155). Tant que l'API
+  de l'eBox citoyen n'est pas branchée, aucun citoyen n'a consenti : tout part par la voie de secours.
+- **Variables posées** (réservées : ni un démarrage, ni une complétion de tâche ne peut les écrire) :
+
+  | Variable | Valeurs |
+  |---|---|
+  | `eboxIssue` | `ENVOYE` ; `DEJA_ENVOYE` (l'eBox avait déjà reçu ce message, rien n'est republié) ; `VOIE_SECOURS` (rien n'est parti dans l'eBox) |
+  | `eboxLivraison` | `EBOX`, `EBOX_AND_FALLBACK` (eBox et copie), `FALLBACK` |
+  | `eboxSecoursRequis` | `true` si le process doit suivre la voie de secours |
+  | `eboxVoieSecours` | `PAPER` ou `EMAIL` quand `eboxSecoursRequis` est vrai, sinon vide |
+  | `eboxEnvoiMessageId` | identifiant rendu par l'eBox, vide sans publication |
+  | `eboxEnvoiRejoue` | `true` si l'étape a été rejouée et a relu l'issue du journal |
+
+  Après la brique, une passerelle exclusive suit la voie de secours sur `${eboxSecoursRequis == true}` (exemple :
+  `exemples/envoi-ebox/`).
+- **Issue incertaine.** Si l'eBox ne répond pas (délai, erreur 5xx), aucune variable n'est posée : l'étape échoue et devient
+  un incident. Rejouez-le depuis l'administration : la même clé d'idempotence (dossier, étape, document, destinataire)
+  empêche tout double envoi. Si vous corrigez le destinataire avant de rejouer, la clé change : le message part au nouveau
+  destinataire, et l'ancien a pu le recevoir (l'issue était incertaine, pas un échec). Un refus de l'eBox (4xx) ou un document invalide fait aussi échouer l'étape, sans
+  rien publier. Si l'étape échoue après la publication (par exemple dans une passerelle qui la suit), la nouvelle tentative
+  relit l'issue du journal (`eboxEnvoiRejoue` vrai) sans republier.
+- **Après une voie de secours.** Le même dossier, la même étape et le même document redonnent la même clé : le journal rejoue
+  la voie de secours, même si le destinataire a ouvert son eBox depuis. Pour retenter l'eBox, régénérez le document ou
+  envoyez-le depuis une autre étape.
+- **Plusieurs destinataires.** La brique elle-même n'est jamais multi-instance (refusé au déploiement). Placez-la dans un
+  **sous-processus multi-instance, avec la passerelle à l'intérieur** : le sous-processus boucle sur la liste des
+  destinataires (`flowable:collection`, `flowable:elementVariable="bce"`), la brique lit `variable:bce`, et la passerelle qui
+  la suit, dans le même sous-processus, lit l'issue de son tour. Les variables de la brique sont alors locales au tour : elles
+  ne remontent pas au process.
+- **Boucle.** Chaque destinataire a sa clé, quel que soit son rang dans la liste : si la liste est réordonnée ou complétée au
+  rebouclage (par exemple `[A, B]` puis `[C, A, B]`, même document), seul `C` reçoit le message ; `A` et `B` relisent leur
+  issue du journal (`eboxEnvoiRejoue` vrai). Le même destinataire deux fois dans la liste ne reçoit qu'un message. La clé
+  porte le numéro BCE, ou une empreinte HMAC du NISS, jamais le NISS en clair.
+- **Journal.** Chaque envoi, doublon ou voie de secours laisse une ligne dans le journal d'audit des envois, que la base
+  refuse de modifier (registre §155).
 
 ### Rattacher une réponse à son fil, attendre un courrier (TODO §113, lots 3a et 3b)
 

@@ -11,6 +11,7 @@ import be.myrmacta.domain.connector.model.InboundAttachment;
 import be.myrmacta.domain.connector.model.PollingTriggerConnector;
 import be.myrmacta.domain.connector.model.ServiceConnector;
 import be.myrmacta.domain.connector.model.WorkflowTriggerEvent;
+import be.myrmacta.domain.connector.port.out.ConnectorInstanceRepository;
 import be.myrmacta.domain.mailroom.model.EboxTakenMessage;
 import be.myrmacta.domain.mailroom.port.out.EboxReadJournal;
 import be.myrmacta.infrastructure.config.ConnectorProperties;
@@ -42,6 +43,7 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionOperations;
@@ -55,10 +57,12 @@ import tools.jackson.databind.ObjectMapper;
  * ses pièces passées aux contrôles (types, contenu, antivirus). Les registres de messages sont découverts par le Document
  * Provider Registry et le jeton ne part que vers des hôtes autorisés (D-EBOX-REGISTRY-HOSTS). Un message est inscrit au journal
  * dans la transaction qui crée le courrier (D-EBOX-JOURNAL) ; la lecture reprend à la veille du dernier jour lu entièrement
- * (D-EBOX-WINDOW). Rien n'est modifié dans l'eBox, sinon l'état « lu » que l'API pose au téléchargement de la pièce principale.
+ * (D-EBOX-WINDOW). La lecture ne modifie rien dans l'eBox, sinon l'état « lu » que l'API pose au téléchargement de la pièce
+ * principale. Avec {@code partitionApiUrl}, les partitions configurées sont vérifiées avant d'être lues (D-EBOX-PARTITION-CHECK).
  *
- * <p>Côté SERVICE, une seule opération : {@code markActionExecuted} confirme l'action demandée par l'expéditeur d'un message que
- * cette instance a pris en charge (D-EBOX-ACTION).
+ * <p>Côté SERVICE, deux opérations, servies à un process seulement, sur un message que ce tenant a pris dans cette eBox :
+ * {@code markActionExecuted} confirme l'action demandée par l'expéditeur (D-EBOX-ACTION) et {@code moveToPartition} classe le
+ * message dans une partition qu'aucune instance active ne lit (D-EBOX-MOVE).
  */
 @Component
 public class EboxInboundConnector implements ConnectorDefinition, PollingTriggerConnector, ServiceConnector {
@@ -79,7 +83,9 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     /** Variables posées par la plateforme : un mapping ne peut pas les écraser. */
     static final Set<String> PLATFORM_VARIABLES = Set.of("eboxMessageId", "eboxRegistre", "eboxPartition", "eboxEntreprise",
             "eboxExpediteur", "eboxApplication", "eboxTypeMessage", "eboxObjet", "eboxRecuLe", "eboxExpireLe", "eboxRecommande", "eboxTypeRecommande",
-            "eboxActionRequise", "eboxReponseAutorisee", "eboxDateLimiteReponse", "eboxCorps", "eboxPiecesNonImportees");
+            "eboxActionRequise", "eboxReponseAutorisee", "eboxDateLimiteReponse", "eboxCorps", "eboxPiecesNonImportees",
+            // Résultats des briques eBox (D-EBOX-ACTION, D-EBOX-MOVE) : un courrier ne naît pas « déjà classé ».
+            "eboxActionExecutee", "eboxActionDejaFaite", "eboxActionId", "eboxClasse", "eboxDejaClasse");
 
     private static final Pattern ENTERPRISE_NUMBER = Pattern.compile("[01]\\d{9}");
     private static final Pattern PARTITION = Pattern.compile("[A-Za-z0-9._:-]{1,100}");
@@ -92,6 +98,7 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
     private final EboxClient client;
     private final EboxReadJournal journal;
+    private final ConnectorInstanceRepository instances;
     private final SimpleJsonPathMapper mapper;
     private final ObjectMapper objectMapper;
     private final OutboundUrlGuard guard;
@@ -101,19 +108,21 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     private final Clock clock;
 
     @Autowired
-    public EboxInboundConnector(EboxClient client, EboxReadJournal journal, SimpleJsonPathMapper mapper, ObjectMapper objectMapper,
-            OutboundUrlGuard guard, ConnectorProperties connectorProperties, InboundConnectorProperties inbound,
-            PlatformTransactionManager transactionManager) {
-        this(client, journal, mapper, objectMapper, guard, inbound,
+    public EboxInboundConnector(EboxClient client, EboxReadJournal journal, @Lazy ConnectorInstanceRepository instances,
+            SimpleJsonPathMapper mapper, ObjectMapper objectMapper, OutboundUrlGuard guard, ConnectorProperties connectorProperties,
+            InboundConnectorProperties inbound, PlatformTransactionManager transactionManager) {
+        // @Lazy : le dépôt d'instances chiffre par le catalogue des connecteurs, qui contient celui-ci.
+        this(client, journal, instances, mapper, objectMapper, guard, inbound,
                 new OAuth2TokenProvider(guard, objectMapper, connectorProperties, PinnedHttpClient.sender(), Clock.systemUTC()),
                 new TransactionTemplate(transactionManager), Clock.systemUTC());
     }
 
-    EboxInboundConnector(EboxClient client, EboxReadJournal journal, SimpleJsonPathMapper mapper, ObjectMapper objectMapper,
-            OutboundUrlGuard guard, InboundConnectorProperties inbound, OAuth2TokenProvider tokenProvider,
+    EboxInboundConnector(EboxClient client, EboxReadJournal journal, ConnectorInstanceRepository instances, SimpleJsonPathMapper mapper,
+            ObjectMapper objectMapper, OutboundUrlGuard guard, InboundConnectorProperties inbound, OAuth2TokenProvider tokenProvider,
             TransactionOperations transactions, Clock clock) {
         this.client = Objects.requireNonNull(client, "client");
         this.journal = Objects.requireNonNull(journal, "journal");
+        this.instances = Objects.requireNonNull(instances, "instances");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
         this.guard = Objects.requireNonNull(guard, "guard");
@@ -236,7 +245,8 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
 
     /**
      * TODO §151 (D-EBOX-PARTITION-CHECK) — les partitions configurées que l'eBox connaît (API Partition 1.3, lecture seule).
-     * Une partition inconnue est signalée et n'est pas lue ; si la liste ne peut pas être lue, rien n'est retiré.
+     * Une partition inconnue est signalée et n'est pas lue. Une liste illisible, de forme inattendue, incomplète ou vide n'est pas
+     * vérifiable : rien n'est retiré, la vérification ne bloque jamais la lecture.
      */
     private List<String> existingPartitions(Run run) {
         String api = param(run.config, "partitionApiUrl");
@@ -251,6 +261,11 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
                     run.instance.id(), unavailable.getClass().getSimpleName());
             return run.partitions;
         }
+        if (known.isEmpty()) {
+            // Une eBox qui a des partitions dédiées n'en rend pas zéro : la réponse ne permet pas de vérifier.
+            log.warn("{}: instance {} received an empty partition list, all configured partitions are read", TYPE, run.instance.id());
+            return run.partitions;
+        }
         List<String> existing = new ArrayList<>();
         for (String partition : run.partitions) {
             if (known.contains(partition)) {
@@ -263,9 +278,11 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
     }
 
     /**
-     * TODO §150 (D-EBOX-ACTION) — confirme l'action d'un message pris en charge par une instance de ce tenant et de cette eBox
-     * ({@code PATCH .../messageActions/{actionId}}, {@code isExecuted: true}). Sans {@code actionId}, l'action est la seule encore
-     * ouverte du message. Toute erreur remonte : l'étape BPMN échoue et son incident se rejoue.
+     * TODO §150 et §151 (D-EBOX-ACTION, D-EBOX-MOVE) — opérations de service sur un message pris en charge par ce tenant dans cette
+     * eBox, servies à un process seulement. {@code markActionExecuted} confirme une action ({@code PATCH .../messageActions/{actionId}},
+     * {@code isExecuted: true}) ; sans {@code actionId}, l'action est la seule encore ouverte du message. {@code moveToPartition}
+     * classe le message ({@code POST /ebox/messages/changePartition}) ; un refus sur un message déjà dans la cible vaut succès
+     * ({@code eboxDejaClasse}). Toute autre erreur remonte : l'étape BPMN échoue et son incident se rejoue.
      */
     @Override
     public Map<String, Object> execute(ConnectorInstanceData instance, Map<String, Object> input, ConnectorCallContext context) {
@@ -312,17 +329,15 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         if (journal.alreadyTaken(instance.tenantId(), run.enterpriseNumber, registryId, List.of(messageId)).isEmpty()) {
             throw new IllegalArgumentException(TYPE + ": the message was not taken from this eBox by this tenant");
         }
+        if (MOVE_TO_PARTITION.equals(operation)) {
+            requireMovable(instance, run, registryId, messageId, target);
+        }
         Endpoint endpoint = endpoints(run).stream()
                 .filter(candidate -> candidate.registryId().equals(registryId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(TYPE + ": message registry " + registryId + " has no active endpoint"));
         if (MOVE_TO_PARTITION.equals(operation)) {
-            run.authorized(() -> {
-                client.moveToPartition(endpoint.url(), run.access, messageId, target);
-                return null;
-            });
-            log.info("{}: instance {} moved a message of registry {} to partition {}", TYPE, instance.id(), registryId, target);
-            return Map.of("eboxClasse", true, "eboxPartitionCible", target);
+            return move(run, endpoint, messageId, target);
         }
         if (actionId.isEmpty()) {
             List<JsonNode> statuses = run.authorized(() -> client.actionStatuses(endpoint.url(), run.access, messageId));
@@ -349,6 +364,90 @@ public class EboxInboundConnector implements ConnectorDefinition, PollingTrigger
         });
         log.info("{}: instance {} confirmed an action of a message of registry {}", TYPE, instance.id(), registryId);
         return Map.of("eboxActionExecutee", true, "eboxActionId", confirmed);
+    }
+
+    /**
+     * TODO §151 (D-EBOX-MOVE) — la cible n'est lue par aucune instance {@code ebox-inbound} active de ce tenant sur cette eBox (le
+     * message serait relu par elle), et le message a été lu dans une partition de l'instance appelée.
+     */
+    private void requireMovable(ConnectorInstanceData instance, Run run, String registryId, String messageId, String target) {
+        for (ConnectorInstanceData other : instances.listByTenantId(instance.tenantId())) {
+            if (!other.enabled() || !TYPE.equals(other.connectorType()) || !sameEbox(other, run.enterpriseNumber)) {
+                continue;
+            }
+            if (readPartitions(other).contains(target)) {
+                throw new IllegalArgumentException(TYPE + ": targetPartition " + target
+                        + " is read by an active ebox-inbound instance of this eBox (" + other.name() + ")");
+            }
+        }
+        String readFrom = journal.taken(instance.tenantId(), run.enterpriseNumber, registryId, messageId)
+                .map(EboxTakenMessage::partition)
+                .orElse("");
+        if (!run.partitions.contains(readFrom)) {
+            throw new IllegalArgumentException(TYPE + ": the message was not read from a partition of this instance");
+        }
+    }
+
+    private static boolean sameEbox(ConnectorInstanceData other, String enterpriseNumber) {
+        try {
+            return enterpriseNumber(other.config()).equals(enterpriseNumber);
+        } catch (ConnectorValidationException invalid) {
+            return false;
+        }
+    }
+
+    private static List<String> readPartitions(ConnectorInstanceData other) {
+        try {
+            return partitions(other.config());
+        } catch (ConnectorValidationException invalid) {
+            // Une instance mal configurée ne lit rien (poll refuse sa configuration).
+            return List.of();
+        }
+    }
+
+    /**
+     * {@code changePartition}, idempotent au rejeu : sur un refus 400, 404 ou 409, le message est relu ; s'il est déjà dans la
+     * cible (incident rejoué après un premier déplacement réussi), l'étape passe avec {@code eboxDejaClasse}.
+     */
+    private Map<String, Object> move(Run run, Endpoint endpoint, String messageId, String target) {
+        try {
+            run.authorized(() -> {
+                client.moveToPartition(endpoint.url(), run.access, messageId, target);
+                return null;
+            });
+        } catch (EboxResourceException refused) {
+            Optional<String> current = Optional.empty();
+            if (refused.status == 400 || refused.status == 404 || refused.status == 409) {
+                try {
+                    current = run.authorized(() -> client.message(endpoint.url(), run.access, messageId))
+                            .map(message -> message.path("recipient").path("partition"))
+                            .filter(JsonNode::isString)
+                            .map(JsonNode::asString);
+                } catch (RuntimeException unreadable) {
+                    log.warn("{}: instance {} could not read back a message it failed to move ({})", TYPE, run.instance.id(),
+                            unreadable.getClass().getSimpleName());
+                }
+                if (current.filter(target::equals).isPresent()) {
+                    log.info("{}: instance {} found a message of registry {} already in partition {}", TYPE, run.instance.id(),
+                            endpoint.registryId(), target);
+                    return Map.of("eboxClasse", true, "eboxDejaClasse", true, "eboxPartitionCible", target);
+                }
+            }
+            throw new IllegalStateException(moveRefusal(refused.status, target, current.isPresent()), refused);
+        }
+        log.info("{}: instance {} moved a message of registry {} to partition {}", TYPE, run.instance.id(), endpoint.registryId(), target);
+        return Map.of("eboxClasse", true, "eboxDejaClasse", false, "eboxPartitionCible", target);
+    }
+
+    private static String moveRefusal(int status, String target, boolean messageStillThere) {
+        String prefix = TYPE + ": the eBox refused to move the message to partition " + target + " (HTTP " + status + "): ";
+        return switch (status) {
+            case 404 -> prefix + (messageStillThere ? "the target partition does not exist in this eBox; create it on the portal"
+                    : "the message is no longer in this eBox (deleted or expired)");
+            case 410 -> prefix + "the message is no longer in this eBox (expired or deleted)";
+            case 403 -> prefix + "this access may not move the message";
+            default -> prefix + "the message is not in the target partition; check the partition and the message";
+        };
     }
 
     /** Un point d'accès en version 3.x d'un registre de messages, actif aujourd'hui. */

@@ -17,6 +17,12 @@ public interface EboxReadJournal {
     Set<String> alreadyTaken(String tenantId, String enterpriseNumber, String registryId, Collection<String> messageIds);
 
     /**
+     * TODO §151 (D-EBOX-MOVE) — l'inscription d'un message : la partition d'où il a été lu et l'instance qui l'a remis ; vide si
+     * cette eBox ne l'a pas pris en charge.
+     */
+    Optional<EboxTakenMessage> taken(String tenantId, String enterpriseNumber, String registryId, String messageId);
+
+    /**
      * Inscrit le message, dans la transaction de l'appelant. Faux s'il était déjà inscrit (une autre instance l'a pris entre la
      * lecture et la remise) : l'appelant annule alors sa remise.
      */

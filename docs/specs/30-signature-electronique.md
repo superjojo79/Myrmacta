@@ -249,10 +249,20 @@ propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 
 
 - **Pont navigateur, parcours principal.** Dans la page, Web eID signe, selon `app.signature.eid.bridges` (défaut
   `web-eid` ; `beidconnect` reste reconnu). Le serveur calcule le condensé, la carte signe, et le
-  serveur assemble lui-même le PDF à partir de la valeur de signature rendue (signature invisible, mise à jour
-  incrémentale). Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
+  serveur assemble lui-même le PDF à partir de la valeur de signature rendue (mise à jour incrémentale). Le PDF assemblé passe par la même vérification qu'un téléversement (D-EID-BRIDGE).
   **BeIDConnect est abandonné** : l'extension publiée (1.0.7) ne s'active que sur des domaines fédéraux
   (`*.belgium.be`, `*.fgov.be`…), constat de recette du 2026-11-18 (§138). Son code reste en place, hors du défaut.
+- **Signature visible à l'ancre (TODO §156, D-EID-VISIBLE).** Quand le document remis porte l'ancre
+  `{{sN|signature|85|37}}` du rang du signataire (position + 1), `SignatureAnchors.locate` en lit la page et la position
+  (PDFBox, mêmes bornes mémoire et temps que le comptage d'ancres) et `DssCardSignatureAssembler` y pose un cadre de
+  85 × 37 points : « Signé avec la carte eID », nom lu dans le certificat, date en heure de Bruxelles, police Liberation
+  Sans incluse, jamais le numéro national. Le coin haut gauche du cadre est celui du texte de l'ancre (comme Yousign) ;
+  la zone doit être vide dans le document remis (ancre en blanc). Ancre absente, page tournée, cadre hors de la
+  MediaBox, cadre qui touche une annotation (dont le cadre d'un signataire précédent) ou zone non vide (critère
+  `BlankZone`, partagé avec la vérification) : signature invisible, avertissement journalisé à la préparation avec le
+  rang et le motif. Lecture de l'ancre au-delà de 20 s : échec plutôt qu'un repli, qui changerait les octets signés. L'apparence est une fonction pure
+  du document, du certificat, de l'heure et du rang, donc `prepare` et `assemble` restent déterministes. Plusieurs
+  signataires : chacun à son ancre, par mises à jour incrémentales successives.
 - **Deux fenêtres Web eID.** Avec Web eID, la page appelle `get-signing-certificate` (le logiciel natif fait choisir le
   certificat), puis `prepare` côté serveur (le condensé PAdES inclut le certificat), puis `sign` (le logiciel natif
   réaffiche le certificat et demande le PIN). Le signataire voit donc deux fenêtres successives ; c'est le protocole de
@@ -302,7 +312,7 @@ propre à Myrmacta sur le poste du signataire. Le transport est tracé au §138 
   une adresse non vérifiée. Avec un pont détecté, la page signe sans quitter Myrmacta ; sans pont, elle ne propose le
   téléversement que si l'exploitant l'a activé.
 - **Tests de référence.** `CardSignatureUploadDisabledRealApiTest`, `CardSignatureUploadEnabledRealApiTest`,
-  `CardSignatureUseCaseImplTest`, `DssCardSignatureAssemblerTest`, `DssSignedPdfVerifierTest`,
+  `CardSignatureUseCaseImplTest`, `DssCardSignatureAssemblerTest`, `SignatureAnchorsTest`, `DssSignedPdfVerifierTest`,
   `DssSignedPdfVerifierReviewTest`, `DssSignedPdfVerifierCounterReviewTest`, `EidSignatureAdapterTest`,
   `EidTrustAnchorsTest`, `PinnedRevocationTransportTest`, `DssDocumentTimestamperTest`, `MySignaturesEidApiTest`,
   `SignaturePortalEidApiTest`, `SignaturePropertiesTest`.

@@ -1151,6 +1151,12 @@ le logiciel Web eID : il n'est jamais transmis à la page ni à Myrmacta.
   débloque avec votre code PUK ou auprès de votre commune.
 - Une même carte ne signe qu'une fois un même document : si deux personnes doivent signer, chacune utilise sa
   propre carte.
+- **Signature visible (TODO §156).** Si le modèle de document porte le repère de votre rang (`{{s1|signature|85|37}}`
+  pour le premier signataire, `{{s2|…}}` pour le deuxième, écrit en blanc par le modèle), un cadre apparaît à cet
+  endroit : « Signé avec la carte eID », votre nom tel qu'il figure dans le certificat et la date (heure de
+  Bruxelles). Votre numéro de registre national n'y figure pas. Sans repère, ou si le cadre ne tient pas à cet endroit (bord de page, autre cadre ou texte déjà présent), la
+  signature est invisible dans la page
+  mais reste visible dans le panneau Signatures du lecteur PDF.
 
 **Signer hors de la page (si l'exploitant l'a activé).** Si la signature dans la page ne fonctionne pas et que ce
 choix vous est proposé, cliquez sur « Télécharger le document

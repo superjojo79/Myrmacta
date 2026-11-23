@@ -103,10 +103,15 @@ public interface SignaturePort {
      * @param certificate certificat de signature lu sur la carte, en DER
      * @param certificateChain autorités lues sur la carte, en DER ; vide si le pont ne les donne pas
      * @param signingTime heure de signature déclarée, fixée par le serveur à la préparation
+     * @param signerRank rang du signataire à partir de 1 (position Myrmacta + 1) : il désigne le repère
+     *     {@code {{sN|signature|85|37}}} où l'apparence de la signature est posée (D-SIGNATURE-ANCHOR)
      */
     record CardSignatureInput(
-            byte[] baseDocument, byte[] certificate, List<byte[]> certificateChain, Instant signingTime) {
+            byte[] baseDocument, byte[] certificate, List<byte[]> certificateChain, Instant signingTime, int signerRank) {
         public CardSignatureInput {
+            if (signerRank < 1) {
+                throw new IllegalArgumentException("signer rank starts at 1");
+            }
             certificateChain = certificateChain == null ? List.of() : List.copyOf(certificateChain);
         }
     }

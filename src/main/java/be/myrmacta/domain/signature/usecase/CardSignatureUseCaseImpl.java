@@ -102,7 +102,8 @@ public final class CardSignatureUseCaseImpl implements CardSignatureUseCase {
         SignaturePort.CardSignatureDigest digest;
         try {
             digest = port.prepareCardSignature(
-                    new SignaturePort.CardSignatureInput(base, input.certificate(), input.certificateChain(), signingTime));
+                    new SignaturePort.CardSignatureInput(base, input.certificate(), input.certificateChain(), signingTime,
+                            signer.position() + 1));
         } catch (IllegalArgumentException ex) {
             throw new InvalidCardSignatureInputException();
         }
@@ -132,7 +133,8 @@ public final class CardSignatureUseCaseImpl implements CardSignatureUseCase {
         try {
             byte[] assembled = port.assembleCardSignature(
                     new SignaturePort.CardSignatureInput(
-                            base, completion.certificate(), completion.certificateChain(), completion.signingTime()),
+                            base, completion.certificate(), completion.certificateChain(), completion.signingTime(),
+                            signer.position() + 1),
                     completion.signature());
             return new SignedPdf(assembled);
         } catch (IllegalArgumentException ex) {

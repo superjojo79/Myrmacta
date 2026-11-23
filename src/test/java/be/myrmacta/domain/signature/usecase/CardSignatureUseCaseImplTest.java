@@ -184,6 +184,25 @@ class CardSignatureUseCaseImplTest {
     }
 
     @Test
+    void theSignerRankGivenToThePortIsThePositionPlusOneInPrepareAndAssemble() {
+        Signer bob = signers.get(1);
+        when(submit.submitAssembledInternal(any(), any(), any())).thenReturn(new DecideSignatureUseCase.Result(
+                request.id(), be.myrmacta.domain.signature.model.SignerStatus.SIGNED, SignatureStatus.SIGNED));
+
+        useCase.prepareByToken("tok", input());
+        useCase.completeByToken("tok", completion(NOW, sourceDigest()));
+        useCase.prepareInternal("bob", bob.id(), input());
+        useCase.completeInternal("bob", bob.id(), completion(NOW, sourceDigest()));
+
+        ArgumentCaptor<SignaturePort.CardSignatureInput> prepared = ArgumentCaptor.forClass(SignaturePort.CardSignatureInput.class);
+        verify(port, org.mockito.Mockito.times(2)).prepareCardSignature(prepared.capture());
+        assertThat(prepared.getAllValues()).extracting(SignaturePort.CardSignatureInput::signerRank).containsExactly(1, 2);
+        ArgumentCaptor<SignaturePort.CardSignatureInput> assembled = ArgumentCaptor.forClass(SignaturePort.CardSignatureInput.class);
+        verify(port, org.mockito.Mockito.times(2)).assembleCardSignature(assembled.capture(), any());
+        assertThat(assembled.getAllValues()).extracting(SignaturePort.CardSignatureInput::signerRank).containsExactly(1, 2);
+    }
+
+    @Test
     void aDocumentThatChangedBetweenPrepareAndCompleteIsStaleAndNothingIsAssembled() {
         assertThatThrownBy(() -> useCase.completeByToken("tok", completion(NOW, "0".repeat(64))))
                 .isInstanceOfSatisfying(SignedUploadRejectedException.class,

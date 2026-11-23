@@ -275,7 +275,7 @@ class EidSignatureAdapterTest extends SignaturePortContract {
     @Test
     void cardSignatureIsDelegatedToTheAssemblerInBothSteps() {
         SignaturePort.CardSignatureInput input =
-                new SignaturePort.CardSignatureInput(SOURCE, new byte[] {1}, List.of(new byte[] {2}), NOW);
+                new SignaturePort.CardSignatureInput(SOURCE, new byte[] {1}, List.of(new byte[] {2}), NOW, 1);
         SignaturePort.CardSignatureDigest digest = new SignaturePort.CardSignatureDigest(new byte[] {9}, "SHA-256");
         when(assembler.prepare(input)).thenReturn(digest);
         when(assembler.assemble(input, new byte[] {7})).thenReturn(SIGNED_1);

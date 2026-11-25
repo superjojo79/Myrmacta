@@ -96,7 +96,12 @@ class AstInspectorRegressionTest {
 
     @Test
     void lazyRangesAreRecognisedWithoutBeingTraversed() throws Exception {
-        Object range = Jsonata.jsonata("[1..1000000]").evaluate(null); // plafond de la bibliothèque : 1e6
+        // 0.9.11 convertit les nulls en copiant toute liste dont un élément n'est pas le même objet
+        // à la seconde lecture : un RangeList serait alors matérialisé. Le moteur laisse cette conversion
+        // coupée (null explicite ≠ absent) ; c'est dans cet état que l'intervalle reste paresseux.
+        Jsonata parsed = Jsonata.jsonata("[1..1000000]");
+        parsed.setOutputConvertNulls(false);
+        Object range = parsed.evaluate(null);
 
         assertThat(AstInspector.isLazyRange(range)).isTrue();
         assertThat(AstInspector.isLazyRange(List.of(1, 2))).isFalse();

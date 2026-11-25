@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -40,7 +41,10 @@ abstract class AbstractEidSignatureEngineTest extends AbstractSignatureEngineTes
 
     @TestConfiguration
     static class FakeVerifierConfig {
+        // Boot 4.2 traite SignatureConfig avant cette configuration de test : @ConditionalOnMissingBean
+        // laisse aussi le vérificateur DSS. Le faux reste celui injecté.
         @Bean
+        @Primary
         SignedPdfVerifier fakeSignedPdfVerifier() {
             return new FakeSignedPdfVerifier();
         }

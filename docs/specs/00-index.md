@@ -5,7 +5,7 @@
 # Architecture technique — Moteur de flux métier & génération de documents
 
 > Projet : activité indépendante complémentaire  
-> Stack de base : Java 25 LTS · Spring Boot 4.1.x · PostgreSQL · Vue 3  
+> Stack de base : Java 25 LTS · Spring Boot 4.2.x · PostgreSQL · Vue 3  
 > Build : mono-module Maven · frontend embarqué (`static/`) — décision n° 27  
 > Licence : PolyForm Noncommercial 1.0.0 avec addendum de droit belge, licence commerciale sur
 > demande — [LICENSING.md](../../LICENSING.md), [TRADEMARKS.md](../../TRADEMARKS.md), décision n° 118
@@ -83,7 +83,7 @@
 
 ## Stack synthétique
 
-### Backend (Spring Boot 4.1.x / Java 25 LTS)
+### Backend (Spring Boot 4.2.x / Java 25 LTS)
 
 | Composant | Librairie | Rôle |
 |---|---|---|

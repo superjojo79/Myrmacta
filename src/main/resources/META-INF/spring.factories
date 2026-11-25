@@ -1,4 +1,4 @@
-org.springframework.boot.env.EnvironmentPostProcessor=\
+org.springframework.boot.EnvironmentPostProcessor=\
 be.myrmacta.infrastructure.tenant.TenantIdEnvironmentValidator,\
 be.myrmacta.infrastructure.config.OpenApiEnvironmentPostProcessor,\
 be.myrmacta.infrastructure.embeddeddb.EmbeddedDbEnvironmentPostProcessor,\

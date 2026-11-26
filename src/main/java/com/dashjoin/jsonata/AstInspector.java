@@ -104,7 +104,11 @@ public final class AstInspector {
         add(out, n.rhs);
         add(out, n.expression);
         add(out, n.procedure);
-        add(out, n.body);
+        // 0.9.11 : `body` est un Object (Symbol pour un lambda parsé, JFunction pour une application
+        // partielle native construite à l'exécution). Seul le Symbol porte un sous-arbre à parcourir.
+        if (n.body instanceof Symbol body) {
+            add(out, body);
+        }
         add(out, n.condition);
         add(out, n.then);
         add(out, n._else);

@@ -202,7 +202,7 @@ flowchart TB
 
 | Couche            | Technologie                     | Choix                                           |
 | ----------------- | ------------------------------- | ----------------------------------------------- |
-| Backend           | Java 25 LTS · Spring Boot 4.1.x | Virtual Threads, ecosystem mature               |
+| Backend           | Java 25 LTS · Spring Boot 4.2.x | Virtual Threads, ecosystem mature               |
 | Workflow          | Flowable 8.0.x Community        | BPMN 2.0, Apache 2.0, moteur d'exécution seul (pas de Flowable UI) |
 | Persistence       | PostgreSQL + Spring Data JPA    | JSONB pour champs dynamiques, schéma par tenant |
 | Génération PDF    | Flying Saucer 10.x + jsoup 1.x (versions exactes : `pom.xml`) | LGPL-2.1 or later ; voir l'[audit](docs/analyses/audit-licences-2026-10-24.md) |
@@ -216,7 +216,7 @@ flowchart TB
 | Auth server       | Keycloak 26.7.x                 | Self-hosted, OIDC/OAuth2, LDAP                  |
 | Build             | Maven mono-module + ArchUnit    | Règle domaine vérifiée en CI                    |
 
-Versions figées dans [`pom.xml`](pom.xml) : Java 25, Spring Boot 4.1.2, Flowable 8.0.0, Flying Saucer 10.7.0, jsoup 1.24.1. Le fichier [`docker-compose.yml`](docker-compose.yml) de développement utilise PostgreSQL 17 et Keycloak 26.7.1. Le frontend déclare Vue 3.5 et Vite 8 ([`frontend/package.json`](frontend/package.json)).
+Versions figées dans [`pom.xml`](pom.xml) : Java 25, Spring Boot 4.2.0, Flowable 8.0.0, Flying Saucer 10.7.0, jsoup 1.24.1. Le fichier [`docker-compose.yml`](docker-compose.yml) de développement utilise PostgreSQL 17 et Keycloak 26.7.1. Le frontend déclare Vue 3.5 et Vite 8 ([`frontend/package.json`](frontend/package.json)).
 
 ### Dépôt
 

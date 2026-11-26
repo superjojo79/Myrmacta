@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.2</version>
+        <version>4.2.0</version>
         <relativePath/>
     </parent>
 
@@ -60,11 +60,8 @@
              (postgres:17-alpine). Les binaires sont fournis par le BOM zonky ci-dessous. -->
         <embedded-postgres.version>2.2.3</embedded-postgres.version>
         <embedded-postgres-binaries.version>17.11.0</embedded-postgres-binaries.version>
-        <!-- Override du Kotlin géré par spring-boot-starter-parent 4.1.2 (fige encore 2.3.21) : stdlib
-             < 2.4.20 porte CVE-2026-53914 (CVSS 9.8, désérialisation non sûre). Kotlin n'arrive
-             que transitivement (anthropic-java-core via spring-ai-anthropic) ; la stdlib reste
-             rétrocompatible binairement. À retirer quand Spring Boot gère nativement 2.4.20+ : issue #15. -->
-        <kotlin.version>2.4.20</kotlin.version>
+        <!-- Kotlin : plus de surcharge. Spring Boot 4.2.0 gère 2.4.21 (CVE-2026-53914 corrigée dès 2.4.20).
+             L'exclusion de kotlin-stdlib-common 1.9.10 (okio) reste, sujet distinct, issue #15. -->
     </properties>
 
     <dependencyManagement>

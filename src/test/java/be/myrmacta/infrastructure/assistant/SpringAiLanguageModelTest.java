@@ -84,7 +84,9 @@ class SpringAiLanguageModelTest {
         assertThat(reply.text()).isEqualTo("Salut");
         assertThat(reply.inputTokens()).isEqualTo(11);
         assertThat(reply.outputTokens()).isEqualTo(5);
-        assertThat(headers.get().getFirst("x-api-key")).isEqualTo(KEY);
+        // SDK Anthropic 3.8 (Spring AI 2.1) pose la clé en Authorization: Bearer, plus en x-api-key.
+        assertThat(headers.get().getFirst("Authorization")).isEqualTo("Bearer " + KEY);
+        assertThat(headers.get().getFirst("x-api-key")).isNull();
         assertThat(headers.get().getFirst("anthropic-version")).isEqualTo("2023-06-01");
         assertThat(body.get()).doesNotContain(KEY);
         JsonNode sent = mapper.readTree(body.get());
@@ -160,7 +162,10 @@ class SpringAiLanguageModelTest {
         elsewhere = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         elsewhere.createContext("/", exchange -> {
             hitElsewhere.incrementAndGet();
-            keySeenElsewhere.set(exchange.getRequestHeaders().getFirst("x-api-key"));
+            com.sun.net.httpserver.Headers seen = exchange.getRequestHeaders();
+            keySeenElsewhere.set(seen.getFirst("x-api-key") != null
+                    ? seen.getFirst("x-api-key")
+                    : seen.getFirst("Authorization"));
             exchange.sendResponseHeaders(200, -1);
             exchange.close();
         });

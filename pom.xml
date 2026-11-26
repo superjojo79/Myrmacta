@@ -66,6 +66,20 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Alertes Dependabot #69-#74 : kafka-clients 4.4.0 (spring-kafka 4.2.0) tire en runtime
+                 lz4-java 1.11.2 (corrigé en 1.11.4) et snappy-java 1.1.10.7 (corrigé dans les versions
+                 postérieures). Aucune version de kafka-clients ne les relève : on force. À retirer quand
+                 le BOM Spring Boot / kafka-clients livre des versions corrigées. -->
+            <dependency>
+                <groupId>at.yawk.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>1.11.4</version>
+            </dependency>
+            <dependency>
+                <groupId>org.xerial.snappy</groupId>
+                <artifactId>snappy-java</artifactId>
+                <version>1.1.10.12</version>
+            </dependency>
             <!-- Swagger UI : springdoc 3.2.0 (dernière version) embarque swagger-ui 5.34.0, dont le bundle
                  contient DOMPurify 3.4.16 (CVE-2026-116802, -116803, -116804, CVSS 10, scan OWASP du
                  2026-11-04). swagger-ui 5.34.1 embarque DOMPurify 3.4.17. Springdoc résout la version via

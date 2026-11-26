@@ -13,7 +13,7 @@ Appliquer ces règles **avant** les skills génériques Java/Spring/Vue. En cas 
 
 | Couche | Choix |
 |--------|--------|
-| Backend | Java 25 · Spring Boot 4.1.x · Maven mono-module |
+| Backend | Java 25 · Spring Boot 4.2.x · Maven mono-module |
 | Workflow | Flowable 8 Community (BPMN 2.0) |
 | Persistence | PostgreSQL + **JPA seulement** (jamais `JdbcTemplate`, `NamedParameterJdbcTemplate` ni `JdbcClient` : registre §122) + Liquibase · schéma **par tenant** · tests sur **PostgreSQL embarqué zonky** (pas de H2, pas de Docker ; non-root requis, sinon `MYRMACTA_TEST_PG_URL`) · `*IT` inclus dans `verify` · changeSets appliqués **jamais modifiés** (`ChangelogChecksumStabilityIT`) |
 | PDF | Flying Saucer + OpenPDF (+ jsoup) — pas iText |

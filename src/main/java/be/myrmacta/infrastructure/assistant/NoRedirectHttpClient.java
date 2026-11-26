@@ -19,8 +19,9 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * D-ASSIST-PROVIDER — transport du SDK Anthropic (utilisé par le starter Spring AI) sur {@code java.net.http}, redirections
- * <b>jamais</b> suivies : le client OkHttp du starter les suit et réémettrait l'en-tête {@code x-api-key} vers l'hôte désigné
- * par un {@code Location}. Une réponse 3xx remonte telle quelle (le SDK la traite comme une erreur du fournisseur).
+ * <b>jamais</b> suivies : le client OkHttp du starter les suit et réémettrait l'en-tête d'authentification
+ * ({@code Authorization} depuis le SDK 3.8, ou {@code x-api-key}) vers l'hôte désigné par un {@code Location}.
+ * Une réponse 3xx remonte telle quelle (le SDK la traite comme une erreur du fournisseur).
  */
 final class NoRedirectHttpClient implements HttpClient {
 
@@ -52,7 +53,7 @@ final class NoRedirectHttpClient implements HttpClient {
                 }
             }
         }
-        HttpRequestBody body = request.body();
+        HttpRequestBody body = request.body().orElse(null);
         byte[] payload = new byte[0];
         if (body != null) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
